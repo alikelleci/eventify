@@ -22,7 +22,7 @@ public class EventifyAutoConfiguration {
   private ApplicationContext applicationContext;
 
   @Bean
-  public EventifyBeanPostProcessor easySourcingBeanPostProcessor(EventifyBuilder builder) {
+  public EventifyBeanPostProcessor eventifyBeanPostProcessor(EventifyBuilder builder) {
     return new EventifyBeanPostProcessor(builder);
   }
 
