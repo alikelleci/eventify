@@ -10,7 +10,7 @@
     <version>2.0.0</version>
 
     <name>eventify</name>
-    <description>A Java library for Event Sourcing using Kafka</description>
+    <description>Event Sourcing framework for the JVM</description>
     <url>https://github.com/alikelleci/eventify</url>
 
     <modules>

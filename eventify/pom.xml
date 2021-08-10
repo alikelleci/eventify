@@ -14,7 +14,7 @@
     <artifactId>eventify</artifactId>
 
     <name>eventify</name>
-    <description>A Java library for Event Sourcing using Kafka</description>
+    <description>Event Sourcing framework for the JVM</description>
 
     <properties>
         <kafka.version>2.7.0</kafka.version>
