@@ -28,7 +28,7 @@ public class Repository {
     AtomicLong sequence = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
 
-    String from = aggregateId;
+    String from = aggregateId.concat("@");
     String to = aggregateId.concat("@z");
 
     Aggregate aggregate = loadFromSnapshot(aggregateId);
