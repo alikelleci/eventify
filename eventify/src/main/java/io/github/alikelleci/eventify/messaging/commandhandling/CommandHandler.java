@@ -97,7 +97,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
         .filter(Objects::nonNull)
         .map(payload -> Event.builder()
             .aggregateId(command.getAggregateId())
-            .messageId(CommonUtils.createMessageId(command.getAggregateId(), command.getTimestamp()))
+            .messageId(CommonUtils.createMessageId(command.getAggregateId()))
             .timestamp(command.getTimestamp())
             .payload(payload)
             .metadata(command.getMetadata())

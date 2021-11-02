@@ -37,7 +37,7 @@ public interface Gateway {
 
     String aggregateId = CommonUtils.getAggregateId(payload);
     long timestamp = Instant.now().toEpochMilli();
-    String messageId = CommonUtils.createMessageId(aggregateId, timestamp);
+    String messageId = CommonUtils.createMessageId(aggregateId);
     String topic = CommonUtils.getTopicInfo(payload).value();
 
     Message message = Message.builder()

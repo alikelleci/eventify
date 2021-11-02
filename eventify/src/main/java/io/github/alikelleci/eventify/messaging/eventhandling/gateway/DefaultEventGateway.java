@@ -30,7 +30,7 @@ public class DefaultEventGateway implements EventGateway {
 
     String aggregateId = CommonUtils.getAggregateId(payload);
     long timestamp = Instant.now().toEpochMilli();
-    String messageId = CommonUtils.createMessageId(aggregateId, timestamp);
+    String messageId = CommonUtils.createMessageId(aggregateId);
     String topic = CommonUtils.getTopicInfo(payload).value();
 
     Event event = Event.builder()
