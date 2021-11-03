@@ -29,14 +29,15 @@ public class DefaultEventGateway implements EventGateway {
     }
 
     String aggregateId = CommonUtils.getAggregateId(payload);
-    long timestamp = Instant.now().toEpochMilli();
     String messageId = CommonUtils.createMessageId(aggregateId);
+    String correlationId = UUID.randomUUID().toString();
+    long timestamp = Instant.now().toEpochMilli();
     String topic = CommonUtils.getTopicInfo(payload).value();
 
     Event event = Event.builder()
         .aggregateId(aggregateId)
         .messageId(messageId)
-        .correlationId(UUID.randomUUID().toString())
+        .correlationId(correlationId)
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
