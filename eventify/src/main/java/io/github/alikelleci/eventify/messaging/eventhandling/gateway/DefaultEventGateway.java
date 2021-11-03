@@ -37,9 +37,9 @@ public class DefaultEventGateway implements EventGateway {
         .aggregateId(aggregateId)
         .messageId(messageId)
         .timestamp(timestamp)
+        .correlationId(UUID.randomUUID().toString())
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
-            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
             .build())
         .build();
 
