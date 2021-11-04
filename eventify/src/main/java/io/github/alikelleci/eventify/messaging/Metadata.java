@@ -26,8 +26,6 @@ public class Metadata {
   @JsonIgnore
   private String messageId;
   @JsonIgnore
-  private String correlationId;
-  @JsonIgnore
   private long timestamp;
 
 
