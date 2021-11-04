@@ -39,13 +39,14 @@ public interface Gateway {
     long timestamp = Instant.now().toEpochMilli();
     String messageId = CommonUtils.createMessageId(aggregateId);
     String topic = CommonUtils.getTopicInfo(payload).value();
+    String correlationId = UUID.randomUUID().toString();
 
     Message message = Message.builder()
         .messageId(messageId)
         .timestamp(timestamp)
-        .correlationId(UUID.randomUUID().toString())
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
+            .entry(Metadata.CORRELATION_ID, correlationId)
             .build())
         .build();
 

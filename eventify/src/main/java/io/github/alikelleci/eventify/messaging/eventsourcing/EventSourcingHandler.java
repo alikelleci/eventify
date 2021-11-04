@@ -59,7 +59,6 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
         .aggregateId(event.getAggregateId())
         .eventId(event.getMessageId())
         .messageId(CommonUtils.createMessageId(event.getAggregateId()))
-        .correlationId(event.getCorrelationId())
         .timestamp(event.getTimestamp())
         .payload(result)
         .metadata(event.getMetadata())

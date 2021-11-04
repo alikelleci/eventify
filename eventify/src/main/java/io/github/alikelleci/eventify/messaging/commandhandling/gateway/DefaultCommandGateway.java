@@ -30,17 +30,17 @@ public class DefaultCommandGateway implements CommandGateway {
 
     String aggregateId = CommonUtils.getAggregateId(payload);
     String messageId = CommonUtils.createMessageId(aggregateId);
-    String correlationId = UUID.randomUUID().toString();
     long timestamp = Instant.now().toEpochMilli();
     String topic = CommonUtils.getTopicInfo(payload).value();
+    String correlationId = UUID.randomUUID().toString();
 
     Command command = Command.builder()
         .aggregateId(aggregateId)
         .messageId(messageId)
-        .correlationId(correlationId)
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
+            .entry(Metadata.CORRELATION_ID, correlationId)
             .build())
         .build();
 
