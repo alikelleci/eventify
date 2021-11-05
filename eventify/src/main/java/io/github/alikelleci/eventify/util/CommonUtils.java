@@ -33,7 +33,7 @@ public class CommonUtils {
     return AnnotationUtils.findAnnotation(payload.getClass(), TopicInfo.class);
   }
 
-  public String createMessageId(String aggregateId, long timestamp) {
-    return aggregateId + "@" + UlidCreator.getMonotonicUlid(timestamp).toString();
+  public String createMessageId(String aggregateId) {
+    return aggregateId + "@" + UlidCreator.getMonotonicUlid().toString();
   }
 }
