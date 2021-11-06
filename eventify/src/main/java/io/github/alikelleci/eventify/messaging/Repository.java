@@ -50,6 +50,7 @@ public class Repository {
 
             sequence.incrementAndGet();
             counter.incrementAndGet();
+
           }
         }
       }
