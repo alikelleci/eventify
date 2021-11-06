@@ -47,9 +47,10 @@ public class Repository {
           EventSourcingHandler eventSourcingHandler = Handlers.EVENTSOURCING_HANDLERS.get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             aggregate = eventSourcingHandler.apply(aggregate, event);
+
+            sequence.incrementAndGet();
+            counter.incrementAndGet();
           }
-          sequence.incrementAndGet();
-          counter.incrementAndGet();
         }
       }
     }
