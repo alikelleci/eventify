@@ -28,7 +28,7 @@ public class Repository {
     AtomicLong sequence = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
 
-    String from = aggregateId;
+    String from = aggregateId.concat("@");
     String to = aggregateId.concat("@z");
 
     Aggregate aggregate = loadFromSnapshot(aggregateId);
@@ -43,16 +43,15 @@ public class Repository {
     try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
-        if (aggregate != null && aggregate.getEventId().equals(event.getMessageId())) {
-          event = iterator.next().value.value();
-        }
+        if (aggregate == null || !aggregate.getEventId().equals(event.getMessageId())) {
+          EventSourcingHandler eventSourcingHandler = Handlers.EVENTSOURCING_HANDLERS.get(event.getPayload().getClass());
+          if (eventSourcingHandler != null) {
+            aggregate = eventSourcingHandler.apply(aggregate, event);
 
-        EventSourcingHandler eventSourcingHandler = Handlers.EVENTSOURCING_HANDLERS.get(event.getPayload().getClass());
-        if (eventSourcingHandler != null) {
-          aggregate = eventSourcingHandler.apply(aggregate, event);
+            sequence.incrementAndGet();
+            counter.incrementAndGet();
+          }
         }
-        sequence.incrementAndGet();
-        counter.incrementAndGet();
       }
     }
 
