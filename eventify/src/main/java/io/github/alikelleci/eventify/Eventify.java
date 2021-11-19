@@ -64,7 +64,7 @@ public class Eventify {
     }
 
     log.info("Eventify is shutting down...");
-    kafkaStreams.close();
+    kafkaStreams.close(Duration.ofMillis(1000));
     kafkaStreams = null;
   }
 
@@ -114,13 +114,13 @@ public class Eventify {
     } else {
       kafkaStreams.setUncaughtExceptionHandler((thread, throwable) -> {
         log.error("Eventify will now exit because of the following error: ", throwable);
-        System.exit(1);
+        System.exit(0);
       });
     }
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       log.info("Eventify is shutting down...");
-      kafkaStreams.close();
+      kafkaStreams.close(Duration.ofMillis(1000));
     }));
   }
 }
