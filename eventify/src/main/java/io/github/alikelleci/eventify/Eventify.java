@@ -127,13 +127,13 @@ public class Eventify {
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
       public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
-        log.debug("onRestoreStart: endingOffset={}", endingOffset);
+        //log.debug("onRestoreStart: endingOffset={}", endingOffset);
 
       }
 
       @Override
       public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
-        log.debug("onBatchRestored: numRestored={}", numRestored);
+        //log.debug("onBatchRestored: numRestored={}", numRestored);
 
       }
 
