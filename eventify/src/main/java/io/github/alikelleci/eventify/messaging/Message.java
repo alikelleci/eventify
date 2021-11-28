@@ -12,7 +12,7 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder(toBuilder = true)
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
 public class Message {
-  private String messageId;
+  private String id;
   private long timestamp;
   @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
   private Object payload;
@@ -21,12 +21,12 @@ public class Message {
   public Metadata getMetadata() {
     if (metadata == null) {
       return Metadata.builder()
-          .messageId(messageId)
+          .messageId(id)
           .timestamp(timestamp)
           .build();
     }
     return metadata.toBuilder()
-        .messageId(messageId)
+        .messageId(id)
         .timestamp(timestamp)
         .build();
   }

@@ -36,7 +36,7 @@ public class DefaultEventGateway implements EventGateway {
 
     Event event = Event.builder()
         .aggregateId(aggregateId)
-        .messageId(messageId)
+        .id(messageId)
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
