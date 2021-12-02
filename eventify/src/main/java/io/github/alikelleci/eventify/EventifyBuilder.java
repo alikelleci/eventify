@@ -25,6 +25,7 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.springframework.core.annotation.AnnotationUtils;
 
 import java.lang.reflect.Method;
@@ -42,13 +43,13 @@ public class EventifyBuilder {
   private final Properties streamsConfig;
 
   private KafkaStreams.StateListener stateListener;
-  private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
+  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
 
   public EventifyBuilder(Properties streamsConfig) {
     this.streamsConfig = streamsConfig;
     this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE);
+    this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
     this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
     this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
 
@@ -63,7 +64,7 @@ public class EventifyBuilder {
     return this;
   }
 
-  public EventifyBuilder setUncaughtExceptionHandler(Thread.UncaughtExceptionHandler exceptionHandler) {
+  public EventifyBuilder setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler exceptionHandler) {
     this.uncaughtExceptionHandler = exceptionHandler;
     return this;
   }

@@ -36,7 +36,7 @@ public class DefaultCommandGateway implements CommandGateway {
 
     Command command = Command.builder()
         .aggregateId(aggregateId)
-        .messageId(messageId)
+        .id(messageId)
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()

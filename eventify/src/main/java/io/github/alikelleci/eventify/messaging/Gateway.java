@@ -42,7 +42,7 @@ public interface Gateway {
     String correlationId = UUID.randomUUID().toString();
 
     Message message = Message.builder()
-        .messageId(messageId)
+        .id(messageId)
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()

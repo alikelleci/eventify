@@ -43,7 +43,7 @@ public class Repository {
     try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
-        if (aggregate == null || !aggregate.getEventId().equals(event.getMessageId())) {
+        if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
           EventSourcingHandler eventSourcingHandler = Handlers.EVENTSOURCING_HANDLERS.get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             aggregate = eventSourcingHandler.apply(aggregate, event);
@@ -67,7 +67,7 @@ public class Repository {
   }
 
   public void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getMessageId(), ValueAndTimestamp.make(event, event.getTimestamp()));
+    eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp()));
   }
 
   public void saveSnapshot(Aggregate aggregate) {

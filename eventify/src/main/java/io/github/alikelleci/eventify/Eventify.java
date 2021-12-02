@@ -9,10 +9,13 @@ import io.github.alikelleci.eventify.messaging.resulthandling.ResultStream;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
+import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 
 import java.time.Duration;
@@ -24,7 +27,7 @@ public class Eventify {
 
   private final Properties streamsConfig;
   private KafkaStreams.StateListener stateListener;
-  private Thread.UncaughtExceptionHandler uncaughtExceptionHandler;
+  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
 
   private KafkaStreams kafkaStreams;
 
@@ -32,7 +35,7 @@ public class Eventify {
     this.streamsConfig = streamsConfig;
   }
 
-  protected Eventify(Properties streamsConfig, KafkaStreams.StateListener stateListener, Thread.UncaughtExceptionHandler uncaughtExceptionHandler) {
+  protected Eventify(Properties streamsConfig, KafkaStreams.StateListener stateListener, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
@@ -64,7 +67,7 @@ public class Eventify {
     }
 
     log.info("Eventify is shutting down...");
-    kafkaStreams.close();
+    kafkaStreams.close(Duration.ofMillis(1000));
     kafkaStreams = null;
   }
 
@@ -112,15 +115,32 @@ public class Eventify {
     if (uncaughtExceptionHandler != null) {
       kafkaStreams.setUncaughtExceptionHandler(uncaughtExceptionHandler);
     } else {
-      kafkaStreams.setUncaughtExceptionHandler((thread, throwable) -> {
-        log.error("Eventify will now exit because of the following error: ", throwable);
-        System.exit(1);
-      });
+      kafkaStreams.setUncaughtExceptionHandler((throwable) ->
+          StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD);
     }
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       log.info("Eventify is shutting down...");
-      kafkaStreams.close();
+      kafkaStreams.close(Duration.ofMillis(1000));
     }));
+
+    kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
+      @Override
+      public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
+        //log.debug("onRestoreStart: endingOffset={}", endingOffset);
+
+      }
+
+      @Override
+      public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
+        //log.debug("onBatchRestored: numRestored={}", numRestored);
+
+      }
+
+      @Override
+      public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
+        log.debug("onRestoreEnd: totalRestored={}", totalRestored);
+      }
+    });
   }
 }
