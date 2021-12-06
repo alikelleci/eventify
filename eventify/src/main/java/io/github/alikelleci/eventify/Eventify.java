@@ -84,7 +84,6 @@ public class Eventify {
         .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
         .withLoggingEnabled(Collections.emptyMap()));
 
-
     if (CollectionUtils.isNotEmpty(Topics.COMMANDS)) {
       CommandStream commandStream = new CommandStream();
       commandStream.buildStream(builder);
