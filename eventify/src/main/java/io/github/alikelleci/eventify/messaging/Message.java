@@ -10,7 +10,6 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder(toBuilder = true)
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
 public class Message {
   private String id;
   private long timestamp;
