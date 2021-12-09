@@ -30,7 +30,7 @@ public class DefaultEventGateway implements EventGateway {
 
     String aggregateId = CommonUtils.getAggregateId(payload);
     String messageId = CommonUtils.createMessageId(aggregateId);
-    long timestamp = Instant.now().toEpochMilli();
+    Instant timestamp = Instant.now();
     String topic = CommonUtils.getTopicInfo(payload).value();
     String correlationId = UUID.randomUUID().toString();
 
@@ -44,7 +44,7 @@ public class DefaultEventGateway implements EventGateway {
             .build())
         .build();
 
-    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, timestamp, aggregateId, event);
+    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, timestamp.toEpochMilli(), aggregateId, event);
 
     log.debug("Publishing event: {} ({})", payload.getClass().getSimpleName(), event.getAggregateId());
     producer.send(record);

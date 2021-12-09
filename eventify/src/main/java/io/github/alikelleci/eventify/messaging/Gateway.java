@@ -36,7 +36,7 @@ public interface Gateway {
     }
 
     String aggregateId = CommonUtils.getAggregateId(payload);
-    long timestamp = Instant.now().toEpochMilli();
+    Instant timestamp = Instant.now();
     String messageId = CommonUtils.createMessageId(aggregateId);
     String topic = CommonUtils.getTopicInfo(payload).value();
     String correlationId = UUID.randomUUID().toString();
@@ -50,7 +50,7 @@ public interface Gateway {
             .build())
         .build();
 
-    return new ProducerRecord<>(topic, null, timestamp, aggregateId, message);
+    return new ProducerRecord<>(topic, null, timestamp.toEpochMilli(), aggregateId, message);
   }
 
 }

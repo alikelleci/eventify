@@ -67,11 +67,11 @@ public class Repository {
   }
 
   public void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp()));
+    eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
   }
 
   public void saveSnapshot(Aggregate aggregate) {
-    snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp()));
+    snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
   }
 
   private Aggregate loadFromSnapshot(String aggregateId) {
