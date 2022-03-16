@@ -1,12 +1,14 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.constants.Handlers;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Repository;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.Repository;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
+
+import java.util.Optional;
 
 
 @Slf4j
@@ -38,12 +40,13 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
           repository.saveEvent(event));
 
       // 4. Save snapshot if needed
-      if (aggregate != null && aggregate.getSnapshotTreshold() > 0) {
-        if (aggregate.getVersion() % aggregate.getSnapshotTreshold() == 0) {
-          log.debug("Creating new snapshot: {}", aggregate);
-          repository.saveSnapshot(aggregate);
-        }
-      }
+      Optional.ofNullable(aggregate)
+          .filter(aggr -> aggr.getSnapshotTreshold() > 0)
+          .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
+          .ifPresent(aggr -> {
+            repository.saveSnapshot(aggr, true);
+            log.debug("New snapshot created: {}", aggr);
+          });
     }
 
     return result;
