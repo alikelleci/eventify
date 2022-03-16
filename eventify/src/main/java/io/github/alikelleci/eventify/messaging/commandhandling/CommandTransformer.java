@@ -44,8 +44,8 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
           .filter(aggr -> aggr.getSnapshotTreshold() > 0)
           .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
           .ifPresent(aggr -> {
+            log.debug("Creating snapshot: {}", aggr);
             repository.saveSnapshot(aggr, true);
-            log.debug("New snapshot created: {}", aggr);
           });
     }
 
