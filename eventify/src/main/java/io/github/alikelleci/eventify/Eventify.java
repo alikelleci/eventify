@@ -126,7 +126,7 @@ public class Eventify {
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
       public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
-        log.debug("onRestoreStart: endingOffset={}", endingOffset);
+        log.debug("State restoration started: storeName={}, partition={}: endingOffset={}", endingOffset);
       }
 
       @Override
@@ -136,7 +136,7 @@ public class Eventify {
 
       @Override
       public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
-        log.debug("onRestoreEnd: totalRestored={}", totalRestored);
+        log.debug("State restoration ended: storeName={}, partition={}: totalRestored={}", totalRestored);
       }
     });
   }
