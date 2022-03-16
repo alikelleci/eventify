@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.constants.Handlers;
-import io.github.alikelleci.eventify.messaging.Repository;
+import io.github.alikelleci.eventify.messaging.eventsourcing.Repository;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import lombok.extern.slf4j.Slf4j;

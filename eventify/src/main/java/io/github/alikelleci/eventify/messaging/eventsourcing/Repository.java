@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.messaging;
+package io.github.alikelleci.eventify.messaging.eventsourcing;
 
 import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
