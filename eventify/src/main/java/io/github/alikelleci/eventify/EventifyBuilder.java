@@ -40,8 +40,9 @@ import java.util.stream.Stream;
 
 @Slf4j
 public class EventifyBuilder {
-  public EventifyBuilder() {
-    
+
+  public EventifyBuilder(Properties streamsConfig) {
+    Config.streamsConfig = streamsConfig;
     Config.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     Config.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     Config.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
@@ -51,7 +52,7 @@ public class EventifyBuilder {
 //    ArrayList<String> interceptors = new ArrayList<>();
 //    interceptors.add(CommonProducerInterceptor.class.getName());
 //
-//    Config.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
+//    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
   }
 
   public EventifyBuilder setStateListener(KafkaStreams.StateListener stateListener) {
