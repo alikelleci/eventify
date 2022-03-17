@@ -27,7 +27,8 @@ public class Aggregate extends Message {
 
   @JsonIgnore
   public int getSnapshotTreshold() {
-    return Optional.ofNullable(getPayload().getClass())
+    return Optional.ofNullable(getPayload())
+        .map(Object::getClass)
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshots.class))
         .map(EnableSnapshots::threshold)
         .filter(threshold -> threshold > 0)
