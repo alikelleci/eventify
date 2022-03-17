@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify;
 
+import io.github.alikelleci.eventify.constants.Config;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.constants.Topics;
@@ -40,18 +41,13 @@ import java.util.stream.Stream;
 @Slf4j
 public class EventifyBuilder {
 
-  private final Properties streamsConfig;
-
-  private KafkaStreams.StateListener stateListener;
-  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
-
   public EventifyBuilder(Properties streamsConfig) {
-    this.streamsConfig = streamsConfig;
-    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
-    this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
-    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
+    Config.streamsConfig = streamsConfig;
+    Config.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+    Config.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+    Config.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
+    Config.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
+    Config.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
 
 //    ArrayList<String> interceptors = new ArrayList<>();
 //    interceptors.add(CommonProducerInterceptor.class.getName());
@@ -60,12 +56,17 @@ public class EventifyBuilder {
   }
 
   public EventifyBuilder setStateListener(KafkaStreams.StateListener stateListener) {
-    this.stateListener = stateListener;
+    Config.stateListener = stateListener;
     return this;
   }
 
   public EventifyBuilder setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler exceptionHandler) {
-    this.uncaughtExceptionHandler = exceptionHandler;
+    Config.uncaughtExceptionHandler = exceptionHandler;
+    return this;
+  }
+
+  public EventifyBuilder deleteEventsOnSnapshot(boolean b) {
+    Config.deleteEventsOnSnapshot = b;
     return this;
   }
 
@@ -96,10 +97,7 @@ public class EventifyBuilder {
 
   public Eventify build() {
     createTopics();
-    return new Eventify(
-        streamsConfig,
-        stateListener,
-        uncaughtExceptionHandler);
+    return new Eventify();
   }
 
   private void addUpcaster(Object listener, Method method) {
@@ -160,12 +158,12 @@ public class EventifyBuilder {
   private void createTopics() {
     Properties properties = new Properties();
 
-    String boostrapServers = streamsConfig.getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+    String boostrapServers = Config.streamsConfig.getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
     if (StringUtils.isNotBlank(boostrapServers)) {
       properties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, boostrapServers);
     }
 
-    String securityProtocol = streamsConfig.getProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
+    String securityProtocol = Config.streamsConfig.getProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
     if (StringUtils.isNotBlank(securityProtocol)) {
       properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
     }

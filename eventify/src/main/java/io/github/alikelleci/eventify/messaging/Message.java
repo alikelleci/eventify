@@ -6,14 +6,15 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder(toBuilder = true)
-@JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
 public class Message {
   private String id;
-  private long timestamp;
+  private Instant timestamp;
   @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
   private Object payload;
   private Metadata metadata;

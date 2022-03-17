@@ -47,14 +47,10 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
     } else {
       result = method.invoke(target, event.getPayload(), aggregate != null ? aggregate.getPayload() : null, event.getMetadata());
     }
-    return applyEvent(event, result);
+    return createState(event, result);
   }
 
-  private Aggregate applyEvent(Event event, Object result) {
-    if (result == null) {
-      return null;
-    }
-
+  private Aggregate createState(Event event, Object result) {
     return Aggregate.builder()
         .aggregateId(event.getAggregateId())
         .eventId(event.getId())

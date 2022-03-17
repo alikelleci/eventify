@@ -30,7 +30,7 @@ public class DefaultCommandGateway implements CommandGateway {
 
     String aggregateId = CommonUtils.getAggregateId(payload);
     String messageId = CommonUtils.createMessageId(aggregateId);
-    long timestamp = Instant.now().toEpochMilli();
+    Instant timestamp = Instant.now();
     String topic = CommonUtils.getTopicInfo(payload).value();
     String correlationId = UUID.randomUUID().toString();
 
@@ -44,7 +44,7 @@ public class DefaultCommandGateway implements CommandGateway {
             .build())
         .build();
 
-    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, timestamp, aggregateId, command);
+    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, timestamp.toEpochMilli(), aggregateId, command);
 
     log.debug("Sending command: {} ({})", payload.getClass().getSimpleName(), command.getAggregateId());
     producer.send(record);

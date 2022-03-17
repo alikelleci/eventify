@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify;
 
+import io.github.alikelleci.eventify.constants.Config;
 import io.github.alikelleci.eventify.constants.Topics;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandStream;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
@@ -14,31 +15,18 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 
 import java.time.Duration;
 import java.util.Collections;
-import java.util.Properties;
 
 @Slf4j
 public class Eventify {
 
-  private final Properties streamsConfig;
-  private KafkaStreams.StateListener stateListener;
-  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
-
   private KafkaStreams kafkaStreams;
 
-  protected Eventify(Properties streamsConfig) {
-    this.streamsConfig = streamsConfig;
-  }
-
-  protected Eventify(Properties streamsConfig, KafkaStreams.StateListener stateListener, StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
-    this.streamsConfig = streamsConfig;
-    this.stateListener = stateListener;
-    this.uncaughtExceptionHandler = uncaughtExceptionHandler;
+  protected Eventify() {
   }
 
   public void start() {
@@ -53,7 +41,7 @@ public class Eventify {
       return;
     }
 
-    this.kafkaStreams = new KafkaStreams(topology, this.streamsConfig);
+    this.kafkaStreams = new KafkaStreams(topology, Config.streamsConfig);
     setUpListeners();
 
     log.info("Eventify is starting...");
@@ -84,7 +72,6 @@ public class Eventify {
         .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
         .withLoggingEnabled(Collections.emptyMap()));
 
-
     if (CollectionUtils.isNotEmpty(Topics.COMMANDS)) {
       CommandStream commandStream = new CommandStream();
       commandStream.buildStream(builder);
@@ -104,20 +91,8 @@ public class Eventify {
   }
 
   private void setUpListeners() {
-    if (stateListener != null) {
-      kafkaStreams.setStateListener(stateListener);
-    } else {
-      kafkaStreams.setStateListener((newState, oldState) -> {
-        log.warn("State changed from {} to {}", oldState, newState);
-      });
-    }
-
-    if (uncaughtExceptionHandler != null) {
-      kafkaStreams.setUncaughtExceptionHandler(uncaughtExceptionHandler);
-    } else {
-      kafkaStreams.setUncaughtExceptionHandler((throwable) ->
-          StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD);
-    }
+    kafkaStreams.setStateListener(Config.stateListener);
+    kafkaStreams.setUncaughtExceptionHandler(Config.uncaughtExceptionHandler);
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       log.info("Eventify is shutting down...");
@@ -127,19 +102,17 @@ public class Eventify {
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
       public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
-        //log.debug("onRestoreStart: endingOffset={}", endingOffset);
-
+        log.debug("State restoration started: storeName={}, partition={}, endingOffset={}", storeName, topicPartition.partition(), endingOffset);
       }
 
       @Override
       public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
         //log.debug("onBatchRestored: numRestored={}", numRestored);
-
       }
 
       @Override
       public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
-        log.debug("onRestoreEnd: totalRestored={}", totalRestored);
+        log.debug("State restoration ended: storeName={}, partition={}, totalRestored={}", storeName, topicPartition.partition(), totalRestored);
       }
     });
   }

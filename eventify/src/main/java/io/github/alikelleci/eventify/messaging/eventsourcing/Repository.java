@@ -1,9 +1,7 @@
-package io.github.alikelleci.eventify.messaging;
+package io.github.alikelleci.eventify.messaging.eventsourcing;
 
 import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
-import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueIterator;
@@ -67,11 +65,30 @@ public class Repository {
   }
 
   public void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp()));
+    eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
   }
 
   public void saveSnapshot(Aggregate aggregate) {
-    snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp()));
+    snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
+  }
+
+  public void deleteEvents(Aggregate aggregate) {
+    AtomicLong counter = new AtomicLong(0);
+
+    String from = aggregate.getAggregateId().concat("@");
+    String to = aggregate.getEventId();
+
+    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
+      while (iterator.hasNext()) {
+        Event event = iterator.next().value.value();
+
+        log.debug("Deleting event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
+        eventStore.delete(event.getId());
+
+        counter.incrementAndGet();
+      }
+    }
+    log.debug("Total events deleted: {}", counter.get());
   }
 
   private Aggregate loadFromSnapshot(String aggregateId) {

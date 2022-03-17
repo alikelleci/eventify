@@ -16,6 +16,4 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 public class Event extends Message {
   private String aggregateId;
-  private String aggregateType;
-  private String type;
 }

@@ -26,7 +26,7 @@ public class Metadata {
   @JsonIgnore
   private String messageId;
   @JsonIgnore
-  private long timestamp;
+  private Instant timestamp;
 
 
   @Transient
@@ -48,10 +48,5 @@ public class Metadata {
     return this.toBuilder()
         .entry(key, value)
         .build();
-  }
-
-  @JsonIgnore
-  public Instant getTime() {
-    return Instant.ofEpochMilli(timestamp);
   }
 }
