@@ -51,10 +51,6 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
   }
 
   private Aggregate applyEvent(Event event, Object result) {
-    if (result == null) {
-      return null;
-    }
-
     return Aggregate.builder()
         .aggregateId(event.getAggregateId())
         .eventId(event.getId())
