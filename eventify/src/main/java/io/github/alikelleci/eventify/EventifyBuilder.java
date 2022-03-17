@@ -44,6 +44,7 @@ public class EventifyBuilder {
 
   private KafkaStreams.StateListener stateListener;
   private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
+  private boolean deleteEventsOnSnapshot;
 
   public EventifyBuilder(Properties streamsConfig) {
     this.streamsConfig = streamsConfig;
@@ -66,6 +67,11 @@ public class EventifyBuilder {
 
   public EventifyBuilder setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler exceptionHandler) {
     this.uncaughtExceptionHandler = exceptionHandler;
+    return this;
+  }
+
+  public EventifyBuilder deleteEventsOnSnapshot(boolean b) {
+    this.deleteEventsOnSnapshot = b;
     return this;
   }
 
