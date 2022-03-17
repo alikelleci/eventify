@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
+import io.github.alikelleci.eventify.constants.Config;
 import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -45,7 +46,13 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
           .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
           .ifPresent(aggr -> {
             log.debug("Creating snapshot: {}", aggr);
-            repository.saveSnapshot(aggr, true);
+            repository.saveSnapshot(aggr);
+
+            // 5. Delete events after snapshot
+            if (Config.deleteEventsOnSnapshot) {
+              log.debug("Events prior to this snapshot will be deleted");
+              repository.deleteEvents(aggr);
+            }
           });
     }
 

@@ -68,30 +68,27 @@ public class Repository {
     eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
   }
 
-  public void saveSnapshot(Aggregate aggregate, boolean deleteEvents) {
+  public void saveSnapshot(Aggregate aggregate) {
     snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
+  }
 
-    if (deleteEvents) {
-      log.debug("Events prior to this snapshot will be deleted");
+  public void deleteEvents(Aggregate aggregate) {
+    AtomicLong counter = new AtomicLong(0);
 
-      AtomicLong counter = new AtomicLong(0);
+    String from = aggregate.getAggregateId().concat("@");
+    String to = aggregate.getEventId();
 
-      String from = aggregate.getAggregateId().concat("@");
-      String to = aggregate.getEventId();
+    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
+      while (iterator.hasNext()) {
+        Event event = iterator.next().value.value();
 
-      try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
-        while (iterator.hasNext()) {
-          Event event = iterator.next().value.value();
+        log.debug("Deleting event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
+        eventStore.delete(event.getId());
 
-          log.debug("Deleting event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
-          eventStore.delete(event.getId());
-
-          counter.incrementAndGet();
-        }
+        counter.incrementAndGet();
       }
-
-      log.debug("Total events deleted: {}", counter.get());
     }
+    log.debug("Total events deleted: {}", counter.get());
   }
 
   private Aggregate loadFromSnapshot(String aggregateId) {
