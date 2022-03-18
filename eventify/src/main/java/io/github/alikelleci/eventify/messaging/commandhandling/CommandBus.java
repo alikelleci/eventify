@@ -134,19 +134,6 @@ public class CommandBus {
           .filter((key, event) -> event != null);
     }
 
-
-    /*
-     *************************************************************************************
-     * Result Handling
-     *************************************************************************************
-     */
-
-    // --> Results
-    KStream<String, Command> results = builder.stream(Topics.RESULTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
-        .filter((key, command) -> key != null)
-        .filter((key, command) -> command != null);
-
-
     return builder.build();
   }
 
