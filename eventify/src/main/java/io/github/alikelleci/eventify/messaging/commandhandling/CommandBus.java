@@ -58,11 +58,11 @@ public class CommandBus {
      *************************************************************************************
      */
 
-    if (!Handlers.COMMAND_HANDLERS.isEmpty()) {
+    if (!Handlers.EVENT_HANDLERS.isEmpty()) {
       // --> Events
-      KStream<String, Command> events = builder.stream(Topics.EVENTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
-          .filter((key, command) -> key != null)
-          .filter((key, command) -> command != null);
+      KStream<String, Event> events = builder.stream(Topics.EVENTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
+          .filter((key, event) -> key != null)
+          .filter((key, event) -> event != null);
     }
 
 
