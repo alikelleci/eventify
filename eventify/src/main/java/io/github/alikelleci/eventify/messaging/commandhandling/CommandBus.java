@@ -62,8 +62,9 @@ public class CommandBus {
 
 
   public CommandBus(Properties producerConfig, Properties consumerConfig, Properties streamsConfig) {
+    setAdditionalProducerConfigs(producerConfig);
+
     this.producerConfig = producerConfig;
-    setAdditionalProducerConfigs(this.producerConfig);
     this.producer = new KafkaProducer<>(this.producerConfig,
         new StringSerializer(),
         new JsonSerializer<>());
