@@ -35,11 +35,10 @@ public class CommandBus {
 
   private Properties producerConfig;
   private Producer<String, Message> producer;
+  private Cache<String, CompletableFuture<Object>> cache;
 
   private Properties streamsConfig;
   private KafkaStreams kafkaStreams;
-
-  private Cache<String, CompletableFuture<Object>> cache;
 
   public CommandBus(Properties producerConfig, Properties streamsConfig) {
     this.producerConfig = producerConfig;
