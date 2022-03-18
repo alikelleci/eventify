@@ -166,9 +166,7 @@ public class CommandBus {
   }
 
 
-  public void onMessage(ConsumerRecords<String, Command> consumerRecords) {
-    consumer.subscribe(Collections.singletonList("some-results-topic"));
-
+  public void onResult(ConsumerRecords<String, Command> consumerRecords) {
     consumerRecords.forEach(record -> {
       String messageId = record.value().getId();
       if (StringUtils.isBlank(messageId)) {
@@ -192,16 +190,16 @@ public class CommandBus {
     AtomicBoolean closed = new AtomicBoolean(false);
     Thread thread = new Thread(() -> {
       try {
-        //getConsumer().subscribe(Collections.singletonList(applicationId.concat(".results")));
+        this.consumer.subscribe(Collections.singletonList("some-results-topic"));
         while (!closed.get()) {
           ConsumerRecords<String, Command> consumerRecords = this.consumer.poll(Duration.ofMillis(1000));
-          onMessage(consumerRecords);
+          onResult(consumerRecords);
         }
       } catch (WakeupException e) {
         // Ignore exception if closing
         if (!closed.get()) throw e;
       } finally {
-        consumer.close();
+        this.consumer.close();
       }
     });
 
