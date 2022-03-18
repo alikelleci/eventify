@@ -5,21 +5,28 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.alikelleci.eventify.constants.Config;
 import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.constants.Topics;
-import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import io.github.alikelleci.eventify.util.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -36,6 +43,7 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class CommandBus {
@@ -49,17 +57,24 @@ public class CommandBus {
   private Properties streamsConfig;
   private KafkaStreams kafkaStreams;
 
-
+  //private Map<String, CompletableFuture<Object>> futures = new ConcurrentHashMap<>();
   private Cache<String, CompletableFuture<Object>> cache;
 
 
-  public CommandBus(Properties producerConfig, Properties streamsConfig) {
+  public CommandBus(Properties producerConfig, Properties consumerConfig, Properties streamsConfig) {
     this.producerConfig = producerConfig;
     setAdditionalProducerConfigs(this.producerConfig);
-
     this.producer = new KafkaProducer<>(this.producerConfig,
         new StringSerializer(),
         new JsonSerializer<>());
+
+    this.consumerConfig = consumerConfig;
+    this.consumer = new KafkaConsumer<>(this.consumerConfig,
+        new StringDeserializer(),
+        new JsonDeserializer<>());
+
+    this.streamsConfig = streamsConfig;
+    this.kafkaStreams = new KafkaStreams(topology(), this.streamsConfig);
 
     this.cache = Caffeine.newBuilder()
         .expireAfterWrite(Duration.ofMinutes(5))
@@ -151,7 +166,65 @@ public class CommandBus {
   }
 
 
-  public void dispatch(Command command) {
+  public void onMessage(ConsumerRecords<String, Command> consumerRecords) {
+    consumer.subscribe(Collections.singletonList("some-results-topic"));
+
+    consumerRecords.forEach(record -> {
+      String messageId = record.value().getId();
+      if (StringUtils.isBlank(messageId)) {
+        return;
+      }
+      // CompletableFuture<Object> future = futures.remove(messageId);
+      CompletableFuture<Object> future = cache.getIfPresent(messageId);
+      if (future != null) {
+        Exception exception = checkForErrors(record);
+        if (exception == null) {
+          future.complete(record.value().getPayload());
+        } else {
+          future.completeExceptionally(exception);
+        }
+        cache.invalidate(messageId);
+      }
+    });
+  }
+
+  public void start() {
+    AtomicBoolean closed = new AtomicBoolean(false);
+    Thread thread = new Thread(() -> {
+      try {
+        //getConsumer().subscribe(Collections.singletonList(applicationId.concat(".results")));
+        while (!closed.get()) {
+          ConsumerRecords<String, Command> consumerRecords = this.consumer.poll(Duration.ofMillis(1000));
+          onMessage(consumerRecords);
+        }
+      } catch (WakeupException e) {
+        // Ignore exception if closing
+        if (!closed.get()) throw e;
+      } finally {
+        consumer.close();
+      }
+    });
+
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      closed.set(true);
+      consumer.wakeup();
+    }));
+    thread.start();
+  }
+
+  private Exception checkForErrors(ConsumerRecord<String, Command> record) {
+    Command command = record.value();
+    Metadata metadata = command.getMetadata();
+
+    if (metadata.get(Metadata.RESULT).equals("failure")) {
+      return new CommandExecutionException(metadata.get(Metadata.CAUSE));
+    }
+
+    return null;
+  }
+
+
+  public CompletableFuture<Object> dispatch(Command command) {
     //validatePayload(payload);
 
     String aggregateId = command.getAggregateId();
@@ -163,6 +236,11 @@ public class CommandBus {
 
     log.debug("Sending command: {} ({})", payload.getClass().getSimpleName(), aggregateId);
     producer.send(record);
+
+    CompletableFuture<Object> future = new CompletableFuture<>();
+    cache.put(command.getId(), future);
+
+    return future;
   }
 
   public void dispatch(Object payload, Metadata metadata) {
@@ -182,6 +260,7 @@ public class CommandBus {
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
             .entry(Metadata.CORRELATION_ID, correlationId)
+            .entry("replyTO", "SOME-VALUE")
             .build())
         .build();
 
