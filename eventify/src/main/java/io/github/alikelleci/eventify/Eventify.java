@@ -59,7 +59,7 @@ public class Eventify {
     kafkaStreams = null;
   }
 
-  private Topology buildTopology() {
+  protected Topology buildTopology() {
     StreamsBuilder builder = new StreamsBuilder();
 
     // Event store
