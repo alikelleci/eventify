@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
+import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
@@ -69,7 +70,7 @@ class EventifyTest {
 
   @Test
   void test1() {
-    Object payload = CustomerCommand.CreateCustomer.builder()
+    CreateCustomer payload = CreateCustomer.builder()
         .id("customer-123")
         .firstName("Peter")
         .lastName("Bruin")
@@ -91,5 +92,9 @@ class EventifyTest {
     assertThat(event, is(notNullValue()));
     assertThat(event.getAggregateId(), is(aggregateId));
     assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
+    assertThat(((CustomerCreated) event.getPayload()).getFirstName(), is(payload.getFirstName()));
+    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(payload.getLastName()));
+    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(payload.getCredits()));
+    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(payload.getBirthday()));
   }
 }
