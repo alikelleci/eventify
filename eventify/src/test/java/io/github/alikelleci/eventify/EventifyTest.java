@@ -92,6 +92,7 @@ class EventifyTest {
     assertThat(event, is(notNullValue()));
     assertThat(event.getAggregateId(), is(aggregateId));
     assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
+    assertThat(((CustomerCreated) event.getPayload()).getId(), is(payload.getId()));
     assertThat(((CustomerCreated) event.getPayload()).getFirstName(), is(payload.getFirstName()));
     assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(payload.getLastName()));
     assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(payload.getCredits()));
