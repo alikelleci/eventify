@@ -2,19 +2,23 @@ package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.github.alikelleci.eventify.constants.Config;
 import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.constants.Topics;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
+import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import io.github.alikelleci.eventify.util.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
@@ -23,9 +27,12 @@ import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.processor.StateRestoreListener;
+import org.apache.kafka.streams.state.Stores;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -34,11 +41,17 @@ import java.util.concurrent.CompletableFuture;
 public class CommandBus {
 
   private Properties producerConfig;
-  private Producer<String, Message> producer;
-  private Cache<String, CompletableFuture<Object>> cache;
+  private Producer<String, Command> producer;
+
+  private Properties consumerConfig;
+  private Consumer<String, Command> consumer;
 
   private Properties streamsConfig;
   private KafkaStreams kafkaStreams;
+
+
+  private Cache<String, CompletableFuture<Object>> cache;
+
 
   public CommandBus(Properties producerConfig, Properties streamsConfig) {
     this.producerConfig = producerConfig;
@@ -63,6 +76,16 @@ public class CommandBus {
      */
 
     if (!Handlers.COMMAND_HANDLERS.isEmpty()) {
+
+      // Event store
+      builder.addStateStore(Stores
+          .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
+          .withLoggingEnabled(Collections.emptyMap()));
+
+      // Snapshot Store
+      builder.addStateStore(Stores
+          .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
+          .withLoggingEnabled(Collections.emptyMap()));
 
       // --> Commands
       KStream<String, Command> commands = builder.stream(Topics.COMMANDS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
@@ -89,17 +112,7 @@ public class CommandBus {
           .to((key, event, recordContext) -> CommonUtils.getTopicInfo(event.getPayload()).value(),
               Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
 
-    }
-
-
-    /*
-     *************************************************************************************
-     * Event Handling
-     *************************************************************************************
-     */
-
-    if (!Handlers.EVENT_HANDLERS.isEmpty()) {
-      // --> Events
+      // --> Events --> Event Store
       KStream<String, Event> events = builder.stream(Topics.EVENTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
           .filter((key, event) -> key != null)
           .filter((key, event) -> event != null);
@@ -123,6 +136,18 @@ public class CommandBus {
 
   public void subscribe() {
     this.kafkaStreams = new KafkaStreams(topology(), this.streamsConfig);
+
+    Topology topology = topology();
+    if (topology.describe().subtopologies().isEmpty()) {
+      log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
+      return;
+    }
+
+    this.kafkaStreams = new KafkaStreams(topology, Config.streamsConfig);
+    setUpListeners();
+
+    log.info("Command Bus is starting...");
+    kafkaStreams.start();
   }
 
 
@@ -134,7 +159,7 @@ public class CommandBus {
     Object payload = command.getPayload();
     String topic = CommonUtils.getTopicInfo(payload).value();
 
-    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, timestamp, aggregateId, command);
+    ProducerRecord<String, Command> record = new ProducerRecord<>(topic, null, timestamp, aggregateId, command);
 
     log.debug("Sending command: {} ({})", payload.getClass().getSimpleName(), aggregateId);
     producer.send(record);
@@ -180,4 +205,32 @@ public class CommandBus {
 //
 //    this.producerConfig.putIfAbsent(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
   }
+
+  private void setUpListeners() {
+    kafkaStreams.setStateListener(Config.stateListener);
+    kafkaStreams.setUncaughtExceptionHandler(Config.uncaughtExceptionHandler);
+
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      log.info("Eventify is shutting down...");
+      kafkaStreams.close(Duration.ofMillis(1000));
+    }));
+
+    kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
+      @Override
+      public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
+        log.debug("State restoration started: topic={}, partition={}, store={}, endingOffset={}", topicPartition.topic(), topicPartition.partition(), storeName, endingOffset);
+      }
+
+      @Override
+      public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
+        log.debug("State restoration in progress: topic={}, partition={}, store={}, numRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, numRestored);
+      }
+
+      @Override
+      public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
+        log.debug("State restoration ended: topic={}, partition={}, store={}, totalRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
+      }
+    });
+  }
+
 }
