@@ -149,7 +149,7 @@ public class CommandBus {
     return builder.build();
   }
 
-  public void subscribe() {
+  public void start1() {
     this.kafkaStreams = new KafkaStreams(topology(), this.streamsConfig);
 
     Topology topology = topology();
@@ -165,28 +165,7 @@ public class CommandBus {
     kafkaStreams.start();
   }
 
-
-  public void onResult(ConsumerRecords<String, Command> consumerRecords) {
-    consumerRecords.forEach(record -> {
-      String messageId = record.value().getId();
-      if (StringUtils.isBlank(messageId)) {
-        return;
-      }
-      // CompletableFuture<Object> future = futures.remove(messageId);
-      CompletableFuture<Object> future = cache.getIfPresent(messageId);
-      if (future != null) {
-        Exception exception = checkForErrors(record);
-        if (exception == null) {
-          future.complete(record.value().getPayload());
-        } else {
-          future.completeExceptionally(exception);
-        }
-        cache.invalidate(messageId);
-      }
-    });
-  }
-
-  public void start() {
+  public void start2() {
     AtomicBoolean closed = new AtomicBoolean(false);
     Thread thread = new Thread(() -> {
       try {
@@ -208,6 +187,26 @@ public class CommandBus {
       consumer.wakeup();
     }));
     thread.start();
+  }
+
+  public void onResult(ConsumerRecords<String, Command> consumerRecords) {
+    consumerRecords.forEach(record -> {
+      String messageId = record.value().getId();
+      if (StringUtils.isBlank(messageId)) {
+        return;
+      }
+      // CompletableFuture<Object> future = futures.remove(messageId);
+      CompletableFuture<Object> future = cache.getIfPresent(messageId);
+      if (future != null) {
+        Exception exception = checkForErrors(record);
+        if (exception == null) {
+          future.complete(record.value().getPayload());
+        } else {
+          future.completeExceptionally(exception);
+        }
+        cache.invalidate(messageId);
+      }
+    });
   }
 
   private Exception checkForErrors(ConsumerRecord<String, Command> record) {
