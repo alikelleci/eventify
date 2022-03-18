@@ -35,6 +35,7 @@ public class CustomerCommandHandler {
         .firstName(command.getFirstName())
         .lastName(command.getLastName())
         .credits(command.getCredits())
+        .birthday(command.getBirthday())
         .build();
   }
 
