@@ -37,7 +37,7 @@ public class CommandHandler implements BiFunction<Command, Aggregate, CommandRes
   private final Method method;
   private final RetryPolicy<Object> retryPolicy;
 
-  private final Validator validator;
+  private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
   public CommandHandler(Object target, Method method) {
     this.target = target;
@@ -45,8 +45,6 @@ public class CommandHandler implements BiFunction<Command, Aggregate, CommandRes
     this.retryPolicy = RetryUtil.buildRetryPolicyFromAnnotation(method.getAnnotation(Retry.class))
         .onRetry(e -> log.warn("Handling command failed, retrying... ({})", e.getAttemptCount()))
         .onRetriesExceeded(e -> log.error("Handling command failed after {} attempts.", e.getAttemptCount()));
-
-    this.validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 
   @Override
