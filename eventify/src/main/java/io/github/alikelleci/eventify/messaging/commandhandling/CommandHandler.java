@@ -31,7 +31,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class CommandHandler implements BiFunction<Aggregate, Command, CommandResult> {
+public class CommandHandler implements BiFunction<Command, Aggregate, CommandResult> {
 
   private final Object target;
   private final Method method;
@@ -50,12 +50,12 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
   }
 
   @Override
-  public CommandResult apply(Aggregate aggregate, Command command) {
+  public CommandResult apply(Command command, Aggregate aggregate) {
     log.debug("Handling command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
 
     try {
       validate(command.getPayload());
-      return Failsafe.with(retryPolicy).get(() -> doInvoke(aggregate, command));
+      return Failsafe.with(retryPolicy).get(() -> doInvoke(command, aggregate));
     } catch (Exception e) {
       Throwable throwable = ExceptionUtils.getRootCause(e);
       String message = ExceptionUtils.getRootCauseMessage(e);
@@ -71,17 +71,17 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
     }
   }
 
-  private CommandResult doInvoke(Aggregate aggregate, Command command) throws InvocationTargetException, IllegalAccessException {
+  private CommandResult doInvoke(Command command, Aggregate aggregate) throws InvocationTargetException, IllegalAccessException {
     Object result;
     if (method.getParameterCount() == 2) {
       result = method.invoke(target, command.getPayload(), aggregate != null ? aggregate.getPayload() : null);
     } else {
       result = method.invoke(target, command.getPayload(), aggregate != null ? aggregate.getPayload() : null, command.getMetadata());
     }
-    return createResult(command, result);
+    return createCommandResult(command, result);
   }
 
-  private CommandResult createResult(Command command, Object result) {
+  private CommandResult createCommandResult(Command command, Object result) {
     if (result == null) {
       return null;
     }

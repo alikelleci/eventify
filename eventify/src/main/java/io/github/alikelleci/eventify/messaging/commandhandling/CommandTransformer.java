@@ -33,7 +33,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     Aggregate aggregate = repository.loadAggregate(key);
 
     // 2. Validate command against aggregate
-    CommandResult result = commandHandler.apply(aggregate, command);
+    CommandResult result = commandHandler.apply(command, aggregate);
 
     if (result instanceof Success) {
       // 3. Save events

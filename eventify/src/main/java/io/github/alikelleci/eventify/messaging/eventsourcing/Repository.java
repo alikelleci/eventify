@@ -44,7 +44,7 @@ public class Repository {
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
           EventSourcingHandler eventSourcingHandler = Handlers.EVENTSOURCING_HANDLERS.get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
-            aggregate = eventSourcingHandler.apply(aggregate, event);
+            aggregate = eventSourcingHandler.apply(event, aggregate);
 
             sequence.incrementAndGet();
             counter.incrementAndGet();

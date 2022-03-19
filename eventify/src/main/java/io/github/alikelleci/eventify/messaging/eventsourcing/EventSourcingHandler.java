@@ -15,7 +15,7 @@ import java.lang.reflect.Method;
 import java.util.function.BiFunction;
 
 @Slf4j
-public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggregate> {
+public class EventSourcingHandler implements BiFunction<Event, Aggregate, Aggregate> {
 
   private final Object target;
   private final Method method;
@@ -30,17 +30,17 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
   }
 
   @Override
-  public Aggregate apply(Aggregate aggregate, Event event) {
+  public Aggregate apply(Event event, Aggregate aggregate) {
     log.debug("Applying event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
 
     try {
-      return Failsafe.with(retryPolicy).get(() -> doInvoke(aggregate, event));
+      return Failsafe.with(retryPolicy).get(() -> doInvoke(event, aggregate));
     } catch (Exception e) {
       throw new AggregateInvocationException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Aggregate doInvoke(Aggregate aggregate, Event event) throws InvocationTargetException, IllegalAccessException {
+  private Aggregate doInvoke(Event event, Aggregate aggregate) throws InvocationTargetException, IllegalAccessException {
     Object result;
     if (method.getParameterCount() == 2) {
       result = method.invoke(target, event.getPayload(), aggregate != null ? aggregate.getPayload() : null);
