@@ -59,7 +59,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
         new JsonDeserializer<>());
   }
 
-  public void dispatch(Command command) {
+  private void dispatch(Command command) {
     String topic = CommonUtils.getTopicInfo(command.getPayload()).value();
 
     ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
