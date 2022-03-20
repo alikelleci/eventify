@@ -86,7 +86,7 @@ public class Eventify {
 //    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
   }
 
-  public void registerHandler(Object handler) {
+  public Eventify registerHandler(Object handler) {
     List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
     List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
     List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
@@ -107,6 +107,8 @@ public class Eventify {
 
     eventHandlerMethods
         .forEach(method -> addEventHandler(handler, method));
+
+    return this;
   }
 
   private void addUpcaster(Object listener, Method method) {
@@ -323,5 +325,20 @@ public class Eventify {
       log.info("Eventify is shutting down...");
       kafkaStreams.close(Duration.ofMillis(1000));
     }));
+  }
+
+  public Eventify setStateListener(StateListener stateListener) {
+    this.stateListener = stateListener;
+    return this;
+  }
+
+  public Eventify setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+    this.uncaughtExceptionHandler = uncaughtExceptionHandler;
+    return this;
+  }
+
+  public Eventify setDeleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
+    this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
+    return this;
   }
 }

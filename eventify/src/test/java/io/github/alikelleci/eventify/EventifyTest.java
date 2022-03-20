@@ -49,9 +49,9 @@ class EventifyTest {
     props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
     props.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
 
-    Eventify eventify = new Eventify(props);
-    eventify.registerHandler(new CustomerCommandHandler());
-    eventify.registerHandler(new CustomerEventSourcingHandler());
+    Eventify eventify = new Eventify(props)
+        .registerHandler(new CustomerCommandHandler())
+        .registerHandler(new CustomerEventSourcingHandler());
 
     testDriver = new TopologyTestDriver(eventify.topology(), props);
 
