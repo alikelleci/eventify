@@ -36,7 +36,7 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
       return null;
     }
 
-    Collection<Upcaster> handlers = Handlers.UPCASTERS.get(className);
+    Collection<Upcaster> handlers = Handlers.upcasters.get(className);
     if (CollectionUtils.isEmpty(handlers)) {
       return jsonNode;
     }

@@ -7,6 +7,7 @@ import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -15,8 +16,10 @@ public class Repository {
 
   private final TimestampedKeyValueStore<String, Event> eventStore;
   private final TimestampedKeyValueStore<String, Aggregate> snapshotStore;
+  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
 
-  public Repository(ProcessorContext context) {
+  public Repository(ProcessorContext context, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers) {
+    eventSourcingHandlers = eventSourcingHandlers;
     this.eventStore = context.getStateStore("event-store");
     this.snapshotStore = context.getStateStore("snapshot-store");
   }
@@ -41,7 +44,7 @@ public class Repository {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
-          EventSourcingHandler eventSourcingHandler = Handlers.EVENTSOURCING_HANDLERS.get(event.getPayload().getClass());
+          EventSourcingHandler eventSourcingHandler = eventSourcingHandlers.get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             aggregate = eventSourcingHandler.apply(event, aggregate);
 

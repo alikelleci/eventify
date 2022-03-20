@@ -37,12 +37,10 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
   private final Producer<String, Message> producer;
   private final Consumer<String, Message> consumer;
 
-  @Builder.Default
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofMinutes(5))
       .build();
 
-  @Builder
   public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig) {
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),

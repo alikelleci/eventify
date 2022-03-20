@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.messaging.resulthandling.annotations.Handle
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleSuccess;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -17,16 +18,19 @@ import java.util.Comparator;
 @Slf4j
 public class ResultTransformer implements ValueTransformerWithKey<String, Command, Command> {
 
-  private ProcessorContext context;
+  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers;
+
+  public ResultTransformer(MultiValuedMap<Class<?>, ResultHandler> resultHandlers) {
+    this.resultHandlers = resultHandlers;
+  }
 
   @Override
   public void init(ProcessorContext processorContext) {
-    this.context = processorContext;
   }
 
   @Override
   public Command transform(String key, Command command) {
-    Collection<ResultHandler> handlers = Handlers.RESULT_HANDLERS.get(command.getPayload().getClass());
+    Collection<ResultHandler> handlers = resultHandlers.get(command.getPayload().getClass());
     if (CollectionUtils.isEmpty(handlers)) {
       return null;
     }

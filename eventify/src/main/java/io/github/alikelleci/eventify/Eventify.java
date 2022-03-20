@@ -53,11 +53,11 @@ import java.util.Set;
 @Slf4j
 public class Eventify {
 
-  private final MultiValuedMap<String, Upcaster> UPCASTERS = new ArrayListValuedHashMap<>();
-  private final Map<Class<?>, CommandHandler> COMMAND_HANDLERS = new HashMap<>();
-  private final Map<Class<?>, EventSourcingHandler> EVENTSOURCING_HANDLERS = new HashMap<>();
-  private final MultiValuedMap<Class<?>, ResultHandler> RESULT_HANDLERS = new ArrayListValuedHashMap<>();
-  private final MultiValuedMap<Class<?>, EventHandler> EVENT_HANDLERS = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+  private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
+  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
+  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
 
   private final Set<String> COMMANDS = new HashSet<>();
   private final Set<String> EVENTS = new HashSet<>();
@@ -110,14 +110,14 @@ public class Eventify {
   private void addUpcaster(Object listener, Method method) {
     if (method.getParameterCount() == 1) {
       String type = method.getAnnotation(Upcast.class).type();
-      UPCASTERS.put(type, new Upcaster(listener, method));
+      upcasters.put(type, new Upcaster(listener, method));
     }
   }
 
   private void addCommandHandler(Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
       Class<?> type = method.getParameters()[0].getType();
-      COMMAND_HANDLERS.put(type, new CommandHandler(listener, method));
+      commandHandlers.put(type, new CommandHandler(listener, method));
 
       TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
       if (topicInfo != null) {
@@ -129,7 +129,7 @@ public class Eventify {
   private void addEventSourcingHandler(Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
       Class<?> type = method.getParameters()[0].getType();
-      EVENTSOURCING_HANDLERS.put(type, new EventSourcingHandler(listener, method));
+      eventSourcingHandlers.put(type, new EventSourcingHandler(listener, method));
 
       TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
       if (topicInfo != null) {
@@ -141,7 +141,7 @@ public class Eventify {
   private void addResultHandler(Object listener, Method method) {
     if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
       Class<?> type = method.getParameters()[0].getType();
-      RESULT_HANDLERS.put(type, new ResultHandler(listener, method));
+      resultHandlers.put(type, new ResultHandler(listener, method));
 
       TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
       if (topicInfo != null) {
@@ -153,7 +153,7 @@ public class Eventify {
   private void addEventHandler(Object listener, Method method) {
     if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
       Class<?> type = method.getParameters()[0].getType();
-      EVENT_HANDLERS.put(type, new EventHandler(listener, method));
+      eventHandlers.put(type, new EventHandler(listener, method));
 
       TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
       if (topicInfo != null) {
@@ -194,7 +194,7 @@ public class Eventify {
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .transformValues(CommandTransformer::new, "event-store", "snapshot-store")
+          .transformValues(() -> new CommandTransformer(commandHandlers, eventSourcingHandlers, deleteEventsOnSnapshot), "event-store", "snapshot-store")
           .filter((key, result) -> result != null);
 
       // Results --> Push
@@ -227,7 +227,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .transformValues(EventTransformer::new, "event-store", "snapshot-store");
+          .transformValues(() -> new EventTransformer(eventHandlers, eventSourcingHandlers), "event-store", "snapshot-store");
     }
 
     /*
@@ -244,7 +244,7 @@ public class Eventify {
 
       // Results --> Void
       results
-          .transformValues(ResultTransformer::new);
+          .transformValues(() -> new ResultTransformer(resultHandlers));
     }
 
 
