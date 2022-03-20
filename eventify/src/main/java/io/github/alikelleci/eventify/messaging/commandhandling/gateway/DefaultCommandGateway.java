@@ -37,13 +37,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class DefaultCommandGateway implements CommandGateway, MessageListener {
 
-  private final Producer<String, Message> producer;
-  private final Consumer<String, Message> consumer;
-  private final String replyTopic;
-
+  //private final Map<String, CompletableFuture<Object>> futures = new ConcurrentHashMap<>();
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofMinutes(5))
       .build();
+
+  private final Producer<String, Message> producer;
+  private final Consumer<String, Message> consumer;
+  private final String replyTopic;
 
   public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
     producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -116,14 +117,13 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
     return future;
   }
 
-
   @Override
   public void listen() {
     AtomicBoolean closed = new AtomicBoolean(false);
+    consumer.subscribe(Collections.singletonList(replyTopic));
 
     Thread thread = new Thread(() -> {
       try {
-        consumer.subscribe(Collections.singletonList(replyTopic));
         while (!closed.get()) {
           ConsumerRecords<String, Message> consumerRecords = consumer.poll(Duration.ofMillis(1000));
           onMessage(consumerRecords);
@@ -149,7 +149,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
       if (StringUtils.isBlank(messageId)) {
         return;
       }
-
+      // CompletableFuture<Object> future = futures.remove(messageId);
       CompletableFuture<Object> future = cache.getIfPresent(messageId);
       if (future != null) {
         Exception exception = checkForErrors(record);
