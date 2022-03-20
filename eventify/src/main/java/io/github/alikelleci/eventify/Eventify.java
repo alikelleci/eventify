@@ -145,6 +145,12 @@ public class Eventify {
   protected Topology topology() {
     StreamsBuilder builder = new StreamsBuilder();
 
+    /*
+     * -------------------------------------------------------------
+     * STORES
+     * -------------------------------------------------------------
+     */
+
     // Event store
     builder.addStateStore(Stores
         .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
