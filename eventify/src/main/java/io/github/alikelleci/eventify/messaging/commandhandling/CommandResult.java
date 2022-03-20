@@ -23,7 +23,8 @@ public interface CommandResult {
     @Override
     public Command getCommand() {
       command.getMetadata()
-          .add(Metadata.RESULT, "success");
+          .add(Metadata.RESULT, "success")
+          .remove(Metadata.CAUSE);
 
       return command;
     }
