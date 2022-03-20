@@ -99,6 +99,7 @@ class EventifyTest {
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
     assertThat(event.getMetadata(), is(notNullValue()));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
 
     assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
@@ -114,6 +115,7 @@ class EventifyTest {
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
     assertThat(commandResult.getMetadata(), is(notNullValue()));
+    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(commandResult.getMetadata().get(Metadata.RESULT), is("success"));
     assertThat(commandResult.getPayload(), is(command.getPayload()));
