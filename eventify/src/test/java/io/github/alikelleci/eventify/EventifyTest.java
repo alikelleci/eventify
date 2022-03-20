@@ -36,6 +36,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.startsWith;
 
@@ -143,6 +144,7 @@ class EventifyTest {
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(RESULT), is("success"));
+    assertThat(commandResult.getMetadata().get(CAUSE), isEmptyOrNullString());
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
   }
