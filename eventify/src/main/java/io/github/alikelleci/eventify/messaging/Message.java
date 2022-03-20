@@ -34,27 +34,13 @@ public abstract class Message {
 
     this.payload = payload;
 
-//    this.metadata = Optional.ofNullable(metadata)
-//        .map(m -> m.toBuilder()
-//            .messageId(this.id)
-//            .timestamp(this.timestamp)
-//            .build())
-//        .orElse(Metadata.builder()
-//            .messageId(this.id)
-//            .timestamp(this.timestamp)
-//            .build());
-  }
-
-  public Metadata getMetadata() {
-    return Optional.ofNullable(metadata)
-        .map(m -> m.toBuilder()
-            .messageId(this.id)
-            .timestamp(this.timestamp)
-            .build())
-        .orElse(Metadata.builder()
-            .messageId(this.id)
-            .timestamp(this.timestamp)
-            .build());
+    this.metadata = Optional.ofNullable(metadata)
+        .map(m -> m
+            .add(Metadata.ID, this.id)
+            .add(Metadata.TIMESTAMP, this.timestamp.toString()))
+        .orElse(new Metadata()
+            .add(Metadata.ID, this.id)
+            .add(Metadata.TIMESTAMP, this.timestamp.toString()));
   }
 
   @Transient

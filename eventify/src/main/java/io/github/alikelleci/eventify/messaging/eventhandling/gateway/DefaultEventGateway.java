@@ -42,14 +42,13 @@ public class DefaultEventGateway implements EventGateway {
     validatePayload(payload);
 
     if (metadata == null) {
-      metadata = Metadata.builder().build();
+      metadata = new Metadata();
     }
 
     Event event = Event.builder()
         .payload(payload)
-        .metadata(metadata.filter().toBuilder()
-            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-            .build())
+        .metadata(metadata.filter()
+            .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString()))
         .build();
 
     ProducerRecord<String, Message> record = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);

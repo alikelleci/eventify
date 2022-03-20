@@ -80,15 +80,14 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
     validatePayload(payload);
 
     if (metadata == null) {
-      metadata = Metadata.builder().build();
+      metadata = new Metadata();
     }
 
     Command command = Command.builder()
         .payload(payload)
-        .metadata(metadata.filter().toBuilder()
-            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-            .entry(Metadata.REPLY_TO, replyTopic)
-            .build())
+        .metadata(metadata.filter()
+            .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
+            .add(Metadata.REPLY_TO, replyTopic))
         .build();
 
     ProducerRecord<String, Message> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
