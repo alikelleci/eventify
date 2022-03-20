@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.experimental.messages;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
@@ -15,6 +16,10 @@ import java.util.Optional;
 @EqualsAndHashCode(callSuper = true)
 public class Command extends Message {
   private String aggregateId;
+
+  protected Command() {
+    super(null, null, null, null);
+  }
 
   protected Command(String id, Instant timestamp, Object payload, Metadata metadata) {
     super(id, timestamp, payload, metadata);

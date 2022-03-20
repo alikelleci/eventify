@@ -16,6 +16,10 @@ import java.util.Optional;
 public class Event extends Message {
   private String aggregateId;
 
+  protected Event() {
+    super(null, null, null, null);
+  }
+
   protected Event(String id, Instant timestamp, Object payload, Metadata metadata) {
     super(id, timestamp, payload, metadata);
     this.aggregateId = createAggregatieId(payload);

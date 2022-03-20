@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -25,6 +26,7 @@ public abstract class Message {
   @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
   private Object payload;
   private Metadata metadata;
+
 
 
   protected Message(String id, Instant timestamp, Object payload, Metadata metadata) {

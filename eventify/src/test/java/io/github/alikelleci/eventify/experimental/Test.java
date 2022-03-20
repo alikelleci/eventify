@@ -1,7 +1,10 @@
 package io.github.alikelleci.eventify.experimental;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.experimental.messages.Command;
+import io.github.alikelleci.eventify.util.JacksonUtils;
 import lombok.Builder;
 import lombok.Value;
 
@@ -9,7 +12,9 @@ import java.time.Instant;
 
 public class Test {
 
-  public static void main(String[] args) {
+  public static ObjectMapper objectMapper = JacksonUtils.enhancedObjectMapper();
+
+  public static void main(String[] args) throws JsonProcessingException {
 
     Customer customer = Customer.builder()
         .id("cust-1")
@@ -28,6 +33,13 @@ public class Test {
     new Command(null, null, null);
     new Command(null, null);
     new Command(null);
+
+
+    String json = objectMapper.writeValueAsString(command);
+    System.out.println(json);
+
+    Command c = objectMapper.readValue(json, Command.class);
+    System.out.println(c);
   }
 
   @Value
