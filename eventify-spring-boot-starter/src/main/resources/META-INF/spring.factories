@@ -1,2 +1,2 @@
 org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-io.github.alikelleci.eventify.spring.starter.EventifyAutoConfiguration,
+io.github.alikelleci.eventify.spring.starter.EventifyAutoConfiguration
