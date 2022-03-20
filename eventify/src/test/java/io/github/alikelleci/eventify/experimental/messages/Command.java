@@ -37,7 +37,6 @@ public class Command extends Message {
     this(null, null, payload, null);
   }
 
-
   private String createAggregatieId(Object payload) {
     return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
         .filter(field -> field.getType() == String.class)
