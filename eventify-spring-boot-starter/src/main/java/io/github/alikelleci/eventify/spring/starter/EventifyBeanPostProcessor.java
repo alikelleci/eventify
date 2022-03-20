@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.spring.starter;
 
-import io.github.alikelleci.eventify.EventifyBuilder;
 import io.github.alikelleci.eventify.common.annotations.HandleMessage;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import org.apache.commons.collections4.CollectionUtils;

@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.constants.Config;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
@@ -30,7 +29,9 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
@@ -46,6 +47,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 @Slf4j
@@ -65,9 +67,21 @@ public class Eventify {
   private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private boolean deleteEventsOnSnapshot;
 
+  private final Properties streamsConfig;
   private KafkaStreams kafkaStreams;
 
-  protected Eventify() {
+  protected Eventify(Properties streamsConfig) {
+    this.streamsConfig = streamsConfig;
+    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+    this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
+    this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
+    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
+
+//    ArrayList<String> interceptors = new ArrayList<>();
+//    interceptors.add(CommonProducerInterceptor.class.getName());
+//
+//    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
   }
 
   public void registerHandler(Object handler) {
@@ -249,7 +263,7 @@ public class Eventify {
       return;
     }
 
-    this.kafkaStreams = new KafkaStreams(topology, Config.streamsConfig);
+    this.kafkaStreams = new KafkaStreams(topology, streamsConfig);
     setUpListeners();
 
     log.info("Eventify is starting...");
