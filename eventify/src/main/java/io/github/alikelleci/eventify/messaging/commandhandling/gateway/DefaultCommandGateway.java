@@ -25,6 +25,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -35,12 +36,13 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
 
   private final Producer<String, Message> producer;
   private final Consumer<String, Message> consumer;
+  private final String replyTopic;
 
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofMinutes(5))
       .build();
 
-  public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig) {
+  public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
         new JsonSerializer<>());
@@ -48,6 +50,8 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
     this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
         new JsonDeserializer<>());
+
+    this.replyTopic = replyTopic;
   }
 
   private void dispatch(Command command) {
@@ -97,7 +101,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
 
     Thread thread = new Thread(() -> {
       try {
-        consumer.subscribe(Topics.RESULTS);
+        consumer.subscribe(Collections.singletonList(replyTopic));
         while (!closed.get()) {
           ConsumerRecords<String, Message> consumerRecords = consumer.poll(Duration.ofMillis(1000));
           onMessage(consumerRecords);

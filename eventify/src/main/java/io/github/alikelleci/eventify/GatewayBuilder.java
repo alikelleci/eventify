@@ -44,7 +44,7 @@ public class GatewayBuilder {
   }
 
   public CommandGateway commandGateway() {
-    return new DefaultCommandGateway(producerConfig, consumerConfig);
+    return new DefaultCommandGateway(producerConfig, consumerConfig, replyTopic);
   }
 
   public EventGateway eventGateway() {
