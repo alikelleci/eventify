@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging.resulthandling;
 
+import io.github.alikelleci.eventify.Config;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleFailure;
@@ -7,7 +8,6 @@ import io.github.alikelleci.eventify.messaging.resulthandling.annotations.Handle
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleSuccess;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -18,10 +18,10 @@ import java.util.Comparator;
 @Slf4j
 public class ResultTransformer implements ValueTransformerWithKey<String, Command, Command> {
 
-  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers;
+  private final Config config;
 
-  public ResultTransformer(MultiValuedMap<Class<?>, ResultHandler> resultHandlers) {
-    this.resultHandlers = resultHandlers;
+  public ResultTransformer(Config config) {
+    this.config = config;
   }
 
   @Override
@@ -30,7 +30,7 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
 
   @Override
   public Command transform(String key, Command command) {
-    Collection<ResultHandler> handlers = resultHandlers.get(command.getPayload().getClass());
+    Collection<ResultHandler> handlers = config.handlers.RESULT_HANDLERS.get(command.getPayload().getClass());
     if (CollectionUtils.isEmpty(handlers)) {
       return null;
     }

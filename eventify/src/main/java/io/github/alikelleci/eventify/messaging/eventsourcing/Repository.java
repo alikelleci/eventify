@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
+import io.github.alikelleci.eventify.Config;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -7,7 +8,6 @@ import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -16,12 +16,12 @@ public class Repository {
 
   private final TimestampedKeyValueStore<String, Event> eventStore;
   private final TimestampedKeyValueStore<String, Aggregate> snapshotStore;
-  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
+  private final Config config;
 
-  public Repository(ProcessorContext context, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers) {
-    this.eventSourcingHandlers = eventSourcingHandlers;
+  public Repository(ProcessorContext context, Config config) {
     this.eventStore = context.getStateStore("event-store");
     this.snapshotStore = context.getStateStore("snapshot-store");
+    this.config = config;
   }
 
   public Aggregate loadAggregate(String aggregateId) {
@@ -44,7 +44,7 @@ public class Repository {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
-          EventSourcingHandler eventSourcingHandler = eventSourcingHandlers.get(event.getPayload().getClass());
+          EventSourcingHandler eventSourcingHandler = config.handlers.EVENT_SOURCING_HANDLERS.get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             aggregate = eventSourcingHandler.apply(event, aggregate);
 

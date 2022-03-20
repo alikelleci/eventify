@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import lombok.Builder;
 import lombok.Singular;

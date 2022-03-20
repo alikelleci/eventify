@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
+import io.github.alikelleci.eventify.example.handlers.CustomerUpcaster;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
@@ -61,7 +62,8 @@ class EventifyTest {
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
         .registerHandler(new CustomerEventHandler())
-        .registerHandler(new CustomerResultHandler());
+        .registerHandler(new CustomerResultHandler())
+        .registerHandler(new CustomerUpcaster());
 
     testDriver = new TopologyTestDriver(eventify.topology(), properties);
 
