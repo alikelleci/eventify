@@ -3,7 +3,9 @@ package io.github.alikelleci.eventify.experimental;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
+import io.github.alikelleci.eventify.experimental.messages.Aggregate;
 import io.github.alikelleci.eventify.experimental.messages.Command;
+import io.github.alikelleci.eventify.experimental.messages.Event;
 import io.github.alikelleci.eventify.util.JacksonUtils;
 import lombok.Builder;
 import lombok.Value;
@@ -28,6 +30,21 @@ public class Test {
         .build();
     System.out.println(command);
 
+
+    Event event = Event.builder()
+        .payload(customer)
+        .timestamp(Instant.ofEpochMilli(1584709244000L))
+        .build();
+    System.out.println(event);
+
+
+    Aggregate aggregate = Aggregate.builder()
+        .payload(customer)
+        .timestamp(Instant.ofEpochMilli(1584709244000L))
+        .eventId(event.getId())
+        .version(12)
+        .build();
+    System.out.println(aggregate);
 
     String json = objectMapper.writeValueAsString(command);
     System.out.println(json);
