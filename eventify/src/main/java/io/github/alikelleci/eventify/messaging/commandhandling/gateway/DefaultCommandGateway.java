@@ -9,7 +9,6 @@ import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
-import io.github.alikelleci.eventify.util.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -85,24 +84,15 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
       metadata = Metadata.builder().build();
     }
 
-    String aggregateId = CommonUtils.getAggregateId(payload);
-    String messageId = CommonUtils.createMessageId(aggregateId);
-    Instant timestamp = Instant.now();
-    String topic = CommonUtils.getTopicInfo(payload).value();
-    String correlationId = UUID.randomUUID().toString();
-
     Command command = Command.builder()
-        .aggregateId(aggregateId)
-        .id(messageId)
-        .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
-            .entry(Metadata.CORRELATION_ID, correlationId)
+            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
             .entry(Metadata.REPLY_TO, replyTopic)
             .build())
         .build();
 
-    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
+    ProducerRecord<String, Message> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
     log.debug("Sending command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
     producer.send(record);

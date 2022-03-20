@@ -11,7 +11,6 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
-import io.github.alikelleci.eventify.util.CommonUtils;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -74,55 +73,46 @@ class EventifyTest {
 
   @Test
   void test1() {
-    CreateCustomer payload = CreateCustomer.builder()
-        .id("customer-123")
-        .firstName("Peter")
-        .lastName("Bruin")
-        .credits(100)
-        .birthday(Instant.now())
+    Command command = Command.builder()
+        .payload(CreateCustomer.builder()
+            .id("customer-123")
+            .firstName("Peter")
+            .lastName("Bruin")
+            .credits(100)
+            .birthday(Instant.now())
+            .build())
+        .metadata(Metadata.builder()
+            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
+            .build())
         .build();
 
-    String aggregateId = CommonUtils.getAggregateId(payload);
-    String messageId = CommonUtils.createMessageId(aggregateId);
-    Instant timestamp = Instant.now();
-    String correlationId = UUID.randomUUID().toString();
-
-    commands.pipeInput(CommonUtils.getAggregateId(payload), Command.builder()
-        .id(messageId)
-        .timestamp(timestamp)
-        .aggregateId(CommonUtils.getAggregateId(payload))
-        .payload(payload)
-        .metadata(Metadata.builder()
-            .entry(Metadata.CORRELATION_ID, correlationId)
-            .build())
-        .build());
+    commands.pipeInput(command.getAggregateId(), command);
 
     // Assert Event
     Event event = events.readValue();
 
     assertThat(event, is(notNullValue()));
-    assertThat(event.getAggregateId(), is(aggregateId));
-    assertThat(event.getTimestamp(), is(timestamp));
+    assertThat(event.getAggregateId(), is(command.getAggregateId()));
+    assertThat(event.getTimestamp(), is(command.getTimestamp()));
     assertThat(event.getMetadata(), is(notNullValue()));
-    assertThat(event.getMetadata().get(Metadata.CORRELATION_ID), is(correlationId));
+    assertThat(event.getMetadata().get(Metadata.CORRELATION_ID), is(command.getMetadata().get(Metadata.CORRELATION_ID)));
 
     assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
-    assertThat(((CustomerCreated) event.getPayload()).getId(), is(payload.getId()));
-    assertThat(((CustomerCreated) event.getPayload()).getFirstName(), is(payload.getFirstName()));
-    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(payload.getLastName()));
-    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(payload.getCredits()));
-    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(payload.getBirthday()));
+    assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
+    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
+    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
+    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
 
     // Assert Command result
     Command commandResult = commandResults.readValue();
 
     assertThat(commandResult, is(notNullValue()));
-    assertThat(commandResult.getAggregateId(), is(aggregateId));
-    assertThat(commandResult.getTimestamp(), is(timestamp));
+    assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
+    assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
     assertThat(commandResult.getMetadata(), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get(Metadata.CORRELATION_ID), is(correlationId));
+    assertThat(commandResult.getMetadata().get(Metadata.CORRELATION_ID), is(command.getMetadata().get(Metadata.CORRELATION_ID)));
     assertThat(commandResult.getMetadata().get(Metadata.RESULT), is("success"));
-    assertThat(commandResult.getPayload(), is(payload));
+    assertThat(commandResult.getPayload(), is(command.getPayload()));
   }
 
 

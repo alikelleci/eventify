@@ -4,7 +4,6 @@ import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
-import io.github.alikelleci.eventify.util.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -12,7 +11,6 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -47,23 +45,14 @@ public class DefaultEventGateway implements EventGateway {
       metadata = Metadata.builder().build();
     }
 
-    String aggregateId = CommonUtils.getAggregateId(payload);
-    String messageId = CommonUtils.createMessageId(aggregateId);
-    Instant timestamp = Instant.now();
-    String topic = CommonUtils.getTopicInfo(payload).value();
-    String correlationId = UUID.randomUUID().toString();
-
     Event event = Event.builder()
-        .aggregateId(aggregateId)
-        .id(messageId)
-        .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
-            .entry(Metadata.CORRELATION_ID, correlationId)
+            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
             .build())
         .build();
 
-    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
+    ProducerRecord<String, Message> record = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
 
     log.debug("Publishing event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
     producer.send(record);

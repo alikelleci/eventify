@@ -8,7 +8,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.Map;
 
 @Value
@@ -32,13 +31,8 @@ public class Metadata {
 
   @Transient
   public Metadata filter() {
-    Map<String, String> map = new HashMap<>(entries);
-    map.keySet().removeIf(key -> StringUtils.startsWithIgnoreCase(key, "$"));
-
-    return this.toBuilder()
-        .clearEntries()
-        .entries(map)
-        .build();
+    entries.keySet().removeIf(key -> StringUtils.startsWithIgnoreCase(key, "$"));
+    return this;
   }
 
   public String get(String key) {
@@ -46,8 +40,7 @@ public class Metadata {
   }
 
   public Metadata add(String key, String value) {
-    return this.toBuilder()
-        .entry(key, value)
-        .build();
+    entries.put(key, value);
+    return this;
   }
 }

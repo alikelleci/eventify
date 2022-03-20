@@ -20,7 +20,6 @@ import io.github.alikelleci.eventify.messaging.resulthandling.annotations.Handle
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
-import io.github.alikelleci.eventify.util.CommonUtils;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
@@ -204,7 +203,7 @@ public class Eventify {
       // Results --> Push
       commandResults
           .mapValues(CommandResult::getCommand)
-          .to((key, command, recordContext) -> CommonUtils.getTopicInfo(command.getPayload()).value().concat(".results"),
+          .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
               Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
 
       // Results --> Push to reply topic
@@ -220,7 +219,7 @@ public class Eventify {
           .mapValues((key, result) -> (CommandResult.Success) result)
           .flatMapValues(CommandResult.Success::getEvents)
           .filter((key, event) -> event != null)
-          .to((key, event, recordContext) -> CommonUtils.getTopicInfo(event.getPayload()).value(),
+          .to((key, event, recordContext) -> event.getTopicInfo().value(),
               Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
     }
 

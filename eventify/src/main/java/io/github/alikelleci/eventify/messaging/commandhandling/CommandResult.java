@@ -22,11 +22,10 @@ public interface CommandResult {
 
     @Override
     public Command getCommand() {
-      return command.toBuilder()
-          .metadata(command.getMetadata().toBuilder()
-              .entry(Metadata.RESULT, "success")
-              .build())
-          .build();
+      command.getMetadata()
+          .add(Metadata.RESULT, "success");
+
+      return command;
     }
   }
 
@@ -38,12 +37,11 @@ public interface CommandResult {
 
     @Override
     public Command getCommand() {
-      return command.toBuilder()
-          .metadata(command.getMetadata().toBuilder()
-              .entry(Metadata.RESULT, "failure")
-              .entry(Metadata.CAUSE, cause)
-              .build())
-          .build();
+      command.getMetadata()
+          .add(Metadata.RESULT, "failure")
+          .add(Metadata.CAUSE, cause);
+
+      return command;
     }
   }
 

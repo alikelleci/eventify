@@ -56,8 +56,12 @@ public class Repository {
     }
 
     aggregate = Optional.ofNullable(aggregate)
-        .map(aggr -> aggr.toBuilder()
+        .map(aggr -> Aggregate.builder()
+            .eventId(aggr.getEventId())
             .version(sequence.get())
+            .payload(aggr.getPayload())
+            .metadata(aggr.getMetadata())
+            .timestamp(aggr.getTimestamp())
             .build())
         .orElse(null);
 
