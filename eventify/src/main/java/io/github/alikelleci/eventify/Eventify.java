@@ -160,7 +160,7 @@ public class Eventify {
      * COMMAND HANDLING
      * -------------------------------------------------------------
      */
-    if (!COMMAND_HANDLERS.isEmpty() && !EVENTSOURCING_HANDLERS.isEmpty()) {
+    if (!COMMANDS.isEmpty()) {
       // --> Commands
       KStream<String, Command> commands = builder.stream(COMMANDS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
           .filter((key, command) -> key != null)
@@ -187,22 +187,22 @@ public class Eventify {
               Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
     }
 
-
     /*
      * -------------------------------------------------------------
      * EVENT HANDLING
      * -------------------------------------------------------------
      */
 
-    // --> Events
-    KStream<String, Event> events = builder.stream(EVENTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
-        .filter((key, event) -> key != null)
-        .filter((key, event) -> event != null);
+    if (!EVENTS.isEmpty()) {
+      // --> Events
+      KStream<String, Event> events = builder.stream(EVENTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
+          .filter((key, event) -> key != null)
+          .filter((key, event) -> event != null);
 
-    // Events --> Void
-    events
-        .transformValues(EventTransformer::new, "event-store", "snapshot-store");
-
+      // Events --> Void
+      events
+          .transformValues(EventTransformer::new, "event-store", "snapshot-store");
+    }
 
     /*
      * -------------------------------------------------------------
@@ -210,14 +210,16 @@ public class Eventify {
      * -------------------------------------------------------------
      */
 
-    // --> Results
-    KStream<String, Command> results = builder.stream(RESULTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
-        .filter((key, command) -> key != null)
-        .filter((key, command) -> command != null);
+    if (!RESULTS.isEmpty()) {
+      // --> Results
+      KStream<String, Command> results = builder.stream(RESULTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+          .filter((key, command) -> key != null)
+          .filter((key, command) -> command != null);
 
-    // Results --> Void
-    results
-        .transformValues(ResultTransformer::new);
+      // Results --> Void
+      results
+          .transformValues(ResultTransformer::new);
+    }
 
 
     return builder.build();
