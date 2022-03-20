@@ -33,8 +33,12 @@ public abstract class Message {
         .orElse(null);
 
     this.payload = payload;
-
     this.metadata = Optional.ofNullable(metadata)
+        .orElse(new Metadata());
+  }
+
+  public Metadata getMetadata() {
+    return Optional.ofNullable(this.metadata)
         .map(m -> m
             .add(Metadata.ID, this.id)
             .add(Metadata.TIMESTAMP, this.timestamp.toString()))
