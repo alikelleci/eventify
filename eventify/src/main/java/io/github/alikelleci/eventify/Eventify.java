@@ -279,11 +279,6 @@ public class Eventify {
           StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
     }
 
-    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-      log.info("Eventify is shutting down...");
-      kafkaStreams.close(Duration.ofMillis(1000));
-    }));
-
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
       public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
@@ -300,5 +295,10 @@ public class Eventify {
         log.debug("State restoration ended: topic={}, partition={}, store={}, totalRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
       }
     });
+
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      log.info("Eventify is shutting down...");
+      kafkaStreams.close(Duration.ofMillis(1000));
+    }));
   }
 }
