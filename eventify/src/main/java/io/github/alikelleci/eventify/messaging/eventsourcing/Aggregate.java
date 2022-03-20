@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshots;
 import io.github.alikelleci.eventify.messaging.Message;
@@ -27,9 +28,10 @@ public class Aggregate extends Message {
     super(null, null, null, null);
   }
 
-  protected Aggregate(String id, Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
+  protected Aggregate(String id, Instant timestamp, Object payload, Metadata metadata, String aggregateId, String eventId, long version) {
     super(id, timestamp, payload, metadata);
-    this.aggregateId = createAggregateId(payload);
+
+    this.aggregateId = aggregateId;
     this.eventId = eventId;
     this.version = version;
   }
@@ -48,23 +50,19 @@ public class Aggregate extends Message {
     return new AggregateBuilder();
   }
 
-  private String createAggregateId(Object payload) {
-    return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> {
-          field.setAccessible(true);
-          return (String) ReflectionUtils.getField(field, payload);
-        }))
-        .orElse(null);
-  }
-
   public static class AggregateBuilder {
+    private Instant timestamp;
     private Object payload;
     private Metadata metadata;
-    private Instant timestamp;
+
+    private String aggregateId;
     private String eventId;
     private long version;
+
+    public AggregateBuilder timestamp(Instant timestamp) {
+      this.timestamp = timestamp;
+      return this;
+    }
 
     public AggregateBuilder payload(Object payload) {
       this.payload = payload;
@@ -76,8 +74,8 @@ public class Aggregate extends Message {
       return this;
     }
 
-    public AggregateBuilder timestamp(Instant timestamp) {
-      this.timestamp = timestamp;
+    protected AggregateBuilder aggregateId(String aggregateId) {
+      this.aggregateId = aggregateId;
       return this;
     }
 
@@ -92,7 +90,38 @@ public class Aggregate extends Message {
     }
 
     public Aggregate build() {
-      return new Aggregate(null, this.timestamp, this.payload, this.metadata, eventId, version);
+      this.aggregateId = Optional
+          .ofNullable(this.aggregateId)
+          .orElse(createAggregateId(this.payload));
+
+      String id = Optional.ofNullable(this.aggregateId)
+          .map(s -> s + "@" + UlidCreator.getMonotonicUlid().toString())
+          .orElse(null);
+
+      return new Aggregate(id, this.timestamp, this.payload, this.metadata, this.aggregateId, this.eventId, this.version);
+    }
+
+    private String createMessageId(Object payload) {
+      return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
+          .filter(field -> field.getType() == String.class)
+          .findFirst()
+          .map(field -> {
+            field.setAccessible(true);
+            return (String) ReflectionUtils.getField(field, payload);
+          }))
+          .map(aggregateId -> aggregateId + "@" + UlidCreator.getMonotonicUlid().toString())
+          .orElse(null);
+    }
+
+    private String createAggregateId(Object payload) {
+      return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
+          .filter(field -> field.getType() == String.class)
+          .findFirst()
+          .map(field -> {
+            field.setAccessible(true);
+            return (String) ReflectionUtils.getField(field, payload);
+          }))
+          .orElse(null);
     }
   }
 

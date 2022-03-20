@@ -1,14 +1,5 @@
 package io.github.alikelleci.eventify.messaging;
 
-import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
-import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
-import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
-import org.apache.kafka.clients.producer.ProducerRecord;
-
-import java.time.Instant;
-import java.util.UUID;
-
 public interface Gateway {
 
   default void validatePayload(Object payload) {

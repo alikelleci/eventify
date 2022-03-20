@@ -45,7 +45,6 @@ public class Test {
         .build();
     System.out.println(aggregate);
 
-
     System.out.println("---------------");
 
     String json = objectMapper.writeValueAsString(command);

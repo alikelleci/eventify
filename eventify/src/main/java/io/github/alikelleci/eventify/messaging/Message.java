@@ -1,17 +1,11 @@
 package io.github.alikelleci.eventify.messaging;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.github.f4b6a3.ulid.UlidCreator;
-import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.ToString;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.util.ReflectionUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
@@ -29,8 +23,7 @@ public abstract class Message {
   private Metadata metadata;
 
   protected Message(String id, Instant timestamp, Object payload, Metadata metadata) {
-    this.id = Optional.ofNullable(id)
-        .orElse(createMessageId(payload));
+    this.id = id;
 
     this.timestamp = Optional.ofNullable(timestamp)
         .orElse(Instant.now());
@@ -56,18 +49,6 @@ public abstract class Message {
   public TopicInfo getTopicInfo() {
     return Optional.ofNullable(getPayload())
         .map(p -> AnnotationUtils.findAnnotation(p.getClass(), TopicInfo.class))
-        .orElse(null);
-  }
-
-  private String createMessageId(Object payload) {
-    return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> {
-          field.setAccessible(true);
-          return (String) ReflectionUtils.getField(field, payload);
-        }))
-        .map(aggregateId -> aggregateId + "@" + UlidCreator.getMonotonicUlid().toString())
         .orElse(null);
   }
 

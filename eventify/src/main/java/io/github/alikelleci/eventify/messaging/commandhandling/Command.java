@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
+import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
@@ -22,30 +23,26 @@ public class Command extends Message {
     super(null, null, null, null);
   }
 
-  protected Command(String id, Instant timestamp, Object payload, Metadata metadata) {
+  protected Command(String id, Instant timestamp, Object payload, Metadata metadata, String aggregateId) {
     super(id, timestamp, payload, metadata);
-    this.aggregateId = createAggregateId(payload);
+    this.aggregateId = aggregateId;
   }
 
   public static CommandBuilder builder() {
     return new CommandBuilder();
   }
 
-  private String createAggregateId(Object payload) {
-    return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> {
-          field.setAccessible(true);
-          return (String) ReflectionUtils.getField(field, payload);
-        }))
-        .orElse(null);
-  }
-
   public static class CommandBuilder {
+    private Instant timestamp;
     private Object payload;
     private Metadata metadata;
-    private Instant timestamp;
+
+    private String aggregateId;
+
+    public CommandBuilder timestamp(Instant timestamp) {
+      this.timestamp = timestamp;
+      return this;
+    }
 
     public CommandBuilder payload(Object payload) {
       this.payload = payload;
@@ -57,13 +54,32 @@ public class Command extends Message {
       return this;
     }
 
-    public CommandBuilder timestamp(Instant timestamp) {
-      this.timestamp = timestamp;
+    protected CommandBuilder aggregateId(String aggregateId) {
+      this.aggregateId = aggregateId;
       return this;
     }
 
     public Command build() {
-      return new Command(null, this.timestamp, this.payload, this.metadata);
+      this.aggregateId = Optional
+          .ofNullable(this.aggregateId)
+          .orElse(createAggregateId(this.payload));
+
+      String id = Optional.ofNullable(this.aggregateId)
+          .map(s -> s + "@" + UlidCreator.getMonotonicUlid().toString())
+          .orElse(null);
+
+      return new Command(id, this.timestamp, this.payload, this.metadata, this.aggregateId);
+    }
+
+    private String createAggregateId(Object payload) {
+      return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
+          .filter(field -> field.getType() == String.class)
+          .findFirst()
+          .map(field -> {
+            field.setAccessible(true);
+            return (String) ReflectionUtils.getField(field, payload);
+          }))
+          .orElse(null);
     }
   }
 }
