@@ -72,7 +72,7 @@ public class Eventify {
   private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private boolean deleteEventsOnSnapshot;
 
-  protected Eventify(Properties streamsConfig) {
+  public Eventify(Properties streamsConfig) {
     this.streamsConfig = streamsConfig;
     this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
