@@ -1,5 +1,7 @@
 package io.github.alikelleci.eventify;
 
+import com.github.f4b6a3.ulid.Ulid;
+import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
@@ -33,6 +35,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.startsWith;
 
 class EventifyTest {
 
@@ -96,6 +99,7 @@ class EventifyTest {
     Event event = events.readValue();
 
     assertThat(event, is(notNullValue()));
+    assertThat(event.getId(), startsWith(command.getAggregateId()));
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
     assertThat(event.getMetadata(), is(notNullValue()));
@@ -112,6 +116,7 @@ class EventifyTest {
     Command commandResult = commandResults.readValue();
 
     assertThat(commandResult, is(notNullValue()));
+    assertThat(commandResult.getId(), startsWith(command.getAggregateId()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
     assertThat(commandResult.getMetadata(), is(notNullValue()));
