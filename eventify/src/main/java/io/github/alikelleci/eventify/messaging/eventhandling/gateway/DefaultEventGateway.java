@@ -39,15 +39,6 @@ public class DefaultEventGateway implements EventGateway {
         new JsonSerializer<>());
   }
 
-  private void dispatch(Event event) {
-    String topic = CommonUtils.getTopicInfo(event.getPayload()).value();
-
-    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
-
-    log.debug("Publishing event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
-    producer.send(record);
-  }
-
   @Override
   public void publish(Object payload, Metadata metadata) {
     validatePayload(payload);
@@ -59,6 +50,8 @@ public class DefaultEventGateway implements EventGateway {
     String aggregateId = CommonUtils.getAggregateId(payload);
     String messageId = CommonUtils.createMessageId(aggregateId);
     Instant timestamp = Instant.now();
+    String topic = CommonUtils.getTopicInfo(payload).value();
+    String correlationId = UUID.randomUUID().toString();
 
     Event event = Event.builder()
         .aggregateId(aggregateId)
@@ -66,10 +59,13 @@ public class DefaultEventGateway implements EventGateway {
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
-            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
+            .entry(Metadata.CORRELATION_ID, correlationId)
             .build())
         .build();
 
-    dispatch(event);
+    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
+
+    log.debug("Publishing event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
+    producer.send(record);
   }
 }

@@ -77,15 +77,6 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
     this.replyTopic = replyTopic;
   }
 
-  private void dispatch(Command command) {
-    String topic = CommonUtils.getTopicInfo(command.getPayload()).value();
-
-    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
-
-    log.debug("Sending command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
-    producer.send(record);
-  }
-
   @Override
   public CompletableFuture<Object> send(Object payload, Metadata metadata) {
     validatePayload(payload);
@@ -97,6 +88,8 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
     String aggregateId = CommonUtils.getAggregateId(payload);
     String messageId = CommonUtils.createMessageId(aggregateId);
     Instant timestamp = Instant.now();
+    String topic = CommonUtils.getTopicInfo(payload).value();
+    String correlationId = UUID.randomUUID().toString();
 
     Command command = Command.builder()
         .aggregateId(aggregateId)
@@ -104,12 +97,15 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
-            .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
+            .entry(Metadata.CORRELATION_ID, correlationId)
             .entry(Metadata.REPLY_TO, replyTopic)
             .build())
         .build();
 
-    dispatch(command);
+    ProducerRecord<String, Message> record = new ProducerRecord<>(topic, null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
+
+    log.debug("Sending command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
+    producer.send(record);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
     cache.put(command.getId(), future);
