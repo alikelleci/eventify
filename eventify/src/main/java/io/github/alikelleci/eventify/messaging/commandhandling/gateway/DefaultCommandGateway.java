@@ -57,7 +57,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
 //    interceptors.add(TracingProducerInterceptor.class.getName());
 //
 //    this.producerConfig.putIfAbsent(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
-    
+
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
         new JsonSerializer<>());
@@ -104,7 +104,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
         .payload(payload)
         .metadata(metadata.filter().toBuilder()
             .entry(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-//            .entry(Metadata.REPLY_TO, "AAAAAAAAAAAAAAAAAA")
+            .entry(Metadata.REPLY_TO, replyTopic)
             .build())
         .build();
 
