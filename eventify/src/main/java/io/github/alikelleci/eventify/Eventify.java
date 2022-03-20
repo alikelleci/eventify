@@ -65,12 +65,12 @@ public class Eventify {
   private final Set<String> EVENTS = new HashSet<>();
   private final Set<String> RESULTS = new HashSet<>();
 
+  private final Properties streamsConfig;
+  private KafkaStreams kafkaStreams;
+
   private StateListener stateListener;
   private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private boolean deleteEventsOnSnapshot;
-
-  private final Properties streamsConfig;
-  private KafkaStreams kafkaStreams;
 
   protected Eventify(Properties streamsConfig) {
     this.streamsConfig = streamsConfig;
