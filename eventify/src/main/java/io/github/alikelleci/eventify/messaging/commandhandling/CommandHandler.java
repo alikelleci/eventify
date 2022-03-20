@@ -93,9 +93,9 @@ public class CommandHandler implements BiFunction<Command, Aggregate, CommandRes
     List<Event> events = list.stream()
         .filter(Objects::nonNull)
         .map(payload -> Event.builder()
+            .timestamp(command.getTimestamp())
             .payload(payload)
             .metadata(command.getMetadata())
-            .timestamp(command.getTimestamp())
             .build())
         .collect(Collectors.toList());
 
