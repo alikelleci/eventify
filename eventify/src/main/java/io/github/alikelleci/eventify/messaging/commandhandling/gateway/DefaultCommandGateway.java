@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.alikelleci.eventify.constants.Topics;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.MessageListener;
 import io.github.alikelleci.eventify.messaging.Metadata;

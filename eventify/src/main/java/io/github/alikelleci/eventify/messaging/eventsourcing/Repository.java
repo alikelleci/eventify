@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.processor.ProcessorContext;

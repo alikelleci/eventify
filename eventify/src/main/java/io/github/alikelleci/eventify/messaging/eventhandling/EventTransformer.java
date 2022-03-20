@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
-import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Repository;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;

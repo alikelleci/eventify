@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 
-import io.github.alikelleci.eventify.constants.Topics;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;

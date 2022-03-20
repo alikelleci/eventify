@@ -1,32 +1,226 @@
 package io.github.alikelleci.eventify;
 
+import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.constants.Config;
-import io.github.alikelleci.eventify.constants.Topics;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandStream;
+import io.github.alikelleci.eventify.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
+import io.github.alikelleci.eventify.messaging.commandhandling.annotations.HandleCommand;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventhandling.EventStream;
+import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
+import io.github.alikelleci.eventify.messaging.eventhandling.EventTransformer;
+import io.github.alikelleci.eventify.messaging.eventhandling.annotations.HandleEvent;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
-import io.github.alikelleci.eventify.messaging.resulthandling.ResultStream;
+import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
+import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
+import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
+import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
+import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
+import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
+import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import io.github.alikelleci.eventify.util.CommonUtils;
+import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MultiValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
+import org.springframework.core.annotation.AnnotationUtils;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 public class Eventify {
 
+  private final MultiValuedMap<String, Upcaster> UPCASTERS = new ArrayListValuedHashMap<>();
+  private final Map<Class<?>, CommandHandler> COMMAND_HANDLERS = new HashMap<>();
+  private final Map<Class<?>, EventSourcingHandler> EVENTSOURCING_HANDLERS = new HashMap<>();
+  private final MultiValuedMap<Class<?>, ResultHandler> RESULT_HANDLERS = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<Class<?>, EventHandler> EVENT_HANDLERS = new ArrayListValuedHashMap<>();
+
+  private final Set<String> COMMANDS = new HashSet<>();
+  private final Set<String> EVENTS = new HashSet<>();
+  private final Set<String> RESULTS = new HashSet<>();
+
   private KafkaStreams kafkaStreams;
 
   protected Eventify() {
+  }
+
+  public void registerHandler(Object handler) {
+    List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
+    List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
+    List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
+    List<Method> resultHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
+    List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
+
+    upcasterMethods
+        .forEach(method -> addUpcaster(handler, method));
+
+    commandHandlerMethods
+        .forEach(method -> addCommandHandler(handler, method));
+
+    eventSourcingMethods
+        .forEach(method -> addEventSourcingHandler(handler, method));
+
+    resultHandlerMethods
+        .forEach(method -> addResultHandler(handler, method));
+
+    eventHandlerMethods
+        .forEach(method -> addEventHandler(handler, method));
+  }
+
+  private void addUpcaster(Object listener, Method method) {
+    if (method.getParameterCount() == 1) {
+      String type = method.getAnnotation(Upcast.class).type();
+      UPCASTERS.put(type, new Upcaster(listener, method));
+    }
+  }
+
+  private void addCommandHandler(Object listener, Method method) {
+    if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
+      Class<?> type = method.getParameters()[0].getType();
+      COMMAND_HANDLERS.put(type, new CommandHandler(listener, method));
+
+      TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
+      if (topicInfo != null) {
+        COMMANDS.add(topicInfo.value());
+      }
+    }
+  }
+
+  private void addEventSourcingHandler(Object listener, Method method) {
+    if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
+      Class<?> type = method.getParameters()[0].getType();
+      EVENTSOURCING_HANDLERS.put(type, new EventSourcingHandler(listener, method));
+
+      TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
+      if (topicInfo != null) {
+        EVENTS.add(topicInfo.value());
+      }
+    }
+  }
+
+  private void addResultHandler(Object listener, Method method) {
+    if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
+      Class<?> type = method.getParameters()[0].getType();
+      RESULT_HANDLERS.put(type, new ResultHandler(listener, method));
+
+      TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
+      if (topicInfo != null) {
+        RESULTS.add(topicInfo.value().concat(".results"));
+      }
+    }
+  }
+
+  private void addEventHandler(Object listener, Method method) {
+    if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
+      Class<?> type = method.getParameters()[0].getType();
+      EVENT_HANDLERS.put(type, new EventHandler(listener, method));
+
+      TopicInfo topicInfo = AnnotationUtils.findAnnotation(type, TopicInfo.class);
+      if (topicInfo != null) {
+        EVENTS.add(topicInfo.value());
+      }
+    }
+  }
+
+  protected Topology topology() {
+    StreamsBuilder builder = new StreamsBuilder();
+
+    // Event store
+    builder.addStateStore(Stores
+        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
+        .withLoggingEnabled(Collections.emptyMap()));
+
+    // Snapshot Store
+    builder.addStateStore(Stores
+        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
+        .withLoggingEnabled(Collections.emptyMap()));
+
+    /*
+     * -------------------------------------------------------------
+     * COMMAND HANDLING
+     * -------------------------------------------------------------
+     */
+    if (!COMMAND_HANDLERS.isEmpty() && !EVENTSOURCING_HANDLERS.isEmpty()) {
+      // --> Commands
+      KStream<String, Command> commands = builder.stream(COMMANDS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+          .filter((key, command) -> key != null)
+          .filter((key, command) -> command != null);
+
+      // Commands --> Results
+      KStream<String, CommandResult> commandResults = commands
+          .transformValues(CommandTransformer::new, "event-store", "snapshot-store")
+          .filter((key, result) -> result != null);
+
+      // Results --> Push
+      commandResults
+          .mapValues(CommandResult::getCommand)
+          .to((key, command, recordContext) -> CommonUtils.getTopicInfo(command.getPayload()).value().concat(".results"),
+              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
+
+      // Events --> Push
+      commandResults
+          .filter((key, result) -> result instanceof CommandResult.Success)
+          .mapValues((key, result) -> (CommandResult.Success) result)
+          .flatMapValues(CommandResult.Success::getEvents)
+          .filter((key, event) -> event != null)
+          .to((key, event, recordContext) -> CommonUtils.getTopicInfo(event.getPayload()).value(),
+              Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
+    }
+
+
+    /*
+     * -------------------------------------------------------------
+     * EVENT HANDLING
+     * -------------------------------------------------------------
+     */
+
+    // --> Events
+    KStream<String, Event> events = builder.stream(EVENTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
+        .filter((key, event) -> key != null)
+        .filter((key, event) -> event != null);
+
+    // Events --> Void
+    events
+        .transformValues(EventTransformer::new, "event-store", "snapshot-store");
+
+
+    /*
+     * -------------------------------------------------------------
+     * RESULT HANDLING
+     * -------------------------------------------------------------
+     */
+
+    // --> Results
+    KStream<String, Command> results = builder.stream(RESULTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+        .filter((key, command) -> key != null)
+        .filter((key, command) -> command != null);
+
+    // Results --> Void
+    results
+        .transformValues(ResultTransformer::new);
+
+
+    return builder.build();
   }
 
   public void start() {
@@ -35,7 +229,7 @@ public class Eventify {
       return;
     }
 
-    Topology topology = buildTopology();
+    Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
       log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
       return;
@@ -57,37 +251,6 @@ public class Eventify {
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofMillis(1000));
     kafkaStreams = null;
-  }
-
-  protected Topology buildTopology() {
-    StreamsBuilder builder = new StreamsBuilder();
-
-    // Event store
-    builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
-        .withLoggingEnabled(Collections.emptyMap()));
-
-    // Snapshot Store
-    builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
-        .withLoggingEnabled(Collections.emptyMap()));
-
-    if (CollectionUtils.isNotEmpty(Topics.COMMANDS)) {
-      CommandStream commandStream = new CommandStream();
-      commandStream.buildStream(builder);
-    }
-
-    if (CollectionUtils.isNotEmpty(Topics.EVENTS)) {
-      EventStream eventStream = new EventStream();
-      eventStream.buildStream(builder);
-    }
-
-    if (CollectionUtils.isNotEmpty(Topics.RESULTS)) {
-      ResultStream resultStream = new ResultStream();
-      resultStream.buildStream(builder);
-    }
-
-    return builder.build();
   }
 
   private void setUpListeners() {

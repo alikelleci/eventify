@@ -2,18 +2,25 @@ package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.constants.Config;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.constants.Handlers;
-import io.github.alikelleci.eventify.constants.Topics;
+import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
 import io.github.alikelleci.eventify.messaging.commandhandling.annotations.HandleCommand;
+import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
+import io.github.alikelleci.eventify.messaging.eventhandling.EventTransformer;
 import io.github.alikelleci.eventify.messaging.eventhandling.annotations.HandleEvent;
+import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
+import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
+import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import io.github.alikelleci.eventify.util.CommonUtils;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -24,13 +31,20 @@ import org.apache.kafka.clients.admin.ListTopicsOptions;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.state.Stores;
 import org.springframework.core.annotation.AnnotationUtils;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -93,11 +107,6 @@ public class EventifyBuilder {
         .forEach(method -> addEventHandler(handler, method));
 
     return this;
-  }
-
-  public Eventify build() {
-    createTopics();
-    return new Eventify();
   }
 
   private void addUpcaster(Object listener, Method method) {
@@ -190,5 +199,90 @@ public class EventifyBuilder {
     } catch (InterruptedException | ExecutionException e) {
       e.printStackTrace();
     }
+  }
+
+  protected Topology topology() {
+    StreamsBuilder builder = new StreamsBuilder();
+
+    // Event store
+    builder.addStateStore(Stores
+        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
+        .withLoggingEnabled(Collections.emptyMap()));
+
+    // Snapshot Store
+    builder.addStateStore(Stores
+        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
+        .withLoggingEnabled(Collections.emptyMap()));
+
+    /*
+     * -------------------------------------------------------------
+     * COMMAND HANDLING
+     * -------------------------------------------------------------
+     */
+
+    // --> Commands
+    KStream<String, Command> commands = builder.stream(Topics.COMMANDS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+        .filter((key, command) -> key != null)
+        .filter((key, command) -> command != null);
+
+    // Commands --> Results
+    KStream<String, CommandResult> commandResults = commands
+        .transformValues(CommandTransformer::new, "event-store", "snapshot-store")
+        .filter((key, result) -> result != null);
+
+    // Results --> Push
+    commandResults
+        .mapValues(CommandResult::getCommand)
+        .to((key, command, recordContext) -> CommonUtils.getTopicInfo(command.getPayload()).value().concat(".results"),
+            Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
+
+    // Events --> Push
+    commandResults
+        .filter((key, result) -> result instanceof CommandResult.Success)
+        .mapValues((key, result) -> (CommandResult.Success) result)
+        .flatMapValues(CommandResult.Success::getEvents)
+        .filter((key, event) -> event != null)
+        .to((key, event, recordContext) -> CommonUtils.getTopicInfo(event.getPayload()).value(),
+            Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
+
+
+    /*
+     * -------------------------------------------------------------
+     * EVENT HANDLING
+     * -------------------------------------------------------------
+     */
+
+    // --> Events
+    KStream<String, Event> events = builder.stream(Topics.EVENTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
+        .filter((key, event) -> key != null)
+        .filter((key, event) -> event != null);
+
+    // Events --> Void
+    events
+        .transformValues(EventTransformer::new, "event-store", "snapshot-store");
+
+
+    /*
+     * -------------------------------------------------------------
+     * RESULT HANDLING
+     * -------------------------------------------------------------
+     */
+
+    // --> Results
+    KStream<String, Command> results = builder.stream(Topics.RESULTS, Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+        .filter((key, command) -> key != null)
+        .filter((key, command) -> command != null);
+
+    // Results --> Void
+    results
+        .transformValues(ResultTransformer::new);
+
+
+    return builder.build();
+  }
+
+  public Eventify build() {
+    createTopics();
+    return new Eventify();
   }
 }

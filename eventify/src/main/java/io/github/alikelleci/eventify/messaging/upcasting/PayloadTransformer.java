@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.messaging.upcasting;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import org.apache.commons.collections4.CollectionUtils;

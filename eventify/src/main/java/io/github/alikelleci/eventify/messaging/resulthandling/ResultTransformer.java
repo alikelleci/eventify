@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.resulthandling;
 
-import io.github.alikelleci.eventify.constants.Handlers;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleFailure;
