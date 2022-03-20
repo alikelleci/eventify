@@ -120,9 +120,9 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
   @Override
   public void listen() {
     AtomicBoolean closed = new AtomicBoolean(false);
-    consumer.subscribe(Collections.singletonList(replyTopic));
 
     Thread thread = new Thread(() -> {
+      consumer.subscribe(Collections.singletonList(replyTopic));
       try {
         while (!closed.get()) {
           ConsumerRecords<String, Message> consumerRecords = consumer.poll(Duration.ofMillis(1000));
