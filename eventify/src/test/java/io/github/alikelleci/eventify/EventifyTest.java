@@ -93,6 +93,7 @@ class EventifyTest {
             .birthday(Instant.now())
             .build())
         .metadata(new Metadata()
+            .add("custom-key", "custom-value")
             .add(CORRELATION_ID, UUID.randomUUID().toString())
             .add(ID, "should-be-overwritten-by-command-id")
             .add(TIMESTAMP, "should-be-overwritten-by-command-timestamp")
@@ -119,6 +120,7 @@ class EventifyTest {
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
     // Metadata
     assertThat(event.getMetadata(), is(notNullValue()));
+    assertThat(event.getMetadata().get("custom-key"), is("custom-value"));
     assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(event.getMetadata().get(ID), is(notNullValue()));
@@ -143,6 +145,7 @@ class EventifyTest {
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
+    assertThat(commandResult.getMetadata().get("custom-key"), is("custom-value"));
     assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(commandResult.getMetadata().get(ID), is(notNullValue()));
