@@ -1,7 +1,5 @@
 package io.github.alikelleci.eventify;
 
-import com.github.f4b6a3.ulid.Ulid;
-import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
@@ -15,6 +13,7 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -31,6 +30,8 @@ import java.util.Properties;
 import java.util.UUID;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
@@ -102,10 +103,17 @@ class EventifyTest {
     assertThat(event.getId(), startsWith(command.getAggregateId()));
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
+    // Metadata
     assertThat(event.getMetadata(), is(notNullValue()));
+    assertThat(event.getMetadata().get(ID), is(notNullValue()));
+    assertThat(event.getMetadata().get(ID), is(event.getId()));
+    assertThat(event.getMetadata().get(ID), is(event.getMetadata().getMessageId()));
+    assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
+    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
+    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
     assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
-
+    // Payload
     assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
     assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
     assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
@@ -119,10 +127,18 @@ class EventifyTest {
     assertThat(commandResult.getId(), startsWith(command.getAggregateId()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+    // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
+    assertThat(commandResult.getMetadata().get(ID), is(notNullValue()));
+    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
+    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getMetadata().getMessageId()));
+    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(notNullValue()));
+    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
+    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(commandResult.getMetadata().get(Metadata.RESULT), is("success"));
+    // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
   }
 
