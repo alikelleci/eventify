@@ -28,8 +28,6 @@ public abstract class Message {
   private Object payload;
   private Metadata metadata;
 
-
-
   protected Message(String id, Instant timestamp, Object payload, Metadata metadata) {
     this.id = Optional.ofNullable(id)
         .orElse(createMessageId(payload));
