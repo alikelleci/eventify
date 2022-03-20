@@ -26,16 +26,8 @@ public class Command extends Message {
     this.aggregateId = createAggregateId(payload);
   }
 
-  public Command(Object payload, Metadata metadata, Instant timestamp) {
-    this(null, timestamp, payload, metadata);
-  }
-
-  public Command(Object payload, Metadata metadata) {
-    this(null, null, payload, metadata);
-  }
-
-  public Command(Object payload) {
-    this(null, null, payload, null);
+  public static CommandBuilder builder() {
+    return new CommandBuilder();
   }
 
   private String createAggregateId(Object payload) {
@@ -47,10 +39,6 @@ public class Command extends Message {
           return (String) ReflectionUtils.getField(field, payload);
         }))
         .orElse(null);
-  }
-
-  public static CommandBuilder builder() {
-    return new CommandBuilder();
   }
 
   public static class CommandBuilder {
@@ -74,7 +62,7 @@ public class Command extends Message {
     }
 
     public Command build() {
-      return new Command(this.payload, this.metadata, this.timestamp);
+      return new Command(null, this.timestamp, this.payload, this.metadata);
     }
   }
 }

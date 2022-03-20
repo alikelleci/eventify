@@ -26,16 +26,8 @@ public class Event extends Message {
     this.aggregateId = createAggregateId(payload);
   }
 
-  public Event(Object payload, Metadata metadata, Instant timestamp) {
-    this(null, timestamp, payload, metadata);
-  }
-
-  public Event(Object payload, Metadata metadata) {
-    this(null, null, payload, metadata);
-  }
-
-  public Event(Object payload) {
-    this(null, null, payload, null);
+  public static EventBuilder builder() {
+    return new EventBuilder();
   }
 
   private String createAggregateId(Object payload) {
@@ -47,5 +39,30 @@ public class Event extends Message {
           return (String) ReflectionUtils.getField(field, payload);
         }))
         .orElse(null);
+  }
+
+  public static class EventBuilder {
+    private Object payload;
+    private Metadata metadata;
+    private Instant timestamp;
+
+    public EventBuilder payload(Object payload) {
+      this.payload = payload;
+      return this;
+    }
+
+    public EventBuilder metadata(Metadata metadata) {
+      this.metadata = metadata;
+      return this;
+    }
+
+    public EventBuilder timestamp(Instant timestamp) {
+      this.timestamp = timestamp;
+      return this;
+    }
+
+    public Event build() {
+      return new Event(null, this.timestamp, this.payload, this.metadata);
+    }
   }
 }
