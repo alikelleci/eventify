@@ -22,7 +22,7 @@ public class Event extends Message {
 
   protected Event(String id, Instant timestamp, Object payload, Metadata metadata) {
     super(id, timestamp, payload, metadata);
-    this.aggregateId = createAggregatieId(payload);
+    this.aggregateId = createAggregateId(payload);
   }
 
   public Event(Object payload, Metadata metadata, Instant timestamp) {
@@ -37,7 +37,7 @@ public class Event extends Message {
     this(null, null, payload, null);
   }
 
-  private String createAggregatieId(Object payload) {
+  private String createAggregateId(Object payload) {
     return Optional.ofNullable(payload).flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
         .filter(field -> field.getType() == String.class)
         .findFirst()
