@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.spring.starter;
 
+import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.common.annotations.HandleMessage;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import org.apache.commons.collections4.CollectionUtils;
@@ -10,10 +11,10 @@ import java.util.List;
 
 public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
-  private final EventifyBuilder builder;
+  private final Eventify eventify;
 
-  public EventifyBeanPostProcessor(EventifyBuilder eventifyBuilder) {
-    this.builder = eventifyBuilder;
+  public EventifyBeanPostProcessor(Eventify eventify) {
+    this.eventify = eventify;
   }
 
   @Override
@@ -25,7 +26,7 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
   public Object postProcessAfterInitialization(final Object bean, final String beanName) {
     List<Method> methods = HandlerUtils.findMethodsWithAnnotation(bean.getClass(), HandleMessage.class);
     if (CollectionUtils.isNotEmpty(methods)) {
-      builder.registerHandler(bean);
+      eventify.registerHandler(bean);
     }
     return bean;
   }

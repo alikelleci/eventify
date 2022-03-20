@@ -13,7 +13,7 @@ import org.springframework.context.event.EventListener;
 
 @Slf4j
 @Configuration
-@ConditionalOnBean(EventifyBuilder.class)
+@ConditionalOnBean(Eventify.class)
 @EnableConfigurationProperties(EventifyProperties.class)
 public class EventifyAutoConfiguration {
 
@@ -21,16 +21,15 @@ public class EventifyAutoConfiguration {
   private ApplicationContext applicationContext;
 
   @Bean
-  public EventifyBeanPostProcessor eventifyBeanPostProcessor(EventifyBuilder builder) {
-    return new EventifyBeanPostProcessor(builder);
+  public EventifyBeanPostProcessor eventifyBeanPostProcessor(Eventify eventify) {
+    return new EventifyBeanPostProcessor(eventify);
   }
 
   @EventListener
   public void onApplicationEvent(ApplicationReadyEvent event) {
     if (event.getApplicationContext().equals(this.applicationContext)) {
-      EventifyBuilder builder = event.getApplicationContext().getBean(EventifyBuilder.class);
-      Eventify app = builder.build();
-      app.start();
+      Eventify eventify = event.getApplicationContext().getBean(Eventify.class);
+      eventify.start();
     }
   }
 }
