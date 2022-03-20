@@ -22,20 +22,11 @@ public class Test {
         .build();
 
 
-    Command command = new Command(customer, null, Instant.ofEpochMilli(1584709244000L));
-
-    Command command2 = Command.builder()
+    Command command = Command.builder()
         .payload(customer)
         .timestamp(Instant.ofEpochMilli(1584709244000L))
         .build();
-
     System.out.println(command);
-    System.out.println(command2);
-
-
-    new Command(null, null, null);
-    new Command(null, null);
-    new Command(null);
 
 
     String json = objectMapper.writeValueAsString(command);
