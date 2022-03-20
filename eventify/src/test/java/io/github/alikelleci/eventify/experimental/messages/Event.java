@@ -21,7 +21,7 @@ public class Event extends Message {
     this.aggregateId = createAggregatieId(payload);
   }
 
-  public Event(Instant timestamp, Object payload, Metadata metadata) {
+  public Event(Object payload, Metadata metadata, Instant timestamp) {
     this(null, timestamp, payload, metadata);
   }
 

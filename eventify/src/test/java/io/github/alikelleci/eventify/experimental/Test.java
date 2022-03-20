@@ -17,7 +17,7 @@ public class Test {
         .build();
 
 
-    Command command = new Command(Instant.ofEpochMilli(1584709244000L), customer, null);
+    Command command = new Command(customer, null, Instant.ofEpochMilli(1584709244000L));
     System.out.println(command);
     System.out.println(command.getId());
     System.out.println(command.getTimestamp());

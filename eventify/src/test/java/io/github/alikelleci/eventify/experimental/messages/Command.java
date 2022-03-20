@@ -21,7 +21,7 @@ public class Command extends Message {
     this.aggregateId = createAggregatieId(payload);
   }
 
-  public Command(Instant timestamp, Object payload, Metadata metadata) {
+  public Command(Object payload, Metadata metadata, Instant timestamp) {
     this(null, timestamp, payload, metadata);
   }
 
