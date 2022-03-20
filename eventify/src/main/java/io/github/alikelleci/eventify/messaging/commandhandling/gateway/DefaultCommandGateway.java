@@ -71,7 +71,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
 
     this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
-        new JsonDeserializer<>());
+        new JsonDeserializer<>(Message.class));
 
     this.replyTopic = replyTopic;
   }
