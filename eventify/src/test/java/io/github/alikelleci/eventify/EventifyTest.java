@@ -24,7 +24,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -50,13 +49,11 @@ class EventifyTest {
     props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
     props.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
 
+    Eventify eventify = new Eventify(props);
+    eventify.registerHandler(new CustomerCommandHandler());
+    eventify.registerHandler(new CustomerEventSourcingHandler());
 
-    Eventify eventify = new EventifyBuilder(props)
-        .registerHandler(new CustomerCommandHandler())
-        .registerHandler(new CustomerEventSourcingHandler())
-        .build();
-
-    testDriver = new TopologyTestDriver(eventify.buildTopology(), props);
+    testDriver = new TopologyTestDriver(eventify.topology(), props);
 
     commands = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), CustomSerdes.Json(Command.class).serializer());
