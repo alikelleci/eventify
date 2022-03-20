@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
@@ -24,6 +25,7 @@ import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
@@ -201,6 +203,13 @@ public class Eventify {
       commandResults
           .mapValues(CommandResult::getCommand)
           .to((key, command, recordContext) -> CommonUtils.getTopicInfo(command.getPayload()).value().concat(".results"),
+              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
+
+      // Results --> Push to reply topic
+      commandResults
+          .mapValues(CommandResult::getCommand)
+          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(Metadata.REPLY_TO)))
+          .to((key, command, recordContext) -> command.getMetadata().get(Metadata.REPLY_TO),
               Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
 
       // Events --> Push
