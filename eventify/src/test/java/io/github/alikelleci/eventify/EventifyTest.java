@@ -113,7 +113,6 @@ class EventifyTest {
 
     // Assert Event
     Event event = events.readValue();
-
     assertThat(event, is(notNullValue()));
     assertThat(event.getId(), startsWith(command.getAggregateId()));
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
@@ -136,9 +135,8 @@ class EventifyTest {
     assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
     assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
 
-    // Assert Command result
+    // Assert Command Result
     Command commandResult = commandResults.readValue();
-
     assertThat(commandResult, is(notNullValue()));
     assertThat(commandResult.getId(), startsWith(command.getAggregateId()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
