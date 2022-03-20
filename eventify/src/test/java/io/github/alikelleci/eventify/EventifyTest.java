@@ -111,30 +111,6 @@ class EventifyTest {
     assertThat(command.getMetadata().get(TIMESTAMP), is(command.getTimestamp().toString()));
     assertThat(command.getMetadata().get(TIMESTAMP), is(command.getMetadata().getTimestamp().toString()));
 
-    // Assert Event
-    Event event = events.readValue();
-    assertThat(event, is(notNullValue()));
-    assertThat(event.getId(), startsWith(command.getAggregateId()));
-    assertThat(event.getAggregateId(), is(command.getAggregateId()));
-    assertThat(event.getTimestamp(), is(command.getTimestamp()));
-    // Metadata
-    assertThat(event.getMetadata(), is(notNullValue()));
-    assertThat(event.getMetadata().get("custom-key"), is("custom-value"));
-    assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
-    assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
-    assertThat(event.getMetadata().get(ID), is(notNullValue()));
-    assertThat(event.getMetadata().get(ID), is(event.getId()));
-    assertThat(event.getMetadata().get(ID), is(event.getMetadata().getMessageId()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
-    // Payload
-    assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
-    assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
-    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
-    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
-    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
-
     // Assert Command Result
     Command commandResult = commandResults.readValue();
     assertThat(commandResult, is(notNullValue()));
@@ -156,6 +132,33 @@ class EventifyTest {
     assertThat(commandResult.getMetadata().get(CAUSE), isEmptyOrNullString());
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
+
+    // Assert Event
+    Event event = events.readValue();
+    assertThat(event, is(notNullValue()));
+    assertThat(event.getId(), startsWith(command.getAggregateId()));
+    assertThat(event.getAggregateId(), is(command.getAggregateId()));
+    assertThat(event.getTimestamp(), is(command.getTimestamp()));
+    // Metadata
+    assertThat(event.getMetadata(), is(notNullValue()));
+    assertThat(event.getMetadata().get("custom-key"), is("custom-value"));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
+    assertThat(event.getMetadata().get(ID), is(notNullValue()));
+    assertThat(event.getMetadata().get(ID), is(event.getId()));
+    assertThat(event.getMetadata().get(ID), is(event.getMetadata().getMessageId()));
+    assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
+    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
+    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
+    assertThat(event.getMetadata().get(RESULT), isEmptyOrNullString());
+    assertThat(event.getMetadata().get(CAUSE), isEmptyOrNullString());
+    // Payload
+    assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
+    assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
+    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
+    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
+    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
+
   }
 
 
