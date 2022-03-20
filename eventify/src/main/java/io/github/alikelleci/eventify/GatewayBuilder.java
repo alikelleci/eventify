@@ -1,16 +1,12 @@
 package io.github.alikelleci.eventify;
 
-import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.commandhandling.gateway.CommandGateway;
 import io.github.alikelleci.eventify.messaging.commandhandling.gateway.DefaultCommandGateway;
 import io.github.alikelleci.eventify.messaging.eventhandling.gateway.DefaultEventGateway;
 import io.github.alikelleci.eventify.messaging.eventhandling.gateway.EventGateway;
-import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.CooperativeStickyAssignor;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -48,13 +44,17 @@ public class GatewayBuilder {
   }
 
   public CommandGateway commandGateway() {
-    return new DefaultCommandGateway(producerConfig, consumerConfig);
+    return DefaultCommandGateway.builder()
+        .producerConfig(producerConfig)
+        .consumerConfig(consumerConfig)
+        .build();
   }
 
   public EventGateway eventGateway() {
-    return new DefaultEventGateway(producerConfig);
+    return DefaultEventGateway.builder()
+        .producerConfig(producerConfig)
+        .build();
   }
-
 
 
 }
