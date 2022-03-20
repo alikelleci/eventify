@@ -28,8 +28,10 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
@@ -58,6 +60,10 @@ public class Eventify {
   private final Set<String> COMMANDS = new HashSet<>();
   private final Set<String> EVENTS = new HashSet<>();
   private final Set<String> RESULTS = new HashSet<>();
+
+  private StateListener stateListener;
+  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
+  private boolean deleteEventsOnSnapshot;
 
   private KafkaStreams kafkaStreams;
 
@@ -262,8 +268,16 @@ public class Eventify {
   }
 
   private void setUpListeners() {
-    kafkaStreams.setStateListener(Config.stateListener);
-    kafkaStreams.setUncaughtExceptionHandler(Config.uncaughtExceptionHandler);
+    if (this.stateListener == null) {
+      this.stateListener = (newState, oldState) ->
+          log.warn("State changed from {} to {}", oldState, newState);
+    }
+    kafkaStreams.setStateListener(stateListener);
+
+    if (this.uncaughtExceptionHandler == null) {
+      this.uncaughtExceptionHandler = (throwable) ->
+          StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
+    }
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       log.info("Eventify is shutting down...");
