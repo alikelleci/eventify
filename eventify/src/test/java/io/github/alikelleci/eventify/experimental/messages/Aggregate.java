@@ -26,9 +26,11 @@ public class Aggregate extends Message {
     super(null, null, null, null);
   }
 
-  protected Aggregate(String id, Instant timestamp, Object payload, Metadata metadata) {
+  protected Aggregate(String id, Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
     super(id, timestamp, payload, metadata);
     this.aggregateId = createAggregateId(payload);
+    this.eventId = eventId;
+    this.version = version;
   }
 
   @JsonIgnore
@@ -89,7 +91,7 @@ public class Aggregate extends Message {
     }
 
     public Aggregate build() {
-      return new Aggregate(null, this.timestamp, this.payload, this.metadata);
+      return new Aggregate(null, this.timestamp, this.payload, this.metadata, eventId, version);
     }
   }
 

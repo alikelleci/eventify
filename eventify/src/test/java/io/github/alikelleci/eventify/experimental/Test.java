@@ -29,6 +29,7 @@ public class Test {
         .timestamp(Instant.ofEpochMilli(1584709244000L))
         .build();
     System.out.println(command);
+    System.out.println(command.getId());
 
 
     Event event = Event.builder()
@@ -36,6 +37,7 @@ public class Test {
         .timestamp(Instant.ofEpochMilli(1584709244000L))
         .build();
     System.out.println(event);
+    System.out.println(event.getId());
 
 
     Aggregate aggregate = Aggregate.builder()
@@ -45,6 +47,9 @@ public class Test {
         .version(12)
         .build();
     System.out.println(aggregate);
+    System.out.println(aggregate.getId());
+
+    System.out.println("---------------");
 
     String json = objectMapper.writeValueAsString(command);
     System.out.println(json);
