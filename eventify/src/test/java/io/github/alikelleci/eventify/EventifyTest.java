@@ -102,6 +102,14 @@ class EventifyTest {
 
     commands.pipeInput(command.getAggregateId(), command);
 
+    // Assert Command Metadata
+    assertThat(command.getMetadata().get(ID), is(notNullValue()));
+    assertThat(command.getMetadata().get(ID), is(command.getId()));
+    assertThat(command.getMetadata().get(ID), is(command.getMetadata().getMessageId()));
+    assertThat(command.getMetadata().get(TIMESTAMP), is(notNullValue()));
+    assertThat(command.getMetadata().get(TIMESTAMP), is(command.getTimestamp().toString()));
+    assertThat(command.getMetadata().get(TIMESTAMP), is(command.getMetadata().getTimestamp().toString()));
+
     // Assert Event
     Event event = events.readValue();
 
