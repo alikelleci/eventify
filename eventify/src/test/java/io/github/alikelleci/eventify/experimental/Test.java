@@ -23,12 +23,15 @@ public class Test {
 
 
     Command command = new Command(customer, null, Instant.ofEpochMilli(1584709244000L));
+
+    Command command2 = Command.builder()
+        .payload(customer)
+        .timestamp(Instant.ofEpochMilli(1584709244000L))
+        .build();
+
     System.out.println(command);
-    System.out.println(command.getId());
-    System.out.println(command.getTimestamp());
-    System.out.println(command.getPayload());
-    System.out.println(command.getMetadata());
-    System.out.println(command.getAggregateId());
+    System.out.println(command2);
+
 
     new Command(null, null, null);
     new Command(null, null);
