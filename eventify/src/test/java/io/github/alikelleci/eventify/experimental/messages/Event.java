@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.experimental.messages;
 
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;

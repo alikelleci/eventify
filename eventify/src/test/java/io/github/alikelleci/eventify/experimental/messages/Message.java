@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
