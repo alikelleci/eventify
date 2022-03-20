@@ -49,21 +49,21 @@ class EventifyTest {
 
   @BeforeEach
   void setup() {
-    Properties props = new Properties();
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "eventify-test");
-    props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1234");
-    props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    props.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
-    props.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "eventify-test");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1234");
+    properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+    properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+    properties.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
+    properties.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
 
-    Eventify eventify = new Eventify(props)
+    Eventify eventify = new Eventify(properties)
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
         .registerHandler(new CustomerEventHandler())
         .registerHandler(new CustomerResultHandler());
 
-    testDriver = new TopologyTestDriver(eventify.topology(), props);
+    testDriver = new TopologyTestDriver(eventify.topology(), properties);
 
     commands = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), CustomSerdes.Json(Command.class).serializer());
