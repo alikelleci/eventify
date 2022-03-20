@@ -44,16 +44,11 @@ public class GatewayBuilder {
   }
 
   public CommandGateway commandGateway() {
-    return DefaultCommandGateway.builder()
-        .producerConfig(producerConfig)
-        .consumerConfig(consumerConfig)
-        .build();
+    return new DefaultCommandGateway(producerConfig, consumerConfig);
   }
 
   public EventGateway eventGateway() {
-    return DefaultEventGateway.builder()
-        .producerConfig(producerConfig)
-        .build();
+    return new DefaultEventGateway(producerConfig);
   }
 
 

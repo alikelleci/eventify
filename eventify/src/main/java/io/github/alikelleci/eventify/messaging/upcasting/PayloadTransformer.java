@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
@@ -18,11 +19,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PayloadTransformer implements ValueTransformerWithKey<String, JsonNode, JsonNode> {
 
-  private ProcessorContext context;
+  private final MultiValuedMap<String, Upcaster> upcasters;
+
+  public PayloadTransformer(MultiValuedMap<String, Upcaster> upcasters) {
+    this.upcasters = upcasters;
+  }
 
   @Override
   public void init(ProcessorContext processorContext) {
-    this.context = processorContext;
   }
 
   @Override
@@ -36,7 +40,7 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
       return null;
     }
 
-    Collection<Upcaster> handlers = Handlers.upcasters.get(className);
+    Collection<Upcaster> handlers = upcasters.get(className);
     if (CollectionUtils.isEmpty(handlers)) {
       return jsonNode;
     }

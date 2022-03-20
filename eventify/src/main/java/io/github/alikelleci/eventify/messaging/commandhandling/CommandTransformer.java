@@ -22,8 +22,8 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
   private Repository repository;
 
   public CommandTransformer(Map<Class<?>, CommandHandler> commandHandlers, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers, boolean deleteEventsOnSnapshot) {
-    commandHandlers = commandHandlers;
-    eventSourcingHandlers = eventSourcingHandlers;
+    this.commandHandlers = commandHandlers;
+    this.eventSourcingHandlers = eventSourcingHandlers;
     this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
   }
 

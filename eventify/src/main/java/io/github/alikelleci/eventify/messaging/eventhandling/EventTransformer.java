@@ -21,8 +21,8 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
   private Repository repository;
 
   public EventTransformer(MultiValuedMap<Class<?>, EventHandler> eventHandlers, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers) {
-    eventHandlers = eventHandlers;
-    eventSourcingHandlers = eventSourcingHandlers;
+    this.eventHandlers = eventHandlers;
+    this.eventSourcingHandlers = eventSourcingHandlers;
   }
 
   @Override

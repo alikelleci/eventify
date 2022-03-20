@@ -10,7 +10,6 @@ import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.Comman
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import io.github.alikelleci.eventify.util.CommonUtils;
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.Consumer;

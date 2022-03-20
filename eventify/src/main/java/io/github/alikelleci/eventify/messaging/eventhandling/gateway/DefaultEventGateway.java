@@ -5,7 +5,6 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import io.github.alikelleci.eventify.util.CommonUtils;
-import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -21,7 +20,6 @@ public class DefaultEventGateway implements EventGateway {
 
   private final Producer<String, Message> producer;
 
-  @Builder
   public DefaultEventGateway(Properties producerConfig) {
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),

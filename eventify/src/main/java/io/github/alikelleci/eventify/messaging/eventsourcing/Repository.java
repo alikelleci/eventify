@@ -19,7 +19,7 @@ public class Repository {
   private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
 
   public Repository(ProcessorContext context, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers) {
-    eventSourcingHandlers = eventSourcingHandlers;
+    this.eventSourcingHandlers = eventSourcingHandlers;
     this.eventStore = context.getStateStore("event-store");
     this.snapshotStore = context.getStateStore("snapshot-store");
   }
