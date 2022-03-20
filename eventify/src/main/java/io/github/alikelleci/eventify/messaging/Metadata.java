@@ -35,6 +35,11 @@ public class Metadata implements Map<String, String> {
     return this;
   }
 
+  public Metadata remove(String key) {
+    entries.remove(key);
+    return this;
+  }
+
   @JsonIgnore
   public String getMessageId() {
     return entries.get(ID);
