@@ -143,7 +143,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
     thread.start();
   }
 
-  public void onMessage(ConsumerRecords<String, Message> consumerRecords) {
+  private void onMessage(ConsumerRecords<String, Message> consumerRecords) {
     consumerRecords.forEach(record -> {
       String messageId = record.value().getId();
       if (StringUtils.isBlank(messageId)) {
