@@ -35,10 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Slf4j
 public class DefaultCommandGateway implements CommandGateway, MessageListener {
 
-  private final Properties producerConfig;
   private final Producer<String, Message> producer;
-
-  private final Properties consumerConfig;
   private final Consumer<String, Message> consumer;
 
   @Builder.Default
@@ -48,13 +45,11 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
 
   @Builder
   public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig) {
-    this.producerConfig = producerConfig;
-    this.producer = new KafkaProducer<>(this.producerConfig,
+    this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
         new JsonSerializer<>());
 
-    this.consumerConfig = consumerConfig;
-    this.consumer = new KafkaConsumer<>(this.consumerConfig,
+    this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
         new JsonDeserializer<>());
   }
