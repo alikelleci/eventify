@@ -13,7 +13,6 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -29,8 +28,10 @@ import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
@@ -91,7 +92,11 @@ class EventifyTest {
             .birthday(Instant.now())
             .build())
         .metadata(new Metadata()
-            .add(CORRELATION_ID, UUID.randomUUID().toString()))
+            .add(CORRELATION_ID, UUID.randomUUID().toString())
+            .add(ID, "should-be-overwritten-by-command-id")
+            .add(TIMESTAMP, "should-be-overwritten-by-command-timestamp")
+            .add(RESULT, "should-be-overwritten-by-command-result")
+            .add(CAUSE, "should-be-overwritten-by-command-result"))
         .build();
 
     commands.pipeInput(command.getAggregateId(), command);
@@ -105,14 +110,14 @@ class EventifyTest {
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
     // Metadata
     assertThat(event.getMetadata(), is(notNullValue()));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(event.getMetadata().get(ID), is(notNullValue()));
     assertThat(event.getMetadata().get(ID), is(event.getId()));
     assertThat(event.getMetadata().get(ID), is(event.getMetadata().getMessageId()));
     assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
     assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
-    assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
-    assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     // Payload
     assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
     assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
@@ -129,15 +134,15 @@ class EventifyTest {
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
+    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(notNullValue()));
+    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(commandResult.getMetadata().get(ID), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
     assertThat(commandResult.getMetadata().get(ID), is(commandResult.getMetadata().getMessageId()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
-    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
-    assertThat(commandResult.getMetadata().get(Metadata.RESULT), is("success"));
+    assertThat(commandResult.getMetadata().get(RESULT), is("success"));
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
   }
