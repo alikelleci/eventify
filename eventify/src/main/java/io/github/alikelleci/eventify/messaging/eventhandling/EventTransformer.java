@@ -16,24 +16,24 @@ import java.util.Comparator;
 @Slf4j
 public class EventTransformer implements ValueTransformerWithKey<String, JsonNode, Event> {
 
-  private final EventifyConfig eventifyConfig;
+  private final EventifyConfig config;
 
   private Repository repository;
 
-  public EventTransformer(EventifyConfig eventifyConfig) {
-    this.eventifyConfig = eventifyConfig;
+  public EventTransformer(EventifyConfig config) {
+    this.config = config;
   }
 
   @Override
   public void init(ProcessorContext processorContext) {
-    this.repository = new Repository(processorContext, eventifyConfig);
+    this.repository = new Repository(processorContext, config);
   }
 
   @Override
   public Event transform(String key, JsonNode jsonNode) {
-    Event event = UpcasterUtil.upcast(eventifyConfig, jsonNode);
+    Event event = UpcasterUtil.upcast(config, jsonNode);
 
-    Collection<EventHandler> handlers = eventifyConfig.getHandlers().eventHandlers().get(event.getPayload().getClass());
+    Collection<EventHandler> handlers = config.getHandlers().eventHandlers().get(event.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(handlers)) {
       handlers.stream()
           .sorted(Comparator.comparingInt(EventHandler::getPriority).reversed())
@@ -41,7 +41,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, JsonNod
               handler.apply(event));
     }
 
-    EventSourcingHandler eventSourcingHandler = eventifyConfig.getHandlers().eventSourcingHandlers().get(event.getPayload().getClass());
+    EventSourcingHandler eventSourcingHandler = config.getHandlers().eventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
       repository.saveEvent(event);
     }

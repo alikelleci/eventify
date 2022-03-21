@@ -20,7 +20,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.REVISION;
 @UtilityClass
 public class UpcasterUtil {
 
-  public Event upcast(EventifyConfig eventifyConfig, JsonNode jsonNode) {
+  public Event upcast(EventifyConfig config, JsonNode jsonNode) {
     JsonNode payload = jsonNode.get("payload");
     if (payload == null) {
       return null;
@@ -34,7 +34,7 @@ public class UpcasterUtil {
       return null;
     }
 
-    Collection<Upcaster> upcasters = eventifyConfig.getHandlers().upcasters().get(className);
+    Collection<Upcaster> upcasters = config.getHandlers().upcasters().get(className);
     if (CollectionUtils.isEmpty(upcasters)) {
       return JacksonUtils.enhancedObjectMapper().convertValue(jsonNode, Event.class);
     }

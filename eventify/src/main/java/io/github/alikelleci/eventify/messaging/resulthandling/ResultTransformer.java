@@ -18,10 +18,10 @@ import java.util.Comparator;
 @Slf4j
 public class ResultTransformer implements ValueTransformerWithKey<String, Command, Command> {
 
-  private final EventifyConfig eventifyConfig;
+  private final EventifyConfig config;
 
-  public ResultTransformer(EventifyConfig eventifyConfig) {
-    this.eventifyConfig = eventifyConfig;
+  public ResultTransformer(EventifyConfig config) {
+    this.config = config;
   }
 
   @Override
@@ -30,7 +30,7 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
 
   @Override
   public Command transform(String key, Command command) {
-    Collection<ResultHandler> handlers = eventifyConfig.getHandlers().resultHandlers().get(command.getPayload().getClass());
+    Collection<ResultHandler> handlers = config.getHandlers().resultHandlers().get(command.getPayload().getClass());
     if (CollectionUtils.isEmpty(handlers)) {
       return null;
     }

@@ -19,10 +19,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PayloadTransformer implements ValueTransformerWithKey<String, JsonNode, JsonNode> {
 
-  private final EventifyConfig eventifyConfig;
+  private final EventifyConfig config;
 
-  public PayloadTransformer(EventifyConfig eventifyConfig) {
-    this.eventifyConfig = eventifyConfig;
+  public PayloadTransformer(EventifyConfig config) {
+    this.config = config;
   }
 
   @Override
@@ -40,7 +40,7 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
       return null;
     }
 
-    Collection<Upcaster> handlers = eventifyConfig.getHandlers().upcasters().get(className);
+    Collection<Upcaster> handlers = config.getHandlers().upcasters().get(className);
     if (CollectionUtils.isEmpty(handlers)) {
       return jsonNode;
     }

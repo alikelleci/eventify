@@ -14,22 +14,22 @@ import java.util.Optional;
 @Slf4j
 public class CommandTransformer implements ValueTransformerWithKey<String, Command, CommandResult> {
 
-  private final EventifyConfig eventifyConfig;
+  private final EventifyConfig config;
 
   private Repository repository;
 
-  public CommandTransformer(EventifyConfig eventifyConfig) {
-    this.eventifyConfig = eventifyConfig;
+  public CommandTransformer(EventifyConfig config) {
+    this.config = config;
   }
 
   @Override
   public void init(ProcessorContext processorContext) {
-    this.repository = new Repository(processorContext, eventifyConfig);
+    this.repository = new Repository(processorContext, config);
   }
 
   @Override
   public CommandResult transform(String key, Command command) {
-    CommandHandler commandHandler = eventifyConfig.getHandlers().commandHandlers().get(command.getPayload().getClass());
+    CommandHandler commandHandler = config.getHandlers().commandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       return null;
     }
@@ -54,7 +54,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
             repository.saveSnapshot(aggr);
 
             // 5. Delete events after snapshot
-            if (eventifyConfig.isDeleteEventsOnSnapshot()) {
+            if (config.isDeleteEventsOnSnapshot()) {
               log.debug("Events prior to this snapshot will be deleted");
               repository.deleteEvents(aggr);
             }
