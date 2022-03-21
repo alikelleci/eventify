@@ -223,10 +223,6 @@ public class Eventify {
     }));
   }
 
-  public Builder getBuilder() {
-    return builder;
-  }
-
   @Getter
   public static class Builder {
     private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
@@ -300,26 +296,6 @@ public class Eventify {
       return new Eventify(this);
     }
 
-    public MultiValuedMap<String, Upcaster> getUpcasters() {
-      return upcasters;
-    }
-
-    public Map<Class<?>, CommandHandler> getCommandHandlers() {
-      return commandHandlers;
-    }
-
-    public Map<Class<?>, EventSourcingHandler> getEventSourcingHandlers() {
-      return eventSourcingHandlers;
-    }
-
-    public MultiValuedMap<Class<?>, ResultHandler> getResultHandlers() {
-      return resultHandlers;
-    }
-
-    public MultiValuedMap<Class<?>, EventHandler> getEventHandlers() {
-      return eventHandlers;
-    }
-
     public Set<String> getCommandTopics() {
       return commandHandlers.keySet().stream()
           .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
@@ -347,22 +323,6 @@ public class Eventify {
           .map(TopicInfo::value)
           .map(topic -> topic.concat(".results"))
           .collect(Collectors.toSet());
-    }
-
-    public Properties getStreamsConfig() {
-      return streamsConfig;
-    }
-
-    public StateListener getStateListener() {
-      return stateListener;
-    }
-
-    public StreamsUncaughtExceptionHandler getUncaughtExceptionHandler() {
-      return uncaughtExceptionHandler;
-    }
-
-    public boolean isDeleteEventsOnSnapshot() {
-      return deleteEventsOnSnapshot;
     }
 
     private void addUpcaster(Object listener, Method method) {
