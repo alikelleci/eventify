@@ -1,17 +1,11 @@
 package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.example.domain.CustomerCommand;
-import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
-import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerUpcaster;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import org.apache.kafka.common.serialization.Serdes;
@@ -33,12 +27,11 @@ import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
+import static io.github.alikelleci.eventify.messaging.Metadata.REVISION;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.startsWith;
 
 class UpcasterTest {
 
@@ -100,6 +93,10 @@ class UpcasterTest {
     // Assert Command Result
     Event upcastedEvent = eventsOut.readValue();
     System.out.println(upcastedEvent);
+
+    assertThat(upcastedEvent, is(notNullValue()));
+    assertThat(upcastedEvent.getMetadata().get(REVISION), is(String.valueOf(4)));
+
 
   }
 
