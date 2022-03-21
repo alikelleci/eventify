@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
@@ -190,13 +191,14 @@ public class Eventify {
 
     if (!config.topics().events().isEmpty()) {
       // --> Events
-      KStream<String, Event> events = builder.stream(config.topics().events(), Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
+      KStream<String, JsonNode> events = builder.stream(config.topics().events(), Consumed.with(Serdes.String(), CustomSerdes.Json(JsonNode.class)))
           .filter((key, event) -> key != null)
           .filter((key, event) -> event != null);
 
       // Events --> Void
       events
-          .transformValues(() -> new EventTransformer(config), "event-store", "snapshot-store");
+          .transformValues(() -> new EventTransformer(config), "event-store", "snapshot-store")
+          .to("upcasted-events", Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
     }
 
     /*
