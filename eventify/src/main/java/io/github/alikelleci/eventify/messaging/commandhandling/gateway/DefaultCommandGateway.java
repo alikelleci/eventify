@@ -77,8 +77,6 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
 
   @Override
   public CompletableFuture<Object> send(Object payload, Metadata metadata) {
-    validatePayload(payload);
-
     if (metadata == null) {
       metadata = new Metadata();
     }
@@ -90,6 +88,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
             .add(Metadata.REPLY_TO, replyTopic))
         .build();
 
+    validatePayload(command);
     ProducerRecord<String, Message> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
     log.debug("Sending command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());

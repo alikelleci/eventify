@@ -39,8 +39,6 @@ public class DefaultEventGateway implements EventGateway {
 
   @Override
   public void publish(Object payload, Metadata metadata) {
-    validatePayload(payload);
-
     if (metadata == null) {
       metadata = new Metadata();
     }
@@ -51,6 +49,7 @@ public class DefaultEventGateway implements EventGateway {
             .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString()))
         .build();
 
+    validatePayload(event);
     ProducerRecord<String, Message> record = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
 
     log.debug("Publishing event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
