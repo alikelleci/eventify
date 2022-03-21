@@ -30,7 +30,7 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
 
   @Override
   public Command transform(String key, Command command) {
-    Collection<ResultHandler> handlers = config.handlers.RESULT_HANDLERS.get(command.getPayload().getClass());
+    Collection<ResultHandler> handlers = config.handlers().resultHandlers().get(command.getPayload().getClass());
     if (CollectionUtils.isEmpty(handlers)) {
       return null;
     }

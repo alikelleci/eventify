@@ -29,7 +29,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
 
   @Override
   public CommandResult transform(String key, Command command) {
-    CommandHandler commandHandler = config.handlers.COMMAND_HANDLERS.get(command.getPayload().getClass());
+    CommandHandler commandHandler = config.handlers().commandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       return null;
     }
@@ -54,7 +54,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
             repository.saveSnapshot(aggr);
 
             // 5. Delete events after snapshot
-            if (config.deleteEventsOnSnapshot) {
+            if (config.isDeleteEventsOnSnapshot()) {
               log.debug("Events prior to this snapshot will be deleted");
               repository.deleteEvents(aggr);
             }

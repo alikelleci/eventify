@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify;
 
+import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
@@ -10,38 +11,138 @@ import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
+import org.springframework.core.annotation.AnnotationUtils;
 
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 public class Config {
 
-  public final Handlers handlers = new Handlers();
-  public final Topics topics = new Topics();
+  private final Handlers handlers;
+  private final Topics topics;
 
-  public StateListener stateListener = (newState, oldState) ->
+  private StateListener stateListener = (newState, oldState) ->
       log.warn("State changed from {} to {}", oldState, newState);
 
-  public StreamsUncaughtExceptionHandler uncaughtExceptionHandler = (throwable) ->
+  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler = (throwable) ->
       StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
 
-  public boolean deleteEventsOnSnapshot;
+  private boolean deleteEventsOnSnapshot;
 
+  protected Config() {
+    this.handlers = new Handlers();
+    this.topics = new Topics(this.handlers);
+  }
+
+  public Handlers handlers() {
+    return handlers;
+  }
+
+  public Topics topics() {
+    return topics;
+  }
+
+  public Config setStateListener(StateListener stateListener) {
+    this.stateListener = stateListener;
+    return this;
+  }
+
+  public Config setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+    this.uncaughtExceptionHandler = uncaughtExceptionHandler;
+    return this;
+  }
+
+  public Config setDeleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
+    this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
+    return this;
+  }
+
+
+  public StateListener stateListener() {
+    return stateListener;
+  }
+
+  public StreamsUncaughtExceptionHandler uncaughtExceptionHandler() {
+    return uncaughtExceptionHandler;
+  }
+
+  public boolean isDeleteEventsOnSnapshot() {
+    return deleteEventsOnSnapshot;
+  }
 
   public static class Handlers {
-    public final MultiValuedMap<String, Upcaster> UPCASTERS = new ArrayListValuedHashMap<>();
-    public final Map<Class<?>, CommandHandler> COMMAND_HANDLERS = new HashMap<>();
-    public final Map<Class<?>, EventSourcingHandler> EVENT_SOURCING_HANDLERS = new HashMap<>();
-    public final MultiValuedMap<Class<?>, ResultHandler> RESULT_HANDLERS = new ArrayListValuedHashMap<>();
-    public final MultiValuedMap<Class<?>, EventHandler> EVENT_HANDLERS = new ArrayListValuedHashMap<>();
+    private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+    private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
+    private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
+    private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
+    private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
+
+    private Handlers() {
+    }
+
+    public MultiValuedMap<String, Upcaster> upcasters() {
+      return upcasters;
+    }
+
+    public Map<Class<?>, CommandHandler> commandHandlers() {
+      return commandHandlers;
+    }
+
+    public Map<Class<?>, EventSourcingHandler> eventSourcingHandlers() {
+      return eventSourcingHandlers;
+    }
+
+    public MultiValuedMap<Class<?>, ResultHandler> resultHandlers() {
+      return resultHandlers;
+    }
+
+    public MultiValuedMap<Class<?>, EventHandler> eventHandlers() {
+      return eventHandlers;
+    }
   }
 
   static class Topics {
-    public final Set<String> COMMANDS = new HashSet<>();
-    public final Set<String> EVENTS = new HashSet<>();
-    public final Set<String> RESULTS = new HashSet<>();
+    private Handlers handlers;
+
+    private Topics(Handlers handlers) {
+      this.handlers = handlers;
+    }
+
+    public Set<String> commands() {
+      return handlers.commandHandlers.keySet().stream()
+          .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+          .filter(Objects::nonNull)
+          .map(TopicInfo::value)
+          .collect(Collectors.toSet());
+    }
+
+    public Set<String> events() {
+      return Stream.of(
+          handlers.eventHandlers.keySet(),
+          handlers.eventSourcingHandlers.keySet()
+      )
+          .flatMap(Collection::stream)
+          .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+          .filter(Objects::nonNull)
+          .map(TopicInfo::value)
+          .collect(Collectors.toSet());
+    }
+
+    public Set<String> results() {
+      return handlers.resultHandlers.keySet().stream()
+          .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+          .filter(Objects::nonNull)
+          .map(TopicInfo::value)
+          .map(topic -> topic.concat(".results"))
+          .collect(Collectors.toSet());
+    }
+
+
   }
 }

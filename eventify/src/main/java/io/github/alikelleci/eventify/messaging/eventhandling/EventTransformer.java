@@ -29,7 +29,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
   @Override
   public Event transform(String key, Event event) {
-    Collection<EventHandler> handlers = config.handlers.EVENT_HANDLERS.get(event.getPayload().getClass());
+    Collection<EventHandler> handlers = config.handlers().eventHandlers().get(event.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(handlers)) {
       handlers.stream()
           .sorted(Comparator.comparingInt(EventHandler::getPriority).reversed())
@@ -37,7 +37,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
               handler.apply(event));
     }
 
-    EventSourcingHandler eventSourcingHandler = config.handlers.EVENT_SOURCING_HANDLERS.get(event.getPayload().getClass());
+    EventSourcingHandler eventSourcingHandler = config.handlers().eventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
       repository.saveEvent(event);
     }
