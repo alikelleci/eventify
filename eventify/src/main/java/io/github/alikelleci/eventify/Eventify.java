@@ -211,6 +211,9 @@ public class Eventify {
     }));
   }
 
+  protected EventifyConfig getConfig() {
+    return config;
+  }
 
   public static class EventifyBuilder {
     private EventifyConfig config = new EventifyConfig();
