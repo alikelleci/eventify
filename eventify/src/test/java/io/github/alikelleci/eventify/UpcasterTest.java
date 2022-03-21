@@ -90,12 +90,13 @@ class UpcasterTest {
 
     events.pipeInput(event.getAggregateId(), event);
 
-    // Assert Command Result
+    // Assert Event
     Event upcastedEvent = eventsOut.readValue();
-    System.out.println(upcastedEvent);
-
     assertThat(upcastedEvent, is(notNullValue()));
+    // Metadata
     assertThat(upcastedEvent.getMetadata().get(REVISION), is(String.valueOf(4)));
+    // Payload
+    assertThat(((CustomerCreated) upcastedEvent.getPayload()).getFirstName(), is("John v3 -> v4"));
 
 
   }
