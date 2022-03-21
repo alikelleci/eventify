@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.messaging.upcasting;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.github.alikelleci.eventify.EventifyConfig;
+import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.util.JacksonUtils;
@@ -20,7 +20,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.REVISION;
 @UtilityClass
 public class UpcasterUtil {
 
-  public Event upcast(EventifyConfig config, JsonNode jsonNode) {
+  public Event upcast(Eventify.Builder builder, JsonNode jsonNode) {
     JsonNode payload = jsonNode.get("payload");
     if (payload == null) {
       return null;
@@ -34,7 +34,7 @@ public class UpcasterUtil {
       return null;
     }
 
-    Collection<Upcaster> upcasters = config.getHandlers().upcasters().get(className);
+    Collection<Upcaster> upcasters = builder.getUpcasters().get(className);
     if (CollectionUtils.isEmpty(upcasters)) {
       return JacksonUtils.enhancedObjectMapper().convertValue(jsonNode, Event.class);
     }

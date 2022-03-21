@@ -66,7 +66,7 @@ class EventifyTest {
         .registerHandler(new CustomerUpcaster())
         .build();
 
-    testDriver = new TopologyTestDriver(eventify.topology(), eventify.getConfig().getStreamsConfig());
+    testDriver = new TopologyTestDriver(eventify.topology(), properties);
 
     commands = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), CustomSerdes.Json(Command.class).serializer());

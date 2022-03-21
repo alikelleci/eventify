@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.EventifyConfig;
+import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Repository;
@@ -14,22 +14,22 @@ import java.util.Optional;
 @Slf4j
 public class CommandTransformer implements ValueTransformerWithKey<String, Command, CommandResult> {
 
-  private final EventifyConfig config;
+  private final Eventify.Builder builder;
 
   private Repository repository;
 
-  public CommandTransformer(EventifyConfig config) {
-    this.config = config;
+  public CommandTransformer(Eventify.Builder builder) {
+    this.builder = builder;
   }
 
   @Override
   public void init(ProcessorContext processorContext) {
-    this.repository = new Repository(processorContext, config);
+    this.repository = new Repository(processorContext, builder);
   }
 
   @Override
   public CommandResult transform(String key, Command command) {
-    CommandHandler commandHandler = config.getHandlers().commandHandlers().get(command.getPayload().getClass());
+    CommandHandler commandHandler = builder.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       return null;
     }
@@ -54,7 +54,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
             repository.saveSnapshot(aggr);
 
             // 5. Delete events after snapshot
-            if (config.isDeleteEventsOnSnapshot()) {
+            if (builder.isDeleteEventsOnSnapshot()) {
               log.debug("Events prior to this snapshot will be deleted");
               repository.deleteEvents(aggr);
             }

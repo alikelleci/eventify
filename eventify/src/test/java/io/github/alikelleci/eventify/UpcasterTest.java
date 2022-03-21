@@ -61,7 +61,7 @@ class UpcasterTest {
         .registerHandler(new CustomerUpcaster())
         .build();
 
-    testDriver = new TopologyTestDriver(eventify.topology(), eventify.getConfig().getStreamsConfig());
+    testDriver = new TopologyTestDriver(eventify.topology(), properties);
 
     events = testDriver.createInputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), CustomSerdes.Json(Event.class).serializer());
