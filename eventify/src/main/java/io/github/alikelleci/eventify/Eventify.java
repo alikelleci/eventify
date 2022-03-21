@@ -53,8 +53,8 @@ public class Eventify {
     this.config = config;
   }
 
-  public static EventifyBuilder builder() {
-    return new EventifyBuilder();
+  public static Builder builder() {
+    return new Builder();
   }
 
   protected Topology topology() {
@@ -215,10 +215,10 @@ public class Eventify {
     return config;
   }
 
-  public static class EventifyBuilder {
+  public static class Builder {
     private EventifyConfig config = new EventifyConfig();
 
-    public EventifyBuilder streamsConfig(Properties streamsConfig) {
+    public Builder streamsConfig(Properties streamsConfig) {
       streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
       streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
       streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
@@ -234,7 +234,7 @@ public class Eventify {
       return this;
     }
 
-    public EventifyBuilder registerHandler(Object handler) {
+    public Builder registerHandler(Object handler) {
       List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
       List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
       List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
@@ -294,17 +294,17 @@ public class Eventify {
       }
     }
 
-    public EventifyBuilder stateListener(StateListener stateListener) {
+    public Builder stateListener(StateListener stateListener) {
       this.config.setStateListener(stateListener);
       return this;
     }
 
-    public EventifyBuilder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+    public Builder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
       this.config.setUncaughtExceptionHandler(uncaughtExceptionHandler);
       return this;
     }
 
-    public EventifyBuilder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
+    public Builder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
       this.config.setDeleteEventsOnSnapshot(deleteEventsOnSnapshot);
       return this;
     }

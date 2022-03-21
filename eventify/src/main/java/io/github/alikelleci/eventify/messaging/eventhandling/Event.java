@@ -28,33 +28,33 @@ public class Event extends Message {
     this.aggregateId = aggregateId;
   }
 
-  public static EventBuilder builder() {
-    return new EventBuilder();
+  public static Builder builder() {
+    return new Builder();
   }
 
-  public static class EventBuilder {
+  public static class Builder {
     private Instant timestamp;
     private Object payload;
     private Metadata metadata;
 
     private String aggregateId;
 
-    public EventBuilder timestamp(Instant timestamp) {
+    public Builder timestamp(Instant timestamp) {
       this.timestamp = timestamp;
       return this;
     }
 
-    public EventBuilder payload(Object payload) {
+    public Builder payload(Object payload) {
       this.payload = payload;
       return this;
     }
 
-    public EventBuilder metadata(Metadata metadata) {
+    public Builder metadata(Metadata metadata) {
       this.metadata = metadata;
       return this;
     }
 
-    protected EventBuilder aggregateId(String aggregateId) {
+    protected Builder aggregateId(String aggregateId) {
       this.aggregateId = aggregateId;
       return this;
     }

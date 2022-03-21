@@ -28,33 +28,33 @@ public class Command extends Message {
     this.aggregateId = aggregateId;
   }
 
-  public static CommandBuilder builder() {
-    return new CommandBuilder();
+  public static Builder builder() {
+    return new Builder();
   }
 
-  public static class CommandBuilder {
+  public static class Builder {
     private Instant timestamp;
     private Object payload;
     private Metadata metadata;
 
     private String aggregateId;
 
-    public CommandBuilder timestamp(Instant timestamp) {
+    public Builder timestamp(Instant timestamp) {
       this.timestamp = timestamp;
       return this;
     }
 
-    public CommandBuilder payload(Object payload) {
+    public Builder payload(Object payload) {
       this.payload = payload;
       return this;
     }
 
-    public CommandBuilder metadata(Metadata metadata) {
+    public Builder metadata(Metadata metadata) {
       this.metadata = metadata;
       return this;
     }
 
-    protected CommandBuilder aggregateId(String aggregateId) {
+    protected Builder aggregateId(String aggregateId) {
       this.aggregateId = aggregateId;
       return this;
     }

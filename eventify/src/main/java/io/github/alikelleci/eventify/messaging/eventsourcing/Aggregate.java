@@ -46,11 +46,11 @@ public class Aggregate extends Message {
         .orElse(0);
   }
 
-  public static AggregateBuilder builder() {
-    return new AggregateBuilder();
+  public static Builder builder() {
+    return new Builder();
   }
 
-  public static class AggregateBuilder {
+  public static class Builder {
     private Instant timestamp;
     private Object payload;
     private Metadata metadata;
@@ -59,32 +59,32 @@ public class Aggregate extends Message {
     private String eventId;
     private long version;
 
-    public AggregateBuilder timestamp(Instant timestamp) {
+    public Builder timestamp(Instant timestamp) {
       this.timestamp = timestamp;
       return this;
     }
 
-    public AggregateBuilder payload(Object payload) {
+    public Builder payload(Object payload) {
       this.payload = payload;
       return this;
     }
 
-    public AggregateBuilder metadata(Metadata metadata) {
+    public Builder metadata(Metadata metadata) {
       this.metadata = metadata;
       return this;
     }
 
-    protected AggregateBuilder aggregateId(String aggregateId) {
+    protected Builder aggregateId(String aggregateId) {
       this.aggregateId = aggregateId;
       return this;
     }
 
-    public AggregateBuilder eventId(String eventId) {
+    public Builder eventId(String eventId) {
       this.eventId = eventId;
       return this;
     }
 
-    public AggregateBuilder version(long version) {
+    public Builder version(long version) {
       this.version = version;
       return this;
     }
