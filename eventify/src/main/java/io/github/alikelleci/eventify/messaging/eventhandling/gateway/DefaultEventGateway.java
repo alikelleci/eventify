@@ -10,7 +10,6 @@ import java.util.UUID;
 @Slf4j
 public class DefaultEventGateway extends AbstractEventGateway implements EventGateway {
 
-
   protected DefaultEventGateway(Properties producerConfig) {
     super(producerConfig);
   }

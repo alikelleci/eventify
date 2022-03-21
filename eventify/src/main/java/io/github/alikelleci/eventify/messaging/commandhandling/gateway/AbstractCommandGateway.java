@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
+import io.github.alikelleci.eventify.messaging.AbstractMessageListener;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
@@ -13,11 +14,13 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import java.util.Properties;
 
 @Slf4j
-public abstract class AbstractCommandGateway {
+public abstract class AbstractCommandGateway extends AbstractMessageListener {
 
   private final Producer<String, Message> producer;
 
-  protected AbstractCommandGateway(Properties producerConfig) {
+  protected AbstractCommandGateway(Properties producerConfig, Properties consumerConfig) {
+    super(consumerConfig);
+
     producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     producerConfig.putIfAbsent(ProducerConfig.ACKS_CONFIG, "all");
