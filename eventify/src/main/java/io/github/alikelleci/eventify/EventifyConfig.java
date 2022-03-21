@@ -6,6 +6,9 @@ import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
+import lombok.AccessLevel;
+import lombok.Data;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
@@ -17,60 +20,35 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
-public class Config {
-
+@Data
+public class EventifyConfig {
+  private Properties streamsConfig;
+  @Setter(AccessLevel.NONE)
   private final Handlers handlers;
+  @Setter(AccessLevel.NONE)
   private final Topics topics;
-
-  private StateListener stateListener = (newState, oldState) ->
-      log.warn("State changed from {} to {}", oldState, newState);
-
-  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler = (throwable) ->
-      StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
-
+  private StateListener stateListener;
+  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private boolean deleteEventsOnSnapshot;
 
-  protected Config() {
+  protected EventifyConfig() {
+    this.streamsConfig = new Properties();
     this.handlers = new Handlers();
     this.topics = new Topics(this.handlers);
+
+    this.stateListener = (newState, oldState) ->
+        log.warn("State changed from {} to {}", oldState, newState);
+
+    this.uncaughtExceptionHandler = (throwable) ->
+        StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
   }
 
-  public Handlers handlers() {
-    return handlers;
-  }
-
-  public Topics topics() {
-    return topics;
-  }
-
-  public void setStateListener(StateListener stateListener) {
-    this.stateListener = stateListener;
-  }
-
-  public void setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
-    this.uncaughtExceptionHandler = uncaughtExceptionHandler;
-  }
-
-  public void setDeleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
-    this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
-  }
-
-  public StateListener stateListener() {
-    return stateListener;
-  }
-
-  public StreamsUncaughtExceptionHandler uncaughtExceptionHandler() {
-    return uncaughtExceptionHandler;
-  }
-
-  public boolean isDeleteEventsOnSnapshot() {
-    return deleteEventsOnSnapshot;
-  }
 
   public static class Handlers {
     private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();

@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.messaging.upcasting;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.alikelleci.eventify.Config;
+import io.github.alikelleci.eventify.EventifyConfig;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import org.apache.commons.collections4.CollectionUtils;
@@ -19,10 +19,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class PayloadTransformer implements ValueTransformerWithKey<String, JsonNode, JsonNode> {
 
-  private final Config config;
+  private final EventifyConfig eventifyConfig;
 
-  public PayloadTransformer(Config config) {
-    this.config = config;
+  public PayloadTransformer(EventifyConfig eventifyConfig) {
+    this.eventifyConfig = eventifyConfig;
   }
 
   @Override
@@ -40,7 +40,7 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
       return null;
     }
 
-    Collection<Upcaster> handlers = config.handlers().upcasters().get(className);
+    Collection<Upcaster> handlers = eventifyConfig.getHandlers().upcasters().get(className);
     if (CollectionUtils.isEmpty(handlers)) {
       return jsonNode;
     }

@@ -58,12 +58,13 @@ class EventifyTest {
     properties.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
     properties.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
 
-    Eventify eventify = new Eventify(properties)
+    Eventify eventify = Eventify.builder()
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
         .registerHandler(new CustomerEventHandler())
         .registerHandler(new CustomerResultHandler())
-        .registerHandler(new CustomerUpcaster());
+        .registerHandler(new CustomerUpcaster())
+        .build();
 
     testDriver = new TopologyTestDriver(eventify.topology(), properties);
 

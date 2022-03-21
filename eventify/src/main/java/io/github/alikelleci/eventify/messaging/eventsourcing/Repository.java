@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.Config;
+import io.github.alikelleci.eventify.EventifyConfig;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -16,12 +16,12 @@ public class Repository {
 
   private final TimestampedKeyValueStore<String, Event> eventStore;
   private final TimestampedKeyValueStore<String, Aggregate> snapshotStore;
-  private final Config config;
+  private final EventifyConfig eventifyConfig;
 
-  public Repository(ProcessorContext context, Config config) {
+  public Repository(ProcessorContext context, EventifyConfig eventifyConfig) {
     this.eventStore = context.getStateStore("event-store");
     this.snapshotStore = context.getStateStore("snapshot-store");
-    this.config = config;
+    this.eventifyConfig = eventifyConfig;
   }
 
   public Aggregate loadAggregate(String aggregateId) {
@@ -44,7 +44,7 @@ public class Repository {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
-          EventSourcingHandler eventSourcingHandler = config.handlers().eventSourcingHandlers().get(event.getPayload().getClass());
+          EventSourcingHandler eventSourcingHandler = eventifyConfig.getHandlers().eventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             aggregate = eventSourcingHandler.apply(event, aggregate);
 

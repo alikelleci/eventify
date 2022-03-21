@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.messaging.resulthandling;
 
-import io.github.alikelleci.eventify.Config;
+import io.github.alikelleci.eventify.EventifyConfig;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleFailure;
@@ -18,10 +18,10 @@ import java.util.Comparator;
 @Slf4j
 public class ResultTransformer implements ValueTransformerWithKey<String, Command, Command> {
 
-  private final Config config;
+  private final EventifyConfig eventifyConfig;
 
-  public ResultTransformer(Config config) {
-    this.config = config;
+  public ResultTransformer(EventifyConfig eventifyConfig) {
+    this.eventifyConfig = eventifyConfig;
   }
 
   @Override
@@ -30,7 +30,7 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
 
   @Override
   public Command transform(String key, Command command) {
-    Collection<ResultHandler> handlers = config.handlers().resultHandlers().get(command.getPayload().getClass());
+    Collection<ResultHandler> handlers = eventifyConfig.getHandlers().resultHandlers().get(command.getPayload().getClass());
     if (CollectionUtils.isEmpty(handlers)) {
       return null;
     }

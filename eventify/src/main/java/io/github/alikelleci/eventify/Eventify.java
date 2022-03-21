@@ -46,83 +46,15 @@ import java.util.Properties;
 
 @Slf4j
 public class Eventify {
-  private Config config = new Config();
-
-  private final Properties streamsConfig;
+  private final EventifyConfig config;
   private KafkaStreams kafkaStreams;
 
-  public Eventify(Properties streamsConfig) {
-    this.streamsConfig = streamsConfig;
-    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
-    this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
-    this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
-
-//    ArrayList<String> interceptors = new ArrayList<>();
-//    interceptors.add(CommonProducerInterceptor.class.getName());
-//
-//    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
+  protected Eventify(EventifyConfig config) {
+    this.config = config;
   }
 
-  public Eventify registerHandler(Object handler) {
-    List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
-    List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
-    List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
-    List<Method> resultHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
-    List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-
-    upcasterMethods
-        .forEach(method -> addUpcaster(handler, method));
-
-    commandHandlerMethods
-        .forEach(method -> addCommandHandler(handler, method));
-
-    eventSourcingMethods
-        .forEach(method -> addEventSourcingHandler(handler, method));
-
-    resultHandlerMethods
-        .forEach(method -> addResultHandler(handler, method));
-
-    eventHandlerMethods
-        .forEach(method -> addEventHandler(handler, method));
-
-    return this;
-  }
-
-  private void addUpcaster(Object listener, Method method) {
-    if (method.getParameterCount() == 1) {
-      String type = method.getAnnotation(Upcast.class).type();
-      config.handlers().upcasters().put(type, new Upcaster(listener, method));
-    }
-  }
-
-  private void addCommandHandler(Object listener, Method method) {
-    if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-      Class<?> type = method.getParameters()[0].getType();
-      config.handlers().commandHandlers().put(type, new CommandHandler(listener, method));
-    }
-  }
-
-  private void addEventSourcingHandler(Object listener, Method method) {
-    if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-      Class<?> type = method.getParameters()[0].getType();
-      config.handlers().eventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
-    }
-  }
-
-  private void addResultHandler(Object listener, Method method) {
-    if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
-      Class<?> type = method.getParameters()[0].getType();
-      config.handlers().resultHandlers().put(type, new ResultHandler(listener, method));
-    }
-  }
-
-  private void addEventHandler(Object listener, Method method) {
-    if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
-      Class<?> type = method.getParameters()[0].getType();
-      config.handlers().eventHandlers().put(type, new EventHandler(listener, method));
-    }
+  public static EventifyBuilder builder() {
+    return new EventifyBuilder();
   }
 
   protected Topology topology() {
@@ -149,9 +81,9 @@ public class Eventify {
      * COMMAND HANDLING
      * -------------------------------------------------------------
      */
-    if (!config.topics().commands().isEmpty()) {
+    if (!config.getTopics().commands().isEmpty()) {
       // --> Commands
-      KStream<String, Command> commands = builder.stream(config.topics().commands(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+      KStream<String, Command> commands = builder.stream(config.getTopics().commands(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
           .filter((key, command) -> key != null)
           .filter((key, command) -> command != null);
 
@@ -189,9 +121,9 @@ public class Eventify {
      * -------------------------------------------------------------
      */
 
-    if (!config.topics().events().isEmpty()) {
+    if (!config.getTopics().events().isEmpty()) {
       // --> Events
-      KStream<String, JsonNode> events = builder.stream(config.topics().events(), Consumed.with(Serdes.String(), CustomSerdes.Json(JsonNode.class)))
+      KStream<String, JsonNode> events = builder.stream(config.getTopics().events(), Consumed.with(Serdes.String(), CustomSerdes.Json(JsonNode.class)))
           .filter((key, event) -> key != null)
           .filter((key, event) -> event != null);
 
@@ -207,9 +139,9 @@ public class Eventify {
      * -------------------------------------------------------------
      */
 
-    if (!config.topics().results().isEmpty()) {
+    if (!config.getTopics().results().isEmpty()) {
       // --> Results
-      KStream<String, Command> results = builder.stream(config.topics().results(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+      KStream<String, Command> results = builder.stream(config.getTopics().results(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
           .filter((key, command) -> key != null)
           .filter((key, command) -> command != null);
 
@@ -234,7 +166,7 @@ public class Eventify {
       return;
     }
 
-    this.kafkaStreams = new KafkaStreams(topology, streamsConfig);
+    this.kafkaStreams = new KafkaStreams(topology, this.config.getStreamsConfig());
     setUpListeners();
 
     log.info("Eventify is starting...");
@@ -253,8 +185,8 @@ public class Eventify {
   }
 
   private void setUpListeners() {
-    kafkaStreams.setStateListener(config.stateListener());
-    kafkaStreams.setUncaughtExceptionHandler(config.uncaughtExceptionHandler());
+    kafkaStreams.setStateListener(config.getStateListener());
+    kafkaStreams.setUncaughtExceptionHandler(config.getUncaughtExceptionHandler());
 
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
@@ -277,20 +209,106 @@ public class Eventify {
       log.info("Eventify is shutting down...");
       kafkaStreams.close(Duration.ofMillis(1000));
     }));
+
   }
 
-  public Eventify setStateListener(StateListener stateListener) {
-    this.config.setStateListener(stateListener);
-    return this;
-  }
 
-  public Eventify setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
-    this.config.setUncaughtExceptionHandler(uncaughtExceptionHandler);
-    return this;
-  }
+  public static class EventifyBuilder {
+    private EventifyConfig config = new EventifyConfig();
 
-  public Eventify setDeleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
-    this.config.setDeleteEventsOnSnapshot(deleteEventsOnSnapshot);
-    return this;
+    public EventifyBuilder streamsConfig(Properties streamsConfig) {
+      streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+      streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+      streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
+      streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
+      streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
+
+//    ArrayList<String> interceptors = new ArrayList<>();
+//    interceptors.add(CommonProducerInterceptor.class.getName());
+//
+//    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
+
+      this.config.setStreamsConfig(streamsConfig);
+      return this;
+    }
+
+    public EventifyBuilder registerHandler(Object handler) {
+      List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
+      List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
+      List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
+      List<Method> resultHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
+      List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
+
+      upcasterMethods
+          .forEach(method -> addUpcaster(handler, method));
+
+      commandHandlerMethods
+          .forEach(method -> addCommandHandler(handler, method));
+
+      eventSourcingMethods
+          .forEach(method -> addEventSourcingHandler(handler, method));
+
+      resultHandlerMethods
+          .forEach(method -> addResultHandler(handler, method));
+
+      eventHandlerMethods
+          .forEach(method -> addEventHandler(handler, method));
+
+      return this;
+    }
+
+    private void addUpcaster(Object listener, Method method) {
+      if (method.getParameterCount() == 1) {
+        String type = method.getAnnotation(Upcast.class).type();
+        config.getHandlers().upcasters().put(type, new Upcaster(listener, method));
+      }
+    }
+
+    private void addCommandHandler(Object listener, Method method) {
+      if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
+        Class<?> type = method.getParameters()[0].getType();
+        config.getHandlers().commandHandlers().put(type, new CommandHandler(listener, method));
+      }
+    }
+
+    private void addEventSourcingHandler(Object listener, Method method) {
+      if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
+        Class<?> type = method.getParameters()[0].getType();
+        config.getHandlers().eventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
+      }
+    }
+
+    private void addResultHandler(Object listener, Method method) {
+      if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
+        Class<?> type = method.getParameters()[0].getType();
+        config.getHandlers().resultHandlers().put(type, new ResultHandler(listener, method));
+      }
+    }
+
+    private void addEventHandler(Object listener, Method method) {
+      if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
+        Class<?> type = method.getParameters()[0].getType();
+        config.getHandlers().eventHandlers().put(type, new EventHandler(listener, method));
+      }
+    }
+
+    public EventifyBuilder stateListener(StateListener stateListener) {
+      this.config.setStateListener(stateListener);
+      return this;
+    }
+
+    public EventifyBuilder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+      this.config.setUncaughtExceptionHandler(uncaughtExceptionHandler);
+      return this;
+    }
+
+    public EventifyBuilder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
+      this.config.setDeleteEventsOnSnapshot(deleteEventsOnSnapshot);
+      return this;
+    }
+
+    public Eventify build() {
+      return new Eventify(this.config);
+    }
   }
 }
