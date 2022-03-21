@@ -8,7 +8,6 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
-import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -17,13 +16,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.CooperativeStickyAssignor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -33,33 +27,19 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public class DefaultCommandGateway implements CommandGateway, MessageListener {
+public class DefaultCommandGateway extends AbstractCommandGateway implements CommandGateway, MessageListener {
 
   //private final Map<String, CompletableFuture<Object>> futures = new ConcurrentHashMap<>();
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofMinutes(5))
       .build();
 
-  private final Producer<String, Message> producer;
   private final Consumer<String, Message> consumer;
   private final String replyTopic;
 
-  public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
-    producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    producerConfig.putIfAbsent(ProducerConfig.ACKS_CONFIG, "all");
-    producerConfig.putIfAbsent(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
-    producerConfig.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
 
-//    ArrayList<String> interceptors = new ArrayList<>();
-//    interceptors.add(CommonProducerInterceptor.class.getName());
-//    interceptors.add(TracingProducerInterceptor.class.getName());
-//
-//    this.producerConfig.putIfAbsent(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
-
-    this.producer = new KafkaProducer<>(producerConfig,
-        new StringSerializer(),
-        new JsonSerializer<>());
+  protected DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
+    super(producerConfig);
 
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -89,10 +69,7 @@ public class DefaultCommandGateway implements CommandGateway, MessageListener {
         .build();
 
     validatePayload(command);
-    ProducerRecord<String, Message> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
-
-    log.debug("Sending command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
-    producer.send(record);
+    super.dispatch(command);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
     cache.put(command.getId(), future);
