@@ -13,7 +13,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import java.util.Properties;
 
 @Slf4j
-public class AbstractEventGateway {
+public abstract class AbstractEventGateway {
 
   private final Producer<String, Message> producer;
 
