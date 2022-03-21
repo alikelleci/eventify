@@ -48,21 +48,17 @@ public class Config {
     return topics;
   }
 
-  public Config setStateListener(StateListener stateListener) {
+  public void setStateListener(StateListener stateListener) {
     this.stateListener = stateListener;
-    return this;
   }
 
-  public Config setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+  public void setUncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
-    return this;
   }
 
-  public Config setDeleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
+  public void setDeleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
     this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
-    return this;
   }
-
 
   public StateListener stateListener() {
     return stateListener;
