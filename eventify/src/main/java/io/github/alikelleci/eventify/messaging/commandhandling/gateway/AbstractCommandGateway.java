@@ -16,8 +16,8 @@ public abstract class AbstractCommandGateway extends AbstractCommandResultListen
 
   private final Producer<String, Command> producer;
 
-  protected AbstractCommandGateway(Properties producerConfig, Properties consumerConfig, String topic) {
-    super(consumerConfig, topic);
+  protected AbstractCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
+    super(consumerConfig, replyTopic);
 
     producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
