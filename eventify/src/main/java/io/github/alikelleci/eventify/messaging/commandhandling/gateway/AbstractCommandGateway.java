@@ -15,7 +15,7 @@ import java.util.Properties;
 @Slf4j
 public abstract class AbstractCommandGateway extends AbstractCommandListener {
 
-  private final Producer<String, Message> producer;
+  private final Producer<String, Command> producer;
 
   protected AbstractCommandGateway(Properties producerConfig, Properties consumerConfig) {
     super(consumerConfig);
@@ -38,7 +38,7 @@ public abstract class AbstractCommandGateway extends AbstractCommandListener {
   }
 
   public void dispatch(Command command) {
-    ProducerRecord<String, Message> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
+    ProducerRecord<String, Command> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
     log.debug("Sending command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
     producer.send(record);
