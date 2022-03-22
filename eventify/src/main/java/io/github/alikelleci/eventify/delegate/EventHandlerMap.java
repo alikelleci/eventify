@@ -7,34 +7,22 @@ import lombok.experimental.Delegate;
 import org.apache.commons.collections4.MultiValuedMap;
 
 import java.lang.reflect.Method;
-import java.util.List;
 
 public class EventHandlerMap implements MultiValuedMap<Class<?>, EventHandler> {
 
-  @Delegate(excludes = ExcludedMethods.class)
+  @Delegate
   private MultiValuedMap<Class<?>, EventHandler> map;
 
-  @Override
-  public boolean put(Class<?> type, EventHandler handler) {
-    List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-    eventHandlerMethods
-        .forEach(method -> addEventHandler(handler, method));
-
-    return true;
+  public void putHandler(Class<?> type, EventHandler handler) {
+    HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class)
+        .forEach(method -> add(handler, method));
   }
 
-  private void addEventHandler(Object listener, Method method) {
+  private void add(Object listener, Method method) {
     if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
       Class<?> type = method.getParameters()[0].getType();
       this.put(type, new EventHandler(listener, method));
     }
   }
 
-  /**
-   * Excluded methods that Lombok will not implement, we will implement/override these methods.
-   */
-  private abstract class ExcludedMethods {
-
-    public abstract boolean put(Class<?> type, EventHandler handler);
-  }
 }

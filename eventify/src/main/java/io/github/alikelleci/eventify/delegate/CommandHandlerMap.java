@@ -6,36 +6,22 @@ import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.experimental.Delegate;
 
 import java.lang.reflect.Method;
-import java.util.List;
 import java.util.Map;
 
 public class CommandHandlerMap implements Map<Class<?>, CommandHandler> {
 
-  @Delegate(excludes = ExcludedMethods.class)
+  @Delegate
   private Map<Class<?>, CommandHandler> map;
 
-  @Override
-  public CommandHandler put(Class<?> type, CommandHandler handler) {
-    List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
-    eventHandlerMethods
-        .forEach(method -> addCommandHandler(handler, method));
-
-    return handler;
+  public void putHandler(Object listener) {
+    HandlerUtils.findMethodsWithAnnotation(listener.getClass(), HandleCommand.class)
+        .forEach(method -> add(listener, method));
   }
 
-  private void addCommandHandler(Object listener, Method method) {
+  private void add(Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
       Class<?> type = method.getParameters()[0].getType();
       this.put(type, new CommandHandler(listener, method));
     }
-  }
-
-
-  /**
-   * Excluded methods that Lombok will not implement, we will implement/override these methods.
-   */
-  private abstract class ExcludedMethods {
-
-    public abstract boolean put(Class<?> type, CommandHandler handler);
   }
 }
