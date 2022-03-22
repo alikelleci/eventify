@@ -13,12 +13,12 @@ public class EventSourcingHandlerMap implements Map<Class<?>, EventSourcingHandl
   @Delegate
   private Map<Class<?>, EventSourcingHandler> map;
 
-  public void putHandler(Object listener) {
+  public void add(Object listener) {
     HandlerUtils.findMethodsWithAnnotation(listener.getClass(), ApplyEvent.class)
-        .forEach(method -> add(listener, method));
+        .forEach(method -> addHandler(listener, method));
   }
 
-  private void add(Object listener, Method method) {
+  private void addHandler(Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
       Class<?> type = method.getParameters()[0].getType();
       this.put(type, new EventSourcingHandler(listener, method));

@@ -13,12 +13,12 @@ public class EventHandlerMap implements MultiValuedMap<Class<?>, EventHandler> {
   @Delegate
   private MultiValuedMap<Class<?>, EventHandler> map;
 
-  public void putHandler(Object listener) {
+  public void add(Object listener) {
     HandlerUtils.findMethodsWithAnnotation(listener.getClass(), HandleEvent.class)
-        .forEach(method -> add(listener, method));
+        .forEach(method -> addHandler(listener, method));
   }
 
-  private void add(Object listener, Method method) {
+  private void addHandler(Object listener, Method method) {
     if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
       Class<?> type = method.getParameters()[0].getType();
       this.put(type, new EventHandler(listener, method));

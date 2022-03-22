@@ -13,14 +13,14 @@ public class ResultHandlerMap implements MultiValuedMap<Class<?>, ResultHandler>
   @Delegate
   private MultiValuedMap<Class<?>, ResultHandler> map;
 
-  public boolean putHandler(Object listener) {
+  public boolean add(Object listener) {
     HandlerUtils.findMethodsWithAnnotation(listener.getClass(), HandleResult.class)
-        .forEach(method -> add(listener, method));
+        .forEach(method -> addHandler(listener, method));
 
     return true;
   }
 
-  private void add(Object listener, Method method) {
+  private void addHandler(Object listener, Method method) {
     if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
       Class<?> type = method.getParameters()[0].getType();
       this.put(type, new ResultHandler(listener, method));
