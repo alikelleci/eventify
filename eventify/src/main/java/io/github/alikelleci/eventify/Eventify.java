@@ -159,8 +159,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .transformValues(() -> new EventTransformer(this), "event-store", "snapshot-store")
-          .to("upcasted-events", Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
+          .transformValues(() -> new EventTransformer(this), "event-store", "snapshot-store");
     }
 
     /*
