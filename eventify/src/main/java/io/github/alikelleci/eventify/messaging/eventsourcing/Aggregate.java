@@ -21,6 +21,12 @@ public class Aggregate extends Message {
   private String eventId;
   private long version;
 
+  protected Aggregate() {
+    this.aggregateId = null;
+    this.eventId = null;
+    this.version = 0;
+  }
+
   @Builder
   protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String aggregateId, String eventId, long version) {
     super(timestamp, payload, metadata);

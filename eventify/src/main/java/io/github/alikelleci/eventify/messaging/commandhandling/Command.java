@@ -19,6 +19,11 @@ import java.util.Optional;
 public class Command extends Message {
   private String aggregateId;
 
+
+  protected Command() {
+    this.aggregateId = null;
+  }
+
   @Builder
   protected Command(Instant timestamp, Object payload, Metadata metadata) {
     super(timestamp, payload, metadata);

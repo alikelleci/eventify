@@ -21,6 +21,10 @@ import java.util.Optional;
 public class Event extends Message {
   private String aggregateId;
 
+  protected Event() {
+    this.aggregateId = null;
+  }
+
   @Builder
   protected Event(Instant timestamp, Object payload, Metadata metadata) {
     super(timestamp, payload, metadata);

@@ -28,6 +28,9 @@ public abstract class Message {
   private Object payload;
   private Metadata metadata;
 
+  protected Message() {
+  }
+
   protected Message(Instant timestamp, Object payload, Metadata metadata) {
     this.id = Optional.ofNullable(payload)
         .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
