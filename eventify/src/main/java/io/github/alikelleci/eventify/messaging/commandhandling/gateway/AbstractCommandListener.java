@@ -1,5 +1,7 @@
-package io.github.alikelleci.eventify.messaging;
+package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
+import io.github.alikelleci.eventify.messaging.MessageListener;
+import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -14,11 +16,11 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class AbstractMessageListener implements MessageListener {
+public abstract class AbstractCommandListener implements MessageListener<Command> {
 
-  private final Consumer<String, Message> consumer;
+  private final Consumer<String, Command> consumer;
 
-  protected AbstractMessageListener(Properties consumerConfig) {
+  protected AbstractCommandListener(Properties consumerConfig) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
@@ -28,7 +30,7 @@ public abstract class AbstractMessageListener implements MessageListener {
 
     this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
-        new JsonDeserializer<>(Message.class));
+        new JsonDeserializer<>(Command.class));
   }
 
   protected void listen(String topic) {
@@ -38,7 +40,7 @@ public abstract class AbstractMessageListener implements MessageListener {
       consumer.subscribe(Collections.singletonList(topic));
       try {
         while (!closed.get()) {
-          ConsumerRecords<String, Message> consumerRecords = consumer.poll(Duration.ofMillis(1000));
+          ConsumerRecords<String, Command> consumerRecords = consumer.poll(Duration.ofMillis(1000));
           onMessage(consumerRecords);
         }
       } catch (WakeupException e) {

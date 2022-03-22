@@ -56,7 +56,7 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
   }
 
   @Override
-  public void onMessage(ConsumerRecords<String, Message> consumerRecords) {
+  public void onMessage(ConsumerRecords<String, Command> consumerRecords) {
     consumerRecords.forEach(record -> {
       String messageId = record.value().getId();
       if (StringUtils.isBlank(messageId)) {
@@ -76,7 +76,7 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
     });
   }
 
-  private Exception checkForErrors(ConsumerRecord<String, Message> record) {
+  private Exception checkForErrors(ConsumerRecord<String, Command> record) {
     Message message = record.value();
     Metadata metadata = message.getMetadata();
 
