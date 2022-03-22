@@ -24,13 +24,9 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
       .expireAfterWrite(Duration.ofMinutes(5))
       .build();
 
-  private final String replyTopic;
 
   protected DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
-    super(producerConfig, consumerConfig);
-    this.replyTopic = replyTopic;
-
-    listen(replyTopic);
+    super(producerConfig, consumerConfig, replyTopic);
   }
 
   @Override
@@ -43,7 +39,7 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
         .payload(payload)
         .metadata(metadata.filter()
             .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-            .add(Metadata.REPLY_TO, replyTopic))
+            .add(Metadata.REPLY_TO, super.getReplyTopic()))
         .build();
 
     validatePayload(command);

@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
-import io.github.alikelleci.eventify.messaging.MessageListener;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -16,11 +15,12 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class AbstractCommandListener implements MessageListener<Command> {
+public abstract class AbstractCommandResultListener {
 
   private final Consumer<String, Command> consumer;
+  private final String replyTopic;
 
-  protected AbstractCommandListener(Properties consumerConfig) {
+  protected AbstractCommandResultListener(Properties consumerConfig, String replyTopic) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
@@ -31,13 +31,17 @@ public abstract class AbstractCommandListener implements MessageListener<Command
     this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
         new JsonDeserializer<>(Command.class));
+
+    this.replyTopic = replyTopic;
+
+    this.start();
   }
 
-  protected void listen(String topic) {
+  private void start() {
     AtomicBoolean closed = new AtomicBoolean(false);
 
     Thread thread = new Thread(() -> {
-      consumer.subscribe(Collections.singletonList(topic));
+      consumer.subscribe(Collections.singletonList(this.replyTopic));
       try {
         while (!closed.get()) {
           ConsumerRecords<String, Command> consumerRecords = consumer.poll(Duration.ofMillis(1000));
@@ -58,4 +62,9 @@ public abstract class AbstractCommandListener implements MessageListener<Command
     thread.start();
   }
 
+  public abstract void onMessage(ConsumerRecords<String, Command> consumerRecords);
+
+  public String getReplyTopic() {
+    return replyTopic;
+  }
 }
