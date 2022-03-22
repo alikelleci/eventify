@@ -24,7 +24,6 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
       .expireAfterWrite(Duration.ofMinutes(5))
       .build();
 
-
   protected DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
     super(producerConfig, consumerConfig, replyTopic);
   }
