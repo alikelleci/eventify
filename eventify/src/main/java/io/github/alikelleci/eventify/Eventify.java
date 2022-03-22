@@ -198,8 +198,21 @@ public class Eventify {
   }
 
   private void setUpListeners(KafkaStreams kafkaStreams) {
-    kafkaStreams.setStateListener(getStateListener());
-    kafkaStreams.setUncaughtExceptionHandler(getUncaughtExceptionHandler());
+    if (this.stateListener == null) {
+      this.stateListener = (newState, oldState) ->
+          log.warn("State changed from {} to {}", oldState, newState);
+    }
+    kafkaStreams.setStateListener(stateListener);
+
+    if (this.uncaughtExceptionHandler == null) {
+      this.uncaughtExceptionHandler = (throwable) ->
+          StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
+    }
+
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      log.info("Eventify is shutting down...");
+      kafkaStreams.close(Duration.ofMillis(1000));
+    }));
 
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
