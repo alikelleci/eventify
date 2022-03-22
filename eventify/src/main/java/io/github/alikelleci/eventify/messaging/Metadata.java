@@ -23,6 +23,14 @@ public class Metadata implements Map<String, String> {
   @Delegate
   private Map<String, String> entries = new HashMap<>();
 
+  public Metadata() {
+  }
+
+  public Metadata(Metadata metadata) {
+    if (metadata != null) {
+      this.entries = new HashMap<>(metadata);
+    }
+  }
 
   @Transient
   public Metadata filter() {

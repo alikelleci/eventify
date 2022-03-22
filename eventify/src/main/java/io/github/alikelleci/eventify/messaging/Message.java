@@ -15,10 +15,12 @@ import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+
 @Getter
 @ToString
 @EqualsAndHashCode
-public abstract class Message {
+public class Message {
   private String id;
   private Instant timestamp;
   private String type;
@@ -43,7 +45,6 @@ public abstract class Message {
 
     this.timestamp = Optional.ofNullable(timestamp)
         .orElse(Instant.now());
-    ;
 
     this.type = Optional.ofNullable(payload)
         .map(p -> p.getClass().getSimpleName())
@@ -51,11 +52,10 @@ public abstract class Message {
 
     this.payload = payload;
 
-    this.metadata = new Metadata();
-    Optional.ofNullable(metadata)
-        .ifPresent(m -> this.metadata.putAll(m));
-    this.metadata
-        .add(Metadata.ID, this.id)
+    this.metadata = Optional.ofNullable(metadata)
+        .map(Metadata::new)
+        .orElse(new Metadata())
+        .add(ID, this.id)
         .add(Metadata.TIMESTAMP, this.timestamp.toString());
   }
 
