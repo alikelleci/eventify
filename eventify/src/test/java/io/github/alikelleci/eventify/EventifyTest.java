@@ -21,6 +21,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
+import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,6 +106,9 @@ class EventifyTest {
         .build();
 
     commands.pipeInput(command.getAggregateId(), command);
+    
+    KeyValueStore eventStore = testDriver.getKeyValueStore("event-store");
+    KeyValueStore snapshotStore = testDriver.getKeyValueStore("snapshot-name");
 
     // Assert Command Metadata
     assertThat(command.getMetadata().get(ID), is(notNullValue()));
