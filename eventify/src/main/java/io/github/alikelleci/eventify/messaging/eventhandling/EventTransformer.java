@@ -1,10 +1,8 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Repository;
-import io.github.alikelleci.eventify.messaging.upcasting.UpcasterUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
@@ -14,7 +12,7 @@ import java.util.Collection;
 import java.util.Comparator;
 
 @Slf4j
-public class EventTransformer implements ValueTransformerWithKey<String, JsonNode, Event> {
+public class EventTransformer implements ValueTransformerWithKey<String, Event, Event> {
 
   private final Eventify eventify;
 
@@ -30,9 +28,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, JsonNod
   }
 
   @Override
-  public Event transform(String key, JsonNode jsonNode) {
-    Event event = UpcasterUtil.upcast(eventify, jsonNode);
-
+  public Event transform(String key, Event event) {
     Collection<EventHandler> handlers = eventify.getEventHandlers().get(event.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(handlers)) {
       handlers.stream()
