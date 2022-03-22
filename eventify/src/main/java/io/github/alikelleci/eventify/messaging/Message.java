@@ -5,6 +5,7 @@ import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 import lombok.Value;
@@ -18,7 +19,8 @@ import java.util.Optional;
 
 @Getter
 @ToString
-public class Message {
+@EqualsAndHashCode
+public abstract class Message {
   private String id;
   private Instant timestamp;
   private String type;
