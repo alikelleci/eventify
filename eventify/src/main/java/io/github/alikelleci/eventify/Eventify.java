@@ -70,6 +70,8 @@ public class Eventify {
   private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private boolean deleteEventsOnSnapshot;
 
+  private KafkaStreams kafkaStreams;
+
   protected Eventify(MultiValuedMap<String, Upcaster> upcasters, Map<Class<?>, CommandHandler> commandHandlers, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers, MultiValuedMap<Class<?>, ResultHandler> resultHandlers, MultiValuedMap<Class<?>, EventHandler> eventHandlers, Properties streamsConfig, StateListener stateListener, StreamsUncaughtExceptionHandler uncaughtExceptionHandler, boolean deleteEventsOnSnapshot) {
     this.upcasters = upcasters;
     this.commandHandlers = commandHandlers;
@@ -184,20 +186,36 @@ public class Eventify {
   }
 
   public void start() {
+    if (kafkaStreams != null) {
+      log.info("Eventify already started.");
+      return;
+    }
+
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
       log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
       return;
     }
 
-    KafkaStreams kafkaStreams = new KafkaStreams(topology, getStreamsConfig());
-    setUpListeners(kafkaStreams);
+    this.kafkaStreams = new KafkaStreams(topology, streamsConfig);
+    setUpListeners();
 
     log.info("Eventify is starting...");
     kafkaStreams.start();
   }
 
-  private void setUpListeners(KafkaStreams kafkaStreams) {
+  public void stop() {
+    if (kafkaStreams == null) {
+      log.info("Eventify already stopped.");
+      return;
+    }
+
+    log.info("Eventify is shutting down...");
+    kafkaStreams.close(Duration.ofMillis(1000));
+    kafkaStreams = null;
+  }
+
+  private void setUpListeners() {
     if (this.stateListener == null) {
       this.stateListener = (newState, oldState) ->
           log.warn("State changed from {} to {}", oldState, newState);
@@ -208,11 +226,6 @@ public class Eventify {
       this.uncaughtExceptionHandler = (throwable) ->
           StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
     }
-
-    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-      log.info("Eventify is shutting down...");
-      kafkaStreams.close(Duration.ofMillis(1000));
-    }));
 
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override

@@ -14,6 +14,9 @@ public interface EventGateway extends Gateway {
     publish(payload, null);
   }
 
+  public static Builder builder() {
+    return new Builder();
+  }
 
   public static class Builder {
 

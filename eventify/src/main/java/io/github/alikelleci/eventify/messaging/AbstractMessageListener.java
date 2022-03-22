@@ -31,7 +31,7 @@ public abstract class AbstractMessageListener implements MessageListener {
         new JsonDeserializer<>(Message.class));
   }
 
-  public void listen(String topic) {
+  protected void listen(String topic) {
     AtomicBoolean closed = new AtomicBoolean(false);
 
     Thread thread = new Thread(() -> {
