@@ -16,24 +16,24 @@ import java.util.Comparator;
 @Slf4j
 public class EventTransformer implements ValueTransformerWithKey<String, JsonNode, Event> {
 
-  private final Eventify.Builder builder;
+  private final Eventify eventify;
 
   private Repository repository;
 
-  public EventTransformer(Eventify.Builder builder) {
-    this.builder = builder;
+  public EventTransformer(Eventify eventify) {
+    this.eventify = eventify;
   }
 
   @Override
   public void init(ProcessorContext processorContext) {
-    this.repository = new Repository(processorContext, builder);
+    this.repository = new Repository(eventify, processorContext);
   }
 
   @Override
   public Event transform(String key, JsonNode jsonNode) {
-    Event event = UpcasterUtil.upcast(builder, jsonNode);
+    Event event = UpcasterUtil.upcast(eventify, jsonNode);
 
-    Collection<EventHandler> handlers = builder.getEventHandlers().get(event.getPayload().getClass());
+    Collection<EventHandler> handlers = eventify.getEventHandlers().get(event.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(handlers)) {
       handlers.stream()
           .sorted(Comparator.comparingInt(EventHandler::getPriority).reversed())
@@ -41,7 +41,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, JsonNod
               handler.apply(event));
     }
 
-    EventSourcingHandler eventSourcingHandler = builder.getEventSourcingHandlers().get(event.getPayload().getClass());
+    EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
       repository.saveEvent(event);
     }

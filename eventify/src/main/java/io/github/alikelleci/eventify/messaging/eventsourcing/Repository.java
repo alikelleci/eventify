@@ -16,12 +16,12 @@ public class Repository {
 
   private final TimestampedKeyValueStore<String, Event> eventStore;
   private final TimestampedKeyValueStore<String, Aggregate> snapshotStore;
-  private final Eventify.Builder builder;
+  private final Eventify eventify;
 
-  public Repository(ProcessorContext context, Eventify.Builder builder) {
+  public Repository(Eventify eventify, ProcessorContext context) {
+    this.eventify = eventify;
     this.eventStore = context.getStateStore("event-store");
     this.snapshotStore = context.getStateStore("snapshot-store");
-    this.builder = builder;
   }
 
   public Aggregate loadAggregate(String aggregateId) {
@@ -44,7 +44,7 @@ public class Repository {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
-          EventSourcingHandler eventSourcingHandler = builder.getEventSourcingHandlers().get(event.getPayload().getClass());
+          EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             aggregate = eventSourcingHandler.apply(event, aggregate);
 
