@@ -13,9 +13,9 @@ public class EventHandlerMap implements MultiValuedMap<Class<?>, EventHandler> {
   @Delegate
   private MultiValuedMap<Class<?>, EventHandler> map;
 
-  public void putHandler(Class<?> type, EventHandler handler) {
-    HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class)
-        .forEach(method -> add(handler, method));
+  public void putHandler(Object listener) {
+    HandlerUtils.findMethodsWithAnnotation(listener.getClass(), HandleEvent.class)
+        .forEach(method -> add(listener, method));
   }
 
   private void add(Object listener, Method method) {

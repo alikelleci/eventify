@@ -13,9 +13,9 @@ public class ResultHandlerMap implements MultiValuedMap<Class<?>, ResultHandler>
   @Delegate
   private MultiValuedMap<Class<?>, ResultHandler> map;
 
-  public boolean putHandler(Class<?> type, ResultHandler handler) {
-    HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class)
-        .forEach(method -> add(handler, method));
+  public boolean putHandler(Object listener) {
+    HandlerUtils.findMethodsWithAnnotation(listener.getClass(), HandleResult.class)
+        .forEach(method -> add(listener, method));
 
     return true;
   }
