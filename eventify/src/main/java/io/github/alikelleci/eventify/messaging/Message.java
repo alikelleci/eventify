@@ -4,11 +4,9 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
-import lombok.Value;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
@@ -34,17 +32,18 @@ public abstract class Message {
   protected Message(Instant timestamp, Object payload, Metadata metadata) {
     this.id = Optional.ofNullable(payload)
         .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> {
-          field.setAccessible(true);
-          return (String) ReflectionUtils.getField(field, payload);
-        }))
+            .filter(field -> field.getType() == String.class)
+            .findFirst()
+            .map(field -> {
+              field.setAccessible(true);
+              return (String) ReflectionUtils.getField(field, payload);
+            }))
         .map(s -> s + "@" + UlidCreator.getMonotonicUlid().toString())
         .orElse(null);
 
     this.timestamp = Optional.ofNullable(timestamp)
-        .orElse(Instant.now());;
+        .orElse(Instant.now());
+    ;
 
     this.type = Optional.ofNullable(payload)
         .map(p -> p.getClass().getSimpleName())
@@ -52,13 +51,12 @@ public abstract class Message {
 
     this.payload = payload;
 
-    this.metadata = Optional.ofNullable(metadata)
-        .map(m -> m
-            .add(Metadata.ID, this.id)
-            .add(Metadata.TIMESTAMP, this.timestamp.toString()))
-        .orElse(new Metadata()
-            .add(Metadata.ID, this.id)
-            .add(Metadata.TIMESTAMP, this.timestamp.toString()));
+    this.metadata = new Metadata();
+    Optional.ofNullable(metadata)
+        .ifPresent(m -> this.metadata.putAll(m));
+    this.metadata
+        .add(Metadata.ID, this.id)
+        .add(Metadata.TIMESTAMP, this.timestamp.toString());
   }
 
   @Transient
