@@ -27,7 +27,7 @@ public class Aggregate extends Message {
     this.version = 0;
   }
 
-  @Builder
+  @Builder(toBuilder = true)
   protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String aggregateId, String eventId, long version) {
     super(timestamp, payload, metadata);
 

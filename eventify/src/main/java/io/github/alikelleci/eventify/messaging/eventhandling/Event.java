@@ -25,7 +25,7 @@ public class Event extends Message {
     this.aggregateId = null;
   }
 
-  @Builder
+  @Builder(toBuilder = true)
   protected Event(Instant timestamp, Object payload, Metadata metadata) {
     super(timestamp, payload, metadata);
 
