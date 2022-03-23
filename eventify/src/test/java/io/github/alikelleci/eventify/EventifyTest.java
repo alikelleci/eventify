@@ -20,6 +20,7 @@ import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -28,13 +29,13 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
-import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -229,11 +230,26 @@ class EventifyTest {
 
     // Assert Event Store
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
-    assertThat(eventStore.approximateNumEntries(), is(6L));
+    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
+
+    assertThat(events.size(), is(6));
+    assertThat(events.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
+    assertThat(events.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.get(2).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.get(4).value.getPayload(), instanceOf(CreditsIssued.class));
+    assertThat(events.get(5).value.getPayload(), instanceOf(CreditsAdded.class));
 
     // Assert Snapshot Store
     KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
-    assertThat(snapshotStore.approximateNumEntries(), is(1L));
+    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
+
+    assertThat(snapshots.size(), is(1));
+    assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
+    assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
+    assertThat(snapshots.get(0).value.getVersion(), is(5L));
+
+
 
     // Assert Aggregate
     Aggregate aggregate = snapshotStore.get("customer-123");
