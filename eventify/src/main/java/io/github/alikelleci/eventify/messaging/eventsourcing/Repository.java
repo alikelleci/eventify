@@ -60,7 +60,6 @@ public class Repository {
             .timestamp(aggr.getTimestamp())
             .payload(aggr.getPayload())
             .metadata(aggr.getMetadata())
-            .aggregateId(aggr.getAggregateId())
             .eventId(aggr.getEventId())
             .version(sequence.get())
             .build())

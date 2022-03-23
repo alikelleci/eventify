@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshots;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
@@ -8,7 +9,9 @@ import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
+import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -28,14 +31,22 @@ public class Aggregate extends Message {
   }
 
   @Builder
-  protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String aggregateId, String eventId, long version) {
+  protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
     super(timestamp, payload, metadata);
 
-    this.aggregateId = aggregateId;
+    this.aggregateId = Optional.ofNullable(payload)
+        .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
+            .filter(field -> field.getType() == String.class)
+            .findFirst()
+            .map(field -> {
+              field.setAccessible(true);
+              return (String) ReflectionUtils.getField(field, payload);
+            }))
+        .orElse(null);
+
     this.eventId = eventId;
     this.version = version;
   }
-
 
   @JsonIgnore
   public int getSnapshotTreshold() {
