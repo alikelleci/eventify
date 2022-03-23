@@ -5,7 +5,6 @@ import lombok.ToString;
 import lombok.experimental.Delegate;
 import org.apache.commons.lang3.StringUtils;
 
-import java.beans.Transient;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -21,25 +20,21 @@ public class Metadata implements Map<String, String> {
   public static final String CAUSE = "$cause";
 
   @Delegate
-  private Map<String, String> entries;
+  private Map<String, String> entries = new HashMap<>();
 
   public Metadata() {
-    this.entries = new HashMap<>();
   }
 
   public Metadata(Metadata metadata) {
-    this.entries = new HashMap<>(metadata);
-  }
-
-  @Transient
-  public Metadata filter() {
-    entries.keySet().removeIf(key ->
-        !StringUtils.equalsIgnoreCase(key, CORRELATION_ID) && StringUtils.startsWithIgnoreCase(key, "$"));
-    return this;
+    if (metadata != null) {
+      this.entries.putAll(new HashMap<>(metadata));
+    }
   }
 
   public Metadata addAll(Metadata metadata) {
-    this.entries.putAll(new HashMap<>(metadata));
+    if (metadata != null) {
+      this.entries.putAll(new HashMap<>(metadata));
+    }
     return this;
   }
 
@@ -50,6 +45,13 @@ public class Metadata implements Map<String, String> {
 
   public Metadata remove(String key) {
     this.entries.remove(key);
+    return this;
+  }
+
+  @JsonIgnore
+  protected Metadata filter() {
+    entries.keySet().removeIf(key ->
+        !StringUtils.equalsIgnoreCase(key, CORRELATION_ID) && StringUtils.startsWithIgnoreCase(key, "$"));
     return this;
   }
 

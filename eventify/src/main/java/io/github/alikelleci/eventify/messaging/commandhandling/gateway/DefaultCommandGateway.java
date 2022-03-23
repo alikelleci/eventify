@@ -30,13 +30,9 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
 
   @Override
   public CompletableFuture<Object> send(Object payload, Metadata metadata) {
-    if (metadata == null) {
-      metadata = new Metadata();
-    }
-
     Command command = Command.builder()
         .payload(payload)
-        .metadata(metadata.filter()
+        .metadata(new Metadata(metadata)
             .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
             .add(Metadata.REPLY_TO, super.getReplyTopic()))
         .build();

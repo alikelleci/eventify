@@ -16,13 +16,9 @@ public class DefaultEventGateway extends AbstractEventGateway implements EventGa
 
   @Override
   public void publish(Object payload, Metadata metadata) {
-    if (metadata == null) {
-      metadata = new Metadata();
-    }
-
     Event event = Event.builder()
         .payload(payload)
-        .metadata(metadata.filter()
+        .metadata(new Metadata(metadata)
             .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString()))
         .build();
 
