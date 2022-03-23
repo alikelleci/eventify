@@ -19,15 +19,15 @@ public interface EventGateway extends Gateway {
     publish(payload, null, null);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static EventGatewayBuilder builder() {
+    return new EventGatewayBuilder();
   }
 
-  public static class Builder {
+  public static class EventGatewayBuilder {
 
     private Properties producerConfig;
 
-    public Builder producerConfig(Properties producerConfig) {
+    public EventGatewayBuilder producerConfig(Properties producerConfig) {
       this.producerConfig = producerConfig;
       return this;
     }

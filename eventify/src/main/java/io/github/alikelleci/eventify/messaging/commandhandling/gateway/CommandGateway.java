@@ -37,27 +37,27 @@ public interface CommandGateway extends Gateway {
     return sendAndWait(payload, null ,null);
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static CommandGatewayBuilder builder() {
+    return new CommandGatewayBuilder();
   }
 
-  public static class Builder {
+  public static class CommandGatewayBuilder {
 
     private Properties producerConfig;
     private Properties consumerConfig;
     private String replyTopic;
 
-    public Builder producerConfig(Properties producerConfig) {
+    public CommandGatewayBuilder producerConfig(Properties producerConfig) {
       this.producerConfig = producerConfig;
       return this;
     }
 
-    public Builder consumerConfig(Properties consumerConfig) {
+    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
       this.consumerConfig = consumerConfig;
       return this;
     }
 
-    public Builder replyTopic(String replyTopic) {
+    public CommandGatewayBuilder replyTopic(String replyTopic) {
       this.replyTopic = replyTopic;
       return this;
     }

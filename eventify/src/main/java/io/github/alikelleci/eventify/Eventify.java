@@ -83,8 +83,8 @@ public class Eventify {
     this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static EventifyBuilder builder() {
+    return new EventifyBuilder();
   }
 
   protected Topology topology() {
@@ -278,7 +278,7 @@ public class Eventify {
   }
 
 
-  public static class Builder {
+  public static class EventifyBuilder {
     private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
     private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
     private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
@@ -290,7 +290,7 @@ public class Eventify {
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private boolean deleteEventsOnSnapshot;
 
-    public Builder registerHandler(Object handler) {
+    public EventifyBuilder registerHandler(Object handler) {
       List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
       List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
       List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
@@ -315,7 +315,7 @@ public class Eventify {
       return this;
     }
 
-    public Builder streamsConfig(Properties streamsConfig) {
+    public EventifyBuilder streamsConfig(Properties streamsConfig) {
       this.streamsConfig = streamsConfig;
       this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
       this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
@@ -331,17 +331,17 @@ public class Eventify {
       return this;
     }
 
-    public Builder stateListener(StateListener stateListener) {
+    public EventifyBuilder stateListener(StateListener stateListener) {
       this.stateListener = stateListener;
       return this;
     }
 
-    public Builder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+    public EventifyBuilder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
       this.uncaughtExceptionHandler = uncaughtExceptionHandler;
       return this;
     }
 
-    public Builder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
+    public EventifyBuilder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
       this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
       return this;
     }
