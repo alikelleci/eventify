@@ -13,6 +13,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import java.time.Duration;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -30,6 +31,11 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
   @Override
   public CompletableFuture<Object> send(Command command) {
     validate(command);
+
+    command.getMetadata()
+        .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
+        .add(Metadata.REPLY_TO, getReplyTopic());
+
     super.dispatch(command);
 
     CompletableFuture<Object> future = new CompletableFuture<>();

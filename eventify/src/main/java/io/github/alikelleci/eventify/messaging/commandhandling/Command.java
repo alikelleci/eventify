@@ -23,7 +23,7 @@ public class Command extends Message {
     this.aggregateId = null;
   }
 
-  @Builder(toBuilder = true)
+  @Builder
   protected Command(Instant timestamp, Object payload, Metadata metadata) {
     super(timestamp, payload, metadata);
 
