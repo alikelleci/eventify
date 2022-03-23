@@ -62,8 +62,4 @@ public class Metadata implements Map<String, String> {
     return Instant.parse(this.entries.get(TIMESTAMP));
   }
 
-
-  public static class Builder {
-
-  }
 }
