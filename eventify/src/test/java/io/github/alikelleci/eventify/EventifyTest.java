@@ -137,7 +137,7 @@ class EventifyTest {
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(RESULT), is("success"));
-    assertThat(commandResult.getMetadata().get(CAUSE), isEmptyOrNullString());
+//    assertThat(commandResult.getMetadata().get(CAUSE), isEmptyOrNullString());
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
 
@@ -158,8 +158,8 @@ class EventifyTest {
     assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
     assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
-    assertThat(event.getMetadata().get(RESULT), isEmptyOrNullString());
-    assertThat(event.getMetadata().get(CAUSE), isEmptyOrNullString());
+//    assertThat(event.getMetadata().get(RESULT), isEmptyOrNullString());
+//    assertThat(event.getMetadata().get(CAUSE), isEmptyOrNullString());
     // Payload
     assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
     assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
