@@ -20,15 +20,14 @@ public class Metadata implements Map<String, String> {
   public static final String CAUSE = "$cause";
 
   @Delegate
-  private Map<String, String> entries = new HashMap<>();
+  private Map<String, String> entries;
 
-  public Metadata() {
+  protected Metadata() {
+    this.entries = new HashMap<>();
   }
 
-  public Metadata(Metadata metadata) {
-    if (metadata != null) {
-      this.entries.putAll(new HashMap<>(metadata));
-    }
+  protected Metadata(Map<String, String> entries) {
+    this.entries = entries;
   }
 
   public Metadata addAll(Metadata metadata) {
@@ -62,6 +61,36 @@ public class Metadata implements Map<String, String> {
   @JsonIgnore
   public Instant getTimestamp() {
     return Instant.parse(this.entries.get(TIMESTAMP));
+  }
+
+  public static MetadataBuilder builder() {
+    return new MetadataBuilder();
+  }
+
+  public static class MetadataBuilder {
+
+    private Map<String, String> entries = new HashMap<>();
+
+    public MetadataBuilder addAll(Metadata metadata) {
+      if (metadata != null) {
+        this.entries.putAll(new HashMap<>(metadata));
+      }
+      return this;
+    }
+
+    public MetadataBuilder add(String key, String value) {
+      this.entries.put(key, value);
+      return this;
+    }
+
+    public MetadataBuilder remove(String key) {
+      this.entries.remove(key);
+      return this;
+    }
+
+    public Metadata build() {
+      return new Metadata(this.entries);
+    }
   }
 
 }

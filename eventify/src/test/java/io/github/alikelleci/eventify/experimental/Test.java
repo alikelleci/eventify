@@ -18,10 +18,11 @@ public class Test {
 
   public static void main(String[] args) throws JsonProcessingException {
 
-
     Command command = Command.builder()
         .timestamp(Instant.ofEpochMilli(1584709244000L))
-        .metadata(new Metadata().add("aaa", "bbb"))
+        .metadata(Metadata.builder()
+            .add("aaa", "bbb")
+            .build())
         .payload(Customer.builder()
             .id("cust-1")
             .name("Henk")
@@ -41,7 +42,9 @@ public class Test {
 
     Aggregate aggregate = Aggregate.builder()
         .timestamp(Instant.ofEpochMilli(1584709244000L))
-        .metadata(new Metadata().add("aaa", "bbb"))
+        .metadata(Metadata.builder()
+            .add("aaa", "bbb")
+            .build())
         .payload(Customer.builder()
             .id("cust-1")
             .name("Henk")
@@ -49,8 +52,6 @@ public class Test {
         .build();
 
     System.out.println(aggregate);
-
-
 
 
   }

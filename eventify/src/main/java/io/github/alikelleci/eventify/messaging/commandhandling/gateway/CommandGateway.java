@@ -29,12 +29,12 @@ public interface CommandGateway extends Gateway {
 
   @SneakyThrows
   default <R> R sendAndWait(Object payload, Metadata metadata) {
-    return sendAndWait(payload, metadata ,null);
+    return sendAndWait(payload, metadata, null);
   }
 
   @SneakyThrows
   default <R> R sendAndWait(Object payload) {
-    return sendAndWait(payload, null ,null);
+    return sendAndWait(payload, null, null);
   }
 
   public static CommandGatewayBuilder builder() {

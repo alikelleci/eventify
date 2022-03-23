@@ -87,13 +87,14 @@ class UpcasterTest {
             .credits(100)
             .birthday(Instant.now())
             .build())
-        .metadata(new Metadata()
+        .metadata(Metadata.builder()
             .add("custom-key", "custom-value")
             .add(CORRELATION_ID, UUID.randomUUID().toString())
             .add(ID, "should-be-overwritten-by-command-id")
             .add(TIMESTAMP, "should-be-overwritten-by-command-timestamp")
             .add(RESULT, "should-be-overwritten-by-command-result")
-            .add(CAUSE, "should-be-overwritten-by-command-result"))
+            .add(CAUSE, "should-be-overwritten-by-command-result")
+            .build())
         .build();
 
     events.pipeInput(event.getAggregateId(), event);

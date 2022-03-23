@@ -38,7 +38,6 @@ import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.isEmptyOrNullString;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.startsWith;
 
@@ -97,13 +96,14 @@ class EventifyTest {
             .credits(100)
             .birthday(Instant.now())
             .build())
-        .metadata(new Metadata()
+        .metadata(Metadata.builder()
             .add("custom-key", "custom-value")
             .add(CORRELATION_ID, UUID.randomUUID().toString())
             .add(ID, "should-be-overwritten-by-command-id")
             .add(TIMESTAMP, "should-be-overwritten-by-command-timestamp")
             .add(RESULT, "should-be-overwritten-by-command-result")
-            .add(CAUSE, "should-be-overwritten-by-command-result"))
+            .add(CAUSE, "should-be-overwritten-by-command-result")
+            .build())
         .build();
 
     commands.pipeInput(command.getAggregateId(), command);
@@ -168,6 +168,5 @@ class EventifyTest {
     assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
 
   }
-
 
 }

@@ -19,7 +19,6 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -58,9 +57,11 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   public <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp) {
     Command command = Command.builder()
         .payload(payload)
-        .metadata(Optional.ofNullable(metadata).orElse(new Metadata())
+        .metadata(Metadata.builder()
+            .addAll(metadata)
             .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-            .add(Metadata.REPLY_TO, getReplyTopic()))
+            .add(Metadata.REPLY_TO, getReplyTopic())
+            .build())
         .timestamp(timestamp)
         .build();
 

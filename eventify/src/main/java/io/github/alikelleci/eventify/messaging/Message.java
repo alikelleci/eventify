@@ -52,9 +52,11 @@ public class Message {
 
     this.payload = payload;
 
-    this.metadata = new Metadata(metadata)
+    this.metadata = Metadata.builder()
+        .addAll(metadata)
         .add(ID, this.id)
-        .add(Metadata.TIMESTAMP, this.timestamp.toString());
+        .add(Metadata.TIMESTAMP, this.timestamp.toString())
+        .build();
   }
 
   @Transient

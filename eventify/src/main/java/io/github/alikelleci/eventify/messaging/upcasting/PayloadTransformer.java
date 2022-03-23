@@ -45,7 +45,7 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
       return jsonNode;
     }
 
-    Metadata metadata = new Metadata();
+    Metadata metadata = Metadata.builder().build();
 
     AtomicInteger revision = new AtomicInteger(Optional.ofNullable(metadata.get(Metadata.REVISION))
         .map(s -> NumberUtils.toInt(s, 1))
