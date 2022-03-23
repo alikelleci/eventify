@@ -53,7 +53,6 @@ public class Message {
     this.payload = payload;
 
     this.metadata = new Metadata(metadata)
-        .filter()
         .add(ID, this.id)
         .add(Metadata.TIMESTAMP, this.timestamp.toString());
   }
