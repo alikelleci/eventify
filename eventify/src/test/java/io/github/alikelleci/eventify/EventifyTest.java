@@ -1,12 +1,14 @@
 package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.example.domain.Customer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
+import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsIssued;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
@@ -191,7 +193,7 @@ class EventifyTest {
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
-            .amount(100)
+            .amount(25)
             .build())
         .build();
     commands.pipeInput(command.getAggregateId(), command);
@@ -199,7 +201,7 @@ class EventifyTest {
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
-            .amount(100)
+            .amount(25)
             .build())
         .build();
     commands.pipeInput(command.getAggregateId(), command);
@@ -207,7 +209,7 @@ class EventifyTest {
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
-            .amount(100)
+            .amount(25)
             .build())
         .build();
     commands.pipeInput(command.getAggregateId(), command);
@@ -215,7 +217,7 @@ class EventifyTest {
     command = Command.builder()                   // SNAPSHOT
         .payload(IssueCredits.builder()
             .id("customer-123")
-            .amount(100)
+            .amount(25)
             .build())
         .build();
     commands.pipeInput(command.getAggregateId(), command);
@@ -223,7 +225,7 @@ class EventifyTest {
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
-            .amount(100)
+            .amount(25)
             .build())
         .build();
     commands.pipeInput(command.getAggregateId(), command);
@@ -236,6 +238,18 @@ class EventifyTest {
     KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
     assertThat(snapshotStore.approximateNumEntries(), is(1L));
 
+    // Assert Aggregate
+    Aggregate aggregate = snapshotStore.get("customer-123");
+    assertThat(aggregate, is(notNullValue()));
+    assertThat(aggregate.getEventId(), is(notNullValue()));
+    assertThat(aggregate.getVersion(), is(5L));
+    // Payload
+    assertThat(aggregate.getPayload(), instanceOf(Customer.class));
+    assertThat(((Customer) aggregate.getPayload()).getCredits(), is(150));
+    assertThat(((Customer) aggregate.getPayload()).getCredits(), is(150));
+    // Event
+    Event event = eventStore.get(aggregate.getEventId());
+    assertThat(event.getPayload(), instanceOf(CreditsIssued.class));
 
 
 //    try (KeyValueIterator<String, Event> iterator = eventStore.all()) {
