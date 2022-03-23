@@ -15,7 +15,7 @@ import java.util.Properties;
 @Slf4j
 public class DefaultEventGateway implements EventGateway {
 
-  private final Producer<String, Message> producer;
+  private final Producer<String, Event> producer;
 
   protected DefaultEventGateway(Properties producerConfig) {
     producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -38,7 +38,7 @@ public class DefaultEventGateway implements EventGateway {
   @Override
   public void publish(Event event) {
     validate(event);
-    ProducerRecord<String, Message> record = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
+    ProducerRecord<String, Event> record = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
 
     log.debug("Publishing event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
     producer.send(record);
