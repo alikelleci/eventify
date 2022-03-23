@@ -15,6 +15,12 @@ public class DefaultEventGateway extends AbstractEventGateway implements EventGa
   }
 
   @Override
+  public void publish(Event event) {
+    validate(event);
+    super.dispatch(event);
+  }
+
+  @Override
   public void publish(Object payload, Metadata metadata) {
     Event event = Event.builder()
         .payload(payload)
@@ -22,7 +28,6 @@ public class DefaultEventGateway extends AbstractEventGateway implements EventGa
             .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString()))
         .build();
 
-    validatePayload(event);
-    super.dispatch(event);
+
   }
 }

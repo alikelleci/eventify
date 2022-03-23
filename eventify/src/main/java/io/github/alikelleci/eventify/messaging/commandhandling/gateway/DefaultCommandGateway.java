@@ -13,7 +13,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 import java.time.Duration;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 @Slf4j
@@ -29,15 +28,8 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
   }
 
   @Override
-  public CompletableFuture<Object> send(Object payload, Metadata metadata) {
-    Command command = Command.builder()
-        .payload(payload)
-        .metadata(new Metadata(metadata)
-            .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-            .add(Metadata.REPLY_TO, super.getReplyTopic()))
-        .build();
-
-    validatePayload(command);
+  public CompletableFuture<Object> send(Command command) {
+    validate(command);
     super.dispatch(command);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
@@ -77,4 +69,5 @@ public class DefaultCommandGateway extends AbstractCommandGateway implements Com
 
     return null;
   }
+
 }

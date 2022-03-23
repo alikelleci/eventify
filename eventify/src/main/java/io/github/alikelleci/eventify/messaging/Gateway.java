@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException
 
 public interface Gateway {
 
-  default void validatePayload(Message message) {
+  default void validate(Message message) {
     if (message.getPayload() == null) {
       throw new PayloadMissingException("You are trying to dispatch a message without a payload.");
     }
