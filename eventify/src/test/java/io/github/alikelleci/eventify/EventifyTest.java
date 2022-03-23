@@ -172,7 +172,6 @@ class EventifyTest {
     assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
     assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
     assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
-
   }
 
   @Test
@@ -249,7 +248,6 @@ class EventifyTest {
     assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
     assertThat(snapshots.get(0).value.getVersion(), is(5L));
   }
-
 
   @Test
   void test3() {
