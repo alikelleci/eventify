@@ -116,9 +116,6 @@ class EventifyTest {
 
     commands.pipeInput(command.getAggregateId(), command);
 
-    KeyValueStore eventStore = testDriver.getKeyValueStore("event-store");
-    KeyValueStore snapshotStore = testDriver.getKeyValueStore("snapshot-name");
-
     // Assert Command Metadata
     assertThat(command.getMetadata().get(ID), is(notNullValue()));
     assertThat(command.getMetadata().get(ID), is(command.getId()));
