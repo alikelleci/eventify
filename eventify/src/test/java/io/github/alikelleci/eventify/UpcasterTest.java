@@ -39,8 +39,8 @@ import static org.hamcrest.Matchers.notNullValue;
 class UpcasterTest {
 
   private TopologyTestDriver testDriver;
-  private TestInputTopic<String, Event> events;
-  private TestOutputTopic<String, Event> eventsOut;
+  private TestInputTopic<String, Event> eventsTopic;
+  private TestOutputTopic<String, Event> upcastedEventsTopic;
 
   @BeforeEach
   void setup() {
@@ -63,10 +63,10 @@ class UpcasterTest {
 
     testDriver = new TopologyTestDriver(eventify.topology(), properties);
 
-    events = testDriver.createInputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
+    eventsTopic = testDriver.createInputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), CustomSerdes.Json(Event.class).serializer());
 
-    eventsOut = testDriver.createOutputTopic("upcasted-events",
+    upcastedEventsTopic = testDriver.createOutputTopic("upcasted-events",
         new StringDeserializer(), CustomSerdes.Json(Event.class).deserializer());
   }
 
@@ -97,10 +97,10 @@ class UpcasterTest {
             .build())
         .build();
 
-    events.pipeInput(event.getAggregateId(), event);
+    eventsTopic.pipeInput(event.getAggregateId(), event);
 
     // Assert Event
-    Event upcastedEvent = eventsOut.readValue();
+    Event upcastedEvent = upcastedEventsTopic.readValue();
     assertThat(upcastedEvent, is(notNullValue()));
     // Metadata
     assertThat(upcastedEvent.getMetadata().get(REVISION), is(String.valueOf(4)));

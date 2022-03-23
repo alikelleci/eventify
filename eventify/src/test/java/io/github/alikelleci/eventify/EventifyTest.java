@@ -53,9 +53,9 @@ import static org.hamcrest.Matchers.startsWith;
 class EventifyTest {
 
   private TopologyTestDriver testDriver;
-  private TestInputTopic<String, Command> commands;
-  private TestOutputTopic<String, Command> commandResults;
-  private TestOutputTopic<String, Event> events;
+  private TestInputTopic<String, Command> commandsTopic;
+  private TestOutputTopic<String, Command> commandResultsTopic;
+  private TestOutputTopic<String, Event> eventsTopic;
 
   @BeforeEach
   void setup() {
@@ -78,13 +78,13 @@ class EventifyTest {
 
     testDriver = new TopologyTestDriver(eventify.topology(), properties);
 
-    commands = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
+    commandsTopic = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), CustomSerdes.Json(Command.class).serializer());
 
-    commandResults = testDriver.createOutputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value().concat(".results"),
+    commandResultsTopic = testDriver.createOutputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value().concat(".results"),
         new StringDeserializer(), CustomSerdes.Json(Command.class).deserializer());
 
-    events = testDriver.createOutputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
+    eventsTopic = testDriver.createOutputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
         new StringDeserializer(), CustomSerdes.Json(Event.class).deserializer());
   }
 
@@ -115,7 +115,7 @@ class EventifyTest {
             .build())
         .build();
 
-    commands.pipeInput(command.getAggregateId(), command);
+    commandsTopic.pipeInput(command.getAggregateId(), command);
 
     // Assert Command Metadata
     assertThat(command.getMetadata().get(ID), is(notNullValue()));
@@ -126,7 +126,7 @@ class EventifyTest {
     assertThat(command.getMetadata().get(TIMESTAMP), is(command.getMetadata().getTimestamp().toString()));
 
     // Assert Command Result
-    Command commandResult = commandResults.readValue();
+    Command commandResult = commandResultsTopic.readValue();
     assertThat(commandResult, is(notNullValue()));
     assertThat(commandResult.getId(), startsWith(command.getAggregateId()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
@@ -148,7 +148,7 @@ class EventifyTest {
     assertThat(commandResult.getPayload(), is(command.getPayload()));
 
     // Assert Event
-    Event event = events.readValue();
+    Event event = eventsTopic.readValue();
     assertThat(event, is(notNullValue()));
     assertThat(event.getId(), startsWith(command.getAggregateId()));
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
@@ -186,7 +186,7 @@ class EventifyTest {
             .birthday(Instant.now())
             .build())
         .build();
-    commands.pipeInput(command.getAggregateId(), command);
+    commandsTopic.pipeInput(command.getAggregateId(), command);
 
     command = Command.builder()
         .payload(AddCredits.builder()
@@ -194,7 +194,7 @@ class EventifyTest {
             .amount(25)
             .build())
         .build();
-    commands.pipeInput(command.getAggregateId(), command);
+    commandsTopic.pipeInput(command.getAggregateId(), command);
 
     command = Command.builder()
         .payload(AddCredits.builder()
@@ -202,7 +202,7 @@ class EventifyTest {
             .amount(25)
             .build())
         .build();
-    commands.pipeInput(command.getAggregateId(), command);
+    commandsTopic.pipeInput(command.getAggregateId(), command);
 
     command = Command.builder()
         .payload(AddCredits.builder()
@@ -210,7 +210,7 @@ class EventifyTest {
             .amount(25)
             .build())
         .build();
-    commands.pipeInput(command.getAggregateId(), command);
+    commandsTopic.pipeInput(command.getAggregateId(), command);
 
     command = Command.builder()                   // SNAPSHOT
         .payload(IssueCredits.builder()
@@ -218,7 +218,7 @@ class EventifyTest {
             .amount(25)
             .build())
         .build();
-    commands.pipeInput(command.getAggregateId(), command);
+    commandsTopic.pipeInput(command.getAggregateId(), command);
 
     command = Command.builder()
         .payload(AddCredits.builder()
@@ -226,28 +226,28 @@ class EventifyTest {
             .amount(25)
             .build())
         .build();
-    commands.pipeInput(command.getAggregateId(), command);
+    commandsTopic.pipeInput(command.getAggregateId(), command);
 
     // Assert Event Store
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
-    List<KeyValue<String, Event>> eventsList = IteratorUtils.toList(eventStore.all());
+    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
 
-    assertThat(eventsList.size(), is(6));
-    assertThat(eventsList.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
-    assertThat(eventsList.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(eventsList.get(2).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(eventsList.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(eventsList.get(4).value.getPayload(), instanceOf(CreditsIssued.class));
-    assertThat(eventsList.get(5).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.size(), is(6));
+    assertThat(events.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
+    assertThat(events.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.get(2).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.get(4).value.getPayload(), instanceOf(CreditsIssued.class));
+    assertThat(events.get(5).value.getPayload(), instanceOf(CreditsAdded.class));
 
     // Assert Snapshot Store
     KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
-    List<KeyValue<String, Aggregate>> snapshotsList = IteratorUtils.toList(snapshotStore.all());
+    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
 
-    assertThat(snapshotsList.size(), is(1));
-    assertThat(snapshotsList.get(0).value.getAggregateId(), is("customer-123"));
-    assertThat(snapshotsList.get(0).value.getEventId(), is(eventsList.get(4).key));
-    assertThat(snapshotsList.get(0).value.getVersion(), is(5L));
+    assertThat(snapshots.size(), is(1));
+    assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
+    assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
+    assertThat(snapshots.get(0).value.getVersion(), is(5L));
 
 
 
