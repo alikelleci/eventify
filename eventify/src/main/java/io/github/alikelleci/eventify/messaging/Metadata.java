@@ -33,7 +33,8 @@ public class Metadata implements Map<String, String> {
 
   @Transient
   public Metadata filter() {
-    entries.keySet().removeIf(key -> StringUtils.startsWithIgnoreCase(key, "$"));
+    entries.keySet().removeIf(key ->
+        !StringUtils.equalsIgnoreCase(key, CORRELATION_ID) && StringUtils.startsWithIgnoreCase(key, "$"));
     return this;
   }
 
