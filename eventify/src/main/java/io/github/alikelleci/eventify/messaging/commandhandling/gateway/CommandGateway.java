@@ -23,7 +23,7 @@ public interface CommandGateway extends Gateway {
   }
 
   default <R> CompletableFuture<R> send(Object payload, Metadata metadata) {
-    return send(payload, null, Instant.now());
+    return send(payload, metadata, Instant.now());
   }
 
   default <R> CompletableFuture<R> send(Object payload) {

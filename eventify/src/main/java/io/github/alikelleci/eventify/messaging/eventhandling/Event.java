@@ -1,12 +1,10 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
-import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.Getter;
 import lombok.ToString;
 import lombok.Value;
 import org.apache.commons.lang3.reflect.FieldUtils;

@@ -21,7 +21,7 @@ public interface EventGateway extends Gateway {
   }
 
   default void publish(Object payload, Metadata metadata) {
-    publish(payload, null, Instant.now());
+    publish(payload, metadata, Instant.now());
   }
 
   default void publish(Object payload) {
