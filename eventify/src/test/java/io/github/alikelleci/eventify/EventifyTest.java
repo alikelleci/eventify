@@ -248,8 +248,74 @@ class EventifyTest {
     assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
     assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
     assertThat(snapshots.get(0).value.getVersion(), is(5L));
+  }
 
 
+  @Test
+  void test3() {
+    Command command = Command.builder()
+        .payload(CreateCustomer.builder()
+            .id("customer-123")
+            .firstName("Peter")
+            .lastName("Bruin")
+            .credits(100)
+            .birthday(Instant.now())
+            .build())
+        .build();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()                   // SNAPSHOT
+        .payload(IssueCredits.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    // Assert Event Store
+    KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
+    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
+
+    // Assert Snapshot Store
+    KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
+    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
+
+    assertThat(snapshots.size(), is(1));
+    assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
+    assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
+    assertThat(snapshots.get(0).value.getVersion(), is(5L));
 
     // Assert Aggregate
     Aggregate aggregate = snapshotStore.get("customer-123");
@@ -263,20 +329,6 @@ class EventifyTest {
     // Event
     Event event = eventStore.get(aggregate.getEventId());
     assertThat(event.getPayload(), instanceOf(CreditsIssued.class));
-
-
-//    try (KeyValueIterator<String, Event> iterator = eventStore.all()) {
-//      while (iterator.hasNext()) {
-//        iterator.peekNextKey()
-//        KeyValue<String, Event> event = iterator.next();
-//      }
-//    }
-
-//    assertThat(eventStore.get("customer-123").getPayload(), instanceOf(CustomerCreated.class));
-//    assertThat(eventStore.get("customer-123").getPayload(), instanceOf(CreditsAdded.class));
-//    assertThat(eventStore.get("customer-123").getPayload(), instanceOf(CreditsAdded.class));
-
   }
-
 
 }
