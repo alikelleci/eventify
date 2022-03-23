@@ -21,20 +21,24 @@ public class Metadata implements Map<String, String> {
   public static final String CAUSE = "$cause";
 
   @Delegate
-  private Map<String, String> entries = new HashMap<>();
+  private Map<String, String> entries;
 
   public Metadata() {
+    this.entries = new HashMap<>();
   }
 
   public Metadata(Metadata metadata) {
-    if (metadata != null) {
-      this.entries = new HashMap<>(metadata);
-    }
+    this.entries = new HashMap<>(metadata);
   }
 
   @Transient
   public Metadata filter() {
     entries.keySet().removeIf(key -> StringUtils.startsWithIgnoreCase(key, "$"));
+    return this;
+  }
+
+  public Metadata addAll(Metadata metadata) {
+    entries.putAll(new HashMap<>(metadata));
     return this;
   }
 
@@ -56,5 +60,10 @@ public class Metadata implements Map<String, String> {
   @JsonIgnore
   public Instant getTimestamp() {
     return Instant.parse(entries.get(TIMESTAMP));
+  }
+
+
+  public static class Builder {
+
   }
 }

@@ -52,9 +52,7 @@ public class Message {
 
     this.payload = payload;
 
-    this.metadata = Optional.ofNullable(metadata)
-        .map(Metadata::new)
-        .orElse(new Metadata())
+    this.metadata = new Metadata(metadata)
         .add(ID, this.id)
         .add(Metadata.TIMESTAMP, this.timestamp.toString());
   }
