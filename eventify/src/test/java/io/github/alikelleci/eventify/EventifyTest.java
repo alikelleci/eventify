@@ -2,8 +2,10 @@ package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
+import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
+import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
@@ -13,14 +15,17 @@ import io.github.alikelleci.eventify.example.handlers.CustomerUpcaster;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
+import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
+import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -168,5 +173,54 @@ class EventifyTest {
     assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
 
   }
+
+  @Test
+  void test2() {
+    Command command = Command.builder()
+        .payload(CreateCustomer.builder()
+            .id("customer-123")
+            .firstName("Peter")
+            .lastName("Bruin")
+            .credits(100)
+            .birthday(Instant.now())
+            .build())
+        .build();
+    commands.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(100)
+            .build())
+        .build();
+    commands.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(100)
+            .build())
+        .build();
+    commands.pipeInput(command.getAggregateId(), command);
+
+
+    KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
+    KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
+
+    assertThat(eventStore.approximateNumEntries(), is(3L));
+
+//    try (KeyValueIterator<String, Event> iterator = eventStore.all()) {
+//      while (iterator.hasNext()) {
+//        iterator.peekNextKey()
+//        KeyValue<String, Event> event = iterator.next();
+//      }
+//    }
+
+//    assertThat(eventStore.get("customer-123").getPayload(), instanceOf(CustomerCreated.class));
+//    assertThat(eventStore.get("customer-123").getPayload(), instanceOf(CreditsAdded.class));
+//    assertThat(eventStore.get("customer-123").getPayload(), instanceOf(CreditsAdded.class));
+
+  }
+
 
 }
