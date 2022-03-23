@@ -230,24 +230,24 @@ class EventifyTest {
 
     // Assert Event Store
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
-    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
+    List<KeyValue<String, Event>> eventsList = IteratorUtils.toList(eventStore.all());
 
-    assertThat(events.size(), is(6));
-    assertThat(events.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
-    assertThat(events.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(events.get(2).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(events.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(events.get(4).value.getPayload(), instanceOf(CreditsIssued.class));
-    assertThat(events.get(5).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(eventsList.size(), is(6));
+    assertThat(eventsList.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
+    assertThat(eventsList.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(eventsList.get(2).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(eventsList.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(eventsList.get(4).value.getPayload(), instanceOf(CreditsIssued.class));
+    assertThat(eventsList.get(5).value.getPayload(), instanceOf(CreditsAdded.class));
 
     // Assert Snapshot Store
     KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
-    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
+    List<KeyValue<String, Aggregate>> snapshotsList = IteratorUtils.toList(snapshotStore.all());
 
-    assertThat(snapshots.size(), is(1));
-    assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
-    assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
-    assertThat(snapshots.get(0).value.getVersion(), is(5L));
+    assertThat(snapshotsList.size(), is(1));
+    assertThat(snapshotsList.get(0).value.getAggregateId(), is("customer-123"));
+    assertThat(snapshotsList.get(0).value.getEventId(), is(eventsList.get(4).key));
+    assertThat(snapshotsList.get(0).value.getVersion(), is(5L));
 
 
 
