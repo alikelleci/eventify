@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import io.github.alikelleci.eventify.messaging.Gateway;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import lombok.SneakyThrows;
 
 import java.time.Instant;
@@ -12,15 +11,7 @@ import java.util.concurrent.TimeUnit;
 
 public interface CommandGateway extends Gateway {
 
-  <R> CompletableFuture<R> send(Command command);
-
-  default <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp) {
-    return send(Command.builder()
-        .payload(payload)
-        .metadata(metadata)
-        .timestamp(timestamp)
-        .build());
-  }
+  <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp);
 
   default <R> CompletableFuture<R> send(Object payload, Metadata metadata) {
     return send(payload, metadata, null);

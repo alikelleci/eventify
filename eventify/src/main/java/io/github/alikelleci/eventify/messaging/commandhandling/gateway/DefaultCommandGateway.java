@@ -18,6 +18,7 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -53,10 +54,14 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   }
 
   @Override
-  public <R> CompletableFuture<R> send(Command command) {
-    command.getMetadata()
-        .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-        .add(Metadata.REPLY_TO, getReplyTopic());
+  public <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp) {
+    Command command = Command.builder()
+        .payload(payload)
+        .metadata(metadata
+            .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
+            .add(Metadata.REPLY_TO, getReplyTopic()))
+        .timestamp(timestamp)
+        .build();
 
     validate(command);
     ProducerRecord<String, Command> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
@@ -101,4 +106,5 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
     return null;
   }
+
 }
