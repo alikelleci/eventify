@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
+import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
@@ -203,11 +204,39 @@ class EventifyTest {
         .build();
     commands.pipeInput(command.getAggregateId(), command);
 
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(100)
+            .build())
+        .build();
+    commands.pipeInput(command.getAggregateId(), command);
 
+    command = Command.builder()                   // SNAPSHOT
+        .payload(IssueCredits.builder()
+            .id("customer-123")
+            .amount(100)
+            .build())
+        .build();
+    commands.pipeInput(command.getAggregateId(), command);
+
+    command = Command.builder()
+        .payload(AddCredits.builder()
+            .id("customer-123")
+            .amount(100)
+            .build())
+        .build();
+    commands.pipeInput(command.getAggregateId(), command);
+
+    // Assert Event Store
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
-    KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
+    assertThat(eventStore.approximateNumEntries(), is(6L));
 
-    assertThat(eventStore.approximateNumEntries(), is(3L));
+    // Assert Snapshot Store
+    KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
+    assertThat(snapshotStore.approximateNumEntries(), is(1L));
+
+
 
 //    try (KeyValueIterator<String, Event> iterator = eventStore.all()) {
 //      while (iterator.hasNext()) {
