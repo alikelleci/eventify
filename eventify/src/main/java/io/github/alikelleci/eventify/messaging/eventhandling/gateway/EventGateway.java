@@ -21,11 +21,11 @@ public interface EventGateway extends Gateway {
   }
 
   default void publish(Object payload, Metadata metadata) {
-    publish(payload, metadata, Instant.now());
+    publish(payload, metadata, null);
   }
 
   default void publish(Object payload) {
-    publish(payload, null);
+    publish(payload, null, null);
   }
 
   public static Builder builder() {
@@ -41,7 +41,7 @@ public interface EventGateway extends Gateway {
       return this;
     }
 
-    public EventGateway build() {
+    public DefaultEventGateway build() {
       return new DefaultEventGateway(this.producerConfig);
     }
   }

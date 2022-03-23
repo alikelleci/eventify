@@ -23,22 +23,27 @@ public interface CommandGateway extends Gateway {
   }
 
   default <R> CompletableFuture<R> send(Object payload, Metadata metadata) {
-    return send(payload, metadata, Instant.now());
+    return send(payload, metadata, null);
   }
 
   default <R> CompletableFuture<R> send(Object payload) {
-    return send(payload, null);
+    return send(payload, null, null);
   }
 
   @SneakyThrows
-  default <R> R sendAndWait(Object payload, Metadata metadata) {
-    CompletableFuture<R> future = send(payload, metadata);
+  default <R> R sendAndWait(Object payload, Metadata metadata, Instant timestamp) {
+    CompletableFuture<R> future = send(payload, metadata, timestamp);
     return future.get(1, TimeUnit.MINUTES);
   }
 
   @SneakyThrows
+  default <R> R sendAndWait(Object payload, Metadata metadata) {
+    return sendAndWait(payload, metadata ,null);
+  }
+
+  @SneakyThrows
   default <R> R sendAndWait(Object payload) {
-    return sendAndWait(payload, null);
+    return sendAndWait(payload, null ,null);
   }
 
   public static Builder builder() {
@@ -66,7 +71,7 @@ public interface CommandGateway extends Gateway {
       return this;
     }
 
-    public CommandGateway build() {
+    public DefaultCommandGateway build() {
       return new DefaultCommandGateway(this.producerConfig, this.consumerConfig, this.replyTopic);
     }
   }

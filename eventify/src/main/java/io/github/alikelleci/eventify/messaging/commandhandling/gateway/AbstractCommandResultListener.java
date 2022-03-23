@@ -62,9 +62,9 @@ public abstract class AbstractCommandResultListener {
     thread.start();
   }
 
-  public abstract void onMessage(ConsumerRecords<String, Command> consumerRecords);
+  protected abstract void onMessage(ConsumerRecords<String, Command> consumerRecords);
 
-  public String getReplyTopic() {
+  protected String getReplyTopic() {
     return replyTopic;
   }
 }
