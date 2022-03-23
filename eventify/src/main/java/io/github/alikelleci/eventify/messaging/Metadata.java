@@ -38,28 +38,28 @@ public class Metadata implements Map<String, String> {
   }
 
   public Metadata addAll(Metadata metadata) {
-    entries.putAll(new HashMap<>(metadata));
+    this.entries.putAll(new HashMap<>(metadata));
     return this;
   }
 
   public Metadata add(String key, String value) {
-    entries.put(key, value);
+    this.entries.put(key, value);
     return this;
   }
 
   public Metadata remove(String key) {
-    entries.remove(key);
+    this.entries.remove(key);
     return this;
   }
 
   @JsonIgnore
   public String getMessageId() {
-    return entries.get(ID);
+    return this.entries.get(ID);
   }
 
   @JsonIgnore
   public Instant getTimestamp() {
-    return Instant.parse(entries.get(TIMESTAMP));
+    return Instant.parse(this.entries.get(TIMESTAMP));
   }
 
 
