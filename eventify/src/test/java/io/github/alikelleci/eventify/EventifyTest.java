@@ -227,10 +227,10 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
-    // Assert Event Store
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
 
+    // Assert Event Store
     assertThat(events.size(), is(6));
     assertThat(events.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
     assertThat(events.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
@@ -238,15 +238,6 @@ class EventifyTest {
     assertThat(events.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
     assertThat(events.get(4).value.getPayload(), instanceOf(CreditsIssued.class));
     assertThat(events.get(5).value.getPayload(), instanceOf(CreditsAdded.class));
-
-    // Assert Snapshot Store
-    KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
-    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
-
-    assertThat(snapshots.size(), is(1));
-    assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
-    assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
-    assertThat(snapshots.get(0).value.getVersion(), is(5L));
   }
 
   @Test
@@ -302,31 +293,20 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
-    // Assert Event Store
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
 
-    // Assert Snapshot Store
     KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
     List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
 
+    // Assert Snapshot Store
     assertThat(snapshots.size(), is(1));
     assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
     assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
     assertThat(snapshots.get(0).value.getVersion(), is(5L));
-
-    // Assert Aggregate
-    Aggregate aggregate = snapshotStore.get("customer-123");
-    assertThat(aggregate, is(notNullValue()));
-    assertThat(aggregate.getEventId(), is(notNullValue()));
-    assertThat(aggregate.getVersion(), is(5L));
-    // Payload
-    assertThat(aggregate.getPayload(), instanceOf(Customer.class));
-    assertThat(((Customer) aggregate.getPayload()).getCredits(), is(150));
-    assertThat(((Customer) aggregate.getPayload()).getCredits(), is(150));
-    // Event
-    Event event = eventStore.get(aggregate.getEventId());
-    assertThat(event.getPayload(), instanceOf(CreditsIssued.class));
+    assertThat(snapshots.get(0).value.getPayload(), instanceOf(Customer.class));
+    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
+    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
   }
 
 }
