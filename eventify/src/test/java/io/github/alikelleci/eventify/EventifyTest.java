@@ -35,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -176,8 +177,10 @@ class EventifyTest {
 
   @Test
   void test2() {
+    List<Command> commands = new ArrayList<>();
+
     // CreateCustomer
-    Command command = Command.builder()
+    commands.add(Command.builder()
         .payload(CreateCustomer.builder()
             .id("customer-123")
             .firstName("Peter")
@@ -185,44 +188,43 @@ class EventifyTest {
             .credits(100)
             .birthday(Instant.now())
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     //  AddCredits
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
             .amount(25)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // IssueCredits
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(IssueCredits.builder()
             .id("customer-123")
             .amount(100)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // AddCredits
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
             .amount(5)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // IssueCredits: this command should be rejected (total credits = 30)
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(IssueCredits.builder()
             .id("customer-123")
             .amount(31)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
+
+    // Send commands
+    commands.forEach(command ->
+        commandsTopic.pipeInput(command.getAggregateId(), command));
 
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
@@ -237,8 +239,10 @@ class EventifyTest {
 
   @Test
   void test3() {
+    List<Command> commands = new ArrayList<>();
+
     // CreateCustomer
-    Command command = Command.builder()
+    commands.add(Command.builder()
         .payload(CreateCustomer.builder()
             .id("customer-123")
             .firstName("Peter")
@@ -246,53 +250,51 @@ class EventifyTest {
             .credits(100)
             .birthday(Instant.now())
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // AddCredits
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
             .amount(25)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // AddCredits
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
             .amount(25)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // AddCredits
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
             .amount(25)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // IssueCredits -> Snapshot point
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(IssueCredits.builder()
             .id("customer-123")
             .amount(25)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
 
     // AddCredits
-    command = Command.builder()
+    commands.add(Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
             .amount(25)
             .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+        .build());
+
+    // Send commands
+    commands.forEach(command ->
+        commandsTopic.pipeInput(command.getAggregateId(), command));
 
     KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
