@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.Eventify;
+import io.github.alikelleci.eventify.example.domain.Customer;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
@@ -27,6 +28,7 @@ import java.util.List;
 import java.util.Properties;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
@@ -96,6 +98,20 @@ class CommandTransformerTest {
         .build());
 
     events.add(Event.builder()
+        .payload(CustomerEvent.CreditsAdded.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build());
+
+    events.add(Event.builder()
+        .payload(CustomerEvent.CreditsAdded.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build());
+
+    events.add(Event.builder()
         .payload(CustomerEvent.CreditsIssued.builder()
             .id("customer-123")
             .amount(25)
@@ -108,7 +124,10 @@ class CommandTransformerTest {
     // Assert Aggregate
     Aggregate aggregate = commandTransformer.loadAggregate("customer-123");
     assertThat(aggregate, is(notNullValue()));
-    assertThat(aggregate.getEventId(), is(events.get(1).getId()));
+    assertThat(aggregate.getEventId(), is(events.get(events.size() - 1).getId()));
     assertThat(aggregate.getVersion(), is((long) events.size()));
+    // Payload
+    assertThat(aggregate.getPayload(), instanceOf(Customer.class));
+    assertThat(((Customer) aggregate.getPayload()).getCredits(), is(125));
   }
 }
