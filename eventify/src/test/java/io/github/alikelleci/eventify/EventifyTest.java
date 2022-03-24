@@ -60,6 +60,9 @@ class EventifyTest {
   private TestOutputTopic<String, Command> commandResultsTopic;
   private TestOutputTopic<String, Event> eventsTopic;
 
+  private KeyValueStore<String, Event> eventStore;
+  private KeyValueStore<String, Aggregate> snapshotStore;
+
   private Faker faker = new Faker();
 
   @BeforeEach
@@ -91,6 +94,9 @@ class EventifyTest {
 
     eventsTopic = testDriver.createOutputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
         new StringDeserializer(), CustomSerdes.Json(Event.class).deserializer());
+
+    eventStore = testDriver.getKeyValueStore("event-store");
+    snapshotStore = testDriver.getKeyValueStore("snapshot-store");
   }
 
   @AfterEach
@@ -230,7 +236,6 @@ class EventifyTest {
     commands.forEach(command ->
         commandsTopic.pipeInput(command.getAggregateId(), command));
 
-    KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
 
     // Assert Event Store
@@ -300,10 +305,7 @@ class EventifyTest {
     commands.forEach(command ->
         commandsTopic.pipeInput(command.getAggregateId(), command));
 
-    KeyValueStore<String, Event> eventStore = testDriver.getKeyValueStore("event-store");
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
-
-    KeyValueStore<String, Aggregate> snapshotStore = testDriver.getKeyValueStore("snapshot-store");
     List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
 
     // Assert Snapshot Store
@@ -359,8 +361,6 @@ class EventifyTest {
     List<Command> rejectedCommands = commandResults.stream()
         .filter(command -> command.getMetadata().get(RESULT).equals("failure"))
         .collect(Collectors.toList());
-
-
   }
 
   private List<Command> generateCommands(int numberOfCommands) {
