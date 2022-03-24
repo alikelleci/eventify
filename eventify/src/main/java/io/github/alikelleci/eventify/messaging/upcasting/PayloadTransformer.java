@@ -1,9 +1,12 @@
 package io.github.alikelleci.eventify.messaging.upcasting;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
+import io.github.alikelleci.eventify.util.JacksonUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
@@ -16,8 +19,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.REVISION;
 
-public class PayloadTransformer implements ValueTransformerWithKey<String, JsonNode, JsonNode> {
+
+public class PayloadTransformer implements ValueTransformerWithKey<String, JsonNode, Event> {
 
   private final Eventify eventify;
 
@@ -30,9 +35,13 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
   }
 
   @Override
-  public JsonNode transform(String key, JsonNode jsonNode) {
-    String className = Optional.ofNullable(jsonNode)
-        .map(node -> node.get("@class"))
+  public Event transform(String key, JsonNode jsonNode) {
+    JsonNode payload = jsonNode.get("payload");
+    if (payload == null) {
+      return null;
+    }
+
+    String className = Optional.ofNullable(payload.get("@class"))
         .map(JsonNode::textValue)
         .orElse(null);
 
@@ -40,25 +49,29 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
       return null;
     }
 
-    Collection<Upcaster> handlers = eventify.getUpcasters().get(className);
-    if (CollectionUtils.isEmpty(handlers)) {
-      return jsonNode;
+    Collection<Upcaster> upcasters = eventify.getUpcasters().get(className);
+    if (CollectionUtils.isEmpty(upcasters)) {
+      return JacksonUtils.enhancedObjectMapper().convertValue(jsonNode, Event.class);
     }
 
-    Metadata metadata = Metadata.builder().build();
+    ObjectNode metadata = (ObjectNode) jsonNode.get("metadata");
+    if (metadata == null) {
+      return null;
+    }
 
-    AtomicInteger revision = new AtomicInteger(Optional.ofNullable(metadata.get(Metadata.REVISION))
-        .map(s -> NumberUtils.toInt(s, 1))
-        .orElse(1));
+    AtomicInteger revision = new AtomicInteger(1);
 
-    handlers.stream()
+    Optional.ofNullable(metadata.get(REVISION))
+        .map(JsonNode::intValue)
+        .ifPresent(revision::set);
+
+    upcasters.stream()
         .sorted(Comparator.comparingInt(handler -> handler.getMethod().getAnnotation(Upcast.class).revision()))
         .filter(handler -> handler.getMethod().getAnnotation(Upcast.class).revision() == revision.get())
-        .map(handler -> handler.apply(jsonNode))
-        .filter(Objects::nonNull)
-        .forEach(result -> revision.incrementAndGet());
+        .map(handler -> handler.apply(payload))
+        .forEach(result -> metadata.put(REVISION, revision.incrementAndGet()));
 
-    return jsonNode;
+    return JacksonUtils.enhancedObjectMapper().convertValue(jsonNode, Event.class);
   }
 
   @Override
