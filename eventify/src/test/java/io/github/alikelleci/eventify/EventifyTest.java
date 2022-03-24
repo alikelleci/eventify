@@ -176,6 +176,7 @@ class EventifyTest {
 
   @Test
   void test2() {
+    // CreateCustomer
     Command command = Command.builder()
         .payload(CreateCustomer.builder()
             .id("customer-123")
@@ -187,6 +188,7 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
+    //  AddCredits
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
@@ -195,34 +197,29 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
+    // IssueCredits
     command = Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
-
-    command = Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build();
-    commandsTopic.pipeInput(command.getAggregateId(), command);
-
-    command = Command.builder()                   // SNAPSHOT
         .payload(IssueCredits.builder()
             .id("customer-123")
-            .amount(25)
+            .amount(100)
             .build())
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
+    // AddCredits
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
-            .amount(25)
+            .amount(5)
+            .build())
+        .build();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    // IssueCredits: this command should be rejected (total credits = 30)
+    command = Command.builder()
+        .payload(IssueCredits.builder()
+            .id("customer-123")
+            .amount(31)
             .build())
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
@@ -231,17 +228,16 @@ class EventifyTest {
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
 
     // Assert Event Store
-    assertThat(events.size(), is(6));
+    assertThat(events.size(), is(4));
     assertThat(events.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
     assertThat(events.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(events.get(2).value.getPayload(), instanceOf(CreditsAdded.class));
+    assertThat(events.get(2).value.getPayload(), instanceOf(CreditsIssued.class));
     assertThat(events.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(events.get(4).value.getPayload(), instanceOf(CreditsIssued.class));
-    assertThat(events.get(5).value.getPayload(), instanceOf(CreditsAdded.class));
   }
 
   @Test
   void test3() {
+    // CreateCustomer
     Command command = Command.builder()
         .payload(CreateCustomer.builder()
             .id("customer-123")
@@ -253,6 +249,7 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
+    // AddCredits
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
@@ -261,6 +258,7 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
+    // AddCredits
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
@@ -269,6 +267,7 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
+    // AddCredits
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
@@ -277,7 +276,8 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
-    command = Command.builder()                   // SNAPSHOT
+    // IssueCredits -> Snapshot point
+    command = Command.builder()
         .payload(IssueCredits.builder()
             .id("customer-123")
             .amount(25)
@@ -285,6 +285,7 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
+    // AddCredits -> Trigger new Snapshot
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
