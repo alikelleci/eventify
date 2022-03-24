@@ -15,20 +15,31 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.processor.MockProcessorContext;
-import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
+import org.apache.kafka.streams.state.ValueAndTimestamp;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
 
 class CommandTransformerTest {
 
   private TopologyTestDriver testDriver;
+
+  private TimestampedKeyValueStore<String, Event> eventStore;
+  private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
+
   private CommandTransformer commandTransformer;
   private MockProcessorContext context;
+
   private Faker faker = new Faker();
 
   @BeforeEach
@@ -53,10 +64,10 @@ class CommandTransformerTest {
     testDriver = new TopologyTestDriver(eventify.topology(), properties);
     context = new MockProcessorContext();
 
-    KeyValueStore<String, Event> eventStore = (TimestampedKeyValueStore) testDriver.getTimestampedKeyValueStore("event-store");
+    eventStore = (TimestampedKeyValueStore) testDriver.getTimestampedKeyValueStore("event-store");
     context.register(eventStore, null);
 
-    KeyValueStore<String, Aggregate> snapshotStore = (TimestampedKeyValueStore) testDriver.getTimestampedKeyValueStore("snapshot-store");
+    snapshotStore = (TimestampedKeyValueStore) testDriver.getTimestampedKeyValueStore("snapshot-store");
     context.register(snapshotStore, null);
 
     commandTransformer = new CommandTransformer(eventify);
@@ -71,12 +82,10 @@ class CommandTransformerTest {
   }
 
   @Test
-  void transform() {
-  }
-
-  @Test
   void loadAggregate() {
-    commandTransformer.saveEvent(Event.builder()
+    List<Event> events = new ArrayList<>();
+
+    events.add(Event.builder()
         .payload(CustomerCreated.builder()
             .id("customer-123")
             .firstName("Peter")
@@ -86,17 +95,20 @@ class CommandTransformerTest {
             .build())
         .build());
 
-    commandTransformer.saveEvent(Event.builder()
+    events.add(Event.builder()
         .payload(CustomerEvent.CreditsIssued.builder()
             .id("customer-123")
             .amount(25)
             .build())
         .build());
 
-//    context.setRecordTimestamp(Instant.now().toEpochMilli());
+    events.forEach(event ->
+        eventStore.put(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli())));
 
-
+    // Assert Aggregate
     Aggregate aggregate = commandTransformer.loadAggregate("customer-123");
-    System.out.println(aggregate);
+    assertThat(aggregate, is(notNullValue()));
+    assertThat(aggregate.getEventId(), is(events.get(1).getId()));
+    assertThat(aggregate.getVersion(), is((long) events.size()));
   }
 }
