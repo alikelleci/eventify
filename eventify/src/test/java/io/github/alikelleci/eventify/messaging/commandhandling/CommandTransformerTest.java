@@ -39,8 +39,8 @@ class CommandTransformerTest {
   private TimestampedKeyValueStore<String, Event> eventStore;
   private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
 
-  private CommandTransformer transformer;
   private MockProcessorContext context;
+  private CommandTransformer transformer;
 
   private Faker faker = new Faker();
 
