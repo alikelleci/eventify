@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify;
 
+import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.Customer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
@@ -57,6 +59,8 @@ class EventifyTest {
   private TestInputTopic<String, Command> commandsTopic;
   private TestOutputTopic<String, Command> commandResultsTopic;
   private TestOutputTopic<String, Event> eventsTopic;
+
+  private Faker faker = new Faker();
 
   @BeforeEach
   void setup() {
@@ -310,6 +314,87 @@ class EventifyTest {
     assertThat(snapshots.get(0).value.getPayload(), instanceOf(Customer.class));
     assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
     assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
+  }
+
+
+  @Test
+  void bla() {
+    List<Command> commands = new ArrayList<>();
+
+    // CreateCustomer
+    commands.add(Command.builder()
+        .payload(CreateCustomer.builder()
+            .id("customer-123")
+            .firstName("Peter")
+            .lastName("Bruin")
+            .credits(100)
+            .birthday(Instant.now())
+            .build())
+        .build());
+
+    // Generate random commands
+    commands.addAll(generateCommands(10));
+
+    // Send commands
+    commands.forEach(command ->
+        commandsTopic.pipeInput(command.getAggregateId(), command));
+
+    // Assert Command Results
+    List<Command> commandResults = commandResultsTopic.readValuesToList();
+    assertThat(commandResults.size(), is(commands.size()));
+
+    // Accepted Commands
+    List<Command> acceptedCommands = commandResults.stream()
+        .filter(command -> command.getMetadata().get(RESULT).equals("success"))
+        .collect(Collectors.toList());
+
+    if (acceptedCommands.isEmpty()) {
+      assertThat(eventsTopic.isEmpty(), is(true));
+    } else {
+      List<Event> events = eventsTopic.readValuesToList();
+      assertThat(events.size(), is(acceptedCommands.size()));
+    }
+
+    // Rejected Commands
+    List<Command> rejectedCommands = commandResults.stream()
+        .filter(command -> command.getMetadata().get(RESULT).equals("failure"))
+        .collect(Collectors.toList());
+
+
+  }
+
+  private List<Command> generateCommands(int numberOfCommands) {
+    List<Command> commands = new ArrayList<>();
+
+    for (int i = 0; i < numberOfCommands; i++) {
+      Class<?> type = faker.options().option(AddCredits.class, IssueCredits.class);
+
+      if (type == AddCredits.class) {
+        commands.add(Command.builder()
+            .payload(AddCredits.builder()
+                .id("customer-123")
+                .amount(faker.number().numberBetween(1, 100))
+                .build())
+            .metadata(Metadata.builder()
+                .add(CORRELATION_ID, UUID.randomUUID().toString())
+                .build())
+            .build());
+      }
+
+      if (type == IssueCredits.class) {
+        commands.add(Command.builder()
+            .payload(IssueCredits.builder()
+                .id("customer-123")
+                .amount(faker.number().numberBetween(1, 100))
+                .build())
+            .metadata(Metadata.builder()
+                .add(CORRELATION_ID, UUID.randomUUID().toString())
+                .build())
+            .build());
+      }
+    }
+
+    return commands;
   }
 
 }
