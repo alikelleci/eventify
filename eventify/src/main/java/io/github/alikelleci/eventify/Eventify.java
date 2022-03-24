@@ -159,7 +159,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .transformValues(() -> new EventTransformer(this), "event-store", "snapshot-store");
+          .transformValues(() -> new EventTransformer(this), "event-store");
     }
 
     /*
