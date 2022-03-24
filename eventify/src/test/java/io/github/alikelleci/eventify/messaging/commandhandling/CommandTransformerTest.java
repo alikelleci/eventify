@@ -39,7 +39,7 @@ class CommandTransformerTest {
   private TimestampedKeyValueStore<String, Event> eventStore;
   private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
 
-  private CommandTransformer commandTransformer;
+  private CommandTransformer transformer;
   private MockProcessorContext context;
 
   private Faker faker = new Faker();
@@ -72,8 +72,8 @@ class CommandTransformerTest {
     snapshotStore = (TimestampedKeyValueStore) testDriver.getTimestampedKeyValueStore("snapshot-store");
     context.register(snapshotStore, null);
 
-    commandTransformer = new CommandTransformer(eventify);
-    commandTransformer.init(context);
+    transformer = new CommandTransformer(eventify);
+    transformer.init(context);
   }
 
   @AfterEach
@@ -122,7 +122,7 @@ class CommandTransformerTest {
         eventStore.put(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli())));
 
     // Assert Aggregate
-    Aggregate aggregate = commandTransformer.loadAggregate("customer-123");
+    Aggregate aggregate = transformer.loadAggregate("customer-123");
     assertThat(aggregate, is(notNullValue()));
     assertThat(aggregate.getEventId(), is(events.get(events.size() - 1).getId()));
     assertThat(aggregate.getVersion(), is((long) events.size()));
