@@ -87,7 +87,7 @@ public class Eventify {
     return new EventifyBuilder();
   }
 
-  protected Topology topology() {
+  public Topology topology() {
     StreamsBuilder builder = new StreamsBuilder();
 
     /*
