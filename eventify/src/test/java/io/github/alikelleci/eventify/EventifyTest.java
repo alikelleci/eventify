@@ -285,7 +285,7 @@ class EventifyTest {
         .build();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
-    // AddCredits -> Trigger new Snapshot
+    // AddCredits
     command = Command.builder()
         .payload(AddCredits.builder()
             .id("customer-123")
