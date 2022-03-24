@@ -1,38 +1,38 @@
-package io.github.alikelleci.eventify.messaging.eventsourcing;
+package io.github.alikelleci.eventify.messaging.commandhandling;
 
+import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.Eventify;
+import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerUpcaster;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.processor.MockProcessorContext;
-import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
-import org.apache.kafka.streams.state.ValueAndTimestamp;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.Properties;
 
-class RepositoryTest {
+class CommandTransformerTest {
 
-  private Repository repository;
-  private CommandTransformer processor;
+  private TopologyTestDriver testDriver;
+  private CommandTransformer commandTransformer;
   private MockProcessorContext context;
-  private TimestampedKeyValueStore<String, Event> eventStore;
-
+  private Faker faker = new Faker();
 
   @BeforeEach
-  void beforeAll() {
+  void setup() {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "eventify-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1234");
@@ -50,23 +50,33 @@ class RepositoryTest {
         .registerHandler(new CustomerUpcaster())
         .build();
 
-    this.processor = new CommandTransformer(eventify);
-    this.context = new MockProcessorContext(properties);
+    testDriver = new TopologyTestDriver(eventify.topology(), properties);
+    context = new MockProcessorContext();
 
-    this.eventStore = Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
-        .withLoggingEnabled(Collections.emptyMap())
-        .build();
+    KeyValueStore<String, Event> eventStore = (TimestampedKeyValueStore) testDriver.getTimestampedKeyValueStore("event-store");
+    context.register(eventStore, null);
 
-    this.context.register(eventStore, null);
-    this.processor.init(context);
+    KeyValueStore<String, Aggregate> snapshotStore = (TimestampedKeyValueStore) testDriver.getTimestampedKeyValueStore("snapshot-store");
+    context.register(snapshotStore, null);
 
-    this.repository = new Repository(eventify, context);
+    commandTransformer = new CommandTransformer(eventify);
+    commandTransformer.init(context);
+  }
+
+  @AfterEach
+  void tearDown() {
+    if (testDriver != null) {
+      testDriver.close();
+    }
+  }
+
+  @Test
+  void transform() {
   }
 
   @Test
   void loadAggregate() {
-    Event event = Event.builder()
+    commandTransformer.saveEvent(Event.builder()
         .payload(CustomerCreated.builder()
             .id("customer-123")
             .firstName("Peter")
@@ -74,20 +84,19 @@ class RepositoryTest {
             .credits(100)
             .birthday(Instant.now())
             .build())
-        .build();
+        .build());
 
-    this.repository.saveEvent(event);
-  }
+    commandTransformer.saveEvent(Event.builder()
+        .payload(CustomerEvent.CreditsIssued.builder()
+            .id("customer-123")
+            .amount(25)
+            .build())
+        .build());
 
-  @Test
-  void saveEvent() {
-  }
+//    context.setRecordTimestamp(Instant.now().toEpochMilli());
 
-  @Test
-  void saveSnapshot() {
-  }
 
-  @Test
-  void deleteEvents() {
+    Aggregate aggregate = commandTransformer.loadAggregate("customer-123");
+    System.out.println(aggregate);
   }
 }
