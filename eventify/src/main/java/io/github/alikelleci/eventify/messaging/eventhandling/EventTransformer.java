@@ -40,7 +40,6 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
     EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
       saveEvent(event);
-
     }
 
     return event;
