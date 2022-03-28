@@ -209,7 +209,7 @@ public class Eventify {
     }
 
     log.info("Eventify is shutting down...");
-    kafkaStreams.close(Duration.ofMillis(1000));
+    kafkaStreams.close(Duration.ofMillis(5000));
     kafkaStreams = null;
   }
 
