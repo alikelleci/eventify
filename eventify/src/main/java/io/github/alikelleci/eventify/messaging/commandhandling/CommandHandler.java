@@ -9,7 +9,6 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.retry.Retry;
 import io.github.alikelleci.eventify.retry.RetryUtil;
-import io.github.alikelleci.eventify.util.CommonUtils;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
@@ -31,13 +30,13 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class CommandHandler implements BiFunction<Aggregate, Command, CommandResult> {
+public class CommandHandler implements BiFunction<Command, Aggregate, CommandResult> {
 
   private final Object target;
   private final Method method;
   private final RetryPolicy<Object> retryPolicy;
 
-  private final Validator validator;
+  private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
   public CommandHandler(Object target, Method method) {
     this.target = target;
@@ -45,17 +44,15 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
     this.retryPolicy = RetryUtil.buildRetryPolicyFromAnnotation(method.getAnnotation(Retry.class))
         .onRetry(e -> log.warn("Handling command failed, retrying... ({})", e.getAttemptCount()))
         .onRetriesExceeded(e -> log.error("Handling command failed after {} attempts.", e.getAttemptCount()));
-
-    this.validator = Validation.buildDefaultValidatorFactory().getValidator();
   }
 
   @Override
-  public CommandResult apply(Aggregate aggregate, Command command) {
+  public CommandResult apply(Command command, Aggregate aggregate) {
     log.debug("Handling command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
 
     try {
       validate(command.getPayload());
-      return Failsafe.with(retryPolicy).get(() -> doInvoke(aggregate, command));
+      return Failsafe.with(retryPolicy).get(() -> doInvoke(command, aggregate));
     } catch (Exception e) {
       Throwable throwable = ExceptionUtils.getRootCause(e);
       String message = ExceptionUtils.getRootCauseMessage(e);
@@ -71,17 +68,17 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
     }
   }
 
-  private CommandResult doInvoke(Aggregate aggregate, Command command) throws InvocationTargetException, IllegalAccessException {
+  private CommandResult doInvoke(Command command, Aggregate aggregate) throws InvocationTargetException, IllegalAccessException {
     Object result;
     if (method.getParameterCount() == 2) {
       result = method.invoke(target, command.getPayload(), aggregate != null ? aggregate.getPayload() : null);
     } else {
       result = method.invoke(target, command.getPayload(), aggregate != null ? aggregate.getPayload() : null, command.getMetadata());
     }
-    return createResult(command, result);
+    return createCommandResult(command, result);
   }
 
-  private CommandResult createResult(Command command, Object result) {
+  private CommandResult createCommandResult(Command command, Object result) {
     if (result == null) {
       return null;
     }
@@ -96,8 +93,6 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
     List<Event> events = list.stream()
         .filter(Objects::nonNull)
         .map(payload -> Event.builder()
-            .aggregateId(command.getAggregateId())
-            .id(CommonUtils.createMessageId(command.getAggregateId()))
             .timestamp(command.getTimestamp())
             .payload(payload)
             .metadata(command.getMetadata())
@@ -105,7 +100,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
         .collect(Collectors.toList());
 
     events.forEach(event -> {
-      TopicInfo topicInfo = CommonUtils.getTopicInfo(event.getPayload());
+      TopicInfo topicInfo = event.getTopicInfo();
       if (topicInfo == null) {
         throw new TopicInfoMissingException("You are trying to dispatch a message without any topic information. Please annotate your message with @TopicInfo.");
       }

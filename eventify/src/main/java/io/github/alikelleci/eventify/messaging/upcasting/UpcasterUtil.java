@@ -3,39 +3,24 @@ package io.github.alikelleci.eventify.messaging.upcasting;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.Eventify;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.util.JacksonUtils;
+import lombok.experimental.UtilityClass;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.math.NumberUtils;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.processor.ProcessorContext;
 
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.REVISION;
 
+@UtilityClass
+public class UpcasterUtil {
 
-public class PayloadTransformer implements ValueTransformerWithKey<String, JsonNode, Event> {
-
-  private final Eventify eventify;
-
-  public PayloadTransformer(Eventify eventify) {
-    this.eventify = eventify;
-  }
-
-  @Override
-  public void init(ProcessorContext processorContext) {
-  }
-
-  @Override
-  public Event transform(String key, JsonNode jsonNode) {
+  public Event upcast(Eventify eventify, JsonNode jsonNode) {
     JsonNode payload = jsonNode.get("payload");
     if (payload == null) {
       return null;
@@ -72,11 +57,6 @@ public class PayloadTransformer implements ValueTransformerWithKey<String, JsonN
         .forEach(result -> metadata.put(REVISION, revision.incrementAndGet()));
 
     return JacksonUtils.enhancedObjectMapper().convertValue(jsonNode, Event.class);
-  }
-
-  @Override
-  public void close() {
-
   }
 
 

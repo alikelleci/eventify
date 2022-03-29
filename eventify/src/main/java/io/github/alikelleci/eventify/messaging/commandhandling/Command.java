@@ -1,19 +1,40 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
+import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.messaging.Message;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import io.github.alikelleci.eventify.messaging.Metadata;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
 import lombok.ToString;
-import lombok.experimental.SuperBuilder;
+import lombok.Value;
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.springframework.util.ReflectionUtils;
 
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
+import java.time.Instant;
+import java.util.Optional;
+
+@Value
 @ToString(callSuper = true)
-@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class Command extends Message {
   private String aggregateId;
+
+  protected Command() {
+    this.aggregateId = null;
+  }
+
+  @Builder
+  protected Command(Instant timestamp, Object payload, Metadata metadata) {
+    super(timestamp, payload, metadata);
+
+    this.aggregateId = Optional.ofNullable(payload)
+        .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
+            .filter(field -> field.getType() == String.class)
+            .findFirst()
+            .map(field -> {
+              field.setAccessible(true);
+              return (String) ReflectionUtils.getField(field, payload);
+            }))
+        .orElse(null);
+  }
 }

@@ -1,12 +1,14 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
 
 import java.util.List;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
 
 public interface CommandResult {
@@ -22,11 +24,10 @@ public interface CommandResult {
 
     @Override
     public Command getCommand() {
-      return command.toBuilder()
-          .metadata(command.getMetadata().toBuilder()
-              .entry(Metadata.RESULT, "success")
-              .build())
-          .build();
+      command.getMetadata()
+          .add(RESULT, "success");
+
+      return command;
     }
   }
 
@@ -38,12 +39,11 @@ public interface CommandResult {
 
     @Override
     public Command getCommand() {
-      return command.toBuilder()
-          .metadata(command.getMetadata().toBuilder()
-              .entry(Metadata.RESULT, "failure")
-              .entry(Metadata.CAUSE, cause)
-              .build())
-          .build();
+      command.getMetadata()
+          .add(RESULT, "failure")
+          .add(CAUSE, cause);
+
+      return command;
     }
   }
 
