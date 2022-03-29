@@ -133,7 +133,8 @@ public class Eventify {
           .mapValues(CommandResult::getCommand)
           .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(Metadata.REPLY_TO)))
           .to((key, command, recordContext) -> command.getMetadata().get(Metadata.REPLY_TO),
-              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
+              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class))
+                  .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 
       // Events --> Push
       commandResults

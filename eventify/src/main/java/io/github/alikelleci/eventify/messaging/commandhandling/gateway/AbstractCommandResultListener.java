@@ -7,6 +7,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.CooperativeStickyAssignor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
@@ -23,7 +24,7 @@ public abstract class AbstractCommandResultListener {
   protected AbstractCommandResultListener(Properties consumerConfig, String replyTopic) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+//    consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
     consumerConfig.putIfAbsent(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
     consumerConfig.putIfAbsent(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
     consumerConfig.putIfAbsent(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, CooperativeStickyAssignor.class.getName());
@@ -41,7 +42,8 @@ public abstract class AbstractCommandResultListener {
     AtomicBoolean closed = new AtomicBoolean(false);
 
     Thread thread = new Thread(() -> {
-      consumer.subscribe(Collections.singletonList(this.replyTopic));
+      consumer.assign(Collections.singletonList(new TopicPartition(replyTopic, 0)));
+//      consumer.subscribe(Collections.singletonList(this.replyTopic));
       try {
         while (!closed.get()) {
           ConsumerRecords<String, Command> consumerRecords = consumer.poll(Duration.ofMillis(1000));
