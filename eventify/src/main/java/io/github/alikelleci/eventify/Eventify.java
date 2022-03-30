@@ -219,12 +219,13 @@ public class Eventify {
       this.stateListener = (newState, oldState) ->
           log.warn("State changed from {} to {}", oldState, newState);
     }
-    kafkaStreams.setStateListener(stateListener);
+    kafkaStreams.setStateListener(this.stateListener);
 
     if (this.uncaughtExceptionHandler == null) {
       this.uncaughtExceptionHandler = (throwable) ->
           StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
     }
+    kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
