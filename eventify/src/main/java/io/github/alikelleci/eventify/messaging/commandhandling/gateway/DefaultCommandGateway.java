@@ -36,18 +36,6 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   protected DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
     super(consumerConfig, replyTopic);
 
-    producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    producerConfig.putIfAbsent(ProducerConfig.ACKS_CONFIG, "all");
-    producerConfig.putIfAbsent(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
-    producerConfig.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
-
-//    ArrayList<String> interceptors = new ArrayList<>();
-//    interceptors.add(CommonProducerInterceptor.class.getName());
-//    interceptors.add(TracingProducerInterceptor.class.getName());
-//
-//    this.producerConfig.putIfAbsent(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
-
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
         new JsonSerializer<>());

@@ -5,6 +5,8 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Instant;
 import java.util.Properties;
@@ -51,13 +53,25 @@ public interface CommandGateway extends Gateway {
 
     public CommandGatewayBuilder producerConfig(Properties producerConfig) {
       this.producerConfig = producerConfig;
+      this.producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+      this.producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+      this.producerConfig.putIfAbsent(ProducerConfig.ACKS_CONFIG, "all");
+      this.producerConfig.putIfAbsent(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
+      this.producerConfig.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+
+//    ArrayList<String> interceptors = new ArrayList<>();
+//    interceptors.add(CommonProducerInterceptor.class.getName());
+//    interceptors.add(TracingProducerInterceptor.class.getName());
+//
+//    this.producerConfig.putIfAbsent(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
+
       return this;
     }
 
-//    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
-//      this.consumerConfig = consumerConfig;
-//      return this;
-//    }
+    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
+      this.consumerConfig = consumerConfig;
+      return this;
+    }
 
     public CommandGatewayBuilder replyTopic(String replyTopic) {
       this.replyTopic = replyTopic;
