@@ -3,6 +3,8 @@ package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 import io.github.alikelleci.eventify.messaging.Gateway;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.SneakyThrows;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.CommonClientConfigs;
 
 import java.time.Instant;
 import java.util.Properties;
@@ -52,10 +54,10 @@ public interface CommandGateway extends Gateway {
       return this;
     }
 
-    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
-      this.consumerConfig = consumerConfig;
-      return this;
-    }
+//    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
+//      this.consumerConfig = consumerConfig;
+//      return this;
+//    }
 
     public CommandGatewayBuilder replyTopic(String replyTopic) {
       this.replyTopic = replyTopic;
@@ -63,6 +65,18 @@ public interface CommandGateway extends Gateway {
     }
 
     public DefaultCommandGateway build() {
+      this.consumerConfig = new Properties();
+
+      String bootstrapServers = this.producerConfig.getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+      if (StringUtils.isNotBlank(bootstrapServers)) {
+        this.consumerConfig.putIfAbsent(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+      }
+
+      String securityProtocol = this.producerConfig.getProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
+      if (StringUtils.isNotBlank(securityProtocol)) {
+        this.consumerConfig.putIfAbsent(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
+      }
+
       return new DefaultCommandGateway(this.producerConfig, this.consumerConfig, this.replyTopic);
     }
   }
