@@ -315,7 +315,6 @@ class EventifyTest {
     assertThat(snapshots.get(0).value.getVersion(), is(5L));
     assertThat(snapshots.get(0).value.getPayload(), instanceOf(Customer.class));
     assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
-    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
   }
 
 
