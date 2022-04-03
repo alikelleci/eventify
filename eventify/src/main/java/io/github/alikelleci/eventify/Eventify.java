@@ -17,8 +17,6 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEv
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
-import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.Getter;
@@ -58,7 +56,6 @@ import java.util.stream.Stream;
 @Slf4j
 @Getter
 public class Eventify {
-  private MultiValuedMap<String, Upcaster> upcasters;
   private Map<Class<?>, CommandHandler> commandHandlers;
   private Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
   private MultiValuedMap<Class<?>, ResultHandler> resultHandlers;
@@ -71,8 +68,7 @@ public class Eventify {
 
   private KafkaStreams kafkaStreams;
 
-  protected Eventify(MultiValuedMap<String, Upcaster> upcasters, Map<Class<?>, CommandHandler> commandHandlers, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers, MultiValuedMap<Class<?>, ResultHandler> resultHandlers, MultiValuedMap<Class<?>, EventHandler> eventHandlers, Properties streamsConfig, StateListener stateListener, StreamsUncaughtExceptionHandler uncaughtExceptionHandler, boolean deleteEventsOnSnapshot) {
-    this.upcasters = upcasters;
+  protected Eventify(Map<Class<?>, CommandHandler> commandHandlers, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers, MultiValuedMap<Class<?>, ResultHandler> resultHandlers, MultiValuedMap<Class<?>, EventHandler> eventHandlers, Properties streamsConfig, StateListener stateListener, StreamsUncaughtExceptionHandler uncaughtExceptionHandler, boolean deleteEventsOnSnapshot) {
     this.commandHandlers = commandHandlers;
     this.eventSourcingHandlers = eventSourcingHandlers;
     this.resultHandlers = resultHandlers;
@@ -281,7 +277,6 @@ public class Eventify {
 
 
   public static class EventifyBuilder {
-    private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
     private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
     private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
     private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
@@ -293,14 +288,10 @@ public class Eventify {
     private boolean deleteEventsOnSnapshot;
 
     public EventifyBuilder registerHandler(Object handler) {
-      List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
       List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
       List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
       List<Method> resultHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
       List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-
-      upcasterMethods
-          .forEach(method -> addUpcaster(handler, method));
 
       commandHandlerMethods
           .forEach(method -> addCommandHandler(handler, method));
@@ -350,7 +341,6 @@ public class Eventify {
 
     public Eventify build() {
       return new Eventify(
-          this.upcasters,
           this.commandHandlers,
           this.eventSourcingHandlers,
           this.resultHandlers,
@@ -359,13 +349,6 @@ public class Eventify {
           this.stateListener,
           this.uncaughtExceptionHandler,
           this.deleteEventsOnSnapshot);
-    }
-
-    private void addUpcaster(Object listener, Method method) {
-      if (method.getParameterCount() == 1) {
-        String type = method.getAnnotation(Upcast.class).type();
-        upcasters.put(type, new Upcaster(listener, method));
-      }
     }
 
     private void addCommandHandler(Object listener, Method method) {
