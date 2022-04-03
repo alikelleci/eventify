@@ -10,8 +10,6 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandle
 import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
-import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -42,14 +40,10 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
   }
 
   private void registerHandler(Object handler) {
-    List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
     List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
     List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
     List<Method> resultHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
     List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-
-    upcasterMethods
-        .forEach(method -> addUpcaster(handler, method));
 
     commandHandlerMethods
         .forEach(method -> addCommandHandler(handler, method));
@@ -62,13 +56,6 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
     eventHandlerMethods
         .forEach(method -> addEventHandler(handler, method));
-  }
-
-  private void addUpcaster(Object listener, Method method) {
-    if (method.getParameterCount() == 1) {
-      String type = method.getAnnotation(Upcast.class).type();
-      eventify.getUpcasters().put(type, new Upcaster(listener, method));
-    }
   }
 
   private void addCommandHandler(Object listener, Method method) {

@@ -1,13 +1,17 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.Eventify;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
+import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
+import java.util.List;
 import java.util.Optional;
 
 
@@ -37,7 +41,14 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     Aggregate aggregate = loadAggregate(key);
 
     // 2. Validate command against aggregate
-    return commandHandler.apply(command, aggregate);
+    CommandResult result = commandHandler.apply(command, aggregate);
+
+    if (result instanceof Success) {
+      // 3. Save snapshot
+      saveSnapshot(aggregate, ((Success) result).getEvents());
+    }
+
+    return result;
   }
 
   @Override
@@ -51,10 +62,17 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
         .orElse(null);
   }
 
-  protected Aggregate loadFromSnapshot(String aggregateId) {
-    return Optional.ofNullable(snapshotStore.get(aggregateId))
-        .map(ValueAndTimestamp::value)
-        .orElse(null);
+  protected void saveSnapshot(Aggregate aggregate, List<Event> events) {
+    for (Event event : events) {
+      EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+      if (eventSourcingHandler != null) {
+        aggregate = eventSourcingHandler.apply(event, aggregate);
+      }
+    }
+
+    if (aggregate != null) {
+      snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
+    }
   }
 
 }

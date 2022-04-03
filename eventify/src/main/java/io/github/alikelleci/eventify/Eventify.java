@@ -92,11 +92,6 @@ public class Eventify {
      * -------------------------------------------------------------
      */
 
-    // Event store
-    builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), CustomSerdes.Json(Event.class))
-        .withLoggingEnabled(Collections.emptyMap()));
-
     // Snapshot Store
     builder.addStateStore(Stores
         .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
@@ -115,7 +110,7 @@ public class Eventify {
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .transformValues(() -> new CommandTransformer(this), "event-store", "snapshot-store")
+          .transformValues(() -> new CommandTransformer(this),"snapshot-store")
           .filter((key, result) -> result != null);
 
       // Results --> Push
@@ -156,7 +151,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .transformValues(() -> new EventTransformer(this), "event-store");
+          .transformValues(() -> new EventTransformer(this));
     }
 
     /*

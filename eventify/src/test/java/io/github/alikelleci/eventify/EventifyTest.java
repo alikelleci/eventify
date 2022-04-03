@@ -8,14 +8,11 @@ import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
-import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
-import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsIssued;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerUpcaster;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
@@ -60,7 +57,6 @@ class EventifyTest {
   private TestOutputTopic<String, Command> commandResultsTopic;
   private TestOutputTopic<String, Event> eventsTopic;
 
-  private KeyValueStore<String, Event> eventStore;
   private KeyValueStore<String, Aggregate> snapshotStore;
 
   private Faker faker = new Faker();
@@ -81,7 +77,6 @@ class EventifyTest {
         .registerHandler(new CustomerEventSourcingHandler())
         .registerHandler(new CustomerEventHandler())
         .registerHandler(new CustomerResultHandler())
-        .registerHandler(new CustomerUpcaster())
         .build();
 
     testDriver = new TopologyTestDriver(eventify.topology(), properties);
@@ -95,7 +90,6 @@ class EventifyTest {
     eventsTopic = testDriver.createOutputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
         new StringDeserializer(), CustomSerdes.Json(Event.class).deserializer());
 
-    eventStore = testDriver.getKeyValueStore("event-store");
     snapshotStore = testDriver.getKeyValueStore("snapshot-store");
   }
 
@@ -236,14 +230,12 @@ class EventifyTest {
     commands.forEach(command ->
         commandsTopic.pipeInput(command.getAggregateId(), command));
 
-    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
+    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
 
-    // Assert Event Store
-    assertThat(events.size(), is(4));
-    assertThat(events.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
-    assertThat(events.get(1).value.getPayload(), instanceOf(CreditsAdded.class));
-    assertThat(events.get(2).value.getPayload(), instanceOf(CreditsIssued.class));
-    assertThat(events.get(3).value.getPayload(), instanceOf(CreditsAdded.class));
+    // Assert Snapshot Store
+    assertThat(snapshots.size(), is(1));
+    assertThat(snapshots.get(0).value.getPayload(), instanceOf(Customer.class));
+    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(30));
   }
 
   @Test
@@ -285,7 +277,7 @@ class EventifyTest {
             .build())
         .build());
 
-    // IssueCredits -> Snapshot point
+    // IssueCredits
     commands.add(Command.builder()
         .payload(IssueCredits.builder()
             .id("customer-123")
@@ -305,16 +297,13 @@ class EventifyTest {
     commands.forEach(command ->
         commandsTopic.pipeInput(command.getAggregateId(), command));
 
-    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
     List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
 
     // Assert Snapshot Store
     assertThat(snapshots.size(), is(1));
     assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
-    assertThat(snapshots.get(0).value.getEventId(), is(events.get(4).key));
     assertThat(snapshots.get(0).value.getPayload(), instanceOf(Customer.class));
-    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
-    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(150));
+    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(175));
   }
 
 
