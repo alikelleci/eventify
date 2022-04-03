@@ -11,7 +11,6 @@ import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
-import java.util.List;
 import java.util.Optional;
 
 
@@ -44,8 +43,17 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     CommandResult result = commandHandler.apply(command, aggregate);
 
     if (result instanceof Success) {
-      // 3. Save snapshot
-      saveSnapshot(aggregate, ((Success) result).getEvents());
+      // 3. Apply events
+      for (Event event : ((Success) result).getEvents()) {
+        aggregate = applyEvent(aggregate, event);
+      }
+
+      // 4. Save snapshot
+      Optional.ofNullable(aggregate)
+          .ifPresent(aggr -> {
+            log.debug("Creating snapshot: {}", aggr);
+            saveSnapshot(aggr);
+          });
     }
 
     return result;
@@ -57,22 +65,29 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
   }
 
   protected Aggregate loadAggregate(String aggregateId) {
+    Aggregate aggregate = loadFromSnapshot(aggregateId);
+    if (aggregate != null) {
+      log.debug("Snapshot found: {}", aggregate);
+    }
+    return aggregate;
+  }
+
+  protected Aggregate loadFromSnapshot(String aggregateId) {
     return Optional.ofNullable(snapshotStore.get(aggregateId))
         .map(ValueAndTimestamp::value)
         .orElse(null);
   }
 
-  protected void saveSnapshot(Aggregate aggregate, List<Event> events) {
-    for (Event event : events) {
-      EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
-      if (eventSourcingHandler != null) {
-        aggregate = eventSourcingHandler.apply(event, aggregate);
-      }
+  protected Aggregate applyEvent(Aggregate aggregate, Event event) {
+    EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+    if (eventSourcingHandler != null) {
+      aggregate = eventSourcingHandler.apply(event, aggregate);
     }
+    return aggregate;
+  }
 
-    if (aggregate != null) {
-      snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
-    }
+  protected void saveSnapshot(Aggregate aggregate) {
+    snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
   }
 
 }
