@@ -65,10 +65,10 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
   }
 
   protected Aggregate loadAggregate(String aggregateId) {
+    log.debug("Loading aggregate state...");
     Aggregate aggregate = loadFromSnapshot(aggregateId);
-    if (aggregate != null) {
-      log.debug("Snapshot found: {}", aggregate);
-    }
+
+    log.debug("Current aggregate state: {}", aggregate);
     return aggregate;
   }
 
