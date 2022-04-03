@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.messaging.eventsourcing;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.common.annotations.EnableSnapshots;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.Builder;
@@ -22,16 +21,14 @@ import java.util.Optional;
 public class Aggregate extends Message {
   private String aggregateId;
   private String eventId;
-  private long version;
 
   protected Aggregate() {
     this.aggregateId = null;
     this.eventId = null;
-    this.version = 0;
   }
 
   @Builder
-  protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
+  protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = Optional.ofNullable(payload)
@@ -45,18 +42,6 @@ public class Aggregate extends Message {
         .orElse(null);
 
     this.eventId = eventId;
-    this.version = version;
   }
-
-  @JsonIgnore
-  public int getSnapshotTreshold() {
-    return Optional.ofNullable(getPayload())
-        .map(Object::getClass)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshots.class))
-        .map(EnableSnapshots::threshold)
-        .filter(threshold -> threshold > 0)
-        .orElse(0);
-  }
-
 
 }
