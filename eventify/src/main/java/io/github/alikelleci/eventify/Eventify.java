@@ -251,8 +251,8 @@ public class Eventify {
 
   private Set<String> getEventTopics() {
     return Stream.of(
-        eventHandlers.keySet(),
-        eventSourcingHandlers.keySet()
+        eventHandlers.keySet()
+//        eventSourcingHandlers.keySet()
     )
         .flatMap(Collection::stream)
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
