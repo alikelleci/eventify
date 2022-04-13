@@ -6,19 +6,14 @@ import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
-import io.github.alikelleci.eventify.messaging.commandhandling.annotations.HandleCommand;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventTransformer;
-import io.github.alikelleci.eventify.messaging.eventhandling.annotations.HandleEvent;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
-import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.Getter;
@@ -42,8 +37,8 @@ import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 import org.springframework.core.annotation.AnnotationUtils;
 
-import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -58,11 +53,11 @@ import java.util.stream.Stream;
 @Slf4j
 @Getter
 public class Eventify {
-  private MultiValuedMap<String, Upcaster> upcasters;
-  private Map<Class<?>, CommandHandler> commandHandlers;
-  private Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
-  private MultiValuedMap<Class<?>, ResultHandler> resultHandlers;
-  private MultiValuedMap<Class<?>, EventHandler> eventHandlers;
+  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+  private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
+  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
+  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
 
   private Properties streamsConfig;
   private StateListener stateListener;
@@ -71,12 +66,10 @@ public class Eventify {
 
   private KafkaStreams kafkaStreams;
 
-  protected Eventify(MultiValuedMap<String, Upcaster> upcasters, Map<Class<?>, CommandHandler> commandHandlers, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers, MultiValuedMap<Class<?>, ResultHandler> resultHandlers, MultiValuedMap<Class<?>, EventHandler> eventHandlers, Properties streamsConfig, StateListener stateListener, StreamsUncaughtExceptionHandler uncaughtExceptionHandler, boolean deleteEventsOnSnapshot) {
-    this.upcasters = upcasters;
-    this.commandHandlers = commandHandlers;
-    this.eventSourcingHandlers = eventSourcingHandlers;
-    this.resultHandlers = resultHandlers;
-    this.eventHandlers = eventHandlers;
+  protected Eventify(Properties streamsConfig,
+                     StateListener stateListener,
+                     StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
+                     boolean deleteEventsOnSnapshot) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
@@ -281,11 +274,7 @@ public class Eventify {
 
 
   public static class EventifyBuilder {
-    private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
-    private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
-    private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
-    private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
-    private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
+    private List<Object> handlers = new ArrayList<>();
 
     private Properties streamsConfig;
     private StateListener stateListener;
@@ -293,26 +282,7 @@ public class Eventify {
     private boolean deleteEventsOnSnapshot;
 
     public EventifyBuilder registerHandler(Object handler) {
-      List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
-      List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
-      List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
-      List<Method> resultHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
-      List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-
-      upcasterMethods
-          .forEach(method -> addUpcaster(handler, method));
-
-      commandHandlerMethods
-          .forEach(method -> addCommandHandler(handler, method));
-
-      eventSourcingMethods
-          .forEach(method -> addEventSourcingHandler(handler, method));
-
-      resultHandlerMethods
-          .forEach(method -> addResultHandler(handler, method));
-
-      eventHandlerMethods
-          .forEach(method -> addEventHandler(handler, method));
+      handlers.add(handler);
 
       return this;
     }
@@ -349,51 +319,16 @@ public class Eventify {
     }
 
     public Eventify build() {
-      return new Eventify(
-          this.upcasters,
-          this.commandHandlers,
-          this.eventSourcingHandlers,
-          this.resultHandlers,
-          this.eventHandlers,
+      Eventify eventify = new Eventify(
           this.streamsConfig,
           this.stateListener,
           this.uncaughtExceptionHandler,
           this.deleteEventsOnSnapshot);
-    }
 
-    private void addUpcaster(Object listener, Method method) {
-      if (method.getParameterCount() == 1) {
-        String type = method.getAnnotation(Upcast.class).type();
-        upcasters.put(type, new Upcaster(listener, method));
-      }
-    }
+      this.handlers.forEach(handler ->
+          HandlerUtils.registerHandler(eventify, handler));
 
-    private void addCommandHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-        Class<?> type = method.getParameters()[0].getType();
-        commandHandlers.put(type, new CommandHandler(listener, method));
-      }
-    }
-
-    private void addEventSourcingHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-        Class<?> type = method.getParameters()[0].getType();
-        eventSourcingHandlers.put(type, new EventSourcingHandler(listener, method));
-      }
-    }
-
-    private void addResultHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
-        Class<?> type = method.getParameters()[0].getType();
-        resultHandlers.put(type, new ResultHandler(listener, method));
-      }
-    }
-
-    private void addEventHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
-        Class<?> type = method.getParameters()[0].getType();
-        eventHandlers.put(type, new EventHandler(listener, method));
-      }
+      return eventify;
     }
 
   }
