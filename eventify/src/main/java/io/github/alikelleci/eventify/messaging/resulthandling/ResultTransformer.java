@@ -30,9 +30,9 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
 
   @Override
   public Command transform(String key, Command command) {
-    Collection<ResultHandler> handlers = eventify.getResultHandlers().get(command.getPayload().getClass());
-    if (CollectionUtils.isNotEmpty(handlers)) {
-      handlers.stream()
+    Collection<ResultHandler> resultHandlers = eventify.getResultHandlers().get(command.getPayload().getClass());
+    if (CollectionUtils.isNotEmpty(resultHandlers)) {
+      resultHandlers.stream()
           .sorted(Comparator.comparingInt(ResultHandler::getPriority).reversed())
           .forEach(handler -> {
             boolean handleAll = handler.getMethod().isAnnotationPresent(HandleResult.class);
