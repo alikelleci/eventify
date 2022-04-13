@@ -50,6 +50,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
+
 @Slf4j
 @Getter
 public class Eventify {
@@ -125,8 +127,8 @@ public class Eventify {
       // Results --> Push to reply topic
       commandResults
           .mapValues(CommandResult::getCommand)
-          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(Metadata.REPLY_TO)))
-          .to((key, command, recordContext) -> command.getMetadata().get(Metadata.REPLY_TO),
+          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
+          .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
               Produced.with(Serdes.String(), CustomSerdes.Json(Command.class))
                   .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 

@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 @Getter
 @ToString
@@ -55,7 +56,7 @@ public class Message {
     this.metadata = Metadata.builder()
         .addAll(metadata)
         .add(ID, this.id)
-        .add(Metadata.TIMESTAMP, this.timestamp.toString())
+        .add(TIMESTAMP, this.timestamp.toString())
         .build();
   }
 

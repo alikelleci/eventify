@@ -9,13 +9,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+
 public class CommonProducerInterceptor implements ProducerInterceptor<String, Object> {
 
   @Override
   public ProducerRecord<String, Object> onSend(ProducerRecord<String, Object> producerRecord) {
     producerRecord.headers()
-        .remove(Metadata.ID)
-        .add(Metadata.ID, UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
+        .remove(ID)
+        .add(ID, UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
 
     return producerRecord;
   }

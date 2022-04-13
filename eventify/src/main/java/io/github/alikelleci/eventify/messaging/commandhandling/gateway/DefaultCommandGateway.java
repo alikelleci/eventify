@@ -27,6 +27,9 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
+
 @Slf4j
 public class DefaultCommandGateway extends AbstractCommandResultListener implements CommandGateway {
 
@@ -51,8 +54,8 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
         .payload(payload)
         .metadata(Metadata.builder()
             .addAll(metadata)
-            .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-            .add(Metadata.REPLY_TO, getReplyTopic())
+            .add(CORRELATION_ID, UUID.randomUUID().toString())
+            .add(REPLY_TO, getReplyTopic())
             .build())
         .timestamp(timestamp)
         .build();
