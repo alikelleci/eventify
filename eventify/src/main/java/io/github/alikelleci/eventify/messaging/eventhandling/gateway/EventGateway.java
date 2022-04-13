@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
-import io.github.alikelleci.eventify.messaging.Gateway;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -9,7 +8,7 @@ import java.time.Instant;
 import java.util.Properties;
 
 
-public interface EventGateway extends Gateway {
+public interface EventGateway {
 
   void publish(Object payload, Metadata metadata, Instant timestamp);
 
