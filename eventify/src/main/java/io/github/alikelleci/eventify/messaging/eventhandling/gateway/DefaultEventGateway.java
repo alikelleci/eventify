@@ -17,6 +17,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Instant;
 import java.util.Properties;
+import java.util.UUID;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 
 @Slf4j
 public class DefaultEventGateway implements EventGateway {
@@ -35,6 +38,7 @@ public class DefaultEventGateway implements EventGateway {
         .payload(payload)
         .metadata(Metadata.builder()
             .addAll(metadata)
+            .add(CORRELATION_ID, UUID.randomUUID().toString())
             .build())
         .timestamp(timestamp)
         .build();
