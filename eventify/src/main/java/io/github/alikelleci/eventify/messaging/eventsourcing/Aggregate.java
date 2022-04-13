@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
@@ -12,6 +11,7 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 
+import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
 

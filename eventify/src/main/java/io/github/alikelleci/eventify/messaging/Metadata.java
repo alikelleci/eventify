@@ -5,6 +5,7 @@ import lombok.ToString;
 import lombok.experimental.Delegate;
 import org.apache.commons.lang3.StringUtils;
 
+import java.beans.Transient;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
@@ -47,18 +48,18 @@ public class Metadata implements Map<String, String> {
     return this;
   }
 
-  @JsonIgnore
+  @Transient
   protected Metadata filter() {
     entries.keySet().removeIf(key -> StringUtils.startsWithIgnoreCase(key, "$"));
     return this;
   }
 
-  @JsonIgnore
+  @Transient
   public String getMessageId() {
     return this.entries.get(ID);
   }
 
-  @JsonIgnore
+  @Transient
   public Instant getTimestamp() {
     return Instant.parse(this.entries.get(TIMESTAMP));
   }
