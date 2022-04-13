@@ -104,6 +104,7 @@ public class Eventify {
      * COMMAND HANDLING
      * -------------------------------------------------------------
      */
+
     if (!getCommandTopics().isEmpty()) {
       // --> Commands
       KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
