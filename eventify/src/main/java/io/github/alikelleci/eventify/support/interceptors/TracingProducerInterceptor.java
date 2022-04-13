@@ -9,13 +9,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
+
 public class TracingProducerInterceptor implements ProducerInterceptor<String, Object> {
 
   @Override
   public ProducerRecord<String, Object> onSend(ProducerRecord<String, Object> producerRecord) {
     producerRecord.headers()
-        .remove(Metadata.CORRELATION_ID)
-        .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
+        .remove(CORRELATION_ID)
+        .add(CORRELATION_ID, UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8));
 
     return producerRecord;
   }
