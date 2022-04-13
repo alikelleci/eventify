@@ -31,7 +31,7 @@ public class EventHandler implements Function<Event, Void> {
 
   @Override
   public Void apply(Event event) {
-    log.debug("Handling event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
+    log.debug("Handling event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
       return Failsafe.with(retryPolicy).get(() -> doInvoke(event));

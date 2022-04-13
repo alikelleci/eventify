@@ -48,7 +48,7 @@ public class CommandHandler implements BiFunction<Command, Aggregate, CommandRes
 
   @Override
   public CommandResult apply(Command command, Aggregate aggregate) {
-    log.debug("Handling command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
+    log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
 
     try {
       validate(command.getPayload());
