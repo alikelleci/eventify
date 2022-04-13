@@ -147,7 +147,7 @@ class EventifyTest {
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
-    assertThat(commandResult.getMetadata().get(RESULT), is("successful"));
+    assertThat(commandResult.getMetadata().get(RESULT), is("success"));
 //    assertThat(commandResult.getMetadata().get(CAUSE), isEmptyOrNullString());
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
@@ -335,7 +335,7 @@ class EventifyTest {
 
     // Accepted Commands
     List<Command> acceptedCommands = commandResults.stream()
-        .filter(command -> command.getMetadata().get(RESULT).equals("successful"))
+        .filter(command -> command.getMetadata().get(RESULT).equals("success"))
         .collect(Collectors.toList());
 
     if (acceptedCommands.isEmpty()) {
@@ -347,7 +347,7 @@ class EventifyTest {
 
     // Rejected Commands
     List<Command> rejectedCommands = commandResults.stream()
-        .filter(command -> command.getMetadata().get(RESULT).equals("failed"))
+        .filter(command -> command.getMetadata().get(RESULT).equals("failure"))
         .collect(Collectors.toList());
   }
 

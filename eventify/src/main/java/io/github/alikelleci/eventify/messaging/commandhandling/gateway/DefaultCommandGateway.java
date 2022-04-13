@@ -90,7 +90,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     Message message = record.value();
     Metadata metadata = message.getMetadata();
 
-    if (metadata.get(Metadata.RESULT).equals("failed")) {
+    if (metadata.get(Metadata.RESULT).equals("failure")) {
       return new CommandExecutionException(metadata.get(Metadata.CAUSE));
     }
 
