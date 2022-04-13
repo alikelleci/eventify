@@ -41,8 +41,8 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
 
             String result = command.getMetadata().get(Metadata.RESULT);
             if (handleAll ||
-                (handleSuccess && StringUtils.equals(result, "success")) ||
-                (handleFailure && StringUtils.equals(result, "failure"))) {
+                (handleSuccess && StringUtils.equals(result, "successful")) ||
+                (handleFailure && StringUtils.equals(result, "failed"))) {
               handler.apply(command);
             }
           });
