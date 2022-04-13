@@ -1,6 +1,11 @@
 package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
+import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
+import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
+import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -39,5 +44,21 @@ public class DefaultEventGateway implements EventGateway {
 
     log.debug("Publishing event: {} ({})", event.getType(), event.getAggregateId());
     producer.send(record);
+  }
+
+  private void validate(Event message) {
+    if (message.getPayload() == null) {
+      throw new PayloadMissingException("You are trying to dispatch a message without a payload.");
+    }
+
+    TopicInfo topicInfo = message.getTopicInfo();
+    if (topicInfo == null) {
+      throw new TopicInfoMissingException("You are trying to dispatch a message without any topic information. Please annotate your message with @TopicInfo.");
+    }
+
+    String aggregateId = message.getAggregateId();
+    if (aggregateId == null) {
+      throw new AggregateIdMissingException("You are trying to dispatch a message without a proper identifier. Please annotate your field containing the identifier with @AggregateId.");
+    }
   }
 }
