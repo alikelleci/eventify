@@ -13,8 +13,8 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandle
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
+import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

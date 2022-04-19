@@ -45,7 +45,7 @@ public class HandlerUtils {
         .forEach(method -> addEventHandler(eventify, handler, method));
   }
 
-  private  <A extends Annotation> List<Method> findMethodsWithAnnotation(Class<?> c, Class<A> annotation) {
+  private <A extends Annotation> List<Method> findMethodsWithAnnotation(Class<?> c, Class<A> annotation) {
     List<Method> methods = new ArrayList<>();
     for (Method method : c.getDeclaredMethods()) {
       if (AnnotationUtils.findAnnotation(method, annotation) != null) {
