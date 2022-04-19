@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.ToString;
 import lombok.experimental.Delegate;
 import org.apache.commons.lang3.StringUtils;

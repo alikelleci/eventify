@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.support.interceptors;
 
-import io.github.alikelleci.eventify.messaging.Metadata;
 import org.apache.kafka.clients.producer.ProducerInterceptor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
