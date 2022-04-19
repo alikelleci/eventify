@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.util;
+package io.github.alikelleci.eventify.support;
 
 import org.apache.kafka.streams.state.RocksDBConfigSetter;
 import org.rocksdb.CompressionType;
