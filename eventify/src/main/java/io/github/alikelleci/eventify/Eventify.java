@@ -109,7 +109,7 @@ public class Eventify {
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .transformValues(() -> new CommandTransformer(this),"snapshot-store")
+          .transformValues(() -> new CommandTransformer(this), "snapshot-store")
           .filter((key, result) -> result != null);
 
       // Results --> Push

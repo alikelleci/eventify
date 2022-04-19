@@ -8,10 +8,8 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
 import org.apache.commons.lang3.reflect.FieldUtils;
-import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 
-import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
 
