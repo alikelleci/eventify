@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.support;
 
 import io.github.alikelleci.eventify.messaging.Message;
+import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
@@ -11,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 
 @Slf4j
-public class BenchmarkTransformer implements ValueTransformerWithKey<String, Message, Message> {
+public class BenchmarkTransformer<T extends Message> implements ValueTransformerWithKey<String, T, T> {
 
   private final AtomicLong counter = new AtomicLong(0);
 
@@ -27,14 +28,15 @@ public class BenchmarkTransformer implements ValueTransformerWithKey<String, Mes
   }
 
   @Override
-  public Message transform(String key, Message message) {
+  public T transform(String s, T t) {
     counter.incrementAndGet();
-    return message;
+    return t;
   }
 
   @Override
   public void close() {
 
   }
+
 
 }
