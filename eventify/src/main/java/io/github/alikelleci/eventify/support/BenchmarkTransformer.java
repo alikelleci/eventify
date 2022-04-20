@@ -38,5 +38,4 @@ public class BenchmarkTransformer<T extends Message> implements ValueTransformer
 
   }
 
-
 }
