@@ -63,18 +63,15 @@ public class Eventify {
   private Properties streamsConfig;
   private StateListener stateListener;
   private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
-  private boolean deleteEventsOnSnapshot;
 
   private KafkaStreams kafkaStreams;
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
-                     StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
-                     boolean deleteEventsOnSnapshot) {
+                     StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
-    this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
   }
 
   public static EventifyBuilder builder() {
@@ -276,7 +273,6 @@ public class Eventify {
     private Properties streamsConfig;
     private StateListener stateListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
-    private boolean deleteEventsOnSnapshot;
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
@@ -312,17 +308,11 @@ public class Eventify {
       return this;
     }
 
-    public EventifyBuilder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
-      this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
-      return this;
-    }
-
     public Eventify build() {
       Eventify eventify = new Eventify(
           this.streamsConfig,
           this.stateListener,
-          this.uncaughtExceptionHandler,
-          this.deleteEventsOnSnapshot);
+          this.uncaughtExceptionHandler);
 
       this.handlers.forEach(handler ->
           HandlerUtils.registerHandler(eventify, handler));
