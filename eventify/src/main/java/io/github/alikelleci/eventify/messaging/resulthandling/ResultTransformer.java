@@ -30,25 +30,23 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
 
   @Override
   public Command transform(String key, Command command) {
-    Collection<ResultHandler> handlers = eventify.getResultHandlers().get(command.getPayload().getClass());
-    if (CollectionUtils.isEmpty(handlers)) {
-      return null;
+    Collection<ResultHandler> resultHandlers = eventify.getResultHandlers().get(command.getPayload().getClass());
+    if (CollectionUtils.isNotEmpty(resultHandlers)) {
+      resultHandlers.stream()
+          .sorted(Comparator.comparingInt(ResultHandler::getPriority).reversed())
+          .forEach(handler -> {
+            boolean handleAll = handler.getMethod().isAnnotationPresent(HandleResult.class);
+            boolean handleSuccess = handler.getMethod().isAnnotationPresent(HandleSuccess.class);
+            boolean handleFailure = handler.getMethod().isAnnotationPresent(HandleFailure.class);
+
+            String result = command.getMetadata().get(Metadata.RESULT);
+            if (handleAll ||
+                (handleSuccess && StringUtils.equals(result, "success")) ||
+                (handleFailure && StringUtils.equals(result, "failure"))) {
+              handler.apply(command);
+            }
+          });
     }
-
-    handlers.stream()
-        .sorted(Comparator.comparingInt(ResultHandler::getPriority).reversed())
-        .forEach(handler -> {
-          boolean handleAll = handler.getMethod().isAnnotationPresent(HandleResult.class);
-          boolean handleSuccess = handler.getMethod().isAnnotationPresent(HandleSuccess.class);
-          boolean handleFailure = handler.getMethod().isAnnotationPresent(HandleFailure.class);
-
-          String result = command.getMetadata().get(Metadata.RESULT);
-          if (handleAll ||
-              (handleSuccess && StringUtils.equals(result, "success")) ||
-              (handleFailure && StringUtils.equals(result, "failure"))) {
-            handler.apply(command);
-          }
-        });
 
     return command;
   }

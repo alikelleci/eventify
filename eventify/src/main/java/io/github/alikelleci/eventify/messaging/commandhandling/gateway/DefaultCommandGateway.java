@@ -2,6 +2,10 @@ package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
+import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
+import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
@@ -13,7 +17,6 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
@@ -22,6 +25,9 @@ import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 
 @Slf4j
 public class DefaultCommandGateway extends AbstractCommandResultListener implements CommandGateway {
@@ -36,18 +42,6 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   protected DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic) {
     super(consumerConfig, replyTopic);
 
-    producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
-    producerConfig.putIfAbsent(ProducerConfig.ACKS_CONFIG, "all");
-    producerConfig.putIfAbsent(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
-    producerConfig.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
-
-//    ArrayList<String> interceptors = new ArrayList<>();
-//    interceptors.add(CommonProducerInterceptor.class.getName());
-//    interceptors.add(TracingProducerInterceptor.class.getName());
-//
-//    this.producerConfig.putIfAbsent(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
-
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
         new JsonSerializer<>());
@@ -59,8 +53,8 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
         .payload(payload)
         .metadata(Metadata.builder()
             .addAll(metadata)
-            .add(Metadata.CORRELATION_ID, UUID.randomUUID().toString())
-            .add(Metadata.REPLY_TO, getReplyTopic())
+            .add(CORRELATION_ID, UUID.randomUUID().toString())
+            .add(REPLY_TO, getReplyTopic())
             .build())
         .timestamp(timestamp)
         .build();
@@ -68,7 +62,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     validate(command);
     ProducerRecord<String, Command> record = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
-    log.debug("Sending command: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
+    log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
     producer.send(record);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
@@ -96,6 +90,22 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
         cache.invalidate(messageId);
       }
     });
+  }
+
+  private void validate(Command message) {
+    if (message.getPayload() == null) {
+      throw new PayloadMissingException("You are trying to dispatch a message without a payload.");
+    }
+
+    TopicInfo topicInfo = message.getTopicInfo();
+    if (topicInfo == null) {
+      throw new TopicInfoMissingException("You are trying to dispatch a message without any topic information. Please annotate your message with @TopicInfo.");
+    }
+
+    String aggregateId = message.getAggregateId();
+    if (aggregateId == null) {
+      throw new AggregateIdMissingException("You are trying to dispatch a message without a proper identifier. Please annotate your field containing the identifier with @AggregateId.");
+    }
   }
 
   private Exception checkForErrors(ConsumerRecord<String, Command> record) {

@@ -48,8 +48,9 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
 
     if (result instanceof Success) {
       // 3. Save events
-      ((Success) result).getEvents().forEach(event ->
-          saveEvent(event));
+      for (Event event : ((Success) result).getEvents()) {
+        saveEvent(event);
+      }
 
       // 4. Save snapshot if needed
       Optional.ofNullable(aggregate)
@@ -121,6 +122,12 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     return aggregate;
   }
 
+  protected Aggregate loadFromSnapshot(String aggregateId) {
+    return Optional.ofNullable(snapshotStore.get(aggregateId))
+        .map(ValueAndTimestamp::value)
+        .orElse(null);
+  }
+
   protected void saveEvent(Event event) {
     eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
   }
@@ -139,19 +146,13 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
 
-        log.debug("Deleting event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
+        log.debug("Deleting event: {} ({})", event.getType(), event.getAggregateId());
         eventStore.delete(event.getId());
 
         counter.incrementAndGet();
       }
     }
     log.debug("Total events deleted: {}", counter.get());
-  }
-
-  protected Aggregate loadFromSnapshot(String aggregateId) {
-    return Optional.ofNullable(snapshotStore.get(aggregateId))
-        .map(ValueAndTimestamp::value)
-        .orElse(null);
   }
 
 }

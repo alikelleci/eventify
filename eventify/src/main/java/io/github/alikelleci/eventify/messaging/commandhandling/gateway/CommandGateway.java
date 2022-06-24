@@ -1,15 +1,18 @@
 package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
-import io.github.alikelleci.eventify.messaging.Gateway;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.SneakyThrows;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Instant;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-public interface CommandGateway extends Gateway {
+public interface CommandGateway {
 
   <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp);
 
@@ -49,13 +52,26 @@ public interface CommandGateway extends Gateway {
 
     public CommandGatewayBuilder producerConfig(Properties producerConfig) {
       this.producerConfig = producerConfig;
+      this.producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+      this.producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+      this.producerConfig.putIfAbsent(ProducerConfig.ACKS_CONFIG, "all");
+      this.producerConfig.putIfAbsent(ProducerConfig.RETRIES_CONFIG, Integer.MAX_VALUE);
+      this.producerConfig.putIfAbsent(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, true);
+      this.producerConfig.putIfAbsent(ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd");
+
+//    ArrayList<String> interceptors = new ArrayList<>();
+//    interceptors.add(CommonProducerInterceptor.class.getName());
+//    interceptors.add(TracingProducerInterceptor.class.getName());
+//
+//    this.producerConfig.putIfAbsent(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, interceptors);
+
       return this;
     }
 
-    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
-      this.consumerConfig = consumerConfig;
-      return this;
-    }
+//    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
+//      this.consumerConfig = consumerConfig;
+//      return this;
+//    }
 
     public CommandGatewayBuilder replyTopic(String replyTopic) {
       this.replyTopic = replyTopic;
@@ -63,6 +79,18 @@ public interface CommandGateway extends Gateway {
     }
 
     public DefaultCommandGateway build() {
+      this.consumerConfig = new Properties();
+
+      String bootstrapServers = this.producerConfig.getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
+      if (StringUtils.isNotBlank(bootstrapServers)) {
+        this.consumerConfig.putIfAbsent(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+      }
+
+      String securityProtocol = this.producerConfig.getProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
+      if (StringUtils.isNotBlank(securityProtocol)) {
+        this.consumerConfig.putIfAbsent(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
+      }
+
       return new DefaultCommandGateway(this.producerConfig, this.consumerConfig, this.replyTopic);
     }
   }

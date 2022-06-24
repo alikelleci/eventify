@@ -30,7 +30,7 @@ public class EventSourcingHandler implements BiFunction<Event, Aggregate, Aggreg
 
   @Override
   public Aggregate apply(Event event, Aggregate aggregate) {
-    log.debug("Applying event: {} ({})", event.getPayload().getClass().getSimpleName(), event.getAggregateId());
+    log.debug("Applying event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
       return Failsafe.with(retryPolicy).get(() -> doInvoke(event, aggregate));

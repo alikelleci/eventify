@@ -32,7 +32,7 @@ public class ResultHandler implements Function<Command, Void> {
 
   @Override
   public Void apply(Command command) {
-    log.debug("Handling command result: {} ({})", command.getPayload().getClass().getSimpleName(), command.getAggregateId());
+    log.debug("Handling command result: {} ({})", command.getType(), command.getAggregateId());
 
     try {
       return Failsafe.with(retryPolicy).get(() -> doInvoke(command));

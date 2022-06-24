@@ -1,24 +1,19 @@
 package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
-import io.github.alikelleci.eventify.messaging.commandhandling.annotations.HandleCommand;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventTransformer;
-import io.github.alikelleci.eventify.messaging.eventhandling.annotations.HandleEvent;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
-import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
+import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import lombok.Getter;
@@ -26,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
@@ -42,8 +38,8 @@ import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 import org.springframework.core.annotation.AnnotationUtils;
 
-import java.lang.reflect.Method;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -55,14 +51,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
+
 @Slf4j
 @Getter
 public class Eventify {
-  private MultiValuedMap<String, Upcaster> upcasters;
-  private Map<Class<?>, CommandHandler> commandHandlers;
-  private Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
-  private MultiValuedMap<Class<?>, ResultHandler> resultHandlers;
-  private MultiValuedMap<Class<?>, EventHandler> eventHandlers;
+  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+  private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
+  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
+  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
 
   private Properties streamsConfig;
   private StateListener stateListener;
@@ -71,12 +69,10 @@ public class Eventify {
 
   private KafkaStreams kafkaStreams;
 
-  protected Eventify(MultiValuedMap<String, Upcaster> upcasters, Map<Class<?>, CommandHandler> commandHandlers, Map<Class<?>, EventSourcingHandler> eventSourcingHandlers, MultiValuedMap<Class<?>, ResultHandler> resultHandlers, MultiValuedMap<Class<?>, EventHandler> eventHandlers, Properties streamsConfig, StateListener stateListener, StreamsUncaughtExceptionHandler uncaughtExceptionHandler, boolean deleteEventsOnSnapshot) {
-    this.upcasters = upcasters;
-    this.commandHandlers = commandHandlers;
-    this.eventSourcingHandlers = eventSourcingHandlers;
-    this.resultHandlers = resultHandlers;
-    this.eventHandlers = eventHandlers;
+  protected Eventify(Properties streamsConfig,
+                     StateListener stateListener,
+                     StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
+                     boolean deleteEventsOnSnapshot) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
@@ -111,6 +107,7 @@ public class Eventify {
      * COMMAND HANDLING
      * -------------------------------------------------------------
      */
+
     if (!getCommandTopics().isEmpty()) {
       // --> Commands
       KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
@@ -131,9 +128,10 @@ public class Eventify {
       // Results --> Push to reply topic
       commandResults
           .mapValues(CommandResult::getCommand)
-          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(Metadata.REPLY_TO)))
-          .to((key, command, recordContext) -> command.getMetadata().get(Metadata.REPLY_TO),
-              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
+          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
+          .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
+              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class))
+                  .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 
       // Events --> Push
       commandResults
@@ -218,12 +216,13 @@ public class Eventify {
       this.stateListener = (newState, oldState) ->
           log.warn("State changed from {} to {}", oldState, newState);
     }
-    kafkaStreams.setStateListener(stateListener);
+    kafkaStreams.setStateListener(this.stateListener);
 
     if (this.uncaughtExceptionHandler == null) {
       this.uncaughtExceptionHandler = (throwable) ->
-          StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.REPLACE_THREAD;
+          StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
     }
+    kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
       @Override
@@ -279,11 +278,7 @@ public class Eventify {
 
 
   public static class EventifyBuilder {
-    private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
-    private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
-    private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
-    private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
-    private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
+    private List<Object> handlers = new ArrayList<>();
 
     private Properties streamsConfig;
     private StateListener stateListener;
@@ -291,26 +286,7 @@ public class Eventify {
     private boolean deleteEventsOnSnapshot;
 
     public EventifyBuilder registerHandler(Object handler) {
-      List<Method> upcasterMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), Upcast.class);
-      List<Method> commandHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
-      List<Method> eventSourcingMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
-      List<Method> resultHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
-      List<Method> eventHandlerMethods = HandlerUtils.findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-
-      upcasterMethods
-          .forEach(method -> addUpcaster(handler, method));
-
-      commandHandlerMethods
-          .forEach(method -> addCommandHandler(handler, method));
-
-      eventSourcingMethods
-          .forEach(method -> addEventSourcingHandler(handler, method));
-
-      resultHandlerMethods
-          .forEach(method -> addResultHandler(handler, method));
-
-      eventHandlerMethods
-          .forEach(method -> addEventHandler(handler, method));
+      handlers.add(handler);
 
       return this;
     }
@@ -322,6 +298,8 @@ public class Eventify {
       this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
       this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
       this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
+      this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, CustomRocksDbConfig.class);
+      this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
 
 //    ArrayList<String> interceptors = new ArrayList<>();
 //    interceptors.add(CommonProducerInterceptor.class.getName());
@@ -347,51 +325,16 @@ public class Eventify {
     }
 
     public Eventify build() {
-      return new Eventify(
-          this.upcasters,
-          this.commandHandlers,
-          this.eventSourcingHandlers,
-          this.resultHandlers,
-          this.eventHandlers,
+      Eventify eventify = new Eventify(
           this.streamsConfig,
           this.stateListener,
           this.uncaughtExceptionHandler,
           this.deleteEventsOnSnapshot);
-    }
 
-    private void addUpcaster(Object listener, Method method) {
-      if (method.getParameterCount() == 1) {
-        String type = method.getAnnotation(Upcast.class).type();
-        upcasters.put(type, new Upcaster(listener, method));
-      }
-    }
+      this.handlers.forEach(handler ->
+          HandlerUtils.registerHandler(eventify, handler));
 
-    private void addCommandHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-        Class<?> type = method.getParameters()[0].getType();
-        commandHandlers.put(type, new CommandHandler(listener, method));
-      }
-    }
-
-    private void addEventSourcingHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-        Class<?> type = method.getParameters()[0].getType();
-        eventSourcingHandlers.put(type, new EventSourcingHandler(listener, method));
-      }
-    }
-
-    private void addResultHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
-        Class<?> type = method.getParameters()[0].getType();
-        resultHandlers.put(type, new ResultHandler(listener, method));
-      }
-    }
-
-    private void addEventHandler(Object listener, Method method) {
-      if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
-        Class<?> type = method.getParameters()[0].getType();
-        eventHandlers.put(type, new EventHandler(listener, method));
-      }
+      return eventify;
     }
 
   }

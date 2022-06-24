@@ -29,9 +29,9 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
   @Override
   public Event transform(String key, Event event) {
-    Collection<EventHandler> handlers = eventify.getEventHandlers().get(event.getPayload().getClass());
-    if (CollectionUtils.isNotEmpty(handlers)) {
-      handlers.stream()
+    Collection<EventHandler> eventHandlers = eventify.getEventHandlers().get(event.getPayload().getClass());
+    if (CollectionUtils.isNotEmpty(eventHandlers)) {
+      eventHandlers.stream()
           .sorted(Comparator.comparingInt(EventHandler::getPriority).reversed())
           .forEach(handler ->
               handler.apply(event));
