@@ -1,6 +1,9 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
+import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
+import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
@@ -13,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import javax.validation.ConstraintViolation;
@@ -100,9 +104,17 @@ public class CommandHandler implements BiFunction<Command, Aggregate, CommandRes
         .collect(Collectors.toList());
 
     events.forEach(event -> {
-      TopicInfo topicInfo = event.getTopicInfo();
-      if (topicInfo == null) {
-        throw new TopicInfoMissingException("You are trying to dispatch a message without any topic information. Please annotate your message with @TopicInfo.");
+      if (event.getPayload() == null) {
+        throw new PayloadMissingException("You are trying to dispatch an event without a payload.");
+      }
+      if (event.getTopicInfo() == null) {
+        throw new TopicInfoMissingException("You are trying to dispatch an event without any topic information. Please annotate your event with @TopicInfo.");
+      }
+      if (event.getAggregateId() == null) {
+        throw new AggregateIdMissingException("You are trying to dispatch an event without a proper aggregate identifier. Please annotate your field containing the aggregate identifier with @AggregateId.");
+      }
+      if (!StringUtils.equals(event.getAggregateId(), command.getAggregateId())) {
+        throw new AggregateIdMismatchException("Aggregate identifier does not match. Expected " + command.getAggregateId() + ", but was " + event.getAggregateId());
       }
     });
 
