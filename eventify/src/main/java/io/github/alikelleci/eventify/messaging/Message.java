@@ -34,12 +34,12 @@ public class Message {
 
   protected Message(Instant timestamp, Object payload, Metadata metadata) {
     this.id = Optional.ofNullable(payload)
-        .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
+        .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(p.getClass(), AggregateId.class).stream()
             .filter(field -> field.getType() == String.class)
             .findFirst()
             .map(field -> {
               field.setAccessible(true);
-              return (String) ReflectionUtils.getField(field, payload);
+              return (String) ReflectionUtils.getField(field, p);
             }))
         .map(s -> s + "@" + UlidCreator.getMonotonicUlid().toString())
         .orElse(null);

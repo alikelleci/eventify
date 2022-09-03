@@ -28,12 +28,12 @@ public class Event extends Message {
     super(timestamp, payload, metadata);
 
     this.aggregateId = Optional.ofNullable(payload)
-        .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class).stream()
+        .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(p.getClass(), AggregateId.class).stream()
             .filter(field -> field.getType() == String.class)
             .findFirst()
             .map(field -> {
               field.setAccessible(true);
-              return (String) ReflectionUtils.getField(field, payload);
+              return (String) ReflectionUtils.getField(field, p);
             }))
         .orElse(null);
   }
