@@ -45,7 +45,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     if (result instanceof Success) {
       // 3. Apply events
       for (Event event : ((Success) result).getEvents()) {
-        aggregate = applyEvent(aggregate, event);
+        aggregate = applyEvent(event, aggregate);
       }
 
       // 4. Save snapshot
@@ -79,7 +79,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
         .orElse(null);
   }
 
-  protected Aggregate applyEvent(Aggregate aggregate, Event event) {
+  protected Aggregate applyEvent(Event event, Aggregate aggregate) {
     EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
       aggregate = eventSourcingHandler.apply(event, aggregate);
