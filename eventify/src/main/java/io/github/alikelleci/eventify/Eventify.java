@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
@@ -135,9 +136,9 @@ public class Eventify {
 
       // Events --> Push
       commandResults
-          .filter((key, result) -> result instanceof CommandResult.Success)
-          .mapValues((key, result) -> (CommandResult.Success) result)
-          .flatMapValues(CommandResult.Success::getEvents)
+          .filter((key, result) -> result instanceof Success)
+          .mapValues((key, result) -> (Success) result)
+          .flatMapValues(Success::getEvents)
           .filter((key, event) -> event != null)
           .to((key, event, recordContext) -> event.getTopicInfo().value(),
               Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
