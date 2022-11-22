@@ -1,9 +1,5 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
-import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
-import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import io.github.alikelleci.eventify.retry.Retry;
@@ -11,7 +7,6 @@ import io.github.alikelleci.eventify.retry.RetryUtil;
 import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
@@ -55,27 +50,16 @@ public class EventSourcingHandler implements BiFunction<Event, Aggregate, Aggreg
   }
 
   private Aggregate createState(Event event, Object result) {
-    Aggregate aggregate = Aggregate.builder()
+    if (result == null) {
+      return null;
+    }
+
+    return Aggregate.builder()
         .timestamp(event.getTimestamp())
         .payload(result)
         .metadata(event.getMetadata())
         .eventId(event.getId())
         .build();
-
-    if (aggregate.getPayload() == null) {
-      throw new PayloadMissingException("You are trying to dispatch an aggregate without a payload.");
-    }
-    if (aggregate.getTopicInfo() == null) {
-      throw new TopicInfoMissingException("You are trying to dispatch an aggregate without any topic information. Please annotate your aggregate with @TopicInfo.");
-    }
-    if (aggregate.getAggregateId() == null) {
-      throw new AggregateIdMissingException("You are trying to dispatch an aggregate without a proper aggregate identifier. Please annotate your field containing the aggregate identifier with @AggregateId.");
-    }
-    if (!StringUtils.equals(aggregate.getAggregateId(), event.getAggregateId())) {
-      throw new AggregateIdMismatchException("Aggregate identifier does not match. Expected " + event.getAggregateId() + ", but was " + aggregate.getAggregateId());
-    }
-
-    return aggregate;
   }
 
   public Method getMethod() {
