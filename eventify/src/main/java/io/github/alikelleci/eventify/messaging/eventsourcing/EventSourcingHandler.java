@@ -50,6 +50,10 @@ public class EventSourcingHandler implements BiFunction<Event, Aggregate, Aggreg
   }
 
   private Aggregate createState(Event event, Object result) {
+    if (result == null) {
+      return null;
+    }
+
     return Aggregate.builder()
         .timestamp(event.getTimestamp())
         .payload(result)
