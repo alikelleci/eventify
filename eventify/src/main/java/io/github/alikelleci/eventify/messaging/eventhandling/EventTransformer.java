@@ -45,6 +45,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
       // 1. Load aggregate state
       Aggregate aggregate = loadSnapshot(key);
 
+      // TODO: fix this, a delete can trigger this twice
       if (aggregate == null || !StringUtils.equals(aggregate.getEventId(), event.getId())) {
         // 2. Apply event
         aggregate = eventSourcingHandler.apply(event, aggregate);
