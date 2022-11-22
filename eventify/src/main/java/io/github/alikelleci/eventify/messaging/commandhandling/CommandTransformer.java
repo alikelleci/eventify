@@ -54,6 +54,10 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
             log.debug("Creating snapshot: {}", aggr);
             saveSnapshot(aggr);
           });
+
+      if (aggregate == null) {
+        deleteSnapshot(key);
+      }
     }
 
     return result;
@@ -90,4 +94,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
   }
 
+  private void deleteSnapshot(String key) {
+    snapshotStore.delete(key);
+  }
 }

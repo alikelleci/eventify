@@ -45,13 +45,17 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
       // 1. Load aggregate state
       Aggregate aggregate = loadSnapshot(key);
 
-      if (!StringUtils.equals(aggregate.getEventId(), event.getId())) {
+      if (aggregate == null || !StringUtils.equals(aggregate.getEventId(), event.getId())) {
         // 2. Apply event
         aggregate = eventSourcingHandler.apply(event, aggregate);
 
         // 3. Save snapshot
         Optional.ofNullable(aggregate)
             .ifPresent(this::saveSnapshot);
+
+        if (aggregate == null) {
+          deleteSnapshot(key);
+        }
       }
     }
 
@@ -71,5 +75,9 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
   protected void saveSnapshot(Aggregate aggregate) {
     snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
+  }
+
+  private void deleteSnapshot(String key) {
+    snapshotStore.delete(key);
   }
 }
