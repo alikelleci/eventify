@@ -49,13 +49,10 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
       }
 
       // 4. Save snapshot
-      Optional.ofNullable(aggregate)
-          .ifPresent(aggr -> {
-            log.debug("Creating snapshot: {}", aggr);
-            saveSnapshot(aggr);
-          });
-
-      if (aggregate == null) {
+      if (aggregate != null) {
+        log.debug("Creating snapshot: {}", aggregate);
+        saveSnapshot(aggregate);
+      } else {
         deleteSnapshot(key);
       }
     }
