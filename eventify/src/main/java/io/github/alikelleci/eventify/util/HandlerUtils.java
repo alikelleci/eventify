@@ -64,14 +64,14 @@ public class HandlerUtils {
 
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-      Class<?> type = method.getParameters()[0].getType();
+      Class<?> type = method.getParameters()[1].getType();
       eventify.getCommandHandlers().put(type, new CommandHandler(listener, method));
     }
   }
 
   private void addEventSourcingHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-      Class<?> type = method.getParameters()[0].getType();
+      Class<?> type = method.getParameters()[1].getType();
       eventify.getEventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
     }
   }

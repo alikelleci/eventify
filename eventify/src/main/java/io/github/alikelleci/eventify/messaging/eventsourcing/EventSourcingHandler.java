@@ -14,7 +14,7 @@ import java.lang.reflect.Method;
 import java.util.function.BiFunction;
 
 @Slf4j
-public class EventSourcingHandler implements BiFunction<Event, Aggregate, Aggregate> {
+public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggregate> {
 
   private final Object target;
   private final Method method;
@@ -29,22 +29,22 @@ public class EventSourcingHandler implements BiFunction<Event, Aggregate, Aggreg
   }
 
   @Override
-  public Aggregate apply(Event event, Aggregate aggregate) {
+  public Aggregate apply(Aggregate aggregate, Event event) {
     log.debug("Applying event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
-      return Failsafe.with(retryPolicy).get(() -> doInvoke(event, aggregate));
+      return Failsafe.with(retryPolicy).get(() -> doInvoke(aggregate, event));
     } catch (Exception e) {
       throw new AggregateInvocationException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Aggregate doInvoke(Event event, Aggregate aggregate) throws InvocationTargetException, IllegalAccessException {
+  private Aggregate doInvoke(Aggregate aggregate, Event event) throws InvocationTargetException, IllegalAccessException {
     Object result;
     if (method.getParameterCount() == 2) {
-      result = method.invoke(target, event.getPayload(), aggregate != null ? aggregate.getPayload() : null);
+      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, event.getPayload());
     } else {
-      result = method.invoke(target, event.getPayload(), aggregate != null ? aggregate.getPayload() : null, event.getMetadata());
+      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, event.getPayload(), event.getMetadata());
     }
     return createState(event, result);
   }
