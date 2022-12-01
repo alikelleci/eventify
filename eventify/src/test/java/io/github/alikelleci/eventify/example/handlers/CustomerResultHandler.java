@@ -6,7 +6,6 @@ import io.github.alikelleci.eventify.example.domain.CustomerCommand.ChangeLastNa
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.DeleteCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
 import lombok.extern.slf4j.Slf4j;
 
@@ -14,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CustomerResultHandler {
 
   @HandleResult
-  public void handle(CreateCustomer command, Metadata metadata) {
+  public void handle(CreateCustomer command) {
   }
 
   @HandleResult
@@ -36,6 +35,5 @@ public class CustomerResultHandler {
   @HandleResult
   public void handle(DeleteCustomer event) {
   }
-
 }
 
