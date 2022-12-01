@@ -44,7 +44,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     Aggregate aggregate = loadAggregate(key);
 
     // 2. Validate command against aggregate
-    CommandResult result = commandHandler.apply(command, aggregate);
+    CommandResult result = commandHandler.apply(aggregate, command);
 
     if (result instanceof Success) {
       // 3. Save events
@@ -98,7 +98,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
           EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
-            aggregate = eventSourcingHandler.apply(event, aggregate);
+            aggregate = eventSourcingHandler.apply(aggregate, event);
 
             sequence.incrementAndGet();
             counter.incrementAndGet();
