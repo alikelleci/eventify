@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 public class CustomerEventSourcingHandler {
 
   @ApplyEvent
-  public Customer handle(CustomerCreated event, Customer state, Metadata metadata) {
+  public Customer handle(Customer state, CustomerCreated event, Metadata metadata) {
     return Customer.builder()
         .id(event.getId())
         .firstName(event.getFirstName())
@@ -27,35 +27,35 @@ public class CustomerEventSourcingHandler {
   }
 
   @ApplyEvent
-  public Customer handle(FirstNameChanged event, Customer state) {
+  public Customer handle(Customer state, FirstNameChanged event) {
     return state.toBuilder()
         .firstName(event.getFirstName())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(LastNameChanged event, Customer state) {
+  public Customer handle(Customer state, LastNameChanged event) {
     return state.toBuilder()
         .lastName(event.getLastName())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(CreditsAdded event, Customer state) {
+  public Customer handle(Customer state, CreditsAdded event) {
     return state.toBuilder()
         .credits(state.getCredits() + event.getAmount())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(CreditsIssued event, Customer state) {
+  public Customer handle(Customer state, CreditsIssued event) {
     return state.toBuilder()
         .credits(state.getCredits() - event.getAmount())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(CustomerDeleted event, Customer state) {
+  public Customer handle(Customer state, CustomerDeleted event) {
     return null;
   }
 }
