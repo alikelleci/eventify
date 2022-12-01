@@ -25,7 +25,7 @@ import javax.validation.ValidationException;
 public class CustomerCommandHandler {
 
   @HandleCommand
-  public CustomerEvent handle(CreateCustomer command, Customer state, Metadata metadata) {
+  public CustomerEvent handle(Customer state, CreateCustomer command) {
     if (state != null) {
       throw new ValidationException("Customer already exists.");
     }
@@ -40,7 +40,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(ChangeFirstName command, Customer state) {
+  public CustomerEvent handle(Customer state, ChangeFirstName command) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -52,7 +52,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(ChangeLastName command, Customer state) {
+  public CustomerEvent handle(Customer state, ChangeLastName command) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -64,7 +64,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(AddCredits command, Customer state) {
+  public CustomerEvent handle(Customer state, AddCredits command) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -76,7 +76,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(IssueCredits command, Customer state) {
+  public CustomerEvent handle(Customer state, IssueCredits command) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -92,7 +92,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(DeleteCustomer command, Customer state) {
+  public CustomerEvent handle(Customer state, DeleteCustomer command) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
