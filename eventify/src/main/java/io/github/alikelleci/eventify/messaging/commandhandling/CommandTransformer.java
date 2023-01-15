@@ -95,7 +95,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
-        if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
+        if (aggregate != null && !aggregate.getEventId().equals(event.getId())) {
           EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             aggregate = eventSourcingHandler.apply(aggregate, event);
