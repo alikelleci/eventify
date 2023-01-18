@@ -10,7 +10,7 @@ import java.util.Map;
 
 public class JsonDeserializer<T> implements Deserializer<T> {
 
-  private Class<T> type;
+  private Class<T> targetType;
   private final ObjectMapper objectMapper;
 
 
@@ -18,13 +18,13 @@ public class JsonDeserializer<T> implements Deserializer<T> {
     this(null);
   }
 
-  public JsonDeserializer(Class<T> type) {
-    this(type, JacksonUtils.enhancedObjectMapper());
+  public JsonDeserializer(Class<T> targetType) {
+    this(targetType, JacksonUtils.enhancedObjectMapper());
 
   }
 
-  public JsonDeserializer(Class<T> type, ObjectMapper objectMapper) {
-    this.type = type;
+  public JsonDeserializer(Class<T> targetType, ObjectMapper objectMapper) {
+    this.targetType = targetType;
     this.objectMapper = objectMapper;
   }
 
@@ -39,7 +39,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
     }
 
     try {
-      return objectMapper.readValue(bytes, type);
+      return objectMapper.readValue(bytes, targetType);
     } catch (Exception e) {
       throw new SerializationException("Error deserializing JSON", ExceptionUtils.getRootCause(e));
     }
