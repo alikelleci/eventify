@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.support.serializer2;
+package io.github.alikelleci.eventify.support.serializer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.util.JacksonUtils;

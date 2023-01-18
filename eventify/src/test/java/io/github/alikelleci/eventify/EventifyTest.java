@@ -20,7 +20,8 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
-import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
+import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -87,13 +88,13 @@ class EventifyTest {
     testDriver = new TopologyTestDriver(eventify.topology(), properties);
 
     commandsTopic = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
-        new StringSerializer(), CustomSerdes.Json(Command.class).serializer());
+        new StringSerializer(), new JsonSerializer<>(Command.class));
 
     commandResultsTopic = testDriver.createOutputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value().concat(".results"),
-        new StringDeserializer(), CustomSerdes.Json(Command.class).deserializer());
+        new StringDeserializer(), new JsonDeserializer<>(Command.class));
 
     eventsTopic = testDriver.createOutputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
-        new StringDeserializer(), CustomSerdes.Json(Event.class).deserializer());
+        new StringDeserializer(), new JsonDeserializer<>(Event.class));
 
     eventStore = testDriver.getKeyValueStore("event-store");
     snapshotStore = testDriver.getKeyValueStore("snapshot-store");

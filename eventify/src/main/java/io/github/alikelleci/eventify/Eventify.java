@@ -16,7 +16,7 @@ import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
-import io.github.alikelleci.eventify.support.serializer2.JsonSerde;
+import io.github.alikelleci.eventify.support.serializer.JsonSerde;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import io.github.alikelleci.eventify.util.JacksonUtils;
 import lombok.Getter;
