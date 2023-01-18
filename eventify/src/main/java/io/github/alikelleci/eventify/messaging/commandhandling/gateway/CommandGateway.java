@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.util.JacksonUtils;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -49,6 +51,7 @@ public interface CommandGateway {
     private Properties producerConfig;
     private Properties consumerConfig;
     private String replyTopic;
+    private ObjectMapper objectMapper;
 
     public CommandGatewayBuilder producerConfig(Properties producerConfig) {
       this.producerConfig = producerConfig;
@@ -78,6 +81,11 @@ public interface CommandGateway {
       return this;
     }
 
+    public CommandGatewayBuilder objectMapper(ObjectMapper objectMapper) {
+      this.objectMapper = objectMapper;
+      return this;
+    }
+
     public DefaultCommandGateway build() {
       this.consumerConfig = new Properties();
 
@@ -91,7 +99,15 @@ public interface CommandGateway {
         this.consumerConfig.putIfAbsent(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
       }
 
-      return new DefaultCommandGateway(this.producerConfig, this.consumerConfig, this.replyTopic);
+      if (this.objectMapper == null) {
+        this.objectMapper = JacksonUtils.enhancedObjectMapper();
+      }
+
+      return new DefaultCommandGateway(
+          this.producerConfig,
+          this.consumerConfig,
+          this.replyTopic,
+          this.objectMapper);
     }
   }
 
