@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
@@ -14,8 +15,9 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandle
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
 import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
-import io.github.alikelleci.eventify.support.serializer.CustomSerdes;
+import io.github.alikelleci.eventify.support.serializer.JsonSerde;
 import io.github.alikelleci.eventify.util.HandlerUtils;
+import io.github.alikelleci.eventify.util.JacksonUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
@@ -23,6 +25,7 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
@@ -61,18 +64,21 @@ public class Eventify {
   private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
   private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
 
-  private Properties streamsConfig;
-  private StateListener stateListener;
-  private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
+  private final Properties streamsConfig;
+  private final StateListener stateListener;
+  private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
+  private final ObjectMapper objectMapper;
 
   private KafkaStreams kafkaStreams;
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
-                     StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+                     StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
+                     ObjectMapper objectMapper) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
+    this.objectMapper = objectMapper;
   }
 
   public static EventifyBuilder builder() {
@@ -84,13 +90,22 @@ public class Eventify {
 
     /*
      * -------------------------------------------------------------
+     * SERDES
+     * -------------------------------------------------------------
+     */
+    Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
+    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper);
+    Serde<Aggregate> snapshotSerde = new JsonSerde<>(Aggregate.class, objectMapper);
+
+    /*
+     * -------------------------------------------------------------
      * STORES
      * -------------------------------------------------------------
      */
 
     // Snapshot Store
     builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), CustomSerdes.Json(Aggregate.class))
+        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
     /*
@@ -101,7 +116,7 @@ public class Eventify {
 
     if (!getCommandTopics().isEmpty()) {
       // --> Commands
-      KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+      KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), commandSerde))
           .filter((key, command) -> key != null)
           .filter((key, command) -> command != null);
 
@@ -114,14 +129,14 @@ public class Eventify {
       commandResults
           .mapValues(CommandResult::getCommand)
           .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
-              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class)));
+              Produced.with(Serdes.String(), commandSerde));
 
       // Results --> Push to reply topic
       commandResults
           .mapValues(CommandResult::getCommand)
           .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
           .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
-              Produced.with(Serdes.String(), CustomSerdes.Json(Command.class))
+              Produced.with(Serdes.String(), commandSerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 
       // Events --> Push
@@ -131,7 +146,7 @@ public class Eventify {
           .flatMapValues(Success::getEvents)
           .filter((key, event) -> event != null)
           .to((key, event, recordContext) -> event.getTopicInfo().value(),
-              Produced.with(Serdes.String(), CustomSerdes.Json(Event.class)));
+              Produced.with(Serdes.String(), eventSerde));
     }
 
     /*
@@ -142,7 +157,7 @@ public class Eventify {
 
     if (!getEventTopics().isEmpty()) {
       // --> Events
-      KStream<String, Event> events = builder.stream(getEventTopics(), Consumed.with(Serdes.String(), CustomSerdes.Json(Event.class)))
+      KStream<String, Event> events = builder.stream(getEventTopics(), Consumed.with(Serdes.String(), eventSerde))
           .filter((key, event) -> key != null)
           .filter((key, event) -> event != null);
 
@@ -159,7 +174,7 @@ public class Eventify {
 
     if (!getResultTopics().isEmpty()) {
       // --> Results
-      KStream<String, Command> results = builder.stream(getResultTopics(), Consumed.with(Serdes.String(), CustomSerdes.Json(Command.class)))
+      KStream<String, Command> results = builder.stream(getResultTopics(), Consumed.with(Serdes.String(), commandSerde))
           .filter((key, command) -> key != null)
           .filter((key, command) -> command != null);
 
@@ -184,7 +199,7 @@ public class Eventify {
       return;
     }
 
-    this.kafkaStreams = new KafkaStreams(topology, streamsConfig);
+    kafkaStreams = new KafkaStreams(topology, streamsConfig);
     setUpListeners();
 
     log.info("Eventify is starting...");
@@ -203,16 +218,7 @@ public class Eventify {
   }
 
   private void setUpListeners() {
-    if (this.stateListener == null) {
-      this.stateListener = (newState, oldState) ->
-          log.warn("State changed from {} to {}", oldState, newState);
-    }
     kafkaStreams.setStateListener(this.stateListener);
-
-    if (this.uncaughtExceptionHandler == null) {
-      this.uncaughtExceptionHandler = (throwable) ->
-          StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
-    }
     kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 
     kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
@@ -248,9 +254,9 @@ public class Eventify {
 
   private Set<String> getEventTopics() {
     return Stream.of(
-        eventHandlers.keySet(),
-        eventSourcingHandlers.keySet()
-    )
+            eventHandlers.keySet(),
+            eventSourcingHandlers.keySet()
+        )
         .flatMap(Collection::stream)
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
@@ -274,6 +280,7 @@ public class Eventify {
     private Properties streamsConfig;
     private StateListener stateListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
+    private ObjectMapper objectMapper;
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
@@ -309,11 +316,31 @@ public class Eventify {
       return this;
     }
 
+    public EventifyBuilder objectMapper(ObjectMapper objectMapper) {
+      this.objectMapper = objectMapper;
+      return this;
+    }
+
     public Eventify build() {
+      if (this.stateListener == null) {
+        this.stateListener = (newState, oldState) ->
+            log.warn("State changed from {} to {}", oldState, newState);
+      }
+
+      if (this.uncaughtExceptionHandler == null) {
+        this.uncaughtExceptionHandler = (throwable) ->
+            StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
+      }
+
+      if (this.objectMapper == null) {
+        this.objectMapper = JacksonUtils.enhancedObjectMapper();
+      }
+
       Eventify eventify = new Eventify(
           this.streamsConfig,
           this.stateListener,
-          this.uncaughtExceptionHandler);
+          this.uncaughtExceptionHandler,
+          this.objectMapper);
 
       this.handlers.forEach(handler ->
           HandlerUtils.registerHandler(eventify, handler));

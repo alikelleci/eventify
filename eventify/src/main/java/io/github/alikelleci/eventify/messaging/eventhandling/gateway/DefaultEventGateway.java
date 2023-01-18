@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
@@ -24,10 +25,10 @@ public class DefaultEventGateway implements EventGateway {
 
   private final Producer<String, Event> producer;
 
-  protected DefaultEventGateway(Properties producerConfig) {
+  protected DefaultEventGateway(Properties producerConfig, ObjectMapper objectMapper) {
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
-        new JsonSerializer<>());
+        new JsonSerializer<>(Event.class, objectMapper));
   }
 
   @Override

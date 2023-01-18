@@ -10,9 +10,20 @@ import java.util.Map;
 
 public class JsonSerializer<T> implements Serializer<T> {
 
-  private final ObjectMapper objectMapper = JacksonUtils.enhancedObjectMapper();
+  private Class<T> targetType;
+  private final ObjectMapper objectMapper;
 
   public JsonSerializer() {
+    this(null);
+  }
+
+  public JsonSerializer(Class<T> targetType) {
+    this(targetType, JacksonUtils.enhancedObjectMapper());
+  }
+
+  public JsonSerializer(Class<T> targetType, ObjectMapper objectMapper) {
+    this.targetType = targetType;
+    this.objectMapper = objectMapper;
   }
 
   @Override
