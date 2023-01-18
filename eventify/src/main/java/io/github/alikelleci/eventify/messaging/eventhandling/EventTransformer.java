@@ -51,10 +51,10 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
         aggregate = eventSourcingHandler.apply(aggregate, event);
 
         // 3. Save snapshot
-        Optional.ofNullable(aggregate)
-            .ifPresent(this::saveSnapshot);
-
-        if (aggregate == null) {
+        if (aggregate != null) {
+          log.debug("Creating snapshot: {}", aggregate);
+          saveSnapshot(aggregate);
+        } else {
           deleteSnapshot(key);
         }
       }
