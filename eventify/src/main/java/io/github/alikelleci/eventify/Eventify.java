@@ -318,27 +318,16 @@ public class Eventify {
     }
 
     public EventifyBuilder stateListener(StateListener stateListener) {
-      if (stateListener == null) {
-        stateListener = (newState, oldState) ->
-            log.warn("State changed from {} to {}", oldState, newState);
-      }
       this.stateListener = stateListener;
       return this;
     }
 
     public EventifyBuilder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
-      if (uncaughtExceptionHandler == null) {
-        uncaughtExceptionHandler = (throwable) ->
-            StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
-      }
       this.uncaughtExceptionHandler = uncaughtExceptionHandler;
       return this;
     }
 
     public EventifyBuilder objectMapper(ObjectMapper objectMapper) {
-      if (objectMapper == null) {
-        objectMapper = JacksonUtils.enhancedObjectMapper();
-      }
       this.objectMapper = objectMapper;
       return this;
     }
@@ -349,6 +338,20 @@ public class Eventify {
     }
 
     public Eventify build() {
+      if (this.stateListener == null) {
+        this.stateListener = (newState, oldState) ->
+            log.warn("State changed from {} to {}", oldState, newState);
+      }
+
+      if (this.uncaughtExceptionHandler == null) {
+        this.uncaughtExceptionHandler = (throwable) ->
+            StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
+      }
+
+      if (this.objectMapper == null) {
+        this.objectMapper = JacksonUtils.enhancedObjectMapper();
+      }
+
       Eventify eventify = new Eventify(
           this.streamsConfig,
           this.stateListener,

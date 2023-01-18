@@ -51,14 +51,15 @@ public interface EventGateway {
     }
 
     public EventGatewayBuilder objectMapper(ObjectMapper objectMapper) {
-      if (objectMapper == null) {
-        objectMapper = JacksonUtils.enhancedObjectMapper();
-      }
       this.objectMapper = objectMapper;
       return this;
     }
 
     public DefaultEventGateway build() {
+      if (this.objectMapper == null) {
+        this.objectMapper = JacksonUtils.enhancedObjectMapper();
+      }
+
       return new DefaultEventGateway(
           this.producerConfig,
           this.objectMapper);
