@@ -15,7 +15,12 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 
   public JsonDeserializer() {
-    this(null, JacksonUtils.enhancedObjectMapper());
+    this(null);
+  }
+
+  public JsonDeserializer(Class<T> type) {
+    this(type, JacksonUtils.enhancedObjectMapper());
+
   }
 
   public JsonDeserializer(Class<T> type, ObjectMapper objectMapper) {

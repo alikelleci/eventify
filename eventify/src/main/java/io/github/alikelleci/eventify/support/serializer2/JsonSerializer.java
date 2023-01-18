@@ -14,7 +14,11 @@ public class JsonSerializer<T> implements Serializer<T> {
   private final ObjectMapper objectMapper;
 
   public JsonSerializer() {
-    this(null, JacksonUtils.enhancedObjectMapper());
+    this(null);
+  }
+
+  public JsonSerializer(Class<T> type) {
+    this(type, JacksonUtils.enhancedObjectMapper());
   }
 
   public JsonSerializer(Class<T> type, ObjectMapper objectMapper) {
