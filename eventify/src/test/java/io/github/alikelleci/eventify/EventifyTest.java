@@ -69,7 +69,7 @@ class EventifyTest {
   @BeforeEach
   void setup() {
     Properties properties = new Properties();
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "eventify-test");
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "example-app");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1234");
 
     Eventify eventify = Eventify.builder()
