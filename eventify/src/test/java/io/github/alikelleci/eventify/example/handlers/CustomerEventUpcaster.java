@@ -32,7 +32,7 @@ public class CustomerEventUpcaster {
     return objectNode;
   }
 
-  @Upcast(type = "io.github.alikelleci.eventify.example.domain.CustomerEvent$CustomerCreated", revision = 5)
+  @Upcast(type = "io.github.alikelleci.eventify.example.domain.CustomerEvent$CustomerCreated", revision = 6)
   public JsonNode upcastRev6(ObjectNode objectNode) {
     objectNode.put("firstName", "John v6 -> v7");
     log.info("Upcasted from revision 6 to 7");
@@ -40,7 +40,7 @@ public class CustomerEventUpcaster {
     return objectNode;
   }
 
-  @Upcast(type = "io.github.alikelleci.eventify.example.domain.CustomerEvent$CustomerCreated", revision = 6)
+  @Upcast(type = "io.github.alikelleci.eventify.example.domain.CustomerEvent$CustomerCreated", revision = 7)
   public JsonNode upcastRev7(ObjectNode objectNode) {
     objectNode.put("firstName", "John v7 -> v8");
     log.info("Upcasted from revision 7 to 8");
