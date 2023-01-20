@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import io.github.alikelleci.eventify.messaging.commandhandling.gateway.CommandGateway;
 import io.github.alikelleci.eventify.util.JacksonUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
