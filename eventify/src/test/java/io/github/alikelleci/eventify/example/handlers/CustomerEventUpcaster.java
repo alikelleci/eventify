@@ -6,7 +6,7 @@ import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class CustomerUpcaster {
+public class CustomerEventUpcaster {
 
   @Upcast(type = "io.github.alikelleci.eventify.example.domain.CustomerEvent$CustomerCreated", revision = 1)
   public JsonNode upcastRev1(ObjectNode objectNode) {
