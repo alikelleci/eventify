@@ -71,10 +71,6 @@ class EventifyTest {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "eventify-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1234");
-    properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-    properties.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
-    properties.put(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
@@ -85,7 +81,7 @@ class EventifyTest {
         .registerHandler(new CustomerEventUpcaster())
         .build();
 
-    testDriver = new TopologyTestDriver(eventify.topology(), properties);
+    testDriver = new TopologyTestDriver(eventify.topology(), eventify.getStreamsConfig());
 
     commandsTopic = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), new JsonSerializer<>(Command.class));
