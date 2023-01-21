@@ -43,7 +43,6 @@ public class Event extends Message {
 
     this.revision = Optional.ofNullable(payload)
         .map(Object::getClass)
-//        .map(aClass -> aClass.getAnnotation(Revision.class))
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, Revision.class))
         .map(Revision::value)
         .orElse(1);
