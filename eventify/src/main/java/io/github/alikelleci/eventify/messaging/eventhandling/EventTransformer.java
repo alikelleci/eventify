@@ -26,8 +26,8 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
   }
 
   @Override
-  public void init(ProcessorContext processorContext) {
-    this.snapshotStore = processorContext.getStateStore("snapshot-store");
+  public void init(ProcessorContext context) {
+    this.snapshotStore = context.getStateStore("snapshot-store");
   }
 
   @Override

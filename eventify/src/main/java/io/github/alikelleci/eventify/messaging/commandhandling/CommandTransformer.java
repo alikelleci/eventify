@@ -28,8 +28,8 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
   }
 
   @Override
-  public void init(ProcessorContext processorContext) {
-    this.snapshotStore = processorContext.getStateStore("snapshot-store");
+  public void init(ProcessorContext context) {
+    this.snapshotStore = context.getStateStore("snapshot-store");
   }
 
   @Override
