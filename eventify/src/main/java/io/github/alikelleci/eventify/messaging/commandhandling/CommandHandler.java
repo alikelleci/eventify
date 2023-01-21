@@ -1,12 +1,9 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Failure;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -34,7 +31,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 @Slf4j
-public class CommandHandler implements BiFunction<Aggregate, Command, CommandResult> {
+public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>> {
 
   private final Object target;
   private final Method method;
@@ -51,40 +48,29 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
   }
 
   @Override
-  public CommandResult apply(Aggregate aggregate, Command command) {
+  public List<Event> apply(Aggregate aggregate, Command command) {
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
-
     try {
       validate(command.getPayload());
       return Failsafe.with(retryPolicy).get(() -> doInvoke(aggregate, command));
     } catch (Exception e) {
-      Throwable throwable = ExceptionUtils.getRootCause(e);
-      String message = ExceptionUtils.getRootCauseMessage(e);
-
-      if (throwable instanceof ValidationException) {
-        log.debug("Command rejected: {}", message);
-        return Failure.builder()
-            .command(command)
-            .cause(message)
-            .build();
-      }
-      throw new CommandExecutionException(message, throwable);
+      throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private CommandResult doInvoke(Aggregate aggregate, Command command) throws InvocationTargetException, IllegalAccessException {
+  private List<Event> doInvoke(Aggregate aggregate, Command command) throws InvocationTargetException, IllegalAccessException {
     Object result;
     if (method.getParameterCount() == 2) {
       result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, command.getPayload());
     } else {
       result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, command.getPayload(), command.getMetadata());
     }
-    return createCommandResult(command, result);
+    return createEvents(command, result);
   }
 
-  private CommandResult createCommandResult(Command command, Object result) {
+  private List<Event> createEvents(Command command, Object result) {
     if (result == null) {
-      return null;
+      return new ArrayList<>();
     }
 
     List<Object> list = new ArrayList<>();
@@ -118,10 +104,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, CommandRes
       }
     });
 
-    return Success.builder()
-        .command(command)
-        .events(events)
-        .build();
+    return events;
   }
 
   private void validate(Object payload) {
