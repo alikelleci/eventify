@@ -9,7 +9,6 @@ import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerEventUpcaster;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import org.apache.kafka.common.serialization.Serdes;
