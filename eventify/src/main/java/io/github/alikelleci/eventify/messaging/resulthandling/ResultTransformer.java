@@ -25,7 +25,7 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
   }
 
   @Override
-  public void init(ProcessorContext processorContext) {
+  public void init(ProcessorContext context) {
   }
 
   @Override
