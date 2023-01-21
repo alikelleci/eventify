@@ -13,11 +13,11 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MessageUpcaster {
+public class EventUpcaster {
 
   private final Eventify eventify;
 
-  public MessageUpcaster(Eventify eventify) {
+  public EventUpcaster(Eventify eventify) {
     this.eventify = eventify;
   }
 
