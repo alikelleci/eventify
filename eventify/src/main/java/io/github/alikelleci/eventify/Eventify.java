@@ -14,6 +14,7 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
+import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.support.serializer.JsonSerde;
 import io.github.alikelleci.eventify.util.HandlerUtils;
@@ -59,6 +60,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 @Slf4j
 @Getter
 public class Eventify {
+  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
   private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
   private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
   private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();

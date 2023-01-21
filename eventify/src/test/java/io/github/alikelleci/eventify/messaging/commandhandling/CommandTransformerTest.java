@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
+import io.github.alikelleci.eventify.example.handlers.CustomerEventUpcaster;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import org.apache.kafka.common.serialization.Serdes;
@@ -55,6 +56,7 @@ class CommandTransformerTest {
         .registerHandler(new CustomerEventSourcingHandler())
         .registerHandler(new CustomerEventHandler())
         .registerHandler(new CustomerResultHandler())
+        .registerHandler(new CustomerEventUpcaster())
         .build();
 
     testDriver = new TopologyTestDriver(eventify.topology(), eventify.getStreamsConfig());
