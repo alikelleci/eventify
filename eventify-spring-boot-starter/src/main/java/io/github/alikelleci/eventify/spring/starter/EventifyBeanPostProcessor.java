@@ -5,12 +5,14 @@ import io.github.alikelleci.eventify.util.HandlerUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.ApplicationContext;
 
+import java.util.List;
+
 public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
-  private final ApplicationContext applicationContext;
+  private final List<Eventify> apps;
 
-  public EventifyBeanPostProcessor(ApplicationContext applicationContext) {
-    this.applicationContext = applicationContext;
+  public EventifyBeanPostProcessor(List<Eventify> apps) {
+    this.apps = apps;
   }
 
   @Override
@@ -20,9 +22,8 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
   @Override
   public Object postProcessAfterInitialization(final Object bean, final String beanName) {
-    applicationContext.getBeansOfType(Eventify.class)
-        .values()
-        .forEach(eventify -> HandlerUtils.registerHandler(eventify, bean));
+    apps.forEach(eventify
+        -> HandlerUtils.registerHandler(eventify, bean));
 
     return bean;
   }

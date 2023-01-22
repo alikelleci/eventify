@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListener;
 
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -23,16 +24,15 @@ public class EventifyAutoConfiguration {
   private ApplicationContext applicationContext;
 
   @Bean
-  public EventifyBeanPostProcessor eventifyBeanPostProcessor() {
-    return new EventifyBeanPostProcessor(applicationContext);
+  public EventifyBeanPostProcessor eventifyBeanPostProcessor(@Autowired List<Eventify> apps) {
+    return new EventifyBeanPostProcessor(apps);
   }
 
   @EventListener
   public void onApplicationEvent(ApplicationReadyEvent event) {
     if (event.getApplicationContext().equals(this.applicationContext)) {
       Map<String, Eventify> apps = event.getApplicationContext().getBeansOfType(Eventify.class);
-      apps.values()
-          .forEach(Eventify::start);
+      apps.values().forEach(Eventify::start);
     }
   }
 }
