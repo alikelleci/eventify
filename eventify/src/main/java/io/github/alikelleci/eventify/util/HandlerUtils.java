@@ -17,12 +17,17 @@ import org.springframework.core.annotation.AnnotationUtils;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @UtilityClass
 public class HandlerUtils {
 
   public void registerHandler(Eventify eventify, Object handler) {
+    if (shouldSkip(eventify, handler)) {
+      return;
+    };
+
     List<Method> upcasterMethods = findMethodsWithAnnotation(handler.getClass(), Upcast.class);
     List<Method> commandHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
     List<Method> eventSourcingMethods = findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
@@ -43,6 +48,16 @@ public class HandlerUtils {
 
     eventHandlerMethods
         .forEach(method -> addEventHandler(eventify, handler, method));
+  }
+
+  private boolean shouldSkip(Eventify eventify, Object handler) {
+    String[] contextPath = eventify.getContextPath();
+    String handlerPackageName = handler.getClass().getPackage().getName();
+
+    if (contextPath.length != 0 && Arrays.stream(contextPath).noneMatch(handlerPackageName::startsWith)) {
+      return true;
+    }
+    return false;
   }
 
   private <A extends Annotation> List<Method> findMethodsWithAnnotation(Class<?> c, Class<A> annotation) {

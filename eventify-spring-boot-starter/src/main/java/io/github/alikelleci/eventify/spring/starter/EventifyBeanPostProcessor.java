@@ -3,13 +3,14 @@ package io.github.alikelleci.eventify.spring.starter;
 import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.context.ApplicationContext;
 
 public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
-  private final Eventify eventify;
+  private final ApplicationContext applicationContext;
 
-  public EventifyBeanPostProcessor(Eventify eventify) {
-    this.eventify = eventify;
+  public EventifyBeanPostProcessor(ApplicationContext applicationContext) {
+    this.applicationContext = applicationContext;
   }
 
   @Override
@@ -19,7 +20,10 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
   @Override
   public Object postProcessAfterInitialization(final Object bean, final String beanName) {
-    HandlerUtils.registerHandler(eventify, bean);
+    applicationContext.getBeansOfType(Eventify.class)
+        .values()
+        .forEach(eventify -> HandlerUtils.registerHandler(eventify, bean));
+
     return bean;
   }
 }

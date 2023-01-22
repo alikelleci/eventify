@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -70,6 +71,7 @@ public class Eventify {
   private final StateListener stateListener;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
+  private final String[] contextPath;
   private final boolean deleteEventsOnSnapshot;
 
   private KafkaStreams kafkaStreams;
@@ -78,11 +80,13 @@ public class Eventify {
                      StateListener stateListener,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
                      ObjectMapper objectMapper,
+                     String[] contextPath,
                      boolean deleteEventsOnSnapshot) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
+    this.contextPath = contextPath;
     this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
   }
 
@@ -295,6 +299,7 @@ public class Eventify {
     private StateListener stateListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
+    private String[] contextPath;
     private boolean deleteEventsOnSnapshot;
 
     public EventifyBuilder registerHandler(Object handler) {
@@ -336,6 +341,11 @@ public class Eventify {
       return this;
     }
 
+    public EventifyBuilder contextPath(String... contextPath) {
+      this.contextPath = contextPath;
+      return this;
+    }
+
     public EventifyBuilder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
       this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
       return this;
@@ -356,11 +366,16 @@ public class Eventify {
         this.objectMapper = JacksonUtils.enhancedObjectMapper();
       }
 
+      if (this.contextPath == null) {
+        this.contextPath = ArrayUtils.nullToEmpty(this.contextPath);
+      }
+
       Eventify eventify = new Eventify(
           this.streamsConfig,
           this.stateListener,
           this.uncaughtExceptionHandler,
           this.objectMapper,
+          this.contextPath,
           this.deleteEventsOnSnapshot);
 
       this.handlers.forEach(handler ->
