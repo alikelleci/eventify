@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchExcept
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -85,7 +86,9 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
         .map(payload -> Event.builder()
             .timestamp(command.getTimestamp())
             .payload(payload)
-            .metadata(command.getMetadata())
+            .metadata(Metadata.builder()
+                .addAll(command.getMetadata())
+                .build())
             .build())
         .collect(Collectors.toList());
 
