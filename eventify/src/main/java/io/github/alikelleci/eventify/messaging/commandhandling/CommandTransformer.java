@@ -164,10 +164,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
-
-        log.debug("Deleting event: {} ({})", event.getType(), event.getAggregateId());
         eventStore.delete(event.getId());
-
         counter.incrementAndGet();
       }
     }
