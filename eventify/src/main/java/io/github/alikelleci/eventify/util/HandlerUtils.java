@@ -9,6 +9,8 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandle
 import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
+import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
+import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import lombok.experimental.UtilityClass;
 import org.springframework.core.annotation.AnnotationUtils;
 
@@ -21,10 +23,14 @@ import java.util.List;
 public class HandlerUtils {
 
   public void registerHandler(Eventify eventify, Object handler) {
+    List<Method> upcasterMethods = findMethodsWithAnnotation(handler.getClass(), Upcast.class);
     List<Method> commandHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
     List<Method> eventSourcingMethods = findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
     List<Method> resultHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
     List<Method> eventHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
+
+    upcasterMethods
+        .forEach(method -> addUpcaster(eventify, handler, method));
 
     commandHandlerMethods
         .forEach(method -> addCommandHandler(eventify, handler, method));
@@ -47,6 +53,13 @@ public class HandlerUtils {
       }
     }
     return methods;
+  }
+
+  private void addUpcaster(Eventify eventify, Object listener, Method method) {
+    if (method.getParameterCount() == 1) {
+      String type = method.getAnnotation(Upcast.class).type();
+      eventify.getUpcasters().put(type, new Upcaster(listener, method));
+    }
   }
 
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
