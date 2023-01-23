@@ -23,6 +23,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
@@ -47,6 +48,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -61,6 +63,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 @Getter
 public class Eventify {
   private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+  private final Set<Class<?>> aggregateTypes = new HashSet<>();
   private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
   private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
   private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
@@ -109,15 +112,26 @@ public class Eventify {
      * -------------------------------------------------------------
      */
 
-    // Event store
-    builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("event-store"), Serdes.String(), eventSerde)
-        .withLoggingEnabled(Collections.emptyMap()));
+    // Event stores
+    String[] eventStores = aggregateTypes
+        .stream()
+        .map(aggregateType -> aggregateType.getSimpleName() + "-event-store")
+        .peek(storeName -> builder.addStateStore(Stores
+            .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore(storeName), Serdes.String(), eventSerde)
+            .withLoggingEnabled(Collections.emptyMap())))
+        .toArray(String[]::new);
 
-    // Snapshot Store
-    builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), snapshotSerde)
-        .withLoggingEnabled(Collections.emptyMap()));
+    // Snapshot Stores
+    String[] snapshotStores = aggregateTypes
+        .stream()
+        .map(aggregateType -> aggregateType.getSimpleName() + "-snapshot-store")
+        .peek(storeName -> builder.addStateStore(Stores
+            .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore(storeName), Serdes.String(), snapshotSerde)
+            .withLoggingEnabled(Collections.emptyMap())))
+        .toArray(String[]::new);
+
+    // All Stores
+    String[] stores = ArrayUtils.addAll(eventStores, snapshotStores);
 
     /*
      * -------------------------------------------------------------
@@ -134,7 +148,7 @@ public class Eventify {
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .transformValues(() -> new CommandTransformer(this), "event-store", "snapshot-store")
+          .transformValues(() -> new CommandTransformer(this), stores)
           .filter((key, result) -> result != null);
 
       // Results --> Push
@@ -176,7 +190,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .transformValues(() -> new EventTransformer(this), "event-store");
+          .transformValues(() -> new EventTransformer(this), stores);
     }
 
     /*

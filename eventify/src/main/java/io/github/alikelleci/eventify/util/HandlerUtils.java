@@ -64,15 +64,21 @@ public class HandlerUtils {
 
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-      Class<?> type = method.getParameters()[1].getType();
-      eventify.getCommandHandlers().put(type, new CommandHandler(listener, method));
+      Class<?> aggregateType = method.getParameters()[0].getType();
+      eventify.getAggregateTypes().add(aggregateType);
+
+      Class<?> commandType = method.getParameters()[1].getType();
+      eventify.getCommandHandlers().put(commandType, new CommandHandler(listener, method));
     }
   }
 
   private void addEventSourcingHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() == 2 || method.getParameterCount() == 3) {
-      Class<?> type = method.getParameters()[1].getType();
-      eventify.getEventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
+      Class<?> aggregateType = method.getParameters()[0].getType();
+      eventify.getAggregateTypes().add(aggregateType);
+
+      Class<?> eventType = method.getParameters()[1].getType();
+      eventify.getEventSourcingHandlers().put(eventType, new EventSourcingHandler(listener, method));
     }
   }
 
