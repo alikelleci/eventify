@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.support;
 
 import io.github.alikelleci.eventify.messaging.Message;
-import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
 import org.apache.kafka.streams.processor.ProcessorContext;
