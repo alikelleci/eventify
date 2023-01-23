@@ -48,7 +48,8 @@ public class Message {
         .orElse(Instant.now());
 
     this.type = Optional.ofNullable(payload)
-        .map(p -> p.getClass().getSimpleName())
+        .map(Object::getClass)
+        .map(Class::getSimpleName)
         .orElse(null);
 
     this.payload = payload;

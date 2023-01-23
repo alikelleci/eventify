@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
+import io.github.alikelleci.eventify.common.annotations.Revision;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.Builder;
@@ -8,6 +9,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
 import org.apache.commons.lang3.reflect.FieldUtils;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
@@ -18,9 +20,11 @@ import java.util.Optional;
 @EqualsAndHashCode(callSuper = true)
 public class Event extends Message {
   private String aggregateId;
+  private int revision;
 
   protected Event() {
     this.aggregateId = null;
+    this.revision = 1;
   }
 
   @Builder
@@ -36,5 +40,11 @@ public class Event extends Message {
               return (String) ReflectionUtils.getField(field, p);
             }))
         .orElse(null);
+
+    this.revision = Optional.ofNullable(payload)
+        .map(Object::getClass)
+        .map(aClass -> AnnotationUtils.findAnnotation(aClass, Revision.class))
+        .map(Revision::value)
+        .orElse(1);
   }
 }

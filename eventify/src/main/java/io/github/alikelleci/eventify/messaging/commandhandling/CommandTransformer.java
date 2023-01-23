@@ -31,9 +31,9 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
   }
 
   @Override
-  public void init(ProcessorContext processorContext) {
-    this.eventStore = processorContext.getStateStore("event-store");
-    this.snapshotStore = processorContext.getStateStore("snapshot-store");
+  public void init(ProcessorContext context) {
+    this.eventStore = context.getStateStore("event-store");
+    this.snapshotStore = context.getStateStore("snapshot-store");
   }
 
   @Override
