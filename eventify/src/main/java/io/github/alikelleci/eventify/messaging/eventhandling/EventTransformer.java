@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
+import io.github.alikelleci.eventify.util.StateStoreNameResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
@@ -13,6 +14,8 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+
+import static io.github.alikelleci.eventify.util.StateStoreNameResolver.resolveEventStoreName;
 
 @Slf4j
 public class EventTransformer implements ValueTransformerWithKey<String, Event, Event> {
@@ -60,11 +63,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
     eventStores.get(aggregateType).putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
   }
 
-  private String resolveEventStoreName(Class<?> aggregateType) {
-    return aggregateType.getSimpleName() + "-event-store";
-  }
-
-  private Class<?> resolveAggregateType(EventSourcingHandler handler) {
-    return handler.getMethod().getParameters()[0].getType();
+  private Class<?> resolveAggregateType(EventSourcingHandler eventSourcingHandler) {
+    return eventSourcingHandler.getMethod().getParameters()[0].getType();
   }
 }

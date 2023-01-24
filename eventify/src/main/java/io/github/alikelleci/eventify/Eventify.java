@@ -19,6 +19,7 @@ import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.support.serializer.JsonSerde;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import io.github.alikelleci.eventify.util.JacksonUtils;
+import io.github.alikelleci.eventify.util.StateStoreNameResolver;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
@@ -115,7 +116,7 @@ public class Eventify {
     // Event stores
     String[] eventStores = aggregateTypes
         .stream()
-        .map(aggregateType -> aggregateType.getSimpleName() + "-event-store")
+        .map(StateStoreNameResolver::resolveEventStoreName)
         .peek(storeName -> builder.addStateStore(Stores
             .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore(storeName), Serdes.String(), eventSerde)
             .withLoggingEnabled(Collections.emptyMap())))
@@ -124,7 +125,7 @@ public class Eventify {
     // Snapshot Stores
     String[] snapshotStores = aggregateTypes
         .stream()
-        .map(aggregateType -> aggregateType.getSimpleName() + "-snapshot-store")
+        .map(StateStoreNameResolver::resolveSnapshotStoreName)
         .peek(storeName -> builder.addStateStore(Stores
             .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore(storeName), Serdes.String(), snapshotSerde)
             .withLoggingEnabled(Collections.emptyMap())))

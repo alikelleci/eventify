@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Suc
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
+import io.github.alikelleci.eventify.util.StateStoreNameResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
@@ -19,6 +20,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
+
+import static io.github.alikelleci.eventify.util.StateStoreNameResolver.resolveEventStoreName;
+import static io.github.alikelleci.eventify.util.StateStoreNameResolver.resolveSnapshotStoreName;
 
 
 @Slf4j
@@ -179,14 +183,6 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
       }
     }
     log.debug("Total events deleted: {}", counter.get());
-  }
-
-  private String resolveEventStoreName(Class<?> aggregateType) {
-    return aggregateType.getSimpleName() + "-event-store";
-  }
-
-  private String resolveSnapshotStoreName(Class<?> aggregateType) {
-    return aggregateType.getSimpleName() + "-snapshot-store";
   }
 
   private Class<?> resolveAggregateType(CommandHandler commandHandler) {
