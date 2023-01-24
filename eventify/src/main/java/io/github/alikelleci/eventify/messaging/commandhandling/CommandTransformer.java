@@ -41,7 +41,8 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
       return null;
     }
 
-    Class<?> aggregateType = commandHandler.getMethod().getParameters()[0].getType();
+    // Determine aggregate type
+    Class<?> aggregateType = getAggregateType(commandHandler);
 
     // 1. Load aggregate state
     Aggregate aggregate = loadAggregate(key, aggregateType);
@@ -177,5 +178,9 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
 
   private TimestampedKeyValueStore<String, Aggregate> getSnapshotStore(Class<?> aggregateType) {
     return context.getStateStore(aggregateType.getSimpleName() + "-snapshot-store");
+  }
+
+  private Class<?> getAggregateType(CommandHandler commandHandler) {
+    return commandHandler.getMethod().getParameters()[0].getType();
   }
 }
