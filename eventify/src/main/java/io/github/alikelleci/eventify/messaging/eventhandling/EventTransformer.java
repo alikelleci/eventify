@@ -40,7 +40,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
     EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
-      Class<?> aggregateType = eventSourcingHandler.getMethod().getParameters()[0].getType();
+      Class<?> aggregateType = getAggregateType(eventSourcingHandler);
       saveEvent(event, aggregateType);
     }
 
@@ -64,4 +64,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
     return context.getStateStore(aggregateType.getSimpleName() + "-snapshot-store");
   }
 
+  private Class<?> getAggregateType(EventSourcingHandler eventSourcingHandler) {
+    return eventSourcingHandler.getMethod().getParameters()[0].getType();
+  }
 }
