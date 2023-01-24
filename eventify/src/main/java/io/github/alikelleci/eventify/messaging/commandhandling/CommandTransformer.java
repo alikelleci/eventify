@@ -14,7 +14,9 @@ import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -23,7 +25,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class CommandTransformer implements ValueTransformerWithKey<String, Command, CommandResult> {
 
   private final Eventify eventify;
-  private ProcessorContext context;
+  private Map<Class<?>, TimestampedKeyValueStore<String, Event>> eventStores;
+  private Map<Class<?>, TimestampedKeyValueStore<String, Aggregate>> snapshotStores;
 
   public CommandTransformer(Eventify eventify) {
     this.eventify = eventify;
@@ -31,7 +34,13 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
 
   @Override
   public void init(ProcessorContext context) {
-    this.context = context;
+    this.eventStores = new HashMap<>();
+    this.snapshotStores = new HashMap<>();
+
+    eventify.getAggregateTypes().forEach(aggregateType -> {
+      eventStores.put(aggregateType, context.getStateStore(resolveEventStoreName(aggregateType)));
+      snapshotStores.put(aggregateType, context.getStateStore(resolveSnapshotStoreName(aggregateType)));
+    });
   }
 
   @Override
@@ -42,7 +51,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     }
 
     // Determine aggregate type
-    Class<?> aggregateType = getAggregateType(commandHandler);
+    Class<?> aggregateType = resolveAggregateType(commandHandler);
 
     // 1. Load aggregate state
     Aggregate aggregate = loadAggregate(key, aggregateType);
@@ -112,7 +121,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
 
     log.debug("Loading aggregate state by applying events...");
 
-    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = getEventStore(aggregateType).range(from, to)) {
+    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStores.get(aggregateType).range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
@@ -143,17 +152,17 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
   }
 
   protected Aggregate loadFromSnapshot(String aggregateId, Class<?> aggregateType) {
-    return Optional.ofNullable(getSnapshotStore(aggregateType).get(aggregateId))
+    return Optional.ofNullable(snapshotStores.get(aggregateType).get(aggregateId))
         .map(ValueAndTimestamp::value)
         .orElse(null);
   }
 
   protected void saveEvent(Event event, Class<?> aggregateType) {
-    getEventStore(aggregateType).putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
+    eventStores.get(aggregateType).putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
   }
 
   protected void saveSnapshot(Aggregate aggregate, Class<?> aggregateType) {
-    getSnapshotStore(aggregateType).put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
+    snapshotStores.get(aggregateType).put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
   }
 
   protected void deleteEvents(Aggregate aggregate, Class<?> aggregateType) {
@@ -162,25 +171,25 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     String from = aggregate.getAggregateId().concat("@");
     String to = aggregate.getEventId();
 
-    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = getEventStore(aggregateType).range(from, to)) {
+    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStores.get(aggregateType).range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value.value();
-        getEventStore(aggregateType).delete(event.getId());
+        eventStores.get(aggregateType).delete(event.getId());
         counter.incrementAndGet();
       }
     }
     log.debug("Total events deleted: {}", counter.get());
   }
 
-  private TimestampedKeyValueStore<String, Event> getEventStore(Class<?> aggregateType) {
-    return context.getStateStore(aggregateType.getSimpleName() + "-event-store");
+  private String resolveEventStoreName(Class<?> aggregateType) {
+    return aggregateType.getSimpleName() + "-event-store";
   }
 
-  private TimestampedKeyValueStore<String, Aggregate> getSnapshotStore(Class<?> aggregateType) {
-    return context.getStateStore(aggregateType.getSimpleName() + "-snapshot-store");
+  private String resolveSnapshotStoreName(Class<?> aggregateType) {
+    return aggregateType.getSimpleName() + "-snapshot-store";
   }
 
-  private Class<?> getAggregateType(CommandHandler commandHandler) {
+  private Class<?> resolveAggregateType(CommandHandler commandHandler) {
     return commandHandler.getMethod().getParameters()[0].getType();
   }
 }

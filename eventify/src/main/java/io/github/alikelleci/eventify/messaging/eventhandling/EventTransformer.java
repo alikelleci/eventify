@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.Eventify;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -12,12 +11,14 @@ import org.apache.kafka.streams.state.ValueAndTimestamp;
 
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 public class EventTransformer implements ValueTransformerWithKey<String, Event, Event> {
 
   private final Eventify eventify;
-  private ProcessorContext context;
+  private Map<Class<?>, TimestampedKeyValueStore<String, Event>> eventStores;
 
   public EventTransformer(Eventify eventify) {
     this.eventify = eventify;
@@ -25,7 +26,10 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
   @Override
   public void init(ProcessorContext context) {
-    this.context = context;
+    this.eventStores = new HashMap<>();
+
+    eventify.getAggregateTypes().forEach(aggregateType ->
+        eventStores.put(aggregateType, context.getStateStore(resolveEventStoreName(aggregateType))));
   }
 
   @Override
@@ -40,7 +44,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
     EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
-      Class<?> aggregateType = getAggregateType(eventSourcingHandler);
+      Class<?> aggregateType = resolveAggregateType(eventSourcingHandler);
       saveEvent(event, aggregateType);
     }
 
@@ -53,18 +57,14 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
   }
 
   private void saveEvent(Event event, Class<?> aggregateType) {
-    getEventStore(aggregateType).putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
+    eventStores.get(aggregateType).putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
   }
 
-  private TimestampedKeyValueStore<String, Event> getEventStore(Class<?> aggregateType) {
-    return context.getStateStore(aggregateType.getSimpleName() + "-event-store");
+  private String resolveEventStoreName(Class<?> aggregateType) {
+    return aggregateType.getSimpleName() + "-event-store";
   }
 
-  private TimestampedKeyValueStore<String, Aggregate> getSnapshotStore(Class<?> aggregateType) {
-    return context.getStateStore(aggregateType.getSimpleName() + "-snapshot-store");
-  }
-
-  private Class<?> getAggregateType(EventSourcingHandler eventSourcingHandler) {
-    return eventSourcingHandler.getMethod().getParameters()[0].getType();
+  private Class<?> resolveAggregateType(EventSourcingHandler handler) {
+    return handler.getMethod().getParameters()[0].getType();
   }
 }
