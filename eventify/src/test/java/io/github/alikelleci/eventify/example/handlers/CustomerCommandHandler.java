@@ -14,7 +14,6 @@ import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreate
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerDeleted;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.FirstNameChanged;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.LastNameChanged;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.annotations.HandleCommand;
 import lombok.extern.slf4j.Slf4j;
 
