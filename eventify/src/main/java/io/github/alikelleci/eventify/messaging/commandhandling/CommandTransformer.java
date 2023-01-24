@@ -6,7 +6,6 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Suc
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.util.StateStoreNameResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
@@ -55,7 +54,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     }
 
     // Determine aggregate type
-    Class<?> aggregateType = resolveAggregateType(commandHandler);
+    Class<?> aggregateType = commandHandler.getAggregateType();
 
     // 1. Load aggregate state
     Aggregate aggregate = loadAggregate(key, aggregateType);
@@ -183,9 +182,5 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
       }
     }
     log.debug("Total events deleted: {}", counter.get());
-  }
-
-  private Class<?> resolveAggregateType(CommandHandler commandHandler) {
-    return commandHandler.getMethod().getParameters()[0].getType();
   }
 }

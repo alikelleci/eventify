@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.util.StateStoreNameResolver;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
@@ -47,7 +46,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
     EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
-      Class<?> aggregateType = resolveAggregateType(eventSourcingHandler);
+      Class<?> aggregateType = eventSourcingHandler.getAggregateType();
       saveEvent(event, aggregateType);
     }
 
@@ -61,9 +60,5 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
 
   private void saveEvent(Event event, Class<?> aggregateType) {
     eventStores.get(aggregateType).putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
-  }
-
-  private Class<?> resolveAggregateType(EventSourcingHandler eventSourcingHandler) {
-    return eventSourcingHandler.getMethod().getParameters()[0].getType();
   }
 }

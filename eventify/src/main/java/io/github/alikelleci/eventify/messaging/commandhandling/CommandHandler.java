@@ -119,4 +119,8 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
   public Method getMethod() {
     return method;
   }
+
+  public Class<?> getAggregateType() {
+    return this.method.getParameters()[0].getType();
+  }
 }

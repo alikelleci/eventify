@@ -68,4 +68,8 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
   public Method getMethod() {
     return method;
   }
+
+  public Class<?> getAggregateType() {
+    return this.method.getParameters()[0].getType();
+  }
 }
