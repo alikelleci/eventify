@@ -7,7 +7,7 @@
     <groupId>io.github.alikelleci</groupId>
     <artifactId>eventify-parent</artifactId>
     <packaging>pom</packaging>
-    <version>0.0.2-rc9</version>
+    <version>0.0.1-SNAPSHOT</version>
 
     <name>eventify</name>
     <description>Event Sourcing framework for the JVM</description>
