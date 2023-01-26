@@ -1,7 +1,6 @@
-name: Publish package to the Maven Central Repository
+name: Pull request
 on:
-  release:
-    types: [created]
+  pull_request
 jobs:
   publish:
     runs-on: ubuntu-latest
