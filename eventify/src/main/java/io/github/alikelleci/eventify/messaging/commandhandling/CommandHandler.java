@@ -74,7 +74,11 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
     }
 
     List<Object> list = new ArrayList<>();
-    CollectionUtils.addAll(list, result);
+    if (List.class.isAssignableFrom(result.getClass())) {
+      list.addAll((List<?>) result);
+    } else {
+      list.add(result);
+    }
 
     List<Event> events = list.stream()
         .filter(Objects::nonNull)
