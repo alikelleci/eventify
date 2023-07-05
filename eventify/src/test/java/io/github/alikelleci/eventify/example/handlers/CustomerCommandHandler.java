@@ -15,9 +15,8 @@ import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerDelete
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.FirstNameChanged;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.LastNameChanged;
 import io.github.alikelleci.eventify.messaging.commandhandling.annotations.HandleCommand;
+import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
-
-import javax.validation.ValidationException;
 
 
 @Slf4j
