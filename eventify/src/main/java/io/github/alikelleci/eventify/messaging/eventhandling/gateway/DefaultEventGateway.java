@@ -34,12 +34,12 @@ public class DefaultEventGateway implements EventGateway {
   @Override
   public void publish(Object payload, Metadata metadata, Instant timestamp) {
     Event event = Event.builder()
+        .timestamp(timestamp)
         .payload(payload)
         .metadata(Metadata.builder()
             .addAll(metadata)
             .add(CORRELATION_ID, UUID.randomUUID().toString())
             .build())
-        .timestamp(timestamp)
         .build();
 
     validate(event);

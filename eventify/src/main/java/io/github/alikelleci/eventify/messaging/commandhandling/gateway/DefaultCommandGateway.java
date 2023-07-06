@@ -51,13 +51,13 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   @Override
   public <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp) {
     Command command = Command.builder()
+        .timestamp(timestamp)
         .payload(payload)
         .metadata(Metadata.builder()
             .addAll(metadata)
             .add(CORRELATION_ID, UUID.randomUUID().toString())
             .add(REPLY_TO, getReplyTopic())
             .build())
-        .timestamp(timestamp)
         .build();
 
     validate(command);
