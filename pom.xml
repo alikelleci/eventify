@@ -9,7 +9,7 @@
     <packaging>pom</packaging>
     <version>0.0.1-SNAPSHOT</version>
 
-    <name>eventify</name>
+    <name>eventify-parent</name>
     <description>Event Sourcing framework for the JVM</description>
     <url>https://github.com/alikelleci/eventify</url>
 
