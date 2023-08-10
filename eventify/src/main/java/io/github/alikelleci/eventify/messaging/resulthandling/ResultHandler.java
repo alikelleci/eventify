@@ -3,11 +3,7 @@ package io.github.alikelleci.eventify.messaging.resulthandling;
 import io.github.alikelleci.eventify.common.annotations.Priority;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.exceptions.ResultProcessingException;
-import io.github.alikelleci.eventify.retry.Retry;
-import io.github.alikelleci.eventify.retry.RetryUtil;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
@@ -20,22 +16,18 @@ public class ResultHandler implements Function<Command, Void> {
 
   private final Object target;
   private final Method method;
-  private final RetryPolicy<Object> retryPolicy;
 
   public ResultHandler(Object target, Method method) {
     this.target = target;
     this.method = method;
-    this.retryPolicy = RetryUtil.buildRetryPolicyFromAnnotation(method.getAnnotation(Retry.class))
-        .onRetry(e -> log.warn("Handling command result failed, retrying... ({})", e.getAttemptCount()))
-        .onRetriesExceeded(e -> log.error("Handling command result failed after {} attempts.", e.getAttemptCount()));
-  }
+ }
 
   @Override
   public Void apply(Command command) {
     log.debug("Handling command result: {} ({})", command.getType(), command.getAggregateId());
 
     try {
-      return Failsafe.with(retryPolicy).get(() -> doInvoke(command));
+      return doInvoke(command);
     } catch (Exception e) {
       throw new ResultProcessingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
