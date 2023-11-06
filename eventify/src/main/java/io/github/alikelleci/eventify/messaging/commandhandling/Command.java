@@ -17,14 +17,14 @@ import java.util.Optional;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class Command extends Message {
-  private String aggregateId;
+  String aggregateId;
 
-  protected Command() {
+  private Command() {
     this.aggregateId = null;
   }
 
   @Builder
-  protected Command(Instant timestamp, Object payload, Metadata metadata) {
+  private Command(Instant timestamp, Object payload, Metadata metadata) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = Optional.ofNullable(payload)

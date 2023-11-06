@@ -17,16 +17,16 @@ import java.util.Optional;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class Aggregate extends Message {
-  private String aggregateId;
-  private String eventId;
+  String aggregateId;
+  String eventId;
 
-  protected Aggregate() {
+  private Aggregate() {
     this.aggregateId = null;
     this.eventId = null;
   }
 
   @Builder
-  protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId) {
+  private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = Optional.ofNullable(payload)

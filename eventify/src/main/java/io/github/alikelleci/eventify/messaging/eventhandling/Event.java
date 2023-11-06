@@ -19,16 +19,16 @@ import java.util.Optional;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class Event extends Message {
-  private String aggregateId;
-  private int revision;
+  String aggregateId;
+  int revision;
 
-  protected Event() {
+  private Event() {
     this.aggregateId = null;
     this.revision = 1;
   }
 
   @Builder
-  protected Event(Instant timestamp, Object payload, Metadata metadata) {
+  private Event(Instant timestamp, Object payload, Metadata metadata) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = Optional.ofNullable(payload)
