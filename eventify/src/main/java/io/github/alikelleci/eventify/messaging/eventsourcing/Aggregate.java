@@ -20,18 +20,18 @@ import java.util.Optional;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class Aggregate extends Message {
-  private String aggregateId;
-  private String eventId;
-  private long version;
+  String aggregateId;
+  String eventId;
+  long version;
 
-  protected Aggregate() {
+  private Aggregate() {
     this.aggregateId = null;
     this.eventId = null;
     this.version = 0;
   }
 
   @Builder
-  protected Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
+  private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = Optional.ofNullable(payload)
