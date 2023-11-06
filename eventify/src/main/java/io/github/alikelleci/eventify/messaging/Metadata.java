@@ -20,7 +20,7 @@ public class Metadata implements Map<String, String> {
   public static final String CAUSE = "$cause";
 
   @Delegate
-  private Map<String, String> entries;
+  private final Map<String, String> entries;
 
   protected Metadata() {
     this.entries = new HashMap<>();
@@ -69,7 +69,7 @@ public class Metadata implements Map<String, String> {
 
   public static class MetadataBuilder {
 
-    private Map<String, String> entries = new HashMap<>();
+    private final Map<String, String> entries = new HashMap<>();
 
     public MetadataBuilder addAll(Metadata metadata) {
       if (metadata != null) {

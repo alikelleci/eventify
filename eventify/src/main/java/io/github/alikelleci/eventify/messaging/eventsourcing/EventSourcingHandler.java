@@ -3,11 +3,7 @@ package io.github.alikelleci.eventify.messaging.eventsourcing;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
-import io.github.alikelleci.eventify.retry.Retry;
-import io.github.alikelleci.eventify.retry.RetryUtil;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
@@ -19,22 +15,18 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
 
   private final Object target;
   private final Method method;
-  private final RetryPolicy<Object> retryPolicy;
 
   public EventSourcingHandler(Object target, Method method) {
     this.target = target;
     this.method = method;
-    this.retryPolicy = RetryUtil.buildRetryPolicyFromAnnotation(method.getAnnotation(Retry.class))
-        .onRetry(e -> log.warn("Applying event failed, retrying... ({})", e.getAttemptCount()))
-        .onRetriesExceeded(e -> log.error("Applying event failed after {} attempts.", e.getAttemptCount()));
-  }
+ }
 
   @Override
   public Aggregate apply(Aggregate aggregate, Event event) {
     log.debug("Applying event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
-      return Failsafe.with(retryPolicy).get(() -> doInvoke(aggregate, event));
+      return doInvoke(aggregate, event);
     } catch (Exception e) {
       throw new AggregateInvocationException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
