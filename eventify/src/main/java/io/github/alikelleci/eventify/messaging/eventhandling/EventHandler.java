@@ -2,11 +2,7 @@ package io.github.alikelleci.eventify.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.common.annotations.Priority;
 import io.github.alikelleci.eventify.messaging.eventhandling.exceptions.EventProcessingException;
-import io.github.alikelleci.eventify.retry.Retry;
-import io.github.alikelleci.eventify.retry.RetryUtil;
 import lombok.extern.slf4j.Slf4j;
-import net.jodah.failsafe.Failsafe;
-import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
@@ -19,14 +15,10 @@ public class EventHandler implements Function<Event, Void> {
 
   private final Object target;
   private final Method method;
-  private final RetryPolicy<Object> retryPolicy;
 
   public EventHandler(Object target, Method method) {
     this.target = target;
     this.method = method;
-    this.retryPolicy = RetryUtil.buildRetryPolicyFromAnnotation(method.getAnnotation(Retry.class))
-        .onRetry(e -> log.warn("Handling event failed, retrying... ({})", e.getAttemptCount()))
-        .onRetriesExceeded(e -> log.error("Handling event failed after {} attempts.", e.getAttemptCount()));
   }
 
   @Override
@@ -34,7 +26,7 @@ public class EventHandler implements Function<Event, Void> {
     log.debug("Handling event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
-      return Failsafe.with(retryPolicy).get(() -> doInvoke(event));
+      return doInvoke(event);
     } catch (Exception e) {
       throw new EventProcessingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
