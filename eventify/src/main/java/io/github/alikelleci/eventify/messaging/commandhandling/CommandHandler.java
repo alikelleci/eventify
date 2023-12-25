@@ -25,7 +25,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>> {
@@ -38,7 +37,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
   public CommandHandler(Object target, Method method) {
     this.target = target;
     this.method = method;
- }
+  }
 
   @Override
   public List<Event> apply(Aggregate aggregate, Command command) {
@@ -90,7 +89,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
                 .addAll(command.getMetadata())
                 .build())
             .build())
-        .collect(Collectors.toList());
+        .toList();
 
     events.forEach(event -> {
       if (event.getPayload() == null) {

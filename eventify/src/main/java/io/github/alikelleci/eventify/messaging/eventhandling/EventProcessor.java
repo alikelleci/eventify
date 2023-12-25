@@ -4,8 +4,9 @@ import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
@@ -13,22 +14,26 @@ import java.util.Collection;
 import java.util.Comparator;
 
 @Slf4j
-public class EventTransformer implements ValueTransformerWithKey<String, Event, Event> {
+public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   private final Eventify eventify;
+  private FixedKeyProcessorContext<String, Event> context;
   private TimestampedKeyValueStore<String, Event> eventStore;
 
-  public EventTransformer(Eventify eventify) {
+  public EventProcessor(Eventify eventify) {
     this.eventify = eventify;
   }
 
   @Override
-  public void init(ProcessorContext context) {
+  public void init(FixedKeyProcessorContext<String, Event> context) {
+    this.context = context;
     this.eventStore = context.getStateStore("event-store");
   }
 
   @Override
-  public Event transform(String key, Event event) {
+  public void process(FixedKeyRecord<String, Event> fixedKeyRecord) {
+    Event event = fixedKeyRecord.value();
+
     Collection<EventHandler> eventHandlers = eventify.getEventHandlers().get(event.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(eventHandlers)) {
       eventHandlers.stream()
@@ -42,7 +47,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
       saveEvent(event);
     }
 
-    return event;
+    context.forward(fixedKeyRecord);
   }
 
   @Override

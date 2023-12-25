@@ -6,14 +6,14 @@ import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandProcessor;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
-import io.github.alikelleci.eventify.messaging.eventhandling.EventTransformer;
+import io.github.alikelleci.eventify.messaging.eventhandling.EventProcessor;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
-import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
+import io.github.alikelleci.eventify.messaging.resulthandling.ResultProcessor;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.support.serializer.JsonSerde;
@@ -134,7 +134,7 @@ public class Eventify {
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .transformValues(() -> new CommandTransformer(this), "event-store", "snapshot-store")
+          .processValues(() -> new CommandProcessor(this), "event-store", "snapshot-store")
           .filter((key, result) -> result != null);
 
       // Results --> Push
@@ -176,7 +176,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .transformValues(() -> new EventTransformer(this), "event-store");
+          .processValues(() -> new EventProcessor(this), "event-store");
     }
 
     /*
@@ -194,7 +194,7 @@ public class Eventify {
 
       // Results --> Void
       results
-          .transformValues(() -> new ResultTransformer(this));
+          .processValues(() -> new ResultProcessor(this));
     }
 
 
