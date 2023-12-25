@@ -17,7 +17,7 @@
     <description>Spring Boot starter for Eventify</description>
 
     <properties>
-        <spring-boot.version>3.1.1</spring-boot.version>
+        <spring-boot.version>3.2.1</spring-boot.version>
         <lombok.version>1.18.28</lombok.version>
     </properties>
 

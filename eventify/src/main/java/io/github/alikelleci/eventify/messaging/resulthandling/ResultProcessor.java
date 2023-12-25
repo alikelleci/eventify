@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.messaging.resulthandling;
 
 import io.github.alikelleci.eventify.Eventify;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleFailure;
 import io.github.alikelleci.eventify.messaging.resulthandling.annotations.HandleResult;
@@ -9,8 +8,9 @@ import io.github.alikelleci.eventify.messaging.resulthandling.annotations.Handle
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -18,20 +18,24 @@ import java.util.Comparator;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
 @Slf4j
-public class ResultTransformer implements ValueTransformerWithKey<String, Command, Command> {
+public class ResultProcessor implements FixedKeyProcessor<String, Command, Command> {
 
   private final Eventify eventify;
+  private FixedKeyProcessorContext<String, Command> context;
 
-  public ResultTransformer(Eventify eventify) {
+  public ResultProcessor(Eventify eventify) {
     this.eventify = eventify;
   }
 
   @Override
-  public void init(ProcessorContext context) {
+  public void init(FixedKeyProcessorContext<String, Command> context) {
+    this.context = context;
   }
 
   @Override
-  public Command transform(String key, Command command) {
+  public void process(FixedKeyRecord<String, Command> fixedKeyRecord) {
+    Command command = fixedKeyRecord.value();
+
     Collection<ResultHandler> resultHandlers = eventify.getResultHandlers().get(command.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(resultHandlers)) {
       resultHandlers.stream()
@@ -50,7 +54,7 @@ public class ResultTransformer implements ValueTransformerWithKey<String, Comman
           });
     }
 
-    return command;
+    context.forward(fixedKeyRecord);
   }
 
   @Override

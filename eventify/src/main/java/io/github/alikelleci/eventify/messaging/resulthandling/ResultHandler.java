@@ -20,7 +20,7 @@ public class ResultHandler implements Function<Command, Void> {
   public ResultHandler(Object target, Method method) {
     this.target = target;
     this.method = method;
- }
+  }
 
   @Override
   public Void apply(Command command) {
