@@ -8,8 +8,9 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
@@ -18,25 +19,30 @@ import java.util.Optional;
 
 
 @Slf4j
-public class CommandTransformer implements ValueTransformerWithKey<String, Command, CommandResult> {
+public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
 
   private final Eventify eventify;
+  private FixedKeyProcessorContext<String, CommandResult> context;
   private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
 
-  public CommandTransformer(Eventify eventify) {
+  public CommandProcessor(Eventify eventify) {
     this.eventify = eventify;
   }
 
   @Override
-  public void init(ProcessorContext context) {
+  public void init(FixedKeyProcessorContext<String, CommandResult> context) {
+    this.context = context;
     this.snapshotStore = context.getStateStore("snapshot-store");
   }
 
   @Override
-  public CommandResult transform(String key, Command command) {
+  public void process(FixedKeyRecord<String, Command> fixedKeyRecord) {
+    String key = fixedKeyRecord.key();
+    Command command = fixedKeyRecord.value();
+
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
-      return null;
+      return;
     }
 
     // 1. Load aggregate state
@@ -45,9 +51,9 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     // 2. Execute command
     CommandResult result = executeCommand(commandHandler, aggregate, command);
 
-    if (result instanceof Success) {
+    if (result instanceof Success success) {
       // 3. Apply events
-      for (Event event : ((Success) result).getEvents()) {
+      for (Event event : success.getEvents()) {
         aggregate = applyEvent(aggregate, event);
       }
 
@@ -60,7 +66,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
       }
     }
 
-    return result;
+    context.forward(fixedKeyRecord.withValue(result));
   }
 
   @Override

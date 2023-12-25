@@ -6,8 +6,9 @@ import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandle
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
@@ -16,22 +17,27 @@ import java.util.Comparator;
 import java.util.Optional;
 
 @Slf4j
-public class EventTransformer implements ValueTransformerWithKey<String, Event, Event> {
+public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   private final Eventify eventify;
+  private FixedKeyProcessorContext<String, Event> context;
   private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
 
-  public EventTransformer(Eventify eventify) {
+  public EventProcessor(Eventify eventify) {
     this.eventify = eventify;
   }
 
   @Override
-  public void init(ProcessorContext context) {
+  public void init(FixedKeyProcessorContext<String, Event> context) {
+    this.context = context;
     this.snapshotStore = context.getStateStore("snapshot-store");
   }
 
   @Override
-  public Event transform(String key, Event event) {
+  public void process(FixedKeyRecord<String, Event> fixedKeyRecord) {
+    String key = fixedKeyRecord.key();
+    Event event = fixedKeyRecord.value();
+
     Collection<EventHandler> eventHandlers = eventify.getEventHandlers().get(event.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(eventHandlers)) {
       eventHandlers.stream()
@@ -60,7 +66,7 @@ public class EventTransformer implements ValueTransformerWithKey<String, Event, 
       }
     }
 
-    return event;
+    context.forward(fixedKeyRecord);
   }
 
   @Override
