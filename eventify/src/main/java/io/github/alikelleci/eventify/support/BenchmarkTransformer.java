@@ -2,39 +2,36 @@ package io.github.alikelleci.eventify.support;
 
 import io.github.alikelleci.eventify.messaging.Message;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.PunctuationType;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
-import java.util.Timer;
-import java.util.TimerTask;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
 
 @Slf4j
-public class BenchmarkTransformer<T extends Message> implements ValueTransformerWithKey<String, T, T> {
+public class BenchmarkTransformer<T extends Message> implements FixedKeyProcessor<String, T, T> {
 
+  private FixedKeyProcessorContext<String, T> context;
   private final AtomicLong counter = new AtomicLong(0);
 
   @Override
-  public void init(ProcessorContext processorContext) {
-    Timer timer = new Timer();
-    timer.scheduleAtFixedRate(new TimerTask() {
-      @Override
-      public void run() {
-        log.info("Processing {} messages/sec", counter.getAndSet(0));
-      }
-    }, 0, 1000);
+  public void init(FixedKeyProcessorContext<String, T> context) {
+    this.context = context;
+    this.context.schedule(Duration.ofSeconds(1), PunctuationType.WALL_CLOCK_TIME, timestamp ->
+        log.info("Processing {} messages/sec", counter.getAndSet(0)));
   }
 
   @Override
-  public T transform(String s, T t) {
+  public void process(FixedKeyRecord<String, T> fixedKeyRecord) {
     counter.incrementAndGet();
-    return t;
+    context.forward(fixedKeyRecord);
   }
 
   @Override
   public void close() {
 
   }
-
 }
