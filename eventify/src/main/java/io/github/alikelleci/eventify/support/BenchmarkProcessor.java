@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 
 @Slf4j
-public class BenchmarkTransformer<T extends Message> implements FixedKeyProcessor<String, T, T> {
+public class BenchmarkProcessor<T extends Message> implements FixedKeyProcessor<String, T, T> {
 
   private FixedKeyProcessorContext<String, T> context;
   private final AtomicLong counter = new AtomicLong(0);
