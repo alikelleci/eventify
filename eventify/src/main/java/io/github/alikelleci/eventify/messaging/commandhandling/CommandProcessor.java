@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
@@ -51,6 +52,11 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
       // Execute command
       List<Event> events = executeCommand(aggregate, command);
+
+      // Return if no events
+      if (CollectionUtils.isEmpty(events)) {
+        return;
+      }
 
       // Save events
       for (Event event : events) {
