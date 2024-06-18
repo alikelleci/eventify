@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.Eventify;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -74,7 +75,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     } catch (Exception e) {
       // Forward failure
-      context.forward(fixedKeyRecord.withValue(CommandResult.Failure.builder()
+      context.forward(fixedKeyRecord.withValue(Failure.builder()
           .command(command)
           .cause(ExceptionUtils.getRootCauseMessage(e))
           .build()));
@@ -89,7 +90,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   protected List<Event> executeCommand(Aggregate aggregate, Command command) {
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
-      new ArrayList<>();
+      return new ArrayList<>();
     }
 
     return commandHandler.apply(aggregate, command);
