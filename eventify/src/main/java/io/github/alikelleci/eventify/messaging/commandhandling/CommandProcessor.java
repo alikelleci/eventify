@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Suc
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
+import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -85,6 +86,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
           .build()));
 
     } catch (Exception e) {
+      // Log failure
+      logFailure(e);
+
       // Forward failure
       context.forward(fixedKeyRecord.withValue(Failure.builder()
           .command(command)
@@ -183,4 +187,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     log.debug("Total events deleted: {}", counter.get());
   }
 
+  private void logFailure(Exception e) {
+    Throwable throwable = ExceptionUtils.getRootCause(e);
+    if (throwable instanceof ValidationException) {
+      log.debug("Handling command failed: ", throwable);
+    } else {
+      log.error("Handling command failed: ", throwable);
+    }
+  }
 }
