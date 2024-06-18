@@ -1,12 +1,12 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.Eventify;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
@@ -14,6 +14,7 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -40,33 +41,44 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     String key = fixedKeyRecord.key();
     Command command = fixedKeyRecord.value();
 
-    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
-    if (commandHandler == null) {
-      return;
-    }
+    try {
+      // Load aggregate state
+      Aggregate aggregate = loadAggregate(key);
 
-    // 1. Load aggregate state
-    Aggregate aggregate = loadAggregate(key);
+      // Execute command
+      List<Event> events = executeCommand(aggregate, command);
 
-    // 2. Execute command
-    CommandResult result = executeCommand(commandHandler, aggregate, command);
+      // Return if no events
+      if (CollectionUtils.isEmpty(events)) {
+        return;
+      }
 
-    if (result instanceof Success success) {
-      // 3. Apply events
-      for (Event event : success.getEvents()) {
+      // Apply events
+      for (Event event : events) {
         aggregate = applyEvent(aggregate, event);
       }
 
-      // 4. Save snapshot
+      // Save snapshot
       if (aggregate != null) {
         log.debug("Creating snapshot: {}", aggregate);
         saveSnapshot(aggregate);
       } else {
         deleteSnapshot(key);
       }
-    }
 
-    context.forward(fixedKeyRecord.withValue(result));
+      // Forward success
+      context.forward(fixedKeyRecord.withValue(Success.builder()
+          .command(command)
+          .events(events)
+          .build()));
+
+    } catch (Exception e) {
+      // Forward failure
+      context.forward(fixedKeyRecord.withValue(CommandResult.Failure.builder()
+          .command(command)
+          .cause(ExceptionUtils.getRootCauseMessage(e))
+          .build()));
+    }
   }
 
   @Override
@@ -74,20 +86,13 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   }
 
-  protected CommandResult executeCommand(CommandHandler commandHandler, Aggregate aggregate, Command command) {
-    try {
-      List<Event> events = commandHandler.apply(aggregate, command);
-      return Success.builder()
-          .command(command)
-          .events(events)
-          .build();
-
-    } catch (Exception e) {
-      return Failure.builder()
-          .command(command)
-          .cause(ExceptionUtils.getRootCauseMessage(e))
-          .build();
+  protected List<Event> executeCommand(Aggregate aggregate, Command command) {
+    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
+    if (commandHandler == null) {
+      new ArrayList<>();
     }
+
+    return commandHandler.apply(aggregate, command);
   }
 
   protected Aggregate loadAggregate(String aggregateId) {
