@@ -116,7 +116,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AtomicLong counter = new AtomicLong(0);
 
     String from = aggregateId.concat("@");
-    String to = aggregateId.concat("@z");
+    String to = aggregateId.concat("@~");
 
     Aggregate aggregate = loadFromSnapshot(aggregateId);
     if (aggregate != null) {
