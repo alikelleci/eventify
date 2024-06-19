@@ -33,6 +33,9 @@ public class Message {
   }
 
   protected Message(Instant timestamp, Object payload, Metadata metadata) {
+    this.timestamp = Optional.ofNullable(timestamp)
+        .orElse(Instant.now());
+
     this.id = Optional.ofNullable(payload)
         .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(p.getClass(), AggregateId.class).stream()
             .filter(field -> field.getType() == String.class)
@@ -41,11 +44,8 @@ public class Message {
               field.setAccessible(true);
               return (String) ReflectionUtils.getField(field, p);
             }))
-        .map(s -> s + "@" + UlidCreator.getMonotonicUlid().toString())
+        .map(s -> s + "@" + UlidCreator.getMonotonicUlid(this.timestamp.toEpochMilli()).toString())
         .orElse(null);
-
-    this.timestamp = Optional.ofNullable(timestamp)
-        .orElse(Instant.now());
 
     this.type = Optional.ofNullable(payload)
         .map(Object::getClass)
