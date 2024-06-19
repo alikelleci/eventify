@@ -44,7 +44,7 @@ public class Message {
               field.setAccessible(true);
               return (String) ReflectionUtils.getField(field, p);
             }))
-        .map(s -> s + "@" + UlidCreator.getMonotonicUlid(this.timestamp.toEpochMilli()).toString())
+        .map(aggregateId -> aggregateId + "@" + UlidCreator.getMonotonicUlid(this.timestamp.toEpochMilli()).toString())
         .orElse(null);
 
     this.type = Optional.ofNullable(payload)
