@@ -1,10 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
-import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
-import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
