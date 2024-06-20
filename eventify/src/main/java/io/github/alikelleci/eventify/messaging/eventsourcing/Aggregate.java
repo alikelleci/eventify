@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshots;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
@@ -19,7 +18,6 @@ import java.time.Instant;
 import java.util.Optional;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 @Value
 @ToString(callSuper = true)
