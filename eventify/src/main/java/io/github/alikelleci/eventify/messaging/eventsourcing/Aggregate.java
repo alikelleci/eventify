@@ -1,7 +1,9 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
+import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshots;
+import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.Builder;
@@ -15,6 +17,9 @@ import org.springframework.util.ReflectionUtils;
 import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 @Value
 @ToString(callSuper = true)
@@ -34,18 +39,22 @@ public class Aggregate extends Message {
   private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
     super(timestamp, payload, metadata);
 
-    this.aggregateId = Optional.ofNullable(payload)
-        .flatMap(p -> FieldUtils.getFieldsListWithAnnotation(p.getClass(), AggregateId.class).stream()
-            .filter(field -> field.getType() == String.class)
-            .findFirst()
-            .map(field -> {
-              field.setAccessible(true);
-              return (String) ReflectionUtils.getField(field, p);
-            }))
-        .orElse(null);
+    this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
+        .stream()
+        .filter(field -> field.getType() == String.class)
+        .findFirst()
+        .map(field -> {
+          field.setAccessible(true);
+          return (String) ReflectionUtils.getField(field, getPayload());
+        })
+        .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
+
+    this.id = this.aggregateId + "@" + getId();
 
     this.eventId = eventId;
     this.version = version;
+
+    this.metadata.add(ID, getId());
   }
 
   @Transient

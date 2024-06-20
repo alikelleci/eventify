@@ -60,7 +60,6 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
             .build())
         .build();
 
-    validate(command);
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
     log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
@@ -91,22 +90,6 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
         cache.invalidate(messageId);
       }
     });
-  }
-
-  private void validate(Command command) {
-    if (command.getPayload() == null) {
-      throw new PayloadMissingException("You are trying to send a command without a payload.");
-    }
-
-    TopicInfo topicInfo = command.getTopicInfo();
-    if (topicInfo == null) {
-      throw new TopicInfoMissingException("You are trying to send a command without any topic information. Please annotate your command with @TopicInfo.");
-    }
-
-    String aggregateId = command.getAggregateId();
-    if (aggregateId == null) {
-      throw new AggregateIdMissingException("You are trying to send a command without a proper identifier. Please annotate your field containing the identifier with @AggregateId.");
-    }
   }
 
   private Exception checkForErrors(ConsumerRecord<String, Command> consumerRecord) {
