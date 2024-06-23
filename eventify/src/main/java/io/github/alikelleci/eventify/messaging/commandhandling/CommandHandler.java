@@ -83,7 +83,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
 
     events.forEach(event -> {
       if (!StringUtils.equals(event.getAggregateId(), command.getAggregateId())) {
-        throw new AggregateIdMismatchException("Aggregate identifier does not match. Expected " + command.getAggregateId() + ", but was " + event.getAggregateId());
+        throw new AggregateIdMismatchException("Aggregate identifier does not match for event " + event.getType() +". Expected " + command.getAggregateId() + ", but was " + event.getAggregateId());
       }
     });
 
