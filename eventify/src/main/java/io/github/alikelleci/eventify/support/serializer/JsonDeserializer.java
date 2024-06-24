@@ -8,7 +8,6 @@ import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.util.JacksonUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MultiValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.common.errors.SerializationException;
@@ -60,7 +59,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
       if (upcasters == null || upcasters.isEmpty()) {
         return objectMapper.readValue(bytes, targetType);
       }
-
       JsonNode jsonNode = objectMapper.readTree(bytes);
       JsonNode upcasted = upcast(jsonNode);
       return objectMapper.convertValue(upcasted, targetType);
