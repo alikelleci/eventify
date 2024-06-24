@@ -100,7 +100,7 @@ public class Eventify {
      */
 
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
-    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper);
+    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
     Serde<Aggregate> snapshotSerde = new JsonSerde<>(Aggregate.class, objectMapper);
 
     /*
