@@ -138,7 +138,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
         .orElse(null);
 
     log.debug("Total events applied: {}", counter.get());
-    log.debug("Current aggregate state reconstructed: {}", aggregate);
+    log.debug("Aggregate state reconstructed: {}", aggregate);
 
     // Save snapshot if needed
     Optional.ofNullable(aggregate)
