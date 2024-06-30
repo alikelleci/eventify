@@ -90,6 +90,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   protected List<Event> executeCommand(Aggregate aggregate, Command command) {
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
+      log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return new ArrayList<>();
     }
 
