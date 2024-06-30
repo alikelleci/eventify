@@ -64,21 +64,6 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
         saveEvent(event);
       }
 
-      // Save snapshot if needed
-      Optional.ofNullable(aggregate)
-          .filter(aggr -> aggr.getSnapshotTreshold() > 0)
-          .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
-          .ifPresent(aggr -> {
-            log.debug("Creating snapshot: {}", aggr);
-            saveSnapshot(aggr);
-
-            // Delete events after snapshot
-            if (eventify.isDeleteEventsOnSnapshot()) {
-              log.debug("Events prior to this snapshot will be deleted");
-              deleteEvents(aggr);
-            }
-          });
-
       // Forward success
       context.forward(fixedKeyRecord.withValue(Success.builder()
           .command(command)
@@ -154,6 +139,23 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     log.debug("Total events applied: {}", counter.get());
     log.debug("Current aggregate state reconstructed: {}", aggregate);
+
+    // Save snapshot if needed
+    Optional.ofNullable(aggregate)
+        .filter(aggr -> counter.get() > 0)
+        .filter(aggr -> aggr.getSnapshotTreshold() > 0)
+        .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
+        .ifPresent(aggr -> {
+          log.debug("Creating snapshot: {}", aggr);
+          saveSnapshot(aggr);
+
+          // Delete events after snapshot
+          if (eventify.isDeleteEventsOnSnapshot()) {
+            log.debug("Events prior to this snapshot will be deleted");
+            deleteEvents(aggr);
+          }
+        });
+
     return aggregate;
   }
 
