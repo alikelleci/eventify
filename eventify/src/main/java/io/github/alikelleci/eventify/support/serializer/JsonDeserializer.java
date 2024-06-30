@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class JsonDeserializer<T> implements Deserializer<T> {
 
-  private Class<T> targetType;
+  private final Class<T> targetType;
   private final ObjectMapper objectMapper;
   private final MultiValuedMap<String, Upcaster> upcasters;
 
