@@ -60,11 +60,11 @@ import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 @Slf4j
 @Getter
 public class Eventify {
-  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
   private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
   private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
   private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
   private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
 
   private final Properties streamsConfig;
   private final StateListener stateListener;
