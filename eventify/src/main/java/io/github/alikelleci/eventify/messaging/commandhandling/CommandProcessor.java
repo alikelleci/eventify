@@ -151,7 +151,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
           saveSnapshot(aggr);
 
           // Delete events after snapshot
-          if (eventify.isDeleteEventsOnSnapshot()) {
+          if (aggr.deleteEvents()) {
             log.debug("Events prior to this snapshot will be deleted");
             deleteEvents(aggr);
           }

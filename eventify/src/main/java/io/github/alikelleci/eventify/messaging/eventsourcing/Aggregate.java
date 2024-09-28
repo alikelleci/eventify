@@ -65,5 +65,12 @@ public class Aggregate extends Message {
         .orElse(0);
   }
 
-
+  @Transient
+  public boolean deleteEvents() {
+    return Optional.ofNullable(getPayload())
+        .map(Object::getClass)
+        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshots.class))
+        .map(EnableSnapshots::deleteEvents)
+        .orElse(false);
+  }
 }
