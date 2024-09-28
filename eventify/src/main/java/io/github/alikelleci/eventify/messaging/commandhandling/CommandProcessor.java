@@ -192,10 +192,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   private void logFailure(Exception e) {
     Throwable throwable = ExceptionUtils.getRootCause(e);
+    String message = ExceptionUtils.getRootCauseMessage(e);
+
     if (throwable instanceof ValidationException) {
-      log.debug("Handling command failed: ", throwable);
+      log.debug("Handling command failed: {}", message, throwable);
     } else {
-      log.error("Handling command failed: ", throwable);
+      log.error("Handling command failed: {}", message, throwable);
     }
   }
 }
