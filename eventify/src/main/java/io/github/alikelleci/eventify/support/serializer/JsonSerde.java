@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.util.JacksonUtils;
 import org.apache.commons.collections4.MultiValuedMap;
+import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
@@ -15,11 +16,11 @@ public class JsonSerde<T> implements Serde<T> {
   private final JsonDeserializer<T> jsonDeserializer;
 
   public JsonSerde(Class<T> targetType) {
-    this(targetType, JacksonUtils.enhancedObjectMapper(), null);
+    this(targetType, JacksonUtils.enhancedObjectMapper(), new ArrayListValuedHashMap<>());
   }
 
   public JsonSerde(Class<T> targetType, ObjectMapper objectMapper) {
-    this(targetType, objectMapper, null);
+    this(targetType, objectMapper, new ArrayListValuedHashMap<>());
   }
 
   public JsonSerde(Class<T> targetType, ObjectMapper objectMapper, MultiValuedMap<String, Upcaster> upcasters) {
@@ -47,5 +48,10 @@ public class JsonSerde<T> implements Serde<T> {
   @Override
   public Deserializer<T> deserializer() {
     return this.jsonDeserializer;
+  }
+
+  public JsonSerde<T> registerUpcaster(Object listener) {
+    this.jsonDeserializer.registerUpcaster(listener);
+    return this;
   }
 }
