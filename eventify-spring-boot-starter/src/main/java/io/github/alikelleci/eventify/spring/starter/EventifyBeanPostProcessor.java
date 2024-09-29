@@ -5,7 +5,6 @@ import io.github.alikelleci.eventify.util.HandlerUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
@@ -13,12 +12,12 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
   public EventifyBeanPostProcessor(List<Eventify> apps) {
     this.apps = apps.stream()
-        .filter(eventify -> eventify.getUpcasters().isEmpty())
         .filter(eventify -> eventify.getCommandHandlers().isEmpty())
         .filter(eventify -> eventify.getEventSourcingHandlers().isEmpty())
         .filter(eventify -> eventify.getResultHandlers().isEmpty())
         .filter(eventify -> eventify.getEventHandlers().isEmpty())
-        .collect(Collectors.toList());
+        .filter(eventify -> eventify.getUpcasters().isEmpty())
+        .toList();
   }
 
   @Override
