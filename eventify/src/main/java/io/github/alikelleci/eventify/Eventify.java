@@ -281,7 +281,7 @@ public class Eventify {
 
 
   public static class EventifyBuilder {
-    private List<Object> handlers = new ArrayList<>();
+    private final List<Object> handlers = new ArrayList<>();
 
     private Properties streamsConfig;
     private StateListener stateListener;
@@ -334,7 +334,7 @@ public class Eventify {
       }
 
       if (this.uncaughtExceptionHandler == null) {
-        this.uncaughtExceptionHandler = (throwable) ->
+        this.uncaughtExceptionHandler = throwable ->
             StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
       }
 
