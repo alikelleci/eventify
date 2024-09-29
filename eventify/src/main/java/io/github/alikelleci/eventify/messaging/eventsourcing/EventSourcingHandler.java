@@ -19,7 +19,7 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
   public EventSourcingHandler(Object target, Method method) {
     this.target = target;
     this.method = method;
- }
+  }
 
   @Override
   public Aggregate apply(Aggregate aggregate, Event event) {

@@ -33,9 +33,7 @@ public class HandlerUtils {
     List<Method> eventSourcingMethods = findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
     List<Method> resultHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
     List<Method> eventHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-
-    upcasterMethods
-        .forEach(method -> addUpcaster(eventify, handler, method));
+    List<Method> upcasterMethods = findMethodsWithAnnotation(handler.getClass(), Upcast.class);
 
     commandHandlerMethods
         .forEach(method -> addCommandHandler(eventify, handler, method));
@@ -48,6 +46,9 @@ public class HandlerUtils {
 
     eventHandlerMethods
         .forEach(method -> addEventHandler(eventify, handler, method));
+
+    upcasterMethods
+        .forEach(method -> addUpcaster(eventify, handler, method));
   }
 
   private boolean shouldSkip(Eventify eventify, Object handler) {
@@ -68,13 +69,6 @@ public class HandlerUtils {
       }
     }
     return methods;
-  }
-
-  private void addUpcaster(Eventify eventify, Object listener, Method method) {
-    if (method.getParameterCount() == 1) {
-      String type = method.getAnnotation(Upcast.class).type();
-      eventify.getUpcasters().put(type, new Upcaster(listener, method));
-    }
   }
 
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
@@ -102,6 +96,13 @@ public class HandlerUtils {
     if (method.getParameterCount() == 1 || method.getParameterCount() == 2) {
       Class<?> type = method.getParameters()[0].getType();
       eventify.getEventHandlers().put(type, new EventHandler(listener, method));
+    }
+  }
+
+  private void addUpcaster(Eventify eventify, Object listener, Method method) {
+    if (method.getParameterCount() == 1) {
+      String type = method.getAnnotation(Upcast.class).type();
+      eventify.getUpcasters().put(type, new Upcaster(listener, method));
     }
   }
 }

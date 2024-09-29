@@ -1,10 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
-import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
-import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
@@ -42,26 +38,9 @@ public class DefaultEventGateway implements EventGateway {
             .build())
         .build();
 
-    validate(event);
     ProducerRecord<String, Event> producerRecord = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
 
     log.debug("Publishing event: {} ({})", event.getType(), event.getAggregateId());
     producer.send(producerRecord);
-  }
-
-  private void validate(Event event) {
-    if (event.getPayload() == null) {
-      throw new PayloadMissingException("You are trying to publish an event without a payload.");
-    }
-
-    TopicInfo topicInfo = event.getTopicInfo();
-    if (topicInfo == null) {
-      throw new TopicInfoMissingException("You are trying to publish an event without any topic information. Please annotate your event with @TopicInfo.");
-    }
-
-    String aggregateId = event.getAggregateId();
-    if (aggregateId == null) {
-      throw new AggregateIdMissingException("You are trying to publish an event without a proper identifier. Please annotate your field containing the identifier with @AggregateId.");
-    }
   }
 }

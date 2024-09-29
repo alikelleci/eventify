@@ -4,16 +4,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandProcessor;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
-import io.github.alikelleci.eventify.messaging.commandhandling.CommandTransformer;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
-import io.github.alikelleci.eventify.messaging.eventhandling.EventTransformer;
+import io.github.alikelleci.eventify.messaging.eventhandling.EventProcessor;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
-import io.github.alikelleci.eventify.messaging.resulthandling.ResultTransformer;
+import io.github.alikelleci.eventify.messaging.resulthandling.ResultProcessor;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.support.serializer.JsonSerde;
@@ -61,18 +61,17 @@ import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 @Slf4j
 @Getter
 public class Eventify {
-  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
   private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
   private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
   private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
   private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
 
   private final Properties streamsConfig;
   private final StateListener stateListener;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
   private final String[] contextPath;
-  private final boolean deleteEventsOnSnapshot;
 
   private KafkaStreams kafkaStreams;
 
@@ -80,14 +79,12 @@ public class Eventify {
                      StateListener stateListener,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
                      ObjectMapper objectMapper,
-                     String[] contextPath,
-                     boolean deleteEventsOnSnapshot) {
+                     String[] contextPath) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
     this.contextPath = contextPath;
-    this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
   }
 
   public static EventifyBuilder builder() {
@@ -104,7 +101,7 @@ public class Eventify {
      */
 
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
-    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper);
+    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
     Serde<Aggregate> snapshotSerde = new JsonSerde<>(Aggregate.class, objectMapper);
 
     /*
@@ -138,7 +135,7 @@ public class Eventify {
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .transformValues(() -> new CommandTransformer(this), "event-store", "snapshot-store")
+          .processValues(() -> new CommandProcessor(this), "event-store", "snapshot-store")
           .filter((key, result) -> result != null);
 
       // Results --> Push
@@ -180,7 +177,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .transformValues(() -> new EventTransformer(this), "event-store");
+          .processValues(() -> new EventProcessor(this), "event-store");
     }
 
     /*
@@ -198,7 +195,7 @@ public class Eventify {
 
       // Results --> Void
       results
-          .transformValues(() -> new ResultTransformer(this));
+          .processValues(() -> new ResultProcessor(this));
     }
 
 
@@ -300,7 +297,6 @@ public class Eventify {
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
     private String[] contextPath;
-    private boolean deleteEventsOnSnapshot;
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
@@ -346,11 +342,6 @@ public class Eventify {
       return this;
     }
 
-    public EventifyBuilder deleteEventsOnSnapshot(boolean deleteEventsOnSnapshot) {
-      this.deleteEventsOnSnapshot = deleteEventsOnSnapshot;
-      return this;
-    }
-
     public Eventify build() {
       if (this.stateListener == null) {
         this.stateListener = (newState, oldState) ->
@@ -375,8 +366,7 @@ public class Eventify {
           this.stateListener,
           this.uncaughtExceptionHandler,
           this.objectMapper,
-          this.contextPath,
-          this.deleteEventsOnSnapshot);
+          this.contextPath);
 
       this.handlers.forEach(handler ->
           HandlerUtils.registerHandler(eventify, handler));

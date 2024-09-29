@@ -6,72 +6,80 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Suc
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
+import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.kafka.streams.kstream.ValueTransformerWithKey;
-import org.apache.kafka.streams.processor.ProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
+import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
+import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.TimestampedKeyValueStore;
 import org.apache.kafka.streams.state.ValueAndTimestamp;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 
 @Slf4j
-public class CommandTransformer implements ValueTransformerWithKey<String, Command, CommandResult> {
+public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
 
   private final Eventify eventify;
+  private FixedKeyProcessorContext<String, CommandResult> context;
   private TimestampedKeyValueStore<String, Event> eventStore;
   private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
 
-  public CommandTransformer(Eventify eventify) {
+  public CommandProcessor(Eventify eventify) {
     this.eventify = eventify;
   }
 
   @Override
-  public void init(ProcessorContext context) {
+  public void init(FixedKeyProcessorContext<String, CommandResult> context) {
+    this.context = context;
     this.eventStore = context.getStateStore("event-store");
     this.snapshotStore = context.getStateStore("snapshot-store");
   }
 
   @Override
-  public CommandResult transform(String key, Command command) {
-    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
-    if (commandHandler == null) {
-      return null;
-    }
+  public void process(FixedKeyRecord<String, Command> fixedKeyRecord) {
+    String key = fixedKeyRecord.key();
+    Command command = fixedKeyRecord.value();
 
-    // 1. Load aggregate state
-    Aggregate aggregate = loadAggregate(key);
+    try {
+      // Load aggregate state
+      Aggregate aggregate = loadAggregate(key);
 
-    // 2. Execute command
-    CommandResult result = executeCommand(commandHandler, aggregate, command);
+      // Execute command
+      List<Event> events = executeCommand(aggregate, command);
 
-    if (result instanceof Success) {
-      // 3. Save events
-      for (Event event : ((Success) result).getEvents()) {
+      // Return if no events
+      if (CollectionUtils.isEmpty(events)) {
+        return;
+      }
+
+      // Save events
+      for (Event event : events) {
         saveEvent(event);
       }
 
-      // 4. Save snapshot if needed
-      Optional.ofNullable(aggregate)
-          .filter(aggr -> aggr.getSnapshotTreshold() > 0)
-          .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
-          .ifPresent(aggr -> {
-            log.debug("Creating snapshot: {}", aggr);
-            saveSnapshot(aggr);
+      // Forward success
+      context.forward(fixedKeyRecord.withValue(Success.builder()
+          .command(command)
+          .events(events)
+          .build()));
 
-            // 5. Delete events after snapshot
-            if (eventify.isDeleteEventsOnSnapshot()) {
-              log.debug("Events prior to this snapshot will be deleted");
-              deleteEvents(aggr);
-            }
-          });
+    } catch (Exception e) {
+      // Log failure
+      logFailure(e);
+
+      // Forward failure
+      context.forward(fixedKeyRecord.withValue(Failure.builder()
+          .command(command)
+          .cause(ExceptionUtils.getRootCauseMessage(e))
+          .build()));
     }
-
-    return result;
   }
 
   @Override
@@ -79,20 +87,14 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
 
   }
 
-  protected CommandResult executeCommand(CommandHandler commandHandler, Aggregate aggregate, Command command) {
-    try {
-      List<Event> events = commandHandler.apply(aggregate, command);
-      return Success.builder()
-          .command(command)
-          .events(events)
-          .build();
-
-    } catch (Exception e) {
-      return Failure.builder()
-          .command(command)
-          .cause(ExceptionUtils.getRootCauseMessage(e))
-          .build();
+  protected List<Event> executeCommand(Aggregate aggregate, Command command) {
+    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
+    if (commandHandler == null) {
+      log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
+      return new ArrayList<>();
     }
+
+    return commandHandler.apply(aggregate, command);
   }
 
   protected Aggregate loadAggregate(String aggregateId) {
@@ -100,7 +102,7 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     AtomicLong counter = new AtomicLong(0);
 
     String from = aggregateId.concat("@");
-    String to = aggregateId.concat("@z");
+    String to = aggregateId.concat("@~");
 
     Aggregate aggregate = loadFromSnapshot(aggregateId);
     if (aggregate != null) {
@@ -137,7 +139,24 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
         .orElse(null);
 
     log.debug("Total events applied: {}", counter.get());
-    log.debug("Current aggregate state reconstructed: {}", aggregate);
+    log.debug("Aggregate state reconstructed: {}", aggregate);
+
+    // Save snapshot if needed
+    Optional.ofNullable(aggregate)
+        .filter(aggr -> counter.get() > 0)
+        .filter(aggr -> aggr.getSnapshotTreshold() > 0)
+        .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
+        .ifPresent(aggr -> {
+          log.debug("Creating snapshot: {}", aggr);
+          saveSnapshot(aggr);
+
+          // Delete events after snapshot
+          if (aggr.deleteEvents()) {
+            log.debug("Events prior to this snapshot will be deleted");
+            deleteEvents(aggr);
+          }
+        });
+
     return aggregate;
   }
 
@@ -171,4 +190,14 @@ public class CommandTransformer implements ValueTransformerWithKey<String, Comma
     log.debug("Total events deleted: {}", counter.get());
   }
 
+  private void logFailure(Exception e) {
+    Throwable throwable = ExceptionUtils.getRootCause(e);
+    String message = ExceptionUtils.getRootCauseMessage(e);
+
+    if (throwable instanceof ValidationException) {
+      log.debug("Handling command failed: {}", message, throwable);
+    } else {
+      log.error("Handling command failed: {}", message, throwable);
+    }
+  }
 }
