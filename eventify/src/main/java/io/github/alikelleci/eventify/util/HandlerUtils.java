@@ -26,9 +26,8 @@ public class HandlerUtils {
   public void registerHandler(Eventify eventify, Object handler) {
     if (shouldSkip(eventify, handler)) {
       return;
-    };
+    }
 
-    List<Method> upcasterMethods = findMethodsWithAnnotation(handler.getClass(), Upcast.class);
     List<Method> commandHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
     List<Method> eventSourcingMethods = findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
     List<Method> resultHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
