@@ -174,7 +174,7 @@ class EventifyTest {
       command.getMetadata().forEach((key, value) ->
           assertThat(commandResult.getMetadata(), hasEntry(key, value)));
       assertThat(commandResult.getMetadata().get(RESULT), is("failure"));
-      assertThat(commandResult.getMetadata().get(CAUSE), notNullValue());
+      assertThat(commandResult.getMetadata().get(CAUSE), is("ValidationException: Customer does not exists."));
     }
   }
 
