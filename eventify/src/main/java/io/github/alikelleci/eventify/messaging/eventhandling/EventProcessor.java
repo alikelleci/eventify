@@ -7,8 +7,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
-import org.apache.kafka.streams.state.TimestampedKeyValueStore;
-import org.apache.kafka.streams.state.ValueAndTimestamp;
+import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -18,7 +17,7 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, Event> context;
-  private TimestampedKeyValueStore<String, Event> eventStore;
+  private KeyValueStore<String, Event> eventStore;
 
   public EventProcessor(Eventify eventify) {
     this.eventify = eventify;
@@ -56,7 +55,7 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
   }
 
   private void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
+    eventStore.putIfAbsent(event.getId(), event);
   }
 
 }

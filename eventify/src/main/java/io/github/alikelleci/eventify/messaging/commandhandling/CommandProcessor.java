@@ -14,8 +14,7 @@ import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.TimestampedKeyValueStore;
-import org.apache.kafka.streams.state.ValueAndTimestamp;
+import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +27,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, CommandResult> context;
-  private TimestampedKeyValueStore<String, Event> eventStore;
-  private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
+  private KeyValueStore<String, Event> eventStore;
+  private KeyValueStore<String, Aggregate> snapshotStore;
 
   public CommandProcessor(Eventify eventify) {
     this.eventify = eventify;
@@ -113,9 +112,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     log.debug("Loading aggregate state by applying events...");
 
-    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
+    try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
-        Event event = iterator.next().value.value();
+        Event event = iterator.next().value;
         if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
           EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
@@ -161,17 +160,15 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   protected Aggregate loadFromSnapshot(String aggregateId) {
-    return Optional.ofNullable(snapshotStore.get(aggregateId))
-        .map(ValueAndTimestamp::value)
-        .orElse(null);
+    return snapshotStore.get(aggregateId);
   }
 
   protected void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getId(), ValueAndTimestamp.make(event, event.getTimestamp().toEpochMilli()));
+    eventStore.putIfAbsent(event.getId(), event);
   }
 
   protected void saveSnapshot(Aggregate aggregate) {
-    snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
+    snapshotStore.put(aggregate.getAggregateId(), aggregate);
   }
 
   protected void deleteEvents(Aggregate aggregate) {
@@ -180,9 +177,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     String from = aggregate.getAggregateId().concat("@");
     String to = aggregate.getEventId();
 
-    try (KeyValueIterator<String, ValueAndTimestamp<Event>> iterator = eventStore.range(from, to)) {
+    try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
-        Event event = iterator.next().value.value();
+        Event event = iterator.next().value;
         eventStore.delete(event.getId());
         counter.incrementAndGet();
       }

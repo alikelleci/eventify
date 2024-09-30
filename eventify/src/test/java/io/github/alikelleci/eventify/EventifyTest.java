@@ -30,9 +30,12 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
+import org.apache.kafka.streams.state.BuiltInDslStoreSuppliers;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -49,6 +52,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.hasEntry;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -102,6 +106,78 @@ class EventifyTest {
       testDriver.close();
     }
   }
+
+  @Nested
+  class CommandResultTests {
+
+    @Test
+    void successfulCommand() {
+      Command command = Command.builder()
+          .payload(CreateCustomer.builder()
+              .id("customer-123")
+              .firstName("Peter")
+              .lastName("Bruin")
+              .credits(100)
+              .birthday(Instant.now())
+              .build())
+          .metadata(Metadata.builder()
+              .add(CORRELATION_ID, UUID.randomUUID().toString())
+              .build())
+          .build();
+
+      commandsTopic.pipeInput(command.getAggregateId(), command);
+
+      // Assert Command Result
+      Command commandResult = commandResultsTopic.readValue();
+      assertThat(commandResult, is(notNullValue()));
+      assertThat(commandResult.getId(), is(commandResult.getId()));
+      assertThat(commandResult.getType(), is(commandResult.getType()));
+      assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
+      assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+      assertThat(commandResult.getPayload(), is(command.getPayload()));
+
+      // Metadata
+      assertThat(commandResult.getMetadata(), is(notNullValue()));
+      assertThat(commandResult.getMetadata().size(), is(4));
+      command.getMetadata().forEach((key, value) ->
+          assertThat(commandResult.getMetadata(), hasEntry(key, value)));
+      assertThat(commandResult.getMetadata().get(RESULT), is("success"));
+      assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
+    }
+
+    @Test
+    void failedCommand() {
+      Command command = Command.builder()
+          .payload(AddCredits.builder()
+              .id("customer-123")
+              .amount(100)
+              .build())
+          .metadata(Metadata.builder()
+              .add(CORRELATION_ID, UUID.randomUUID().toString())
+              .build())
+          .build();
+
+      commandsTopic.pipeInput(command.getAggregateId(), command);
+
+      // Assert Command Result
+      Command commandResult = commandResultsTopic.readValue();
+      assertThat(commandResult, is(notNullValue()));
+      assertThat(commandResult.getId(), is(commandResult.getId()));
+      assertThat(commandResult.getType(), is(commandResult.getType()));
+      assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
+      assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+      assertThat(commandResult.getPayload(), is(command.getPayload()));
+
+      // Metadata
+      assertThat(commandResult.getMetadata(), is(notNullValue()));
+      assertThat(commandResult.getMetadata().size(), is(5));
+      command.getMetadata().forEach((key, value) ->
+          assertThat(commandResult.getMetadata(), hasEntry(key, value)));
+      assertThat(commandResult.getMetadata().get(RESULT), is("failure"));
+      assertThat(commandResult.getMetadata().get(CAUSE), notNullValue());
+    }
+  }
+
 
   @Test
   void test1() {
