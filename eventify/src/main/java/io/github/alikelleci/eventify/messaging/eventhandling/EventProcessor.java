@@ -9,19 +9,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
-import org.apache.kafka.streams.state.TimestampedKeyValueStore;
-import org.apache.kafka.streams.state.ValueAndTimestamp;
+import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Optional;
 
 @Slf4j
 public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, Event> context;
-  private TimestampedKeyValueStore<String, Aggregate> snapshotStore;
+  private KeyValueStore<String, Aggregate> snapshotStore;
 
   public EventProcessor(Eventify eventify) {
     this.eventify = eventify;
@@ -75,13 +73,11 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
   }
 
   protected Aggregate loadSnapshot(String aggregateId) {
-    return Optional.ofNullable(snapshotStore.get(aggregateId))
-        .map(ValueAndTimestamp::value)
-        .orElse(null);
+    return snapshotStore.get(aggregateId);
   }
 
   protected void saveSnapshot(Aggregate aggregate) {
-    snapshotStore.put(aggregate.getAggregateId(), ValueAndTimestamp.make(aggregate, aggregate.getTimestamp().toEpochMilli()));
+    snapshotStore.put(aggregate.getAggregateId(), aggregate);
   }
 
   private void deleteSnapshot(String key) {

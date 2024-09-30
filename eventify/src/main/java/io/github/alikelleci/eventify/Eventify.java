@@ -108,7 +108,7 @@ public class Eventify {
 
     // Snapshot Store
     builder.addStateStore(Stores
-        .timestampedKeyValueStoreBuilder(Stores.persistentTimestampedKeyValueStore("snapshot-store"), Serdes.String(), snapshotSerde)
+        .keyValueStoreBuilder(Stores.persistentKeyValueStore("snapshot-store"), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
     /*
