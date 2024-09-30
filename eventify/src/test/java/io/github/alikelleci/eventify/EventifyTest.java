@@ -64,7 +64,7 @@ class EventifyTest {
   private KeyValueStore<String, Event> eventStore;
   private KeyValueStore<String, Aggregate> snapshotStore;
 
-  private Faker faker = new Faker();
+  private final Faker faker = new Faker();
 
   @BeforeEach
   void setup() {
