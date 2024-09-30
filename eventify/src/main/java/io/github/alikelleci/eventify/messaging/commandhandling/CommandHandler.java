@@ -22,6 +22,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
+
 @Slf4j
 public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>> {
 
@@ -77,13 +80,15 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
             .payload(payload)
             .metadata(Metadata.builder()
                 .addAll(command.getMetadata())
+                .remove(RESULT)
+                .remove(CAUSE)
                 .build())
             .build())
         .toList();
 
     events.forEach(event -> {
       if (!StringUtils.equals(event.getAggregateId(), command.getAggregateId())) {
-        throw new AggregateIdMismatchException("Aggregate identifier does not match for event " + event.getType() +". Expected " + command.getAggregateId() + ", but was " + event.getAggregateId());
+        throw new AggregateIdMismatchException("Aggregate identifier does not match for event " + event.getType() + ". Expected " + command.getAggregateId() + ", but was " + event.getAggregateId());
       }
     });
 
