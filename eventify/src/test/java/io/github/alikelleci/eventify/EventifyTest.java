@@ -180,8 +180,8 @@ class EventifyTest {
       assertEvent(commandResults.get(0), events.get(0), CustomerCreated.class);
       assertEvent(commandResults.get(1), events.get(1), CreditsAdded.class);
       assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
-      assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
-      assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
+      assertEvent(commandResults.get(3), events.get(3), CreditsAdded.class);
+      assertEvent(commandResults.get(4), events.get(4), CreditsAdded.class);
     }
 
     @Test
