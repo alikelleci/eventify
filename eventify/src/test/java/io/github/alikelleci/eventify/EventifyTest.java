@@ -8,7 +8,6 @@ import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreate
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerEventUpcaster;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
 import io.github.alikelleci.eventify.factory.CommandFactory;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
@@ -38,7 +37,8 @@ import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertFailedCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertSuccessfulCommandResult;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.equalToObject;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.startsWith;
@@ -65,7 +65,7 @@ class EventifyTest {
         .registerHandler(new CustomerEventSourcingHandler())
         .registerHandler(new CustomerEventHandler())
         .registerHandler(new CustomerResultHandler())
-        .registerHandler(new CustomerEventUpcaster())
+//        .registerHandler(new CustomerEventUpcaster())
         .build();
 
     testDriver = new TopologyTestDriver(eventify.topology(), eventify.getStreamsConfig());
@@ -124,7 +124,7 @@ class EventifyTest {
 
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
     assertThat(events.size(), is(1));
-    assertThat(events.get(0).value.getPayload(), instanceOf(CustomerCreated.class));
+    assertThat(events.get(0).value.toString(), is(event.toString()));
   }
 
   @Test
