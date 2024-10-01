@@ -92,7 +92,7 @@ class EventifyTest {
   }
 
   @Nested
-  class SimpleTests {
+  class BasicTests {
 
     @Test
     void metadataShouldSetCorrectly() {
