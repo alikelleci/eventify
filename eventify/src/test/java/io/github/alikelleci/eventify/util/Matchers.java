@@ -3,6 +3,11 @@ package io.github.alikelleci.eventify.util;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
+import org.apache.commons.collections4.IteratorUtils;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.state.KeyValueStore;
+
+import java.util.List;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
@@ -93,5 +98,16 @@ public class Matchers {
 
     // Payload
     assertThat(event.getPayload(), instanceOf(type));
+  }
+
+  public static void assertEventsInStore(List<Event> events, KeyValueStore<String, Event> eventStore) {
+    List<KeyValue<String, Event>> eventsInStore = IteratorUtils.toList(eventStore.all());
+    assertThat(eventsInStore.size(), is(events.size()));
+
+    for (int i = 0; i < events.size(); i++) {
+      Event eventInTopic = events.get(i);
+      Event eventInStore = eventsInStore.get(i).value;
+      assertThat(eventInStore.toString(), is(eventInTopic.toString()));
+    }
   }
 }

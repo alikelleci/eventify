@@ -34,6 +34,7 @@ import java.util.Properties;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
+import static io.github.alikelleci.eventify.util.Matchers.assertEventsInStore;
 import static io.github.alikelleci.eventify.util.Matchers.assertFailedCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertSuccessfulCommandResult;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -112,19 +113,16 @@ class EventifyTest {
     assertThat(commandResult, is(notNullValue()));
     assertSuccessfulCommandResult(command, commandResult);
 
-    Event event = eventsTopic.readValue();
-    assertThat(event, is(notNullValue()));
-    assertEvent(command, event, CustomerCreated.class);
-
-    assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
-    assertThat(((CustomerCreated) event.getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
-    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
-    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
-    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
-
-    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
+    List<Event> events = eventsTopic.readValuesToList();
     assertThat(events.size(), is(1));
-    assertThat(events.get(0).value.toString(), is(event.toString()));
+    assertEventsInStore(events, eventStore);
+
+    assertEvent(command, events.get(0), CustomerCreated.class);
+    assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
+    assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
+    assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
+    assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
+    assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
   }
 
   @Test
@@ -141,5 +139,6 @@ class EventifyTest {
     List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
     assertThat(events.size(), is(0));
   }
+
 
 }
