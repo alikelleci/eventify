@@ -2,6 +2,9 @@ package io.github.alikelleci.eventify.factory;
 
 import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
+import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
+import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
+import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 
@@ -18,13 +21,13 @@ public class CommandFactory {
   public static final Faker faker = new Faker();
 
 
-  public static Command buildCreateCustomerCommand(String aggregateId) {
+  public static Command buildCreateCustomerCommand(String aggregateId, int credits) {
     return Command.builder()
-        .payload(CustomerCommand.CreateCustomer.builder()
+        .payload(CreateCustomer.builder()
             .id(aggregateId)
             .firstName(faker.name().firstName())
             .lastName(faker.name().lastName())
-            .credits(faker.number().numberBetween(50, 100))
+            .credits(credits)
             .birthday(faker.date().birthday(20, 60).toInstant())
             .build())
         .metadata(Metadata.builder()
@@ -38,11 +41,28 @@ public class CommandFactory {
         .build();
   }
 
-  public static Command buildAddCreditsCommand(String aggregateId) {
+  public static Command buildAddCreditsCommand(String aggregateId, int amount) {
     return Command.builder()
-        .payload(CustomerCommand.AddCredits.builder()
+        .payload(AddCredits.builder()
             .id(aggregateId)
-            .amount(faker.number().numberBetween(50, 100))
+            .amount(amount)
+            .build())
+        .metadata(Metadata.builder()
+            .add("custom-key", "custom-value")
+            .add(CORRELATION_ID, UUID.randomUUID().toString())
+            .add(ID, "should-be-overwritten")
+            .add(TIMESTAMP, "should-be-overwritten")
+            .add(RESULT, "should-be-overwritten")
+            .add(CAUSE, "should-be-overwritten")
+            .build())
+        .build();
+  }
+
+  public static Command buildIssueCreditsCommand(String aggregateId, int amount) {
+    return Command.builder()
+        .payload(IssueCredits.builder()
+            .id(aggregateId)
+            .amount(amount)
             .build())
         .metadata(Metadata.builder()
             .add("custom-key", "custom-value")

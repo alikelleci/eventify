@@ -36,9 +36,9 @@ import java.util.Properties;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
+import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertEventsInStore;
-import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -96,7 +96,7 @@ class EventifyTest {
 
     @Test
     void metadataShouldSetCorrectly() {
-      Command command = CommandFactory.buildCreateCustomerCommand("cust-1");
+      Command command = CommandFactory.buildCreateCustomerCommand("cust-1", 100);
 
       assertThat(command.getMetadata().get(ID), is(notNullValue()));
       assertThat(command.getMetadata().get(ID), startsWith("cust-1@"));
@@ -109,7 +109,7 @@ class EventifyTest {
 
     @Test
     void commandShouldSucceed() {
-      Command command = CommandFactory.buildCreateCustomerCommand("cust-1");
+      Command command = CommandFactory.buildCreateCustomerCommand("cust-1", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       Command commandResult = commandResultsTopic.readValue();
@@ -130,7 +130,7 @@ class EventifyTest {
 
     @Test
     void commandShouldFail() {
-      Command command = CommandFactory.buildAddCreditsCommand("cust-1");
+      Command command = CommandFactory.buildAddCreditsCommand("cust-1", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       Command commandResult = commandResultsTopic.readValue();
@@ -150,10 +150,11 @@ class EventifyTest {
     @Test
     void multipleCommandShouldSucceed() {
       List<Command> commands = List.of(
-          CommandFactory.buildCreateCustomerCommand("cust-1"),
-          CommandFactory.buildAddCreditsCommand("cust-1"),
-          CommandFactory.buildAddCreditsCommand("cust-1"),
-          CommandFactory.buildCreateCustomerCommand("cust-1") // should fail
+          CommandFactory.buildCreateCustomerCommand("cust-1", 100),
+          CommandFactory.buildAddCreditsCommand("cust-1", 50),
+          CommandFactory.buildAddCreditsCommand("cust-1", 50),
+          CommandFactory.buildCreateCustomerCommand("cust-1", 100), // should fail
+          CommandFactory.buildIssueCreditsCommand("cust-1", 201) // should fail
       );
 
       commands.forEach(command ->
@@ -166,6 +167,7 @@ class EventifyTest {
       assertCommandResult(commands.get(1), commandResults.get(1), true);
       assertCommandResult(commands.get(2), commandResults.get(2), true);
       assertCommandResult(commands.get(3), commandResults.get(3), false);
+      assertCommandResult(commands.get(4), commandResults.get(4), false);
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(3));
@@ -179,10 +181,10 @@ class EventifyTest {
     @Test
     void multipleCommandShouldSucceed2() {
       List<Command> commands = List.of(
-          CommandFactory.buildCreateCustomerCommand("cust-1"),
-          CommandFactory.buildAddCreditsCommand("cust-1"),
-          CommandFactory.buildAddCreditsCommand("cust-1"),
-          CommandFactory.buildCreateCustomerCommand("cust-1") // should fail
+          CommandFactory.buildCreateCustomerCommand("cust-1", 100),
+          CommandFactory.buildAddCreditsCommand("cust-1", 50),
+          CommandFactory.buildAddCreditsCommand("cust-1", 50),
+          CommandFactory.buildCreateCustomerCommand("cust-1", 100) // should fail
       );
 
       commands.forEach(command ->
