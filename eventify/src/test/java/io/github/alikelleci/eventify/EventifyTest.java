@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
+import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
@@ -15,10 +16,8 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
-import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
@@ -26,20 +25,21 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertEventsInStore;
-import static io.github.alikelleci.eventify.util.Matchers.assertFailedCommandResult;
-import static io.github.alikelleci.eventify.util.Matchers.assertSuccessfulCommandResult;
+import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.equalToObject;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.startsWith;
@@ -91,53 +91,100 @@ class EventifyTest {
     }
   }
 
-  @Test
-  void metadataShouldSetCorrectly() {
-    Command command = CommandFactory.buildCreateCustomerCommand("cust-1");
+  @Nested
+  class SimpleTests {
 
-    assertThat(command.getMetadata().get(ID), is(notNullValue()));
-    assertThat(command.getMetadata().get(ID), startsWith("cust-1@"));
-    assertThat(command.getMetadata().get(ID), is(command.getId()));
-    assertThat(command.getMetadata().get(ID), is(command.getMetadata().getMessageId()));
-    assertThat(command.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(command.getMetadata().get(TIMESTAMP), is(command.getTimestamp().toString()));
-    assertThat(command.getMetadata().get(TIMESTAMP), is(command.getMetadata().getTimestamp().toString()));
+    @Test
+    void metadataShouldSetCorrectly() {
+      Command command = CommandFactory.buildCreateCustomerCommand("cust-1");
+
+      assertThat(command.getMetadata().get(ID), is(notNullValue()));
+      assertThat(command.getMetadata().get(ID), startsWith("cust-1@"));
+      assertThat(command.getMetadata().get(ID), is(command.getId()));
+      assertThat(command.getMetadata().get(ID), is(command.getMetadata().getMessageId()));
+      assertThat(command.getMetadata().get(TIMESTAMP), is(notNullValue()));
+      assertThat(command.getMetadata().get(TIMESTAMP), is(command.getTimestamp().toString()));
+      assertThat(command.getMetadata().get(TIMESTAMP), is(command.getMetadata().getTimestamp().toString()));
+    }
+
+    @Test
+    void commandShouldSucceed() {
+      Command command = CommandFactory.buildCreateCustomerCommand("cust-1");
+      commandsTopic.pipeInput(command.getAggregateId(), command);
+
+      Command commandResult = commandResultsTopic.readValue();
+      assertThat(commandResult, is(notNullValue()));
+      assertCommandResult(command, commandResult, true);
+
+      List<Event> events = eventsTopic.readValuesToList();
+      assertThat(events.size(), is(1));
+      assertEventsInStore(events, eventStore);
+
+      assertEvent(command, events.get(0), CustomerCreated.class);
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
+    }
+
+    @Test
+    void commandShouldFail() {
+      Command command = CommandFactory.buildAddCreditsCommand("cust-1");
+      commandsTopic.pipeInput(command.getAggregateId(), command);
+
+      Command commandResult = commandResultsTopic.readValue();
+      assertThat(commandResult, is(notNullValue()));
+      assertCommandResult(command, commandResult, false);
+
+      List<Event> events = eventsTopic.readValuesToList();
+      assertThat(events.size(), is(0));
+      assertEventsInStore(events, eventStore);
+    }
+
   }
 
-  @Test
-  void commandShouldSucceed() {
-    Command command = CommandFactory.buildCreateCustomerCommand("cust-1");
-    commandsTopic.pipeInput(command.getAggregateId(), command);
+  @Nested
+  class AdvancedTests {
 
-    Command commandResult = commandResultsTopic.readValue();
-    assertThat(commandResult, is(notNullValue()));
-    assertSuccessfulCommandResult(command, commandResult);
+    @Test
+    void multipleCommandShouldSucceed() {
+      List<Command> commands = List.of(
+          CommandFactory.buildCreateCustomerCommand("cust-1"),
+          CommandFactory.buildAddCreditsCommand("cust-1"),
+          CommandFactory.buildAddCreditsCommand("cust-1"),
+          CommandFactory.buildCreateCustomerCommand("cust-1")
+      );
 
-    List<Event> events = eventsTopic.readValuesToList();
-    assertThat(events.size(), is(1));
-    assertEventsInStore(events, eventStore);
+      commands.forEach(command ->
+          commandsTopic.pipeInput(command.getAggregateId(), command));
 
-    assertEvent(command, events.get(0), CustomerCreated.class);
-    assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
-    assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
-    assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
-    assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
-    assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
+      List<Command> commandResults = commandResultsTopic.readValuesToList();
+      assertThat(commandResults.size(), is(commands.size()));
+
+      Map<Command, Command> map = new HashMap<>();
+      for (int i = 0; i < commands.size(); i++) {
+        map.put(commands.get(i), commandResults.get(i));
+      }
+
+      map.forEach((c, r) -> {
+        boolean isSuccess = r.getMetadata().get(RESULT).equals("success");
+        assertCommandResult(c, r, isSuccess);
+      });
+
+      List<Command> successfulCommands = commandResults.stream()
+          .filter(command -> command.getMetadata().get(RESULT).equals("success"))
+          .toList();
+
+      List<Event> events = eventsTopic.readValuesToList();
+      assertThat(events.size(), is(successfulCommands.size()));
+      assertEventsInStore(events, eventStore);
+
+      assertEvent(successfulCommands.get(0), events.get(0), CustomerCreated.class);
+      assertEvent(successfulCommands.get(1), events.get(1), CreditsAdded.class);
+      assertEvent(successfulCommands.get(2), events.get(2), CreditsAdded.class);
+    }
+
   }
-
-  @Test
-  void commandShouldFail() {
-    Command command = CommandFactory.buildAddCreditsCommand("cust-1");
-    commandsTopic.pipeInput(command.getAggregateId(), command);
-
-    Command commandResult = commandResultsTopic.readValue();
-    assertThat(commandResult, is(notNullValue()));
-    assertFailedCommandResult(command, commandResult, "ValidationException: Customer does not exists.");
-
-    List<Event> events = eventsTopic.readValuesToList();
-    assertThat(events.size(), is(0));
-    assertEventsInStore(events, eventStore);
-  }
-
 
 }

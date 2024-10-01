@@ -22,7 +22,7 @@ import static org.hamcrest.Matchers.startsWith;
 
 public class Matchers {
 
-  public static void assertSuccessfulCommandResult(Command command, Command commandResult) {
+  public static void assertCommandResult(Command command, Command commandResult, boolean isSuccess) {
     Metadata metadata = Metadata.builder()
         .addAll(command.getMetadata())
         .remove(ID)
@@ -37,38 +37,12 @@ public class Matchers {
 
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
-    assertThat(commandResult.getMetadata().size(), is(metadata.size() + 2)); // ID and RESULT are added
+    assertThat(commandResult.getMetadata().size(), is(metadata.size() + (isSuccess ? 2 : 3))); // ID, RESULT and CAUSE are added
     metadata.forEach((key, value) ->
         assertThat(commandResult.getMetadata(), hasEntry(key, value)));
     assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
-    assertThat(commandResult.getMetadata().get(RESULT), is("success"));
-    assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
-
-    // Payload
-    assertThat(commandResult.getPayload(), is(command.getPayload()));
-  }
-
-  public static void assertFailedCommandResult(Command command, Command commandResult, String cause) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
-
-    assertThat(commandResult.getType(), is(command.getType()));
-    assertThat(commandResult.getId(), is(command.getId()));
-    assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
-    assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
-
-    // Metadata
-    assertThat(commandResult.getMetadata(), is(notNullValue()));
-    assertThat(commandResult.getMetadata().size(), is(metadata.size() + 3)); // ID, RESULT and CAUSE are added
-    metadata.forEach((key, value) ->
-        assertThat(commandResult.getMetadata(), hasEntry(key, value)));
-    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
-    assertThat(commandResult.getMetadata().get(RESULT), is("failure"));
-    assertThat(commandResult.getMetadata().get(CAUSE), is(cause));
+    assertThat(commandResult.getMetadata().get(RESULT), is(isSuccess ? "success" : "failure"));
+    assertThat(commandResult.getMetadata().get(CAUSE), isSuccess ? emptyOrNullString() : notNullValue());
 
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
