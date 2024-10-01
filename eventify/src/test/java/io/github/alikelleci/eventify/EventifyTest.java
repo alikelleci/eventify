@@ -138,7 +138,7 @@ class EventifyTest {
   }
 
   @Test
-  void commandShoudFail() {
+  void commandShouldFail() {
     Command command = buildAddCreditsCommand("cust-1");
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
