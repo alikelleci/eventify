@@ -151,10 +151,12 @@ class EventifyTest {
     void multipleCommandShouldSucceed() {
       List<Command> commands = List.of(
           CommandFactory.buildCreateCustomerCommand("cust-1", 100),
-          CommandFactory.buildAddCreditsCommand("cust-1", 50),
-          CommandFactory.buildAddCreditsCommand("cust-1", 50),
-          CommandFactory.buildCreateCustomerCommand("cust-1", 100), // should fail
-          CommandFactory.buildIssueCreditsCommand("cust-1", 201) // should fail
+          CommandFactory.buildAddCreditsCommand("cust-1", 1),
+          CommandFactory.buildAddCreditsCommand("cust-1", 1),
+          CommandFactory.buildAddCreditsCommand("cust-1", 1),
+          CommandFactory.buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached
+          CommandFactory.buildCreateCustomerCommand("cust-1", 100), // should fail & a snapshot should be created on replay
+          CommandFactory.buildIssueCreditsCommand("cust-1", 200) // should fail
       );
 
       commands.forEach(command ->
@@ -166,15 +168,19 @@ class EventifyTest {
       assertCommandResult(commands.get(0), commandResults.get(0), true);
       assertCommandResult(commands.get(1), commandResults.get(1), true);
       assertCommandResult(commands.get(2), commandResults.get(2), true);
-      assertCommandResult(commands.get(3), commandResults.get(3), false);
-      assertCommandResult(commands.get(4), commandResults.get(4), false);
+      assertCommandResult(commands.get(3), commandResults.get(3), true);
+      assertCommandResult(commands.get(4), commandResults.get(4), true);
+      assertCommandResult(commands.get(5), commandResults.get(5), false);
+      assertCommandResult(commands.get(6), commandResults.get(6), false);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events.size(), is(3));
+      assertThat(events.size(), is(5));
       assertEventsInStore(events, eventStore);
 
       assertEvent(commandResults.get(0), events.get(0), CustomerCreated.class);
       assertEvent(commandResults.get(1), events.get(1), CreditsAdded.class);
+      assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
+      assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
       assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
     }
 
