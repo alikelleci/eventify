@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify;
 
-import com.github.f4b6a3.ulid.UlidCreator;
 import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.Customer;
@@ -32,10 +31,8 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
-import org.apache.kafka.streams.state.BuiltInDslStoreSuppliers;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -209,13 +206,106 @@ class EventifyTest {
 
   @Test
   void test1() {
-    Command command = Command.builder()
+    Command command = createCustomer();
+    commandsTopic.pipeInput(command.getAggregateId(), command);
+
+    Command commandResult = commandResultsTopic.readValue();
+    assertSuccessfulCommandResult(command, commandResult);
+
+    Event event = eventsTopic.readValue();
+    assertEvent(command, event, CustomerCreated.class);
+
+    assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
+    assertThat(((CustomerCreated) event.getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
+    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
+    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
+    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
+  }
+
+
+  private void assertSuccessfulCommandResult(Command command, Command commandResult) {
+    Metadata metadata = Metadata.builder()
+        .addAll(command.getMetadata())
+        .remove(ID)
+        .remove(RESULT)
+        .remove(CAUSE)
+        .build();
+
+    assertThat(commandResult, is(notNullValue()));
+    assertThat(commandResult.getType(), is(command.getType()));
+    assertThat(commandResult.getId(), is(command.getId()));
+    assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
+    assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+    // Metadata
+    assertThat(commandResult.getMetadata(), is(notNullValue()));
+    assertThat(commandResult.getMetadata().size(), is(metadata.size() + 2)); // ID and RESULT are added
+    metadata.forEach((key, value) ->
+        assertThat(commandResult.getMetadata(), hasEntry(key, value)));
+    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
+    assertThat(commandResult.getMetadata().get(RESULT), is("success"));
+    assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
+    // Payload
+    assertThat(commandResult.getPayload(), is(command.getPayload()));
+  }
+
+  private void assertFailedCommandResult(Command command, Command commandResult, String cause) {
+    Metadata metadata = Metadata.builder()
+        .addAll(command.getMetadata())
+        .remove(ID)
+        .remove(RESULT)
+        .remove(CAUSE)
+        .build();
+
+    assertThat(commandResult, is(notNullValue()));
+    assertThat(commandResult.getType(), is(command.getType()));
+    assertThat(commandResult.getId(), is(command.getId()));
+    assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
+    assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+    // Metadata
+    assertThat(commandResult.getMetadata(), is(notNullValue()));
+    assertThat(commandResult.getMetadata().size(), is(metadata.size() + 3)); // ID, RESULT and CAUSE are added
+    metadata.forEach((key, value) ->
+        assertThat(commandResult.getMetadata(), hasEntry(key, value)));
+    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
+    assertThat(commandResult.getMetadata().get(RESULT), is("failure"));
+    assertThat(commandResult.getMetadata().get(CAUSE), is(cause));
+    // Payload
+    assertThat(commandResult.getPayload(), is(command.getPayload()));
+  }
+
+  private void assertEvent(Command command, Event event, Class<?> type) {
+    Metadata metadata = Metadata.builder()
+        .addAll(command.getMetadata())
+        .remove(ID)
+        .remove(RESULT)
+        .remove(CAUSE)
+        .build();
+
+    assertThat(event, is(notNullValue()));
+    assertThat(event.getType(), is(type.getSimpleName()));
+    assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
+    assertThat(event.getAggregateId(), is(command.getAggregateId()));
+    assertThat(event.getTimestamp(), is(command.getTimestamp()));
+    // Metadata
+    assertThat(event.getMetadata(), is(notNullValue()));
+    assertThat(event.getMetadata().size(), is(metadata.size() + 1)); // ID is added
+    metadata.forEach((key, value) ->
+        assertThat(event.getMetadata(), hasEntry(key, value)));
+    assertThat(event.getMetadata().get(ID), is(event.getId()));
+    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
+    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
+    // Payload
+    assertThat(event.getPayload(), instanceOf(type));
+  }
+
+  private Command createCustomer() {
+    return Command.builder()
         .payload(CreateCustomer.builder()
-            .id("customer-123")
-            .firstName("Peter")
-            .lastName("Bruin")
-            .credits(100)
-            .birthday(Instant.now())
+            .id(UUID.randomUUID().toString())
+            .firstName(faker.name().firstName())
+            .lastName(faker.name().lastName())
+            .credits(faker.number().numberBetween(50, 100))
+            .birthday(faker.date().birthday(20, 60).toInstant())
             .build())
         .metadata(Metadata.builder()
             .add("custom-key", "custom-value")
@@ -226,53 +316,6 @@ class EventifyTest {
             .add(CAUSE, "should-be-overwritten-by-command-result")
             .build())
         .build();
-
-    commandsTopic.pipeInput(command.getAggregateId(), command);
-
-    // Assert CommandResult
-    Command commandResult = commandResultsTopic.readValue();
-    assertThat(commandResult, is(notNullValue()));
-    assertThat(commandResult.getType(), is(command.getType()));
-    assertThat(commandResult.getId(), is(command.getId()));
-    assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
-    assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
-    // Metadata
-    assertThat(commandResult.getMetadata(), is(notNullValue()));
-    assertThat(commandResult.getMetadata().size(), is(5));
-    command.getMetadata().entrySet().stream()
-        .filter(entry -> !StringUtils.equalsAny(entry.getKey(), ID, RESULT, CAUSE))
-        .forEach(entry ->
-            assertThat(commandResult.getMetadata(), hasEntry(entry.getKey(), entry.getValue())));
-    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
-    assertThat(commandResult.getMetadata().get(RESULT), is("success"));
-    assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
-    // Payload
-    assertThat(commandResult.getPayload(), is(command.getPayload()));
-
-    // Assert Event
-    Event event = eventsTopic.readValue();
-    assertThat(event, is(notNullValue()));
-    assertThat(event.getType(), is(CustomerCreated.class.getSimpleName()));
-    assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
-    assertThat(event.getAggregateId(), is(command.getAggregateId()));
-    assertThat(event.getTimestamp(), is(command.getTimestamp()));
-    // Metadata
-    assertThat(event.getMetadata(), is(notNullValue()));
-    assertThat(event.getMetadata().size(), is(4));
-    command.getMetadata().entrySet().stream()
-        .filter(entry -> !StringUtils.equalsAny(entry.getKey(), ID, RESULT, CAUSE))
-        .forEach(entry ->
-            assertThat(event.getMetadata(), hasEntry(entry.getKey(), entry.getValue())));
-    assertThat(event.getMetadata().get(ID), is(event.getId()));
-    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
-    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
-    // Payload
-    assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
-    assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
-    assertThat(((CustomerCreated) event.getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
-    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
-    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
-    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
   }
 
   @Test
