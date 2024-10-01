@@ -134,10 +134,9 @@ class EventifyTest {
     assertThat(commandResult, is(notNullValue()));
     assertFailedCommandResult(command, commandResult, "ValidationException: Customer does not exists.");
 
-    assertThat(eventsTopic.isEmpty(), is(true));
-
-    List<KeyValue<String, Event>> events = IteratorUtils.toList(eventStore.all());
+    List<Event> events = eventsTopic.readValuesToList();
     assertThat(events.size(), is(0));
+    assertEventsInStore(events, eventStore);
   }
 
 
