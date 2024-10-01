@@ -153,7 +153,36 @@ class EventifyTest {
           CommandFactory.buildCreateCustomerCommand("cust-1"),
           CommandFactory.buildAddCreditsCommand("cust-1"),
           CommandFactory.buildAddCreditsCommand("cust-1"),
-          CommandFactory.buildCreateCustomerCommand("cust-1")
+          CommandFactory.buildCreateCustomerCommand("cust-1") // should fail
+      );
+
+      commands.forEach(command ->
+          commandsTopic.pipeInput(command.getAggregateId(), command));
+
+      List<Command> commandResults = commandResultsTopic.readValuesToList();
+      assertThat(commandResults.size(), is(commands.size()));
+
+      assertCommandResult(commands.get(0), commandResults.get(0), true);
+      assertCommandResult(commands.get(1), commandResults.get(1), true);
+      assertCommandResult(commands.get(2), commandResults.get(2), true);
+      assertCommandResult(commands.get(3), commandResults.get(3), false);
+
+      List<Event> events = eventsTopic.readValuesToList();
+      assertThat(events.size(), is(3));
+      assertEventsInStore(events, eventStore);
+
+      assertEvent(commandResults.get(0), events.get(0), CustomerCreated.class);
+      assertEvent(commandResults.get(1), events.get(1), CreditsAdded.class);
+      assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
+    }
+
+    @Test
+    void multipleCommandShouldSucceed2() {
+      List<Command> commands = List.of(
+          CommandFactory.buildCreateCustomerCommand("cust-1"),
+          CommandFactory.buildAddCreditsCommand("cust-1"),
+          CommandFactory.buildAddCreditsCommand("cust-1"),
+          CommandFactory.buildCreateCustomerCommand("cust-1") // should fail
       );
 
       commands.forEach(command ->
