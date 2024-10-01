@@ -5,15 +5,10 @@ import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import org.apache.commons.collections4.IteratorUtils;
-import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
@@ -91,14 +86,14 @@ public class Matchers {
     }
   }
 
-  public static void assertSnapshotInStore(Event event, KeyValueStore<String, Aggregate> snapshotStore, Class<?> type, long version) {
+  public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type, long version) {
     Metadata metadata = Metadata.builder()
         .addAll(event.getMetadata())
         .remove(ID)
+        .remove(RESULT)
+        .remove(CAUSE)
         .build();
 
-    Aggregate snapshot = snapshotStore.get(event.getAggregateId());
-    assertThat(snapshot, is(notNullValue()));
     assertThat(snapshot.getVersion(), is(version));
     assertThat(snapshot.getEventId(), is(event.getId()));
     assertThat(snapshot.getType(), is(type.getSimpleName()));

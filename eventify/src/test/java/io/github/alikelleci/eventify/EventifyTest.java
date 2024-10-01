@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
+import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsIssued;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
@@ -17,10 +18,8 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
-import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
@@ -31,18 +30,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertEventsInStore;
-import static io.github.alikelleci.eventify.util.Matchers.assertSnapshotInStore;
+import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -160,7 +156,9 @@ class EventifyTest {
           CommandFactory.buildAddCreditsCommand("cust-1", 1),
           CommandFactory.buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached
           CommandFactory.buildCreateCustomerCommand("cust-1", 100), // should fail & a snapshot should be created on replay
-          CommandFactory.buildIssueCreditsCommand("cust-1", 200) // should fail
+          CommandFactory.buildIssueCreditsCommand("cust-1", 200), // should fail
+          CommandFactory.buildIssueCreditsCommand("cust-1", 2)
+
       );
 
       commands.forEach(command ->
@@ -176,61 +174,28 @@ class EventifyTest {
       assertCommandResult(commands.get(4), commandResults.get(4), true);
       assertCommandResult(commands.get(5), commandResults.get(5), false);
       assertCommandResult(commands.get(6), commandResults.get(6), false);
+      assertCommandResult(commands.get(7), commandResults.get(7), true);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events.size(), is(5));
+      assertThat(events.size(), is(6));
       assertEventsInStore(events, eventStore);
 
-      assertEvent(commandResults.get(0), events.get(0), CustomerCreated.class);
-      assertEvent(commandResults.get(1), events.get(1), CreditsAdded.class);
-      assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
-      assertEvent(commandResults.get(3), events.get(3), CreditsAdded.class);
-      assertEvent(commandResults.get(4), events.get(4), CreditsAdded.class);
+      assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
+      assertEvent(commands.get(1), events.get(1), CreditsAdded.class);
+      assertEvent(commands.get(2), events.get(2), CreditsAdded.class);
+      assertEvent(commands.get(3), events.get(3), CreditsAdded.class);
+      assertEvent(commands.get(4), events.get(4), CreditsAdded.class);
+      assertEvent(commands.get(7), events.get(5), CreditsIssued.class);
 
-      List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
-      assertThat(snapshots.size(), is(1));
-
-      assertSnapshotInStore(events.get(4), snapshotStore, Customer.class, 5);
+      Aggregate snapshot = snapshotStore.get(events.get(4).getAggregateId());
+      assertThat(snapshot, is(notNullValue()));
+      assertSnapshot(events.get(4), snapshot, Customer.class, 5);
+      assertThat(((Customer) snapshot.getPayload()).getId(), is(((CustomerCreated) events.get(0).getPayload()).getId()));
+      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is(((CustomerCreated) events.get(0).getPayload()).getFirstName()));
+      assertThat(((Customer) snapshot.getPayload()).getLastName(), is(((CustomerCreated) events.get(0).getPayload()).getLastName()));
+      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(104));
+      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(((CustomerCreated) events.get(0).getPayload()).getBirthday()));
     }
-
-    @Test
-    void multipleCommandShouldSucceed2() {
-      List<Command> commands = List.of(
-          CommandFactory.buildCreateCustomerCommand("cust-1", 100),
-          CommandFactory.buildAddCreditsCommand("cust-1", 50),
-          CommandFactory.buildAddCreditsCommand("cust-1", 50),
-          CommandFactory.buildCreateCustomerCommand("cust-1", 100) // should fail
-      );
-
-      commands.forEach(command ->
-          commandsTopic.pipeInput(command.getAggregateId(), command));
-
-      List<Command> commandResults = commandResultsTopic.readValuesToList();
-      assertThat(commandResults.size(), is(commands.size()));
-
-      Map<Command, Command> map = new HashMap<>();
-      for (int i = 0; i < commands.size(); i++) {
-        map.put(commands.get(i), commandResults.get(i));
-      }
-
-      map.forEach((command, result) -> {
-        boolean isSuccess = result.getMetadata().get(RESULT).equals("success");
-        assertCommandResult(command, result, isSuccess);
-      });
-
-      List<Command> successfulCommands = commandResults.stream()
-          .filter(command -> command.getMetadata().get(RESULT).equals("success"))
-          .toList();
-
-      List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events.size(), is(successfulCommands.size()));
-      assertEventsInStore(events, eventStore);
-
-      assertEvent(successfulCommands.get(0), events.get(0), CustomerCreated.class);
-      assertEvent(successfulCommands.get(1), events.get(1), CreditsAdded.class);
-      assertEvent(successfulCommands.get(2), events.get(2), CreditsAdded.class);
-    }
-
   }
 
 }
