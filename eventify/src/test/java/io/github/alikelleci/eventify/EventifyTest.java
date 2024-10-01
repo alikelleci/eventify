@@ -236,6 +236,7 @@ class EventifyTest {
     assertThat(commandResult.getId(), is(command.getId()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
     assertThat(commandResult.getMetadata().size(), is(metadata.size() + 2)); // ID and RESULT are added
@@ -244,6 +245,7 @@ class EventifyTest {
     assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
     assertThat(commandResult.getMetadata().get(RESULT), is("success"));
     assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
+
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
   }
@@ -261,6 +263,7 @@ class EventifyTest {
     assertThat(commandResult.getId(), is(command.getId()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
     assertThat(commandResult.getMetadata().size(), is(metadata.size() + 3)); // ID, RESULT and CAUSE are added
@@ -269,6 +272,7 @@ class EventifyTest {
     assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
     assertThat(commandResult.getMetadata().get(RESULT), is("failure"));
     assertThat(commandResult.getMetadata().get(CAUSE), is(cause));
+
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
   }
@@ -286,6 +290,7 @@ class EventifyTest {
     assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
+
     // Metadata
     assertThat(event.getMetadata(), is(notNullValue()));
     assertThat(event.getMetadata().size(), is(metadata.size() + 1)); // ID is added
@@ -294,6 +299,7 @@ class EventifyTest {
     assertThat(event.getMetadata().get(ID), is(event.getId()));
     assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
     assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
+
     // Payload
     assertThat(event.getPayload(), instanceOf(type));
   }
