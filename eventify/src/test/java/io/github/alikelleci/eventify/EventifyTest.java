@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify;
 
+import com.github.f4b6a3.ulid.UlidCreator;
 import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.Customer;
@@ -140,8 +141,11 @@ class EventifyTest {
       // Metadata
       assertThat(commandResult.getMetadata(), is(notNullValue()));
       assertThat(commandResult.getMetadata().size(), is(4));
-      command.getMetadata().forEach((key, value) ->
-          assertThat(commandResult.getMetadata(), hasEntry(key, value)));
+      command.getMetadata().entrySet().stream()
+          .filter(entry -> !StringUtils.equalsAny(entry.getKey(), ID, RESULT, CAUSE))
+          .forEach(entry ->
+              assertThat(commandResult.getMetadata(), hasEntry(entry.getKey(), entry.getValue())));
+      assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
       assertThat(commandResult.getMetadata().get(RESULT), is("success"));
       assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
     }
@@ -172,8 +176,11 @@ class EventifyTest {
       // Metadata
       assertThat(commandResult.getMetadata(), is(notNullValue()));
       assertThat(commandResult.getMetadata().size(), is(5));
-      command.getMetadata().forEach((key, value) ->
-          assertThat(commandResult.getMetadata(), hasEntry(key, value)));
+      command.getMetadata().entrySet().stream()
+          .filter(entry -> !StringUtils.equalsAny(entry.getKey(), ID, RESULT, CAUSE))
+          .forEach(entry ->
+              assertThat(commandResult.getMetadata(), hasEntry(entry.getKey(), entry.getValue())));
+      assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
       assertThat(commandResult.getMetadata().get(RESULT), is("failure"));
       assertThat(commandResult.getMetadata().get(CAUSE), is("ValidationException: Customer does not exists."));
     }
@@ -225,16 +232,19 @@ class EventifyTest {
     // Assert Command Result
     Command commandResult = commandResultsTopic.readValue();
     assertThat(commandResult, is(notNullValue()));
-    assertThat(commandResult.getId(), startsWith(command.getAggregateId()));
+    assertThat(commandResult.getId(), is(commandResult.getId()));
+    assertThat(commandResult.getType(), is(commandResult.getType()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
+    assertThat(commandResult.getPayload(), is(command.getPayload()));
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
     assertThat(commandResult.getMetadata().size(), is(5));
     command.getMetadata().entrySet().stream()
-        .filter(entry -> !StringUtils.equalsAny(entry.getKey(), RESULT, CAUSE))
+        .filter(entry -> !StringUtils.equalsAny(entry.getKey(), ID, RESULT, CAUSE))
         .forEach(entry ->
             assertThat(commandResult.getMetadata(), hasEntry(entry.getKey(), entry.getValue())));
+    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
     assertThat(commandResult.getMetadata().get(RESULT), is("success"));
     assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
     // Payload
@@ -243,7 +253,7 @@ class EventifyTest {
     // Assert Event
     Event event = eventsTopic.readValue();
     assertThat(event, is(notNullValue()));
-    assertThat(event.getId(), startsWith(command.getAggregateId()));
+    assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
     // Metadata
