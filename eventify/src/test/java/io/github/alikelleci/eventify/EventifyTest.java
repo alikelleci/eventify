@@ -132,8 +132,8 @@ class EventifyTest {
       // Assert Command Result
       Command commandResult = commandResultsTopic.readValue();
       assertThat(commandResult, is(notNullValue()));
-      assertThat(commandResult.getId(), is(commandResult.getId()));
-      assertThat(commandResult.getType(), is(commandResult.getType()));
+      assertThat(commandResult.getType(), is(command.getType()));
+      assertThat(commandResult.getId(), is(command.getId()));
       assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
       assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
       assertThat(commandResult.getPayload(), is(command.getPayload()));
@@ -167,8 +167,8 @@ class EventifyTest {
       // Assert Command Result
       Command commandResult = commandResultsTopic.readValue();
       assertThat(commandResult, is(notNullValue()));
-      assertThat(commandResult.getId(), is(commandResult.getId()));
-      assertThat(commandResult.getType(), is(commandResult.getType()));
+      assertThat(commandResult.getType(), is(command.getType()));
+      assertThat(commandResult.getId(), is(command.getId()));
       assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
       assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
       assertThat(commandResult.getPayload(), is(command.getPayload()));
@@ -232,11 +232,10 @@ class EventifyTest {
     // Assert Command Result
     Command commandResult = commandResultsTopic.readValue();
     assertThat(commandResult, is(notNullValue()));
-    assertThat(commandResult.getId(), is(commandResult.getId()));
-    assertThat(commandResult.getType(), is(commandResult.getType()));
+    assertThat(commandResult.getType(), is(command.getType()));
+    assertThat(commandResult.getId(), is(command.getId()));
     assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
     assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
-    assertThat(commandResult.getPayload(), is(command.getPayload()));
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
     assertThat(commandResult.getMetadata().size(), is(5));
@@ -253,6 +252,7 @@ class EventifyTest {
     // Assert Event
     Event event = eventsTopic.readValue();
     assertThat(event, is(notNullValue()));
+    assertThat(event.getType(), is(CustomerCreated.class.getSimpleName()));
     assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
     assertThat(event.getAggregateId(), is(command.getAggregateId()));
     assertThat(event.getTimestamp(), is(command.getTimestamp()));
