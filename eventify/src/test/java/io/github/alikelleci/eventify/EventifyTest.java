@@ -167,9 +167,9 @@ class EventifyTest {
         map.put(commands.get(i), commandResults.get(i));
       }
 
-      map.forEach((c, r) -> {
-        boolean isSuccess = r.getMetadata().get(RESULT).equals("success");
-        assertCommandResult(c, r, isSuccess);
+      map.forEach((command, result) -> {
+        boolean isSuccess = result.getMetadata().get(RESULT).equals("success");
+        assertCommandResult(command, result, isSuccess);
       });
 
       List<Command> successfulCommands = commandResults.stream()
