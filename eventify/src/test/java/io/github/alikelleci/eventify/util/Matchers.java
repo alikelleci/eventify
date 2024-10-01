@@ -80,12 +80,12 @@ public class Matchers {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  public static void assertEventsInStore(List<Event> events, KeyValueStore<String, Event> eventStore) {
+  public static void assertEventsInStore(List<Event> eventsInTopic, KeyValueStore<String, Event> eventStore) {
     List<KeyValue<String, Event>> eventsInStore = IteratorUtils.toList(eventStore.all());
-    assertThat(eventsInStore.size(), is(events.size()));
+    assertThat(eventsInStore.size(), is(eventsInTopic.size()));
 
-    for (int i = 0; i < events.size(); i++) {
-      Event eventInTopic = events.get(i);
+    for (int i = 0; i < eventsInTopic.size(); i++) {
+      Event eventInTopic = eventsInTopic.get(i);
       Event eventInStore = eventsInStore.get(i).value;
       assertThat(eventInStore.toString(), is(eventInTopic.toString()));
     }
