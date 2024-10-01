@@ -129,7 +129,7 @@ class EventifyTest {
 
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
-      // Assert Command Result
+      // Assert CommandResult
       Command commandResult = commandResultsTopic.readValue();
       assertThat(commandResult, is(notNullValue()));
       assertThat(commandResult.getType(), is(command.getType()));
@@ -164,7 +164,7 @@ class EventifyTest {
 
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
-      // Assert Command Result
+      // Assert CommandResult
       Command commandResult = commandResultsTopic.readValue();
       assertThat(commandResult, is(notNullValue()));
       assertThat(commandResult.getType(), is(command.getType()));
@@ -229,7 +229,7 @@ class EventifyTest {
 
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
-    // Assert Command Result
+    // Assert CommandResult
     Command commandResult = commandResultsTopic.readValue();
     assertThat(commandResult, is(notNullValue()));
     assertThat(commandResult.getType(), is(command.getType()));
