@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.example.domain.Customer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
@@ -16,8 +17,10 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
+import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
@@ -39,6 +42,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertEventsInStore;
+import static io.github.alikelleci.eventify.util.Matchers.assertSnapshotInStore;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
@@ -182,6 +186,11 @@ class EventifyTest {
       assertEvent(commandResults.get(2), events.get(2), CreditsAdded.class);
       assertEvent(commandResults.get(3), events.get(3), CreditsAdded.class);
       assertEvent(commandResults.get(4), events.get(4), CreditsAdded.class);
+
+      List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
+      assertThat(snapshots.size(), is(1));
+
+      assertSnapshotInStore(events.get(4), snapshotStore, Customer.class, 5);
     }
 
     @Test
