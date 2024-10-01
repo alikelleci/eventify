@@ -206,7 +206,7 @@ class EventifyTest {
 
   @Test
   void test1() {
-    Command command = createCustomer();
+    Command command = buildCreateCustomerCommand();
     commandsTopic.pipeInput(command.getAggregateId(), command);
 
     Command commandResult = commandResultsTopic.readValue();
@@ -304,7 +304,7 @@ class EventifyTest {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  private Command createCustomer() {
+  private Command buildCreateCustomerCommand() {
     return Command.builder()
         .payload(CreateCustomer.builder()
             .id(UUID.randomUUID().toString())
@@ -316,10 +316,10 @@ class EventifyTest {
         .metadata(Metadata.builder()
             .add("custom-key", "custom-value")
             .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten-by-command-id")
-            .add(TIMESTAMP, "should-be-overwritten-by-command-timestamp")
-            .add(RESULT, "should-be-overwritten-by-command-result")
-            .add(CAUSE, "should-be-overwritten-by-command-result")
+            .add(ID, "should-be-overwritten")
+            .add(TIMESTAMP, "should-be-overwritten")
+            .add(RESULT, "should-be-overwritten")
+            .add(CAUSE, "should-be-overwritten")
             .build())
         .build();
   }
