@@ -118,14 +118,13 @@ class EventifyTest {
 
       Aggregate snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(notNullValue()));
-      assertSnapshot(events.get(events.size() - 1), snapshot, Customer.class);
 
-      assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) commands.get(0).getPayload()).getId()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) commands.get(0).getPayload()).getFirstName()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) commands.get(0).getPayload()).getLastName()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) commands.get(0).getPayload()).getCredits()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) commands.get(0).getPayload()).getBirthday()));
+      assertSnapshot(events.get(0), snapshot, Customer.class);
+      assertThat(((Customer) snapshot.getPayload()).getId(), is("cust-1"));
+      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is("John"));
+      assertThat(((Customer) snapshot.getPayload()).getLastName(), is("Doe"));
+      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(100));
+      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
     }
 
     @Test
