@@ -75,7 +75,7 @@ public class Matchers {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  public static void assertEventsInStore(List<Event> events, KeyValueStore<String, Event> eventStore) {
+  public static void assertEventsInStore(KeyValueStore<String, Event> eventStore, List<Event> events) {
     events.forEach(event -> {
       Event eventInStore = eventStore.get(event.getId());
       assertThat(eventInStore, is(notNullValue()));

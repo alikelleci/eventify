@@ -122,7 +122,7 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(1));
       assertEventStoreSize(eventStore, 1);
-      assertEventsInStore(events, eventStore);
+      assertEventsInStore(eventStore, events);
 
       assertEvent(command, events.get(0), CustomerCreated.class);
       assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
@@ -182,7 +182,8 @@ class EventifyTest {
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(6));
-      assertEventsInStore(events, eventStore);
+      assertEventStoreSize(eventStore, 6);
+      assertEventsInStore(eventStore, events);
 
       assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
       assertEvent(commands.get(1), events.get(1), CreditsAdded.class);
