@@ -1,20 +1,17 @@
 package io.github.alikelleci.eventify;
 
-import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.example.domain.Customer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand;
-import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
-import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent;
+import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
+import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsIssued;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerEventUpcaster;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -23,38 +20,29 @@ import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
-import org.apache.kafka.streams.state.BuiltInDslStoreSuppliers;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
+import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
+import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
+import static io.github.alikelleci.eventify.factory.CommandFactory.buildIssueCreditsCommand;
+import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
+import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
+import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.emptyOrNullString;
-import static org.hamcrest.Matchers.hasEntry;
-import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.containsInRelativeOrder;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.startsWith;
 
 class EventifyTest {
 
@@ -63,9 +51,8 @@ class EventifyTest {
   private TestOutputTopic<String, Command> commandResultsTopic;
   private TestOutputTopic<String, Event> eventsTopic;
 
+  private KeyValueStore<String, Event> eventStore;
   private KeyValueStore<String, Aggregate> snapshotStore;
-
-  private final Faker faker = new Faker();
 
   @BeforeEach
   void setup() {
@@ -79,7 +66,7 @@ class EventifyTest {
         .registerHandler(new CustomerEventSourcingHandler())
         .registerHandler(new CustomerEventHandler())
         .registerHandler(new CustomerResultHandler())
-        .registerHandler(new CustomerEventUpcaster())
+//        .registerHandler(new CustomerEventUpcaster())
         .build();
 
     testDriver = new TopologyTestDriver(eventify.topology(), eventify.getStreamsConfig());
@@ -93,6 +80,7 @@ class EventifyTest {
     eventsTopic = testDriver.createOutputTopic(CustomerEvent.class.getAnnotation(TopicInfo.class).value(),
         new StringDeserializer(), new JsonDeserializer<>(Event.class));
 
+    eventStore = testDriver.getKeyValueStore("event-store");
     snapshotStore = testDriver.getKeyValueStore("snapshot-store");
   }
 
@@ -104,360 +92,134 @@ class EventifyTest {
   }
 
   @Nested
-  class CommandResultTests {
+  class BasicTests {
 
     @Test
-    void successfulCommand() {
-      Command command = Command.builder()
-          .payload(CreateCustomer.builder()
-              .id("customer-123")
-              .firstName("Peter")
-              .lastName("Bruin")
-              .credits(100)
-              .birthday(Instant.now())
-              .build())
-          .metadata(Metadata.builder()
-              .add(CORRELATION_ID, UUID.randomUUID().toString())
-              .build())
-          .build();
-
+    void commandShouldSucceed() {
+      Command command = buildCreateCustomerCommand("cust-1", "John", "Doe", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
-      // Assert Command Result
-      Command commandResult = commandResultsTopic.readValue();
-      assertThat(commandResult, is(notNullValue()));
-      assertThat(commandResult.getId(), is(commandResult.getId()));
-      assertThat(commandResult.getType(), is(commandResult.getType()));
-      assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
-      assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
-      assertThat(commandResult.getPayload(), is(command.getPayload()));
+      List<Command> commandResults = commandResultsTopic.readValuesToList();
+      assertThat(commandResults.size(), is(1));
+      commandResults.forEach(commandResult -> assertCommandResult(command, commandResult, true));
 
-      // Metadata
-      assertThat(commandResult.getMetadata(), is(notNullValue()));
-      assertThat(commandResult.getMetadata().size(), is(4));
-      command.getMetadata().forEach((key, value) ->
-          assertThat(commandResult.getMetadata(), hasEntry(key, value)));
-      assertThat(commandResult.getMetadata().get(RESULT), is("success"));
-      assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
-    }
-
-    @Test
-    void failedCommand() {
-      Command command = Command.builder()
-          .payload(AddCredits.builder()
-              .id("customer-123")
-              .amount(100)
-              .build())
-          .metadata(Metadata.builder()
-              .add(CORRELATION_ID, UUID.randomUUID().toString())
-              .build())
-          .build();
-
-      commandsTopic.pipeInput(command.getAggregateId(), command);
-
-      // Assert Command Result
-      Command commandResult = commandResultsTopic.readValue();
-      assertThat(commandResult, is(notNullValue()));
-      assertThat(commandResult.getId(), is(commandResult.getId()));
-      assertThat(commandResult.getType(), is(commandResult.getType()));
-      assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
-      assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
-      assertThat(commandResult.getPayload(), is(command.getPayload()));
-
-      // Metadata
-      assertThat(commandResult.getMetadata(), is(notNullValue()));
-      assertThat(commandResult.getMetadata().size(), is(5));
-      command.getMetadata().forEach((key, value) ->
-          assertThat(commandResult.getMetadata(), hasEntry(key, value)));
-      assertThat(commandResult.getMetadata().get(RESULT), is("failure"));
-      assertThat(commandResult.getMetadata().get(CAUSE), notNullValue());
-    }
-  }
-
-
-  @Test
-  void test1() {
-    Command command = Command.builder()
-        .payload(CreateCustomer.builder()
-            .id("customer-123")
-            .firstName("Peter")
-            .lastName("Bruin")
-            .credits(100)
-            .birthday(Instant.now())
-            .build())
-        .metadata(Metadata.builder()
-            .add("custom-key", "custom-value")
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten-by-command-id")
-            .add(TIMESTAMP, "should-be-overwritten-by-command-timestamp")
-            .add(RESULT, "should-be-overwritten-by-command-result")
-            .add(CAUSE, "should-be-overwritten-by-command-result")
-            .build())
-        .build();
-
-    commandsTopic.pipeInput(command.getAggregateId(), command);
-
-    // Assert Command Metadata
-    assertThat(command.getMetadata().get(ID), is(notNullValue()));
-    assertThat(command.getMetadata().get(ID), is(command.getId()));
-    assertThat(command.getMetadata().get(ID), is(command.getMetadata().getMessageId()));
-    assertThat(command.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(command.getMetadata().get(TIMESTAMP), is(command.getTimestamp().toString()));
-    assertThat(command.getMetadata().get(TIMESTAMP), is(command.getMetadata().getTimestamp().toString()));
-
-    // Assert Command Result
-    Command commandResult = commandResultsTopic.readValue();
-    assertThat(commandResult, is(notNullValue()));
-    assertThat(commandResult.getId(), startsWith(command.getAggregateId()));
-    assertThat(commandResult.getAggregateId(), is(command.getAggregateId()));
-    assertThat(commandResult.getTimestamp(), is(command.getTimestamp()));
-    // Metadata
-    assertThat(commandResult.getMetadata(), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get("custom-key"), is("custom-value"));
-    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
-    assertThat(commandResult.getMetadata().get(ID), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
-    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getMetadata().getMessageId()));
-    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
-    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
-    assertThat(commandResult.getMetadata().get(RESULT), is("success"));
-    assertThat(commandResult.getMetadata().get(CAUSE), emptyOrNullString());
-    // Payload
-    assertThat(commandResult.getPayload(), is(command.getPayload()));
-
-    // Assert Event
-    Event event = eventsTopic.readValue();
-    assertThat(event, is(notNullValue()));
-    assertThat(event.getId(), startsWith(command.getAggregateId()));
-    assertThat(event.getAggregateId(), is(command.getAggregateId()));
-    assertThat(event.getTimestamp(), is(command.getTimestamp()));
-    // Metadata
-    assertThat(event.getMetadata(), is(notNullValue()));
-    assertThat(event.getMetadata().get("custom-key"), is("custom-value"));
-    assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
-    assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
-    assertThat(event.getMetadata().get(ID), is(notNullValue()));
-    assertThat(event.getMetadata().get(ID), is(event.getId()));
-    assertThat(event.getMetadata().get(ID), is(event.getMetadata().getMessageId()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
-    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
-    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
-    // Payload
-    assertThat(event.getPayload(), instanceOf(CustomerCreated.class));
-    assertThat(((CustomerCreated) event.getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
-    assertThat(((CustomerCreated) event.getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
-    assertThat(((CustomerCreated) event.getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
-    assertThat(((CustomerCreated) event.getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
-  }
-
-  @Test
-  void test2() {
-    List<Command> commands = new ArrayList<>();
-
-    // CreateCustomer
-    commands.add(Command.builder()
-        .payload(CreateCustomer.builder()
-            .id("customer-123")
-            .firstName("Peter")
-            .lastName("Bruin")
-            .credits(100)
-            .birthday(Instant.now())
-            .build())
-        .build());
-
-    //  AddCredits
-    commands.add(Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build());
-
-    // IssueCredits
-    commands.add(Command.builder()
-        .payload(IssueCredits.builder()
-            .id("customer-123")
-            .amount(100)
-            .build())
-        .build());
-
-    // AddCredits
-    commands.add(Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(5)
-            .build())
-        .build());
-
-    // IssueCredits: this command should be rejected (total credits = 30)
-    commands.add(Command.builder()
-        .payload(IssueCredits.builder()
-            .id("customer-123")
-            .amount(31)
-            .build())
-        .build());
-
-    // Send commands
-    commands.forEach(command ->
-        commandsTopic.pipeInput(command.getAggregateId(), command));
-
-    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
-
-    // Assert Snapshot Store
-    assertThat(snapshots.size(), is(1));
-    assertThat(snapshots.get(0).value.getPayload(), instanceOf(Customer.class));
-    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(30));
-  }
-
-  @Test
-  void test3() {
-    List<Command> commands = new ArrayList<>();
-
-    // CreateCustomer
-    commands.add(Command.builder()
-        .payload(CreateCustomer.builder()
-            .id("customer-123")
-            .firstName("Peter")
-            .lastName("Bruin")
-            .credits(100)
-            .birthday(Instant.now())
-            .build())
-        .build());
-
-    // AddCredits
-    commands.add(Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build());
-
-    // AddCredits
-    commands.add(Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build());
-
-    // AddCredits
-    commands.add(Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build());
-
-    // IssueCredits
-    commands.add(Command.builder()
-        .payload(IssueCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build());
-
-    // AddCredits
-    commands.add(Command.builder()
-        .payload(AddCredits.builder()
-            .id("customer-123")
-            .amount(25)
-            .build())
-        .build());
-
-    // Send commands
-    commands.forEach(command ->
-        commandsTopic.pipeInput(command.getAggregateId(), command));
-
-    List<KeyValue<String, Aggregate>> snapshots = IteratorUtils.toList(snapshotStore.all());
-
-    // Assert Snapshot Store
-    assertThat(snapshots.size(), is(1));
-    assertThat(snapshots.get(0).value.getAggregateId(), is("customer-123"));
-    assertThat(snapshots.get(0).value.getPayload(), instanceOf(Customer.class));
-    assertThat(((Customer) snapshots.get(0).value.getPayload()).getCredits(), is(175));
-  }
-
-
-  @Test
-  void bla() {
-    List<Command> commands = new ArrayList<>();
-
-    // CreateCustomer
-    commands.add(Command.builder()
-        .payload(CreateCustomer.builder()
-            .id("customer-123")
-            .firstName("Peter")
-            .lastName("Bruin")
-            .credits(100)
-            .birthday(Instant.now())
-            .build())
-        .build());
-
-    // Generate random commands
-    commands.addAll(generateCommands(10));
-
-    // Send commands
-    commands.forEach(command ->
-        commandsTopic.pipeInput(command.getAggregateId(), command));
-
-    // Assert Command Results
-    List<Command> commandResults = commandResultsTopic.readValuesToList();
-    assertThat(commandResults.size(), is(commands.size()));
-
-    // Accepted Commands
-    List<Command> acceptedCommands = commandResults.stream()
-        .filter(command -> command.getMetadata().get(RESULT).equals("success"))
-        .collect(Collectors.toList());
-
-    if (acceptedCommands.isEmpty()) {
-      assertThat(eventsTopic.isEmpty(), is(true));
-    } else {
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events.size(), is(acceptedCommands.size()));
+      assertThat(events.size(), is(1));
+      events.forEach(event -> assertEvent(command, event));
+
+      List<Event> eventsInStore = readEventsFromStore();
+      assertThat(eventsInStore.size(), is(1));
+      eventsInStore.forEach(event -> assertEvent(command, event));
+      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
+
+      assertEvent(command, events.get(0), CustomerCreated.class);
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
     }
 
-    // Rejected Commands
-    List<Command> rejectedCommands = commandResults.stream()
-        .filter(command -> command.getMetadata().get(RESULT).equals("failure"))
-        .collect(Collectors.toList());
-  }
+    @Test
+    void commandShouldFail() {
+      Command command = buildAddCreditsCommand("cust-1", 100);
+      commandsTopic.pipeInput(command.getAggregateId(), command);
 
-  private List<Command> generateCommands(int numberOfCommands) {
-    List<Command> commands = new ArrayList<>();
+      List<Command> commandResults = commandResultsTopic.readValuesToList();
+      assertThat(commandResults.size(), is(1));
+      commandResults.forEach(commandResult -> assertCommandResult(command, commandResult, false));
 
-    for (int i = 0; i < numberOfCommands; i++) {
-      Class<?> type = faker.options().option(AddCredits.class, IssueCredits.class);
+      List<Event> events = eventsTopic.readValuesToList();
+      assertThat(events.size(), is(0));
 
-      if (type == AddCredits.class) {
-        commands.add(Command.builder()
-            .payload(AddCredits.builder()
-                .id("customer-123")
-                .amount(faker.number().numberBetween(1, 100))
-                .build())
-            .metadata(Metadata.builder()
-                .add(CORRELATION_ID, UUID.randomUUID().toString())
-                .build())
-            .build());
-      }
-
-      if (type == IssueCredits.class) {
-        commands.add(Command.builder()
-            .payload(IssueCredits.builder()
-                .id("customer-123")
-                .amount(faker.number().numberBetween(1, 100))
-                .build())
-            .metadata(Metadata.builder()
-                .add(CORRELATION_ID, UUID.randomUUID().toString())
-                .build())
-            .build());
-      }
+      List<Event> eventsInStore = readEventsFromStore();
+      assertThat(eventsInStore.size(), is(0));
     }
 
-    return commands;
   }
 
+  @Nested
+  class AdvancedTests {
+
+    @Test
+    void multipleCommandShouldSucceed() {
+      List<Command> commands = List.of(
+          buildCreateCustomerCommand("cust-1", "John", "Doe", 100),
+          buildAddCreditsCommand("cust-1", 1),
+          buildAddCreditsCommand("cust-1", 1),
+          buildAddCreditsCommand("cust-1", 1),
+          buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached, will be created on next command
+          buildCreateCustomerCommand("cust-1", "John", "Doe", 100),
+          buildIssueCreditsCommand("cust-1", 200), // should fail
+          buildIssueCreditsCommand("cust-1", 2)
+      );
+
+      commands.forEach(command ->
+          commandsTopic.pipeInput(command.getAggregateId(), command));
+
+      List<Command> commandResults = commandResultsTopic.readValuesToList();
+      assertThat(commandResults.size(), is(commands.size()));
+
+      assertCommandResult(commands.get(0), commandResults.get(0), true);
+      assertCommandResult(commands.get(1), commandResults.get(1), true);
+      assertCommandResult(commands.get(2), commandResults.get(2), true);
+      assertCommandResult(commands.get(3), commandResults.get(3), true);
+      assertCommandResult(commands.get(4), commandResults.get(4), true);
+      assertCommandResult(commands.get(5), commandResults.get(5), false);
+      assertCommandResult(commands.get(6), commandResults.get(6), false);
+      assertCommandResult(commands.get(7), commandResults.get(7), true);
+
+      List<Event> events = eventsTopic.readValuesToList();
+      assertThat(events.size(), is(6));
+
+      List<Event> eventsInStore = readEventsFromStore();
+      assertThat(eventsInStore.size(), is(6));
+      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
+
+      assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
+      assertEvent(commands.get(1), events.get(1), CreditsAdded.class);
+      assertEvent(commands.get(2), events.get(2), CreditsAdded.class);
+      assertEvent(commands.get(3), events.get(3), CreditsAdded.class);
+      assertEvent(commands.get(4), events.get(4), CreditsAdded.class);
+      assertEvent(commands.get(7), events.get(5), CreditsIssued.class);
+
+      Aggregate snapshot = snapshotStore.get(events.get(4).getAggregateId());
+      assertThat(snapshot, is(notNullValue()));
+      assertSnapshot(events.get(4), snapshot, Customer.class, 5);
+      assertThat(((Customer) snapshot.getPayload()).getId(), is("cust-1"));
+      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is("John"));
+      assertThat(((Customer) snapshot.getPayload()).getLastName(), is("Doe"));
+      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(104));
+      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
+    }
+  }
+
+
+  private List<Event> readEventsFromStore() {
+    return IteratorUtils.toList(eventStore.all())
+        .stream().map(keyValue -> keyValue.value)
+        .toList();
+  }
+
+  private List<Event> readEventsFromStore(String aggregateId) {
+    return readEventsFromStore().stream()
+        .filter(event -> event.getAggregateId().equals(aggregateId))
+        .filter(event -> event.getId().startsWith(aggregateId + "@"))
+        .toList();
+  }
+
+
+  private List<Aggregate> readSnapshotsFromStore() {
+    return IteratorUtils.toList(snapshotStore.all())
+        .stream().map(keyValue -> keyValue.value)
+        .toList();
+  }
+
+  private Aggregate readSnapshotFromStore(String aggregateId) {
+    return readSnapshotsFromStore().stream()
+        .filter(aggregate -> aggregate.getAggregateId().equals(aggregateId))
+        .filter(aggregate -> aggregate.getId().startsWith(aggregateId + "@"))
+        .findFirst()
+        .orElse(null);
+  }
 }
