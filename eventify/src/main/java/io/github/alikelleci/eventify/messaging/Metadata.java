@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging;
 
+import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Delegate;
 import org.apache.commons.lang3.StringUtils;
@@ -10,6 +11,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @ToString
+@EqualsAndHashCode
 public class Metadata implements Map<String, String> {
   public static final String ID = "$id";
   public static final String TIMESTAMP = "$timestamp";
