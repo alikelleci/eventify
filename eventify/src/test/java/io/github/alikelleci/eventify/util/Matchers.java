@@ -97,7 +97,6 @@ public class Matchers {
         .remove(CAUSE)
         .build();
 
-    assertThat(snapshot.getVersion(), is(notNullValue()));
     assertThat(snapshot.getEventId(), is(event.getId()));
     assertThat(snapshot.getType(), is(notNullValue()));
     assertThat(snapshot.getId(), startsWith(event.getAggregateId().concat("@")));
@@ -123,9 +122,8 @@ public class Matchers {
     assertThat(snapshot.getPayload(), is(notNullValue()));
   }
 
-  public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type, long version) {
+  public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type) {
     assertSnapshot(event, snapshot);
-    assertThat(snapshot.getVersion(), is(version));
     assertThat(snapshot.getType(), is(type.getSimpleName()));
     assertThat(snapshot.getPayload(), instanceOf(type));
   }

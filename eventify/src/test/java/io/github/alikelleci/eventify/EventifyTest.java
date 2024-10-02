@@ -43,6 +43,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInRelativeOrder;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 
 class EventifyTest {
 
@@ -107,10 +108,9 @@ class EventifyTest {
       assertThat(events.size(), is(1));
       events.forEach(event -> assertEvent(command, event));
 
-      List<Event> eventsInStore = readEventsFromStore();
-      assertThat(eventsInStore.size(), is(1));
-      eventsInStore.forEach(event -> assertEvent(command, event));
-      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
+      Aggregate snapshot = readSnapshotFromStore(command.getAggregateId());
+      assertThat(snapshot, is(notNullValue()));
+      assertSnapshot(events.get(events.size() - 1), snapshot, Customer.class);
 
       assertEvent(command, events.get(0), CustomerCreated.class);
       assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
@@ -132,8 +132,8 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
 
-      List<Event> eventsInStore = readEventsFromStore();
-      assertThat(eventsInStore.size(), is(0));
+      Aggregate snapshot = readSnapshotFromStore(command.getAggregateId());
+      assertThat(snapshot, is(nullValue()));
     }
 
   }
@@ -172,10 +172,6 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(6));
 
-      List<Event> eventsInStore = readEventsFromStore();
-      assertThat(eventsInStore.size(), is(6));
-      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
-
       assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
       assertEvent(commands.get(1), events.get(1), CreditsAdded.class);
       assertEvent(commands.get(2), events.get(2), CreditsAdded.class);
@@ -183,13 +179,13 @@ class EventifyTest {
       assertEvent(commands.get(4), events.get(4), CreditsAdded.class);
       assertEvent(commands.get(7), events.get(5), CreditsIssued.class);
 
-      Aggregate snapshot = snapshotStore.get(events.get(4).getAggregateId());
+      Aggregate snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(notNullValue()));
-      assertSnapshot(events.get(4), snapshot, Customer.class, 5);
+      assertSnapshot(events.get(5), snapshot, Customer.class);
       assertThat(((Customer) snapshot.getPayload()).getId(), is("cust-1"));
       assertThat(((Customer) snapshot.getPayload()).getFirstName(), is("John"));
       assertThat(((Customer) snapshot.getPayload()).getLastName(), is("Doe"));
-      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(104));
+      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(102));
       assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
     }
   }
