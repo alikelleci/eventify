@@ -112,8 +112,8 @@ class EventifyTest {
 
       List<Event> eventsInStore = readEventsFromStore();
       assertThat(eventsInStore.size(), is(1));
-      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
       eventsInStore.forEach(event -> assertEvent(command, event));
+      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
 
       assertEvent(command, events.get(0), CustomerCreated.class);
       assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
