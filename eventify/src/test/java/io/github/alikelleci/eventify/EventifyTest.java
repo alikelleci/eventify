@@ -232,7 +232,7 @@ class EventifyTest {
         if (i % threshold == 0) {
           snapshotStore.put("cust-1", Aggregate.builder()
               .eventId(event.getId())
-              .version(i + 1) // plus CustomerCreated
+              .version(i)
               .timestamp(event.getTimestamp())
               .payload(Customer.builder()
                   .id("cust-1")
