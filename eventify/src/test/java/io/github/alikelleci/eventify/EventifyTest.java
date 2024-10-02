@@ -33,6 +33,9 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Properties;
 
+import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
+import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
+import static io.github.alikelleci.eventify.factory.CommandFactory.buildIssueCreditsCommand;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
@@ -96,7 +99,7 @@ class EventifyTest {
 
     @Test
     void metadataShouldSetCorrectly() {
-      Command command = CommandFactory.buildCreateCustomerCommand("cust-1", 100);
+      Command command = buildCreateCustomerCommand("cust-1", 100);
 
       assertThat(command.getMetadata().get(ID), is(notNullValue()));
       assertThat(command.getMetadata().get(ID), startsWith("cust-1@"));
@@ -109,7 +112,7 @@ class EventifyTest {
 
     @Test
     void commandShouldSucceed() {
-      Command command = CommandFactory.buildCreateCustomerCommand("cust-1", 100);
+      Command command = buildCreateCustomerCommand("cust-1", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       Command commandResult = commandResultsTopic.readValue();
@@ -130,7 +133,7 @@ class EventifyTest {
 
     @Test
     void commandShouldFail() {
-      Command command = CommandFactory.buildAddCreditsCommand("cust-1", 100);
+      Command command = buildAddCreditsCommand("cust-1", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       Command commandResult = commandResultsTopic.readValue();
@@ -150,14 +153,14 @@ class EventifyTest {
     @Test
     void multipleCommandShouldSucceed() {
       List<Command> commands = List.of(
-          CommandFactory.buildCreateCustomerCommand("cust-1", 100),
-          CommandFactory.buildAddCreditsCommand("cust-1", 1),
-          CommandFactory.buildAddCreditsCommand("cust-1", 1),
-          CommandFactory.buildAddCreditsCommand("cust-1", 1),
-          CommandFactory.buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached
-          CommandFactory.buildCreateCustomerCommand("cust-1", 100), // should fail & a snapshot should be created on replay
-          CommandFactory.buildIssueCreditsCommand("cust-1", 200), // should fail
-          CommandFactory.buildIssueCreditsCommand("cust-1", 2)
+          buildCreateCustomerCommand("cust-1", 100),
+          buildAddCreditsCommand("cust-1", 1),
+          buildAddCreditsCommand("cust-1", 1),
+          buildAddCreditsCommand("cust-1", 1),
+          buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached
+          buildCreateCustomerCommand("cust-1", 100), // should fail & a snapshot should be created on replay
+          buildIssueCreditsCommand("cust-1", 200), // should fail
+          buildIssueCreditsCommand("cust-1", 2)
 
       );
 
