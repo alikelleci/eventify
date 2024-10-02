@@ -19,6 +19,7 @@ import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
+import org.apache.commons.lang3.time.StopWatch;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -31,6 +32,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Properties;
 
@@ -205,7 +208,7 @@ class EventifyTest {
     @Test
     void test1() {
       int totalEvents = 5_000_000;
-      int threshold = totalEvents - 100;
+      int threshold = totalEvents - 1_000_000;
 
       Event event;
       for (int i = 1; i <= totalEvents; i++) {
@@ -243,10 +246,13 @@ class EventifyTest {
       }
       log.info("All events saved");
 
+      StopWatch stopWatch = StopWatch.createStarted();
       Command command = buildAddCreditsCommand("cust-1", 1);
       commandsTopic.pipeInput(command.getAggregateId(), command);
+      stopWatch.stop();
 
-      log.info("approx. entries: {}", eventStore.approximateNumEntries());
+      log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getDuration().get(ChronoUnit.MILLIS), stopWatch.getDuration().get(ChronoUnit.SECONDS));
+      log.info("Approx. entries: {}", eventStore.approximateNumEntries());
     }
   }
 
