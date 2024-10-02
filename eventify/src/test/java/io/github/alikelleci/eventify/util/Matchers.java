@@ -4,8 +4,6 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
-import org.apache.commons.collections4.IteratorUtils;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.List;
@@ -75,15 +73,12 @@ public class Matchers {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  public static void assertEventsInStore(List<Event> eventsInTopic, KeyValueStore<String, Event> eventStore) {
-    List<KeyValue<String, Event>> eventsInStore = IteratorUtils.toList(eventStore.all());
-    assertThat(eventsInStore.size(), is(eventsInTopic.size()));
-
-    for (int i = 0; i < eventsInTopic.size(); i++) {
-      Event eventInTopic = eventsInTopic.get(i);
-      Event eventInStore = eventsInStore.get(i).value;
-      assertThat(eventInStore.toString(), is(eventInTopic.toString()));
-    }
+  public static void assertEventsInStore(List<Event> events, KeyValueStore<String, Event> eventStore) {
+    events.forEach(event -> {
+      Event eventInStore = eventStore.get(event.getId());
+      assertThat(eventInStore, is(notNullValue()));
+      assertThat(eventInStore.toString(), is(event.toString()));
+    });
   }
 
   public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type, long version) {

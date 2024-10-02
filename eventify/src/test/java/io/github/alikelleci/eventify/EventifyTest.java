@@ -12,7 +12,6 @@ import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
-import io.github.alikelleci.eventify.factory.CommandFactory;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
