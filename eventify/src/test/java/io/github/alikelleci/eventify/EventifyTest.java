@@ -185,7 +185,7 @@ class EventifyTest {
       assertThat(eventsInStore.size(), is(6));
       assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
 
-      Aggregate snapshot = snapshotStore.get(events.get(4).getAggregateId());
+      Aggregate snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(notNullValue()));
 
       assertSnapshot(events.get(4), snapshot, Customer.class, 5);
