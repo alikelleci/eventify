@@ -151,8 +151,8 @@ class EventifyTest {
           buildAddCreditsCommand("cust-1", 1),
           buildAddCreditsCommand("cust-1", 1),
           buildAddCreditsCommand("cust-1", 1),
-          buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached
-          buildCreateCustomerCommand("cust-1", 100), // should fail & a snapshot should be created on replay
+          buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached, will be created on next command
+          buildCreateCustomerCommand("cust-1", 100), // should fail
           buildIssueCreditsCommand("cust-1", 200), // should fail
           buildIssueCreditsCommand("cust-1", 2)
 
