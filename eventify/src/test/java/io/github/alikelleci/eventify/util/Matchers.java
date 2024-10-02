@@ -71,28 +71,8 @@ public class Matchers {
   }
 
   public static void assertEvent(Command command, Event event, Class<?> type) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
-
+    assertEvent(command, event);
     assertThat(event.getType(), is(type.getSimpleName()));
-    assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
-    assertThat(event.getAggregateId(), is(command.getAggregateId()));
-    assertThat(event.getTimestamp(), is(command.getTimestamp()));
-
-    // Metadata
-    assertThat(event.getMetadata(), is(notNullValue()));
-    assertThat(event.getMetadata().size(), is(metadata.size() + 1)); // ID is added
-    metadata.forEach((key, value) ->
-        assertThat(event.getMetadata(), hasEntry(key, value)));
-    assertThat(event.getMetadata().get(ID), is(event.getId()));
-    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
-    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
-
-    // Payload
     assertThat(event.getPayload(), instanceOf(type));
   }
 
