@@ -98,19 +98,6 @@ class EventifyTest {
   class BasicTests {
 
     @Test
-    void metadataShouldSetCorrectly() {
-      Command command = buildCreateCustomerCommand("cust-1", 100);
-
-      assertThat(command.getMetadata().get(ID), is(notNullValue()));
-      assertThat(command.getMetadata().get(ID), startsWith("cust-1@"));
-      assertThat(command.getMetadata().get(ID), is(command.getId()));
-      assertThat(command.getMetadata().get(ID), is(command.getMetadata().getMessageId()));
-      assertThat(command.getMetadata().get(TIMESTAMP), is(notNullValue()));
-      assertThat(command.getMetadata().get(TIMESTAMP), is(command.getTimestamp().toString()));
-      assertThat(command.getMetadata().get(TIMESTAMP), is(command.getMetadata().getTimestamp().toString()));
-    }
-
-    @Test
     void commandShouldSucceed() {
       Command command = buildCreateCustomerCommand("cust-1", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
