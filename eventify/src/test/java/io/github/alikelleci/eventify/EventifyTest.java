@@ -214,7 +214,7 @@ class EventifyTest {
 
   private List<Event> readEventsFromStore() {
     return IteratorUtils.toList(eventStore.all())
-        .stream().map(s -> s.value)
+        .stream().map(keyValue -> keyValue.value)
         .toList();
   }
 
@@ -225,4 +225,18 @@ class EventifyTest {
         .toList();
   }
 
+
+  private List<Aggregate> readSnapshotsFromStore() {
+    return IteratorUtils.toList(snapshotStore.all())
+        .stream().map(keyValue -> keyValue.value)
+        .toList();
+  }
+
+  private Aggregate readSnapshotFromStore(String aggregateId) {
+    return readSnapshotsFromStore().stream()
+        .filter(aggregate -> aggregate.getAggregateId().equals(aggregateId))
+        .filter(aggregate -> aggregate.getId().startsWith(aggregateId + "@"))
+        .findFirst()
+        .orElse(null);
+  }
 }
