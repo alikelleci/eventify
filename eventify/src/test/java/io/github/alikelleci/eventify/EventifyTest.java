@@ -204,26 +204,32 @@ class EventifyTest {
 
     @Test
     void test1() {
-      Event event = Event.builder()
-          .payload(CustomerCreated.builder()
-              .id("cust-1")
-              .firstName("John")
-              .lastName("Doe")
-              .credits(100)
-              .build())
-          .build();
-      eventStore.put(event.getId(), event);
+      int totalEvents = 5_000_000;
+      int threshold = totalEvents - 100;
 
-      for (int i = 1; i <= 5000_000; i++) {
-        event = Event.builder()
-            .payload(CreditsAdded.builder()
-                .id("cust-1")
-                .amount(1)
-                .build())
-            .build();
+      Event event;
+      for (int i = 1; i <= totalEvents; i++) {
+        if (i == 1) {
+          event = Event.builder()
+              .payload(CustomerCreated.builder()
+                  .id("cust-1")
+                  .firstName("John")
+                  .lastName("Doe")
+                  .credits(100)
+                  .build())
+              .build();
+        } else {
+          event = Event.builder()
+              .payload(CreditsAdded.builder()
+                  .id("cust-1")
+                  .amount(1)
+                  .build())
+              .build();
+        }
         eventStore.put(event.getId(), event);
 
-        if (i % 4_999_900 == 0) {
+
+        if (i % threshold == 0) {
           snapshotStore.put("cust-1", Aggregate.builder()
               .eventId(event.getId())
               .version(i + 1) // plus CustomerCreated
