@@ -40,7 +40,6 @@ import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInRelativeOrder;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
@@ -117,16 +116,16 @@ class EventifyTest {
       assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) commands.get(0).getPayload()).getCredits()));
       assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) commands.get(0).getPayload()).getBirthday()));
 
-      Aggregate snapshot = snapshotStore.get(command.getAggregateId());
+      Aggregate snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(notNullValue()));
       assertSnapshot(events.get(events.size() - 1), snapshot, Customer.class);
 
-      assertEvent(command, events.get(0), CustomerCreated.class);
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) command.getPayload()).getId()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) command.getPayload()).getFirstName()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) command.getPayload()).getLastName()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) command.getPayload()).getCredits()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) command.getPayload()).getBirthday()));
+      assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) commands.get(0).getPayload()).getId()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) commands.get(0).getPayload()).getFirstName()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) commands.get(0).getPayload()).getLastName()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) commands.get(0).getPayload()).getCredits()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) commands.get(0).getPayload()).getBirthday()));
     }
 
     @Test
@@ -144,7 +143,7 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
 
-      Aggregate snapshot = snapshotStore.get(command.getAggregateId());
+      Aggregate snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(nullValue()));
     }
 
