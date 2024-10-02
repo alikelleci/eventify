@@ -108,7 +108,7 @@ class EventifyTest {
       assertThat(events.size(), is(1));
       events.forEach(event -> assertEvent(command, event));
 
-      Aggregate snapshot = readSnapshotFromStore(command.getAggregateId());
+      Aggregate snapshot = snapshotStore.get(command.getAggregateId());
       assertThat(snapshot, is(notNullValue()));
       assertSnapshot(events.get(events.size() - 1), snapshot, Customer.class);
 
@@ -132,7 +132,7 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
 
-      Aggregate snapshot = readSnapshotFromStore(command.getAggregateId());
+      Aggregate snapshot = snapshotStore.get(command.getAggregateId());
       assertThat(snapshot, is(nullValue()));
     }
 
