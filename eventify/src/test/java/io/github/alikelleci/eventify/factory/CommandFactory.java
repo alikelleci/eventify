@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.factory;
 
 import com.github.javafaker.Faker;
-import io.github.alikelleci.eventify.example.domain.CustomerCommand;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
@@ -21,12 +20,12 @@ public class CommandFactory {
   public static final Faker faker = new Faker();
 
 
-  public static Command buildCreateCustomerCommand(String aggregateId, int credits) {
+  public static Command buildCreateCustomerCommand(String aggregateId, String firstName, String lastName, int credits) {
     return Command.builder()
         .payload(CreateCustomer.builder()
             .id(aggregateId)
-            .firstName(faker.name().firstName())
-            .lastName(faker.name().lastName())
+            .firstName(firstName)
+            .lastName(lastName)
             .credits(credits)
             .birthday(faker.date().birthday(20, 60).toInstant())
             .build())

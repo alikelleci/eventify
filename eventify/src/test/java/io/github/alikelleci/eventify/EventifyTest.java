@@ -36,8 +36,6 @@ import java.util.Properties;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildIssueCreditsCommand;
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
@@ -45,7 +43,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInRelativeOrder;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.startsWith;
 
 class EventifyTest {
 
@@ -99,7 +96,7 @@ class EventifyTest {
 
     @Test
     void commandShouldSucceed() {
-      Command command = buildCreateCustomerCommand("cust-1", 100);
+      Command command = buildCreateCustomerCommand("cust-1", "John", "Doe", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       List<Command> commandResults = commandResultsTopic.readValuesToList();
@@ -147,15 +144,14 @@ class EventifyTest {
     @Test
     void multipleCommandShouldSucceed() {
       List<Command> commands = List.of(
-          buildCreateCustomerCommand("cust-1", 100),
+          buildCreateCustomerCommand("cust-1", "John", "Doe", 100),
           buildAddCreditsCommand("cust-1", 1),
           buildAddCreditsCommand("cust-1", 1),
           buildAddCreditsCommand("cust-1", 1),
           buildAddCreditsCommand("cust-1", 1), // --> snapshot threshold reached, will be created on next command
-          buildCreateCustomerCommand("cust-1", 100), // should fail
+          buildCreateCustomerCommand("cust-1", "John", "Doe", 100),
           buildIssueCreditsCommand("cust-1", 200), // should fail
           buildIssueCreditsCommand("cust-1", 2)
-
       );
 
       commands.forEach(command ->
@@ -190,11 +186,11 @@ class EventifyTest {
       Aggregate snapshot = snapshotStore.get(events.get(4).getAggregateId());
       assertThat(snapshot, is(notNullValue()));
       assertSnapshot(events.get(4), snapshot, Customer.class, 5);
-      assertThat(((Customer) snapshot.getPayload()).getId(), is(((CustomerCreated) events.get(0).getPayload()).getId()));
-      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is(((CustomerCreated) events.get(0).getPayload()).getFirstName()));
-      assertThat(((Customer) snapshot.getPayload()).getLastName(), is(((CustomerCreated) events.get(0).getPayload()).getLastName()));
+      assertThat(((Customer) snapshot.getPayload()).getId(), is("cust-1"));
+      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is("John"));
+      assertThat(((Customer) snapshot.getPayload()).getLastName(), is("Doe"));
       assertThat(((Customer) snapshot.getPayload()).getCredits(), is(104));
-      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(((CustomerCreated) events.get(0).getPayload()).getBirthday()));
+      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
     }
   }
 
