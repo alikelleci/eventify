@@ -42,7 +42,7 @@ import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInRelativeOrder;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.startsWith;
@@ -125,7 +125,7 @@ class EventifyTest {
 
       List<Event> eventsInStore = readEventsFromStore();
       assertThat(eventsInStore.size(), is(1));
-      assertThat(eventsInStore, contains(events.toArray(new Event[0])));
+      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
       eventsInStore.forEach(event -> assertEvent(command, event));
 
       assertEvent(command, events.get(0), CustomerCreated.class);
@@ -191,7 +191,7 @@ class EventifyTest {
 
       List<Event> eventsInStore = readEventsFromStore();
       assertThat(eventsInStore.size(), is(6));
-      assertThat(eventsInStore, contains(events.toArray(new Event[0])));
+      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
 
       assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
       assertEvent(commands.get(1), events.get(1), CreditsAdded.class);
@@ -224,4 +224,5 @@ class EventifyTest {
         .filter(event -> event.getId().startsWith(aggregateId + "@"))
         .toList();
   }
+
 }
