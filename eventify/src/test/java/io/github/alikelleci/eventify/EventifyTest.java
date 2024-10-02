@@ -36,6 +36,7 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
@@ -251,7 +252,7 @@ class EventifyTest {
       commandsTopic.pipeInput(command.getAggregateId(), command);
       stopWatch.stop();
 
-      log.info("Total duration: {} seconds", stopWatch.getDuration().get(ChronoUnit.SECONDS));
+      log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
       log.info("Approx. entries: {}", eventStore.approximateNumEntries());
     }
   }
