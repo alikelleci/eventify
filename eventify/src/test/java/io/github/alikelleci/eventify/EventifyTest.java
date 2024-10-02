@@ -251,7 +251,7 @@ class EventifyTest {
       commandsTopic.pipeInput(command.getAggregateId(), command);
       stopWatch.stop();
 
-      log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getDuration().get(ChronoUnit.MILLIS), stopWatch.getDuration().get(ChronoUnit.SECONDS));
+      log.info("Total duration: {} seconds", stopWatch.getDuration().get(ChronoUnit.SECONDS));
       log.info("Approx. entries: {}", eventStore.approximateNumEntries());
     }
   }
