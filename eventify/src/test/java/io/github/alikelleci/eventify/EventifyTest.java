@@ -123,7 +123,7 @@ class EventifyTest {
       assertThat(events.size(), is(1));
       events.forEach(event -> assertEvent(command, event));
 
-      List<Event> eventsInStore = readEventsFromEventStore();
+      List<Event> eventsInStore = readEventsFromStore();
       assertThat(eventsInStore.size(), is(1));
       assertThat(eventsInStore, contains(events.toArray(new Event[0])));
       eventsInStore.forEach(event -> assertEvent(command, event));
@@ -148,7 +148,7 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
 
-      List<Event> eventsInStore = readEventsFromEventStore();
+      List<Event> eventsInStore = readEventsFromStore();
       assertThat(eventsInStore.size(), is(0));
     }
 
@@ -189,7 +189,7 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(6));
 
-      List<Event> eventsInStore = readEventsFromEventStore();
+      List<Event> eventsInStore = readEventsFromStore();
       assertThat(eventsInStore.size(), is(6));
       assertThat(eventsInStore, contains(events.toArray(new Event[0])));
 
@@ -212,14 +212,14 @@ class EventifyTest {
   }
 
 
-  private List<Event> readEventsFromEventStore() {
+  private List<Event> readEventsFromStore() {
     return IteratorUtils.toList(eventStore.all())
         .stream().map(s -> s.value)
         .toList();
   }
 
-  private List<Event> readEventsFromEventStore(String aggregateId) {
-    return readEventsFromEventStore().stream()
+  private List<Event> readEventsFromStore(String aggregateId) {
+    return readEventsFromStore().stream()
         .filter(event -> event.getAggregateId().equals(aggregateId))
         .filter(event -> event.getId().startsWith(aggregateId + "@"))
         .toList();
