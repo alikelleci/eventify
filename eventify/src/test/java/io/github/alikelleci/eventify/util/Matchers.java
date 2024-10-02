@@ -49,6 +49,33 @@ public class Matchers {
     assertThat(commandResult.getPayload(), is(command.getPayload()));
   }
 
+  public static void assertEvent(Command command, Event event) {
+    Metadata metadata = Metadata.builder()
+        .addAll(command.getMetadata())
+        .remove(ID)
+        .remove(RESULT)
+        .remove(CAUSE)
+        .build();
+
+    assertThat(event.getType(), is(notNullValue()));
+    assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
+    assertThat(event.getAggregateId(), is(command.getAggregateId()));
+    assertThat(event.getTimestamp(), is(command.getTimestamp()));
+
+    // Metadata
+    assertThat(event.getMetadata(), is(notNullValue()));
+    assertThat(event.getMetadata().size(), is(metadata.size() + 1)); // ID is added
+    metadata.forEach((key, value) ->
+        assertThat(event.getMetadata(), hasEntry(key, value)));
+    assertThat(event.getMetadata().get(ID), is(event.getId()));
+    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
+    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
+
+    // Payload
+    assertThat(event.getPayload(), is(notNullValue()));
+  }
+
+
   public static void assertEvent(Command command, Event event, Class<?> type) {
     Metadata metadata = Metadata.builder()
         .addAll(command.getMetadata())
@@ -81,11 +108,6 @@ public class Matchers {
       assertThat(eventInStore, is(notNullValue()));
       assertThat(eventInStore.toString(), is(event.toString()));
     });
-  }
-
-  public static void assertEventStoreSize(KeyValueStore<String, Event> eventStore, int size) {
-    List<KeyValue<String, Event>> list = IteratorUtils.toList(eventStore.all());
-    assertThat(list.size(), is(size));
   }
 
   public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type, long version) {

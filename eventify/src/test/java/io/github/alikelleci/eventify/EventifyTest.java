@@ -17,6 +17,7 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
+import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -39,7 +40,6 @@ import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
-import static io.github.alikelleci.eventify.util.Matchers.assertEventStoreSize;
 import static io.github.alikelleci.eventify.util.Matchers.assertEventsInStore;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -121,7 +121,11 @@ class EventifyTest {
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(1));
-      assertEventStoreSize(eventStore, 1);
+      events.forEach(event -> assertEvent(command, event));
+
+      List<Event> eventsInStore = readEventsFromEventStore();
+      assertThat(eventsInStore.size(), is(1));
+      eventsInStore.forEach(event -> assertEvent(command, event));
       assertEventsInStore(eventStore, events);
 
       assertEvent(command, events.get(0), CustomerCreated.class);
@@ -143,7 +147,9 @@ class EventifyTest {
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
-      assertEventStoreSize(eventStore, 0);
+
+      List<Event> eventsInStore = readEventsFromEventStore();
+      assertThat(eventsInStore.size(), is(0));
     }
 
   }
@@ -182,8 +188,9 @@ class EventifyTest {
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(6));
-      assertEventStoreSize(eventStore, 6);
-      assertEventsInStore(eventStore, events);
+
+      List<Event> eventsInStore = readEventsFromEventStore();
+      assertThat(eventsInStore.size(), is(6));
 
       assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
       assertEvent(commands.get(1), events.get(1), CreditsAdded.class);
@@ -203,4 +210,17 @@ class EventifyTest {
     }
   }
 
+
+  public List<Event> readEventsFromEventStore() {
+    return IteratorUtils.toList(eventStore.all())
+        .stream().map(s -> s.value)
+        .toList();
+  }
+
+  public List<Event> readEventsFromEventStore(String aggregateId) {
+    return readEventsFromEventStore().stream()
+        .filter(event -> event.getAggregateId().equals(aggregateId))
+        .filter(event -> event.getId().startsWith(aggregateId + "@"))
+        .toList();
+  }
 }
