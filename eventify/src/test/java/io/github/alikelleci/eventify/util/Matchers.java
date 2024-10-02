@@ -76,7 +76,7 @@ public class Matchers {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type, long version) {
+  public static void assertSnapshot(Event event, Aggregate snapshot) {
     Metadata metadata = Metadata.builder()
         .addAll(event.getMetadata())
         .remove(ID)
@@ -84,9 +84,9 @@ public class Matchers {
         .remove(CAUSE)
         .build();
 
-    assertThat(snapshot.getVersion(), is(version));
+    assertThat(snapshot.getVersion(), is(notNullValue()));
     assertThat(snapshot.getEventId(), is(event.getId()));
-    assertThat(snapshot.getType(), is(type.getSimpleName()));
+    assertThat(snapshot.getType(), is(notNullValue()));
     assertThat(snapshot.getId(), startsWith(event.getAggregateId().concat("@")));
     assertThat(snapshot.getAggregateId(), is(event.getAggregateId()));
     assertThat(snapshot.getTimestamp(), is(event.getTimestamp()));
@@ -99,6 +99,13 @@ public class Matchers {
     assertThat(snapshot.getMetadata().get(ID), is(snapshot.getId()));
 
     // Payload
+    assertThat(snapshot.getPayload(), is(notNullValue()));
+  }
+
+  public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type, long version) {
+    assertSnapshot(event, snapshot);
+    assertThat(snapshot.getVersion(), is(version));
+    assertThat(snapshot.getType(), is(type.getSimpleName()));
     assertThat(snapshot.getPayload(), instanceOf(type));
   }
 }
