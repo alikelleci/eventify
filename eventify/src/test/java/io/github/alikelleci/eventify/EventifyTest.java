@@ -102,9 +102,9 @@ class EventifyTest {
       Command command = buildCreateCustomerCommand("cust-1", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
-      Command commandResult = commandResultsTopic.readValue();
-      assertThat(commandResult, is(notNullValue()));
-      assertCommandResult(command, commandResult, true);
+      List<Command> commandResults = commandResultsTopic.readValuesToList();
+      assertThat(commandResults.size(), is(1));
+      commandResults.forEach(commandResult -> assertCommandResult(command, commandResult, true));
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(1));
@@ -128,9 +128,9 @@ class EventifyTest {
       Command command = buildAddCreditsCommand("cust-1", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
-      Command commandResult = commandResultsTopic.readValue();
-      assertThat(commandResult, is(notNullValue()));
-      assertCommandResult(command, commandResult, false);
+      List<Command> commandResults = commandResultsTopic.readValuesToList();
+      assertThat(commandResults.size(), is(1));
+      commandResults.forEach(commandResult -> assertCommandResult(command, commandResult, false));
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
