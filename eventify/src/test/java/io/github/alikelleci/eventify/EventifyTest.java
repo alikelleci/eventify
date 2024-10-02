@@ -228,8 +228,7 @@ class EventifyTest {
         }
         eventStore.put(event.getId(), event);
 
-
-        if (i % threshold == 0) {
+        if (i == threshold) {
           snapshotStore.put("cust-1", Aggregate.builder()
               .eventId(event.getId())
               .version(i)
