@@ -17,6 +17,7 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -44,6 +45,7 @@ import static org.hamcrest.Matchers.containsInRelativeOrder;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+@Slf4j
 class EventifyTest {
 
   private TopologyTestDriver testDriver;
@@ -197,6 +199,51 @@ class EventifyTest {
     }
   }
 
+  @Nested
+  class PerformanceTests {
+
+    @Test
+    void test1() {
+      Event event = Event.builder()
+          .payload(CustomerCreated.builder()
+              .id("cust-1")
+              .firstName("John")
+              .lastName("Doe")
+              .credits(100)
+              .build())
+          .build();
+      eventStore.put(event.getId(), event);
+
+      for (int i = 1; i <= 5000_000; i++) {
+        event = Event.builder()
+            .payload(CreditsAdded.builder()
+                .id("cust-1")
+                .amount(1)
+                .build())
+            .build();
+        eventStore.put(event.getId(), event);
+
+        if (i % 4_999_900 == 0) {
+          snapshotStore.put("cust-1", Aggregate.builder()
+              .eventId(event.getId())
+              .version(i + 1) // plus CustomerCreated
+              .timestamp(event.getTimestamp())
+              .payload(Customer.builder()
+                  .id("cust-1")
+                  .firstName("Henk")
+                  .credits(100)
+                  .build())
+              .build());
+        }
+      }
+      log.info("All events saved");
+
+      Command command = buildAddCreditsCommand("cust-1", 1);
+      commandsTopic.pipeInput(command.getAggregateId(), command);
+
+      log.info("approx. entries: {}", eventStore.approximateNumEntries());
+    }
+  }
 
   private List<Event> readEventsFromStore() {
     return IteratorUtils.toList(eventStore.all())
