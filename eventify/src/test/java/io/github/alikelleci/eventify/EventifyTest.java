@@ -208,7 +208,7 @@ class EventifyTest {
     @Test
     void test1() {
       int totalEvents = 5_000_000;
-      int threshold = totalEvents - 1_000_000;
+      int threshold = totalEvents - 100;
 
       Event event;
       for (int i = 1; i <= totalEvents; i++) {
