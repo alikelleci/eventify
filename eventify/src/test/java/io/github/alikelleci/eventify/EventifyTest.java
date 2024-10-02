@@ -39,6 +39,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
+import static io.github.alikelleci.eventify.util.Matchers.assertEventStoreSize;
 import static io.github.alikelleci.eventify.util.Matchers.assertEventsInStore;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -120,6 +121,7 @@ class EventifyTest {
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(1));
+      assertEventStoreSize(eventStore, 1);
       assertEventsInStore(events, eventStore);
 
       assertEvent(command, events.get(0), CustomerCreated.class);
@@ -141,7 +143,7 @@ class EventifyTest {
 
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
-      assertEventsInStore(events, eventStore);
+      assertEventStoreSize(eventStore, 0);
     }
 
   }
