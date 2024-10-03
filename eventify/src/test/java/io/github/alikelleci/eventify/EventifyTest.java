@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
@@ -67,8 +68,8 @@ class EventifyTest {
         .streamsConfig(properties)
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
-        .registerHandler(new CustomerEventHandler())
-        .registerHandler(new CustomerResultHandler())
+//        .registerHandler(new CustomerEventHandler())
+//        .registerHandler(new CustomerResultHandler())
 //        .registerHandler(new CustomerEventUpcaster())
         .build();
 
@@ -207,44 +208,19 @@ class EventifyTest {
 
     @Test
     void test1() {
-      int totalEvents = 5_000_000;
-      int threshold = totalEvents - 100;
+      int totalSnapshots = 5_000_000;
 
-      Event event;
-      for (int i = 1; i <= totalEvents; i++) {
-        if (i == 1) {
-          event = Event.builder()
-              .payload(CustomerCreated.builder()
-                  .id("cust-1")
+      for (int i = 1; i <= totalSnapshots; i++) {
+          snapshotStore.put("cust-" + i, Aggregate.builder()
+              .payload(Customer.builder()
+                  .id("cust-" + i)
                   .firstName("John")
                   .lastName("Doe")
                   .credits(100)
                   .build())
-              .build();
-        } else {
-          event = Event.builder()
-              .payload(CreditsAdded.builder()
-                  .id("cust-1")
-                  .amount(1)
-                  .build())
-              .build();
-        }
-        eventStore.put(event.getId(), event);
-
-        if (i == threshold) {
-          snapshotStore.put("cust-1", Aggregate.builder()
-              .eventId(event.getId())
-              .version(i)
-              .timestamp(event.getTimestamp())
-              .payload(Customer.builder()
-                  .id("cust-1")
-                  .firstName("Henk")
-                  .credits(100)
-                  .build())
               .build());
-        }
       }
-      log.info("Total events saved in event store: {}", totalEvents);
+      log.info("Total snapshots saved in snapshot store: {}", totalSnapshots);
 
       StopWatch stopWatch = StopWatch.createStarted();
       Command command = buildAddCreditsCommand("cust-1", 1);
@@ -252,7 +228,7 @@ class EventifyTest {
       stopWatch.stop();
 
       log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
-      log.info("Approx. entries: {}", eventStore.approximateNumEntries());
+      log.info("Approx. entries: {}", snapshotStore.approximateNumEntries());
     }
   }
 
