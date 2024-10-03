@@ -209,10 +209,11 @@ class EventifyTest {
 
       Event event;
       for (int i = 1; i <= totalEvents; i++) {
+        String aggregateId = "cust-1";
         if (i == 1) {
           event = Event.builder()
               .payload(CustomerCreated.builder()
-                  .id("cust-1")
+                  .id(aggregateId)
                   .firstName("John")
                   .lastName("Doe")
                   .credits(100)
@@ -221,7 +222,7 @@ class EventifyTest {
         } else {
           event = Event.builder()
               .payload(CreditsAdded.builder()
-                  .id("cust-1")
+                  .id(aggregateId)
                   .amount(1)
                   .build())
               .build();
@@ -234,7 +235,7 @@ class EventifyTest {
               .version(i)
               .timestamp(event.getTimestamp())
               .payload(Customer.builder()
-                  .id(event.getAggregateId())
+                  .id(aggregateId)
                   .firstName("John")
                   .lastName("Doe")
                   .credits(100)
