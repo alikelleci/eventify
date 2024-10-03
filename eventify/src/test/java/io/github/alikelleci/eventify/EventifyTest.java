@@ -204,12 +204,22 @@ class EventifyTest {
 
     @Test
     void test1() {
-      int totalEvents = 5_000_000;
+      generateEvents("cust-1", 5_000_000);
+
+      StopWatch stopWatch = StopWatch.createStarted();
+      Command command = buildAddCreditsCommand("cust-1", 1);
+      commandsTopic.pipeInput(command.getAggregateId(), command);
+      stopWatch.stop();
+
+      log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+      log.info("Approx. entries: {}", eventStore.approximateNumEntries());
+    }
+
+    private void generateEvents(String aggregateId, int totalEvents) {
       int threshold = totalEvents - 100;
 
       Event event;
       for (int i = 1; i <= totalEvents; i++) {
-        String aggregateId = "cust-1";
         if (i == 1) {
           event = Event.builder()
               .payload(CustomerCreated.builder()
@@ -244,14 +254,6 @@ class EventifyTest {
         }
       }
       log.info("Total events saved in event store: {}", totalEvents);
-
-      StopWatch stopWatch = StopWatch.createStarted();
-      Command command = buildAddCreditsCommand("cust-1", 1);
-      commandsTopic.pipeInput(command.getAggregateId(), command);
-      stopWatch.stop();
-
-      log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
-      log.info("Approx. entries: {}", eventStore.approximateNumEntries());
     }
   }
 
