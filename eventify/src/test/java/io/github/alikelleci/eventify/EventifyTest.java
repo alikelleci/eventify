@@ -9,9 +9,7 @@ import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsIssued;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -208,28 +206,68 @@ class EventifyTest {
 
     @Test
     void test1() {
-      int totalSnapshots = 5_000_000;
+      int numberOfAggregates = 1;
+      int numberOfEventsPerAggregate = 1_000_000;
 
-      for (int i = 1; i <= totalSnapshots; i++) {
-          snapshotStore.put("cust-" + i, Aggregate.builder()
+      for (int i = 1; i <= numberOfAggregates; i++) {
+        generateEvents("cust-" + i, numberOfEventsPerAggregate);
+      }
+      log.info("Total events saved: {}", numberOfAggregates * numberOfEventsPerAggregate);
+
+      sendCommandAndLogExecutionDuration("cust-1");
+
+      log.info("Number of events (approx.) in event store: {}", eventStore.approximateNumEntries());
+    }
+
+    private void generateEvents(String aggregateId, int totalEvents) {
+      int threshold = totalEvents - 100;
+
+      Event event;
+      for (int i = 1; i <= totalEvents; i++) {
+        if (i == 1) {
+          event = Event.builder()
+              .payload(CustomerCreated.builder()
+                  .id(aggregateId)
+                  .firstName("John")
+                  .lastName("Doe")
+                  .credits(100)
+                  .build())
+              .build();
+        } else {
+          event = Event.builder()
+              .payload(CreditsAdded.builder()
+                  .id(aggregateId)
+                  .amount(1)
+                  .build())
+              .build();
+        }
+        eventStore.put(event.getId(), event);
+
+        if (i == threshold) {
+          snapshotStore.put(event.getAggregateId(), Aggregate.builder()
+              .eventId(event.getId())
+              .version(i)
+              .timestamp(event.getTimestamp())
               .payload(Customer.builder()
-                  .id("cust-" + i)
+                  .id(aggregateId)
                   .firstName("John")
                   .lastName("Doe")
                   .credits(100)
                   .build())
               .build());
+        }
       }
-      log.info("Total snapshots saved in snapshot store: {}", totalSnapshots);
+    }
 
+    private void sendCommandAndLogExecutionDuration(String aggregateId) {
+      log.info("Sending single command to: {}", aggregateId);
       StopWatch stopWatch = StopWatch.createStarted();
-      Command command = buildAddCreditsCommand("cust-1", 1);
+      Command command = buildAddCreditsCommand(aggregateId, 1);
       commandsTopic.pipeInput(command.getAggregateId(), command);
       stopWatch.stop();
-
-      log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
-      log.info("Approx. entries: {}", snapshotStore.approximateNumEntries());
+      log.info("Command execution time: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
     }
+
   }
 
   private List<Event> readEventsFromStore() {
