@@ -245,7 +245,7 @@ class EventifyTest {
               .build());
         }
       }
-      log.info("Totall events saved: {}", totalEvents);
+      log.info("Total events saved in event store: {}", totalEvents);
 
       StopWatch stopWatch = StopWatch.createStarted();
       Command command = buildAddCreditsCommand("cust-1", 1);
