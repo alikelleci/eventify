@@ -9,9 +9,7 @@ import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsIssued;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerEventHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
-import io.github.alikelleci.eventify.example.handlers.CustomerResultHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -32,8 +30,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -70,8 +66,8 @@ class EventifyTest {
         .streamsConfig(properties)
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
-        .registerHandler(new CustomerEventHandler())
-        .registerHandler(new CustomerResultHandler())
+//        .registerHandler(new CustomerEventHandler())
+//        .registerHandler(new CustomerResultHandler())
 //        .registerHandler(new CustomerEventUpcaster())
         .build();
 
@@ -233,13 +229,14 @@ class EventifyTest {
         eventStore.put(event.getId(), event);
 
         if (i == threshold) {
-          snapshotStore.put("cust-1", Aggregate.builder()
+          snapshotStore.put(event.getAggregateId(), Aggregate.builder()
               .eventId(event.getId())
               .version(i)
               .timestamp(event.getTimestamp())
               .payload(Customer.builder()
-                  .id("cust-1")
-                  .firstName("Henk")
+                  .id(event.getAggregateId())
+                  .firstName("John")
+                  .lastName("Doe")
                   .credits(100)
                   .build())
               .build());
