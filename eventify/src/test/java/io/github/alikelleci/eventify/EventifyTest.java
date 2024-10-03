@@ -204,15 +204,17 @@ class EventifyTest {
 
     @Test
     void test1() {
-      generateEvents("cust-1", 5_000_000);
+      int numberOfAggregates = 1;
+      int numberOfEventsPerAggregate = 1_000_000;
 
-      StopWatch stopWatch = StopWatch.createStarted();
-      Command command = buildAddCreditsCommand("cust-1", 1);
-      commandsTopic.pipeInput(command.getAggregateId(), command);
-      stopWatch.stop();
+      for (int i = 1; i <= numberOfAggregates; i++) {
+        generateEvents("cust-" + i, numberOfEventsPerAggregate);
+      }
+      log.info("Total events saved: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
-      log.info("Total duration: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
-      log.info("Approx. entries: {}", eventStore.approximateNumEntries());
+      sendCommandAndLogExecutionDuration("cust-1");
+
+      log.info("Number of events (approx.) in event store: {}", eventStore.approximateNumEntries());
     }
 
     private void generateEvents(String aggregateId, int totalEvents) {
@@ -253,8 +255,17 @@ class EventifyTest {
               .build());
         }
       }
-      log.info("Total events saved in event store: {}", totalEvents);
     }
+
+    private void sendCommandAndLogExecutionDuration(String aggregateId) {
+      log.info("Sending single command to: {}", aggregateId);
+      StopWatch stopWatch = StopWatch.createStarted();
+      Command command = buildAddCreditsCommand(aggregateId, 1);
+      commandsTopic.pipeInput(command.getAggregateId(), command);
+      stopWatch.stop();
+      log.info("Command execution time: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+    }
+
   }
 
   private List<Event> readEventsFromStore() {
