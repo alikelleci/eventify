@@ -17,6 +17,7 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -44,6 +45,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
+@Slf4j
 class EventifyTest {
 
   private TopologyTestDriver testDriver;
