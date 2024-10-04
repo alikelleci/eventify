@@ -213,7 +213,7 @@ class EventifyTest {
       }
       log.info("Total snapshots saved in store: {}", numberOfAggregates);
 
-      sendCommandAndLogExecutionTime("cust-1");
+      sendCommandsAndLogExecutionTime("cust-1", 2);
 
       log.info("Number of snapshots (approx.) in store: {}", snapshotStore.approximateNumEntries());
     }
@@ -229,13 +229,15 @@ class EventifyTest {
           .build());
     }
 
-    private void sendCommandAndLogExecutionTime(String aggregateId) {
-      log.info("Sending single command to: {}", aggregateId);
-      StopWatch stopWatch = StopWatch.createStarted();
-      Command command = buildAddCreditsCommand(aggregateId, 1);
-      commandsTopic.pipeInput(command.getAggregateId(), command);
-      stopWatch.stop();
-      log.info("Command execution time: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+    private void sendCommandsAndLogExecutionTime(String aggregateId, int amount) {
+      log.info("Sending {} command(s) to: {}", amount, aggregateId);
+      for (int i = 1; i <= 2; i++) {
+        StopWatch stopWatch = StopWatch.createStarted();
+        Command command = buildAddCreditsCommand(aggregateId, 1);
+        commandsTopic.pipeInput(command.getAggregateId(), command);
+        stopWatch.stop();
+        log.info("Command {} execution time: {} milliseconds ({} seconds)", i, stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+      }
     }
 
   }
