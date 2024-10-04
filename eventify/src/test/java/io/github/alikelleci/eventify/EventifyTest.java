@@ -213,7 +213,7 @@ class EventifyTest {
       }
       log.info("Total snapshots saved in store: {}", numberOfAggregates);
 
-      sendCommandAndLogExecutionDuration("cust-1");
+      sendCommandAndLogExecutionTime("cust-1");
 
       log.info("Number of snapshots (approx.) in store: {}", snapshotStore.approximateNumEntries());
     }
@@ -229,7 +229,7 @@ class EventifyTest {
           .build());
     }
 
-    private void sendCommandAndLogExecutionDuration(String aggregateId) {
+    private void sendCommandAndLogExecutionTime(String aggregateId) {
       log.info("Sending single command to: {}", aggregateId);
       StopWatch stopWatch = StopWatch.createStarted();
       Command command = buildAddCreditsCommand(aggregateId, 1);
