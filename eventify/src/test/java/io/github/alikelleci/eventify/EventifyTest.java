@@ -242,8 +242,7 @@ class EventifyTest {
     }
 
     private void sendCommandsAndLogExecutionTime(String aggregateId, int amount) {
-      log.info("Sending {} commands to: {}", amount, aggregateId);
-
+      log.info("Sending {} command(s) to: {}", amount, aggregateId);
       for (int i = 1; i <= 2; i++) {
         StopWatch stopWatch = StopWatch.createStarted();
         Command command = buildAddCreditsCommand(aggregateId, 1);
