@@ -204,11 +204,12 @@ class EventifyTest {
 
     @Test
     void test1() {
-      int numberOfAggregates = 1;
-      int numberOfEventsPerAggregate = 1_000_000;
+      int numberOfAggregates = 1000;
+      int numberOfEventsPerAggregate = 1000;
+      int snapshotThreshold = 100;
 
       for (int i = 1; i <= numberOfAggregates; i++) {
-        generateEvents("cust-" + i, numberOfEventsPerAggregate);
+        generateEvents("cust-" + i, numberOfEventsPerAggregate, snapshotThreshold);
       }
       log.info("Total events saved in store: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
@@ -217,8 +218,8 @@ class EventifyTest {
       log.info("Number of events (approx.) in store: {}", eventStore.approximateNumEntries());
     }
 
-    private void generateEvents(String aggregateId, int totalEvents) {
-      int snapshotIndex = totalEvents - 100;
+    private void generateEvents(String aggregateId, int totalEvents, int snapshotThreshold) {
+      int snapshotIndex = totalEvents - snapshotThreshold;
 
       Event event;
       for (int i = 1; i <= totalEvents; i++) {
