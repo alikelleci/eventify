@@ -206,57 +206,27 @@ class EventifyTest {
 
     @Test
     void test1() {
-      int numberOfAggregates = 1;
-      int numberOfEventsPerAggregate = 1_000_000;
+      int numberOfAggregates = 1_000_000;
 
       for (int i = 1; i <= numberOfAggregates; i++) {
-        generateEvents("cust-" + i, numberOfEventsPerAggregate);
+        generateSnapshot("cust-" + i);
       }
-      log.info("Total events saved: {}", numberOfAggregates * numberOfEventsPerAggregate);
+      log.info("Total snapshots saved: {}", numberOfAggregates);
 
       sendCommandAndLogExecutionDuration("cust-1");
 
-      log.info("Number of events (approx.) in event store: {}", eventStore.approximateNumEntries());
+      log.info("Number of snapshots (approx.) in store: {}", snapshotStore.approximateNumEntries());
     }
 
-    private void generateEvents(String aggregateId, int totalEvents) {
-      int threshold = totalEvents - 100;
-
-      Event event;
-      for (int i = 1; i <= totalEvents; i++) {
-        if (i == 1) {
-          event = Event.builder()
-              .payload(CustomerCreated.builder()
-                  .id(aggregateId)
-                  .firstName("John")
-                  .lastName("Doe")
-                  .credits(100)
-                  .build())
-              .build();
-        } else {
-          event = Event.builder()
-              .payload(CreditsAdded.builder()
-                  .id(aggregateId)
-                  .amount(1)
-                  .build())
-              .build();
-        }
-        eventStore.put(event.getId(), event);
-
-        if (i == threshold) {
-          snapshotStore.put(event.getAggregateId(), Aggregate.builder()
-              .eventId(event.getId())
-              .version(i)
-              .timestamp(event.getTimestamp())
-              .payload(Customer.builder()
-                  .id(aggregateId)
-                  .firstName("John")
-                  .lastName("Doe")
-                  .credits(100)
-                  .build())
-              .build());
-        }
-      }
+    private void generateSnapshot(String aggregateId) {
+      snapshotStore.put(aggregateId, Aggregate.builder()
+          .payload(Customer.builder()
+              .id(aggregateId)
+              .firstName("John")
+              .lastName("Doe")
+              .credits(100)
+              .build())
+          .build());
     }
 
     private void sendCommandAndLogExecutionDuration(String aggregateId) {
