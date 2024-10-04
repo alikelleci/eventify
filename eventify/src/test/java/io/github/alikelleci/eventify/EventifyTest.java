@@ -214,7 +214,7 @@ class EventifyTest {
       }
       log.info("Total events saved in store: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
-      sendCommandsAndLogExecutionTime("cust-1", 2);
+      sendCommandsAndLogExecutionTime("cust-1", 4);
 
       log.info("Number of events (approx.) in store: {}", eventStore.approximateNumEntries());
     }
@@ -244,7 +244,7 @@ class EventifyTest {
     }
 
     private void sendCommandsAndLogExecutionTime(String aggregateId, int amount) {
-      log.info("Sending {} command(s) to: {}", amount, aggregateId);
+      log.info("Sending {} command(s) for: {}", amount, aggregateId);
       for (int i = 1; i <= amount; i++) {
         StopWatch stopWatch = StopWatch.createStarted();
         Command command = buildAddCreditsCommand(aggregateId, 1);
