@@ -3,20 +3,15 @@ package io.github.alikelleci.eventify.support.serializer.custom;
 import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.deser.std.StdDeserializer;
 
 import java.io.IOException;
 import java.time.Instant;
 
-public class InstantDeserializer extends StdDeserializer<Instant> {
+public class InstantDeserializer extends JsonDeserializer<Instant> {
 
   public InstantDeserializer() {
-    this(null);
-  }
-
-  protected InstantDeserializer(Class<?> vc) {
-    super(vc);
   }
 
   @Override
@@ -38,7 +33,6 @@ public class InstantDeserializer extends StdDeserializer<Instant> {
     return null;
   }
 
-
   private long toMillis(long timestamp) {
 
     // nanoseconds
@@ -58,6 +52,5 @@ public class InstantDeserializer extends StdDeserializer<Instant> {
 
     // seconds
     return timestamp * 1_000;
-
   }
 }
