@@ -218,7 +218,7 @@ class EventifyTest {
     }
 
     private void generateEvents(String aggregateId, int totalEvents) {
-      int threshold = totalEvents - 100;
+      int snapshotIndex = totalEvents - 100;
 
       Event event;
       for (int i = 1; i <= totalEvents; i++) {
@@ -241,7 +241,7 @@ class EventifyTest {
         }
         eventStore.put(event.getId(), event);
 
-        if (i == threshold) {
+        if (i == snapshotIndex) {
           snapshotStore.put(aggregateId, Aggregate.builder()
               .eventId(event.getId())
               .version(i)
