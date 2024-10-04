@@ -206,21 +206,18 @@ class EventifyTest {
     void test1() {
       int numberOfAggregates = 1000;
       int numberOfEventsPerAggregate = 1000;
-      int snapshotThreshold = 100;
 
       for (int i = 1; i <= numberOfAggregates; i++) {
-        generateEvents("cust-" + i, numberOfEventsPerAggregate, snapshotThreshold);
+        generateEvents("cust-" + i, numberOfEventsPerAggregate);
       }
       log.info("Total events saved in store: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
-      sendCommandAndLogExecutionTime("cust-1");
+      sendCommandsAndLogExecutionTime("cust-1", 2);
 
       log.info("Number of events (approx.) in store: {}", eventStore.approximateNumEntries());
     }
 
-    private void generateEvents(String aggregateId, int totalEvents, int snapshotThreshold) {
-      int snapshotIndex = totalEvents - snapshotThreshold;
-
+    private void generateEvents(String aggregateId, int totalEvents) {
       Event event;
       for (int i = 1; i <= totalEvents; i++) {
         if (i == 1) {
@@ -241,30 +238,19 @@ class EventifyTest {
               .build();
         }
         eventStore.put(event.getId(), event);
-
-        if (i == snapshotIndex) {
-          snapshotStore.put(aggregateId, Aggregate.builder()
-              .eventId(event.getId())
-              .version(i)
-              .timestamp(event.getTimestamp())
-              .payload(Customer.builder()
-                  .id(aggregateId)
-                  .firstName("John")
-                  .lastName("Doe")
-                  .credits(100)
-                  .build())
-              .build());
-        }
       }
     }
 
-    private void sendCommandAndLogExecutionTime(String aggregateId) {
-      log.info("Sending single command to: {}", aggregateId);
-      StopWatch stopWatch = StopWatch.createStarted();
-      Command command = buildAddCreditsCommand(aggregateId, 1);
-      commandsTopic.pipeInput(command.getAggregateId(), command);
-      stopWatch.stop();
-      log.info("Command execution time: {} milliseconds ({} seconds)", stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+    private void sendCommandsAndLogExecutionTime(String aggregateId, int amount) {
+      log.info("Sending {} commands to: {}", amount, aggregateId);
+
+      for (int i = 1; i <= 2; i++) {
+        StopWatch stopWatch = StopWatch.createStarted();
+        Command command = buildAddCreditsCommand(aggregateId, 1);
+        commandsTopic.pipeInput(command.getAggregateId(), command);
+        stopWatch.stop();
+        log.info("Command {} execution time: {} milliseconds ({} seconds)", i, stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+      }
     }
 
   }
