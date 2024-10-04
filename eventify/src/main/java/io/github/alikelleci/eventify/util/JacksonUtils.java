@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import io.github.alikelleci.eventify.support.serializer.custom.InstantDeserializer;
 import io.github.alikelleci.eventify.support.serializer.custom.MultiValuedMapDeserializer;
+import io.github.alikelleci.eventify.support.serializer.custom.MultiValuedMapSerializer;
 import org.apache.commons.collections4.MultiValuedMap;
 
 import java.time.Instant;
@@ -22,6 +23,7 @@ public class JacksonUtils {
     if (objectMapper == null) {
       SimpleModule customModule = new SimpleModule()
           .addDeserializer(Instant.class, new InstantDeserializer())
+          .addSerializer(MultiValuedMap.class, new MultiValuedMapSerializer())
           .addDeserializer(MultiValuedMap.class, new MultiValuedMapDeserializer());
 
       objectMapper = new ObjectMapper()
