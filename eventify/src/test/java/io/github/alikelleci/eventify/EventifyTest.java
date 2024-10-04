@@ -210,7 +210,7 @@ class EventifyTest {
       for (int i = 1; i <= numberOfAggregates; i++) {
         generateEvents("cust-" + i, numberOfEventsPerAggregate);
       }
-      log.info("Total events saved: {}", numberOfAggregates * numberOfEventsPerAggregate);
+      log.info("Total events saved in store: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
       sendCommandAndLogExecutionDuration("cust-1");
 
