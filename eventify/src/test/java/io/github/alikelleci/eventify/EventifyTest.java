@@ -214,7 +214,7 @@ class EventifyTest {
 
       sendCommandAndLogExecutionDuration("cust-1");
 
-      log.info("Number of events (approx.) in event store: {}", eventStore.approximateNumEntries());
+      log.info("Number of events (approx.) in store: {}", eventStore.approximateNumEntries());
     }
 
     private void generateEvents(String aggregateId, int totalEvents) {
@@ -242,7 +242,7 @@ class EventifyTest {
         eventStore.put(event.getId(), event);
 
         if (i == threshold) {
-          snapshotStore.put(event.getAggregateId(), Aggregate.builder()
+          snapshotStore.put(aggregateId, Aggregate.builder()
               .eventId(event.getId())
               .version(i)
               .timestamp(event.getTimestamp())
