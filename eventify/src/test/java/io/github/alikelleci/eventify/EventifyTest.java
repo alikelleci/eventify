@@ -211,7 +211,7 @@ class EventifyTest {
       for (int i = 1; i <= numberOfAggregates; i++) {
         generateSnapshot("cust-" + i);
       }
-      log.info("Total snapshots saved: {}", numberOfAggregates);
+      log.info("Total snapshots saved in store: {}", numberOfAggregates);
 
       sendCommandAndLogExecutionDuration("cust-1");
 
