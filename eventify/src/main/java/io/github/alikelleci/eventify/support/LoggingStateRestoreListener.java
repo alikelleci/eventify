@@ -15,10 +15,10 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class LoggingStateRestoreListener implements StateRestoreListener {
 
-  private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
   private final Map<TopicPartition, Stats> stores = new HashMap<>();
 
   public LoggingStateRestoreListener() {
+    ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     scheduler.scheduleAtFixedRate(() ->
         stores.forEach((topicPartition, stats) -> {
           if (stats.getCurrentOffset() < stats.getEndingOffset()) {
