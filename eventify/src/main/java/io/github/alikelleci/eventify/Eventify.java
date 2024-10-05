@@ -16,6 +16,7 @@ import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultProcessor;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.support.CustomRocksDbConfig;
+import io.github.alikelleci.eventify.support.LoggingStateRestoreListener;
 import io.github.alikelleci.eventify.support.serializer.JsonSerde;
 import io.github.alikelleci.eventify.util.HandlerUtils;
 import io.github.alikelleci.eventify.util.JacksonUtils;
@@ -25,7 +26,6 @@ import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
@@ -38,7 +38,6 @@ import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 import org.springframework.core.annotation.AnnotationUtils;
 
@@ -231,23 +230,7 @@ public class Eventify {
   private void setUpListeners() {
     kafkaStreams.setStateListener(this.stateListener);
     kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
-
-    kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
-      @Override
-      public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
-        log.debug("State restoration started: topic={}, partition={}, store={}, endingOffset={}", topicPartition.topic(), topicPartition.partition(), storeName, endingOffset);
-      }
-
-      @Override
-      public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
-        log.debug("State restoration in progress: topic={}, partition={}, store={}, numRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, numRestored);
-      }
-
-      @Override
-      public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
-        log.debug("State restoration ended: topic={}, partition={}, store={}, totalRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
-      }
-    });
+    kafkaStreams.setGlobalStateRestoreListener(new LoggingStateRestoreListener());
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       log.info("Eventify is shutting down...");
