@@ -32,7 +32,9 @@ public class LoggingStateRestoreListener implements StateRestoreListener {
 
   @Override
   public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
-    log.info("State restoration started: topic={}, partition={}, store={}, startingOffset={}, endingOffset={}", topicPartition.topic(), topicPartition.partition(), storeName, startingOffset, endingOffset);
+//    log.info("State restoration started: topic={}, partition={}, store={}, startingOffset={}, endingOffset={}", topicPartition.topic(), topicPartition.partition(), storeName, startingOffset, endingOffset);
+    log.info("State restoration started: store={}, partition={}, startingOffset={}, endingOffset={}", storeName, topicPartition.partition(), startingOffset, endingOffset);
+
     stores.put(topicPartition, Stats.builder()
         .storeName(storeName)
         .currentOffset(startingOffset)
@@ -48,7 +50,8 @@ public class LoggingStateRestoreListener implements StateRestoreListener {
 
   @Override
   public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
-    log.info("State restoration ended: topic={}, partition={}, store={}, totalRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
+//    log.info("State restoration ended: topic={}, partition={}, store={}, totalRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
+    log.info("State restoration ended: store={}, partition={}, totalRestored={}", storeName, topicPartition.partition(), totalRestored);
     stores.remove(topicPartition);
   }
 
