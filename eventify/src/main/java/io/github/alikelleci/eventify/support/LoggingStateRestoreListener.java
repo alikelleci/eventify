@@ -23,7 +23,7 @@ public class LoggingStateRestoreListener implements StateRestoreListener {
         stores.forEach((topicPartition, stats) -> {
           if (stats.getCurrentOffset() < stats.getEndingOffset()) {
             double progressPercentage = ((double) stats.getCurrentOffset() / stats.getEndingOffset()) * 100;
-            log.info("State restoration in progress: topic={}, partition={}, store={}, progress={}%", topicPartition.topic(), topicPartition.partition(), stats.getStoreName(), (int) progressPercentage);
+            log.info("State restoration in progress: topic={}, partition={}, store={}, progress={}%", topicPartition.topic(), topicPartition.partition(), stats.getStoreName(), ((int) progressPercentage));
           }
         }), 0, 10, TimeUnit.SECONDS);
 
