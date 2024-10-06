@@ -32,8 +32,8 @@ public class LoggingStateRestoreListener implements StateRestoreListener {
 
   @Override
   public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
-//    log.info("State restoration started: topic={}, partition={}, store={}, startingOffset={}, endingOffset={}", topicPartition.topic(), topicPartition.partition(), storeName, startingOffset, endingOffset);
-    log.info("State restoration started: store={}, partition={}, startingOffset={}, endingOffset={}", storeName, topicPartition.partition(), startingOffset, endingOffset);
+//    log.debug("State restoration started: topic={}, partition={}, store={}, startingOffset={}, endingOffset={}", topicPartition.topic(), topicPartition.partition(), storeName, startingOffset, endingOffset);
+    log.debug("State restoration started: store={}, partition={}, startingOffset={}, endingOffset={}", storeName, topicPartition.partition(), startingOffset, endingOffset);
 
     stores.put(topicPartition, Stats.builder()
         .storeName(storeName)
@@ -44,14 +44,14 @@ public class LoggingStateRestoreListener implements StateRestoreListener {
 
   @Override
   public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
-//    log.info("State restoration in progress: topic={}, partition={}, store={}, numRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, numRestored);
+//    log.debug("State restoration in progress: topic={}, partition={}, store={}, numRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, numRestored);
     stores.get(topicPartition).setCurrentOffset(batchEndOffset);
   }
 
   @Override
   public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
-//    log.info("State restoration ended: topic={}, partition={}, store={}, totalRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
-    log.info("State restoration ended: store={}, partition={}, totalRestored={}", storeName, topicPartition.partition(), totalRestored);
+//    log.debug("State restoration ended: topic={}, partition={}, store={}, totalRestored={}", topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
+    log.debug("State restoration ended: store={}, partition={}, totalRestored={}", storeName, topicPartition.partition(), totalRestored);
     stores.remove(topicPartition);
   }
 
