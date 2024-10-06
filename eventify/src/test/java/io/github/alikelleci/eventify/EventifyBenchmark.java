@@ -99,8 +99,8 @@ public class EventifyBenchmark {
 
   private static void generateEvents(String aggregateId, int numEvents) {
     String topic = "benchmark-app-event-store-changelog";
-    Event event;
 
+    Event event;
     for (int i = 1; i <= numEvents; i++) {
       if (i == 1) {
         event = Event.builder()
