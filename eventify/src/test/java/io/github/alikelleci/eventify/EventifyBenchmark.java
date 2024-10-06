@@ -57,9 +57,6 @@ public class EventifyBenchmark {
   public static final int NUMBER_OF_AGGREGATES = 1000;
   public static final int NUMBER_OF_EVENTS_PER_AGGREGATE = 1000;
 
-  public static final String TOPIC = "benchmark-app-event-store-changelog";
-//  public static final String TOPIC = "events.customer";
-
   public static AtomicBoolean isReady = new AtomicBoolean(false);
 
   @BeforeAll
@@ -94,6 +91,7 @@ public class EventifyBenchmark {
   }
 
   public static void generateEvents() {
+    String topic = "benchmark-app-event-store-changelog";
     Event event;
 
     for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
@@ -106,7 +104,7 @@ public class EventifyBenchmark {
               .build())
           .build();
 
-      producer.send(new ProducerRecord<>(TOPIC, event.getId(), event));
+      producer.send(new ProducerRecord<>(topic, event.getId(), event));
 
       for (int j = 1; j <= NUMBER_OF_EVENTS_PER_AGGREGATE; j++) {
         event = Event.builder()
@@ -116,7 +114,7 @@ public class EventifyBenchmark {
                 .build())
             .build();
 
-        producer.send(new ProducerRecord<>(TOPIC, event.getId(), event));
+        producer.send(new ProducerRecord<>(topic, event.getId(), event));
       }
 
       if (i % 10_000 == 0) {
