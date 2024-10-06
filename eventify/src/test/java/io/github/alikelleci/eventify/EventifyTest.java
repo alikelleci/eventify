@@ -215,7 +215,7 @@ class EventifyTest {
       }
       log.info("Total events saved in store: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
-      for (int i = 0; i < 4; i++) {
+      for (int i = 1; i <= 4; i++) {
         int number = faker.number().numberBetween(1, numberOfAggregates);
         String aggregateId = "cust-" + number;
         sendCommandsAndLogExecutionTime(aggregateId, 4);

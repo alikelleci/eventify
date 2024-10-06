@@ -54,8 +54,8 @@ public class EventifyBenchmark {
   private static final Producer<String, Message> producer = createProducer();
   private static final Consumer<String, Message> consumer = createConsumer();
 
-  public static final int NUMBER_OF_AGGREGATES = 10_000;
-  public static final int NUMBER_OF_EVENTS_PER_AGGREGATE = 100;
+  public static final int NUMBER_OF_AGGREGATES = 1000;
+  public static final int NUMBER_OF_EVENTS_PER_AGGREGATE = 1000;
 
   public static final String TOPIC = "benchmark-app-event-store-changelog";
 //  public static final String TOPIC = "events.customer";
@@ -85,7 +85,7 @@ public class EventifyBenchmark {
 
   @Test
   void test1() throws ExecutionException, InterruptedException {
-    for (int i = 0; i < 10; i++) {
+    for (int i = 1; i <= 4; i++) {
       int number = faker.number().numberBetween(1, NUMBER_OF_AGGREGATES);
       String aggregateId = "cust-" + number;
       sendCommandsAndLogExecutionTime(aggregateId, 4);
