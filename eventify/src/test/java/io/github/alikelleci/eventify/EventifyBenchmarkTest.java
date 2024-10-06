@@ -99,9 +99,8 @@ public class EventifyBenchmarkTest {
     for (int i = 1; i <= numberOfAggregates; i++) {
       String aggregateId = "cust-" + i;
 
-      generateEventsFor(aggregateId, numberOfEventsPerAggregate, true).forEach(event ->
-          producer.send(new ProducerRecord<>(topic, event.getId(), event)));
-
+      generateEventsFor(aggregateId, numberOfEventsPerAggregate, true)
+          .forEach(event -> producer.send(new ProducerRecord<>(topic, event.getId(), event)));
       producer.flush();
     }
     log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
@@ -113,7 +112,8 @@ public class EventifyBenchmarkTest {
       String aggregateId = "cust-" + faker.number().numberBetween(1, numOfAggregates);
 
       log.info("Sending {} command(s) for: {}", numCommandsPerAggregate, aggregateId);
-      generateCommandsFor(aggregateId, numCommandsPerAggregate, false).forEach(this::sendCommandAndLogExecutionTime);
+      generateCommandsFor(aggregateId, numCommandsPerAggregate, false)
+          .forEach(this::sendCommandAndLogExecutionTime);
       log.info("------------------------------------------------------");
     }
     log.info("Number of commands generated: {}", numOfTargetAggregates * numCommandsPerAggregate);
