@@ -42,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
+import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
 
 @Slf4j
 public class EventifyBenchmark {
@@ -84,7 +85,12 @@ public class EventifyBenchmark {
 
   @Test
   void test1() throws ExecutionException, InterruptedException {
-    sendCommandsAndLogExecutionTime("cust-100", 4);
+    for (int i = 0; i < 10; i++) {
+      int number = faker.number().numberBetween(1, NUMBER_OF_AGGREGATES);
+      String aggregateId = "cust-" + number;
+      sendCommandsAndLogExecutionTime(aggregateId, 4);
+      log.info("------------------------------------------------------");
+    }
   }
 
   public static void generateEvents() {
