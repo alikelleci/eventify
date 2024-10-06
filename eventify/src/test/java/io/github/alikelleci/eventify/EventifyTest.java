@@ -214,7 +214,7 @@ class EventifyTest {
 
       int numOfTargetAggregates = 4;
       int numCommandsPerAggregate = 4;
-      generateCommands(numOfTargetAggregates, numOfAggregates, numCommandsPerAggregate);
+      generateCommands(numOfAggregates, numOfTargetAggregates, numCommandsPerAggregate);
     }
 
     private void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
@@ -228,7 +228,7 @@ class EventifyTest {
       log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
     }
 
-    private void generateCommands(int numOfTargetAggregates, int numOfAggregates, int numCommandsPerAggregate) {
+    private void generateCommands(int numOfAggregates, int numOfTargetAggregates, int numCommandsPerAggregate) {
       log.info("Generating commands...");
       for (int i = 1; i <= numOfTargetAggregates; i++) {
         String aggregateId = "cust-" + faker.number().numberBetween(1, numOfAggregates);
