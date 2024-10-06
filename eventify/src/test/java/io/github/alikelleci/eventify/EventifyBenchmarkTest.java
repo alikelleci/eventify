@@ -55,8 +55,8 @@ public class EventifyBenchmarkTest {
   private static Producer<String, Message> producer;
   private static Consumer<String, Message> consumer;
 
-  public static final int NUMBER_OF_AGGREGATES = 1000;
-  public static final int NUMBER_OF_EVENTS_PER_AGGREGATE = 1000;
+  public static final int NUMBER_OF_AGGREGATES = 10;
+  public static final int NUMBER_OF_EVENTS_PER_AGGREGATE = 100000;
 
   public static AtomicBoolean isReady = new AtomicBoolean(false);
 
@@ -99,6 +99,7 @@ public class EventifyBenchmarkTest {
   private static void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
     String topic = "benchmark-app-event-store-changelog";
 
+    log.info("Generating events...");
     for (int i = 1; i <= numberOfAggregates; i++) {
       String aggregateId = "cust-" + i;
 
@@ -111,6 +112,7 @@ public class EventifyBenchmarkTest {
   }
 
   private void generateCommands(int numOfTargetAggregates, int numOfAggregates, int numCommandsPerAggregate) {
+    log.info("Generating commands...");
     for (int i = 1; i <= numOfTargetAggregates; i++) {
       String aggregateId = "cust-" + faker.number().numberBetween(1, numOfAggregates);
 
