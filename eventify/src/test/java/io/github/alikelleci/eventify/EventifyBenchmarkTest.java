@@ -124,7 +124,7 @@ public class EventifyBenchmarkTest {
     StopWatch stopWatch = StopWatch.createStarted();
     commandGateway.send(command.getPayload()).get();
     stopWatch.stop();
-    log.info("Command {} executed in: {} milliseconds ({} seconds)", command.getType(), stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+    log.info("Command {} executed in: {} ms ({} sec)", command.getType(), stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
   }
 
   public static Eventify createEventify() {
