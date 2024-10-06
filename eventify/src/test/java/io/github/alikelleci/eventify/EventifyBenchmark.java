@@ -90,40 +90,38 @@ public class EventifyBenchmark {
     }
   }
 
-  public static void generateEvents() {
+  private static void generateEvents() {
+    for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
+      generateEvents("cust-" + i, NUMBER_OF_EVENTS_PER_AGGREGATE);
+    }
+    log.info("Number of events generated: {}", NUMBER_OF_AGGREGATES * NUMBER_OF_EVENTS_PER_AGGREGATE);
+  }
+
+  private static void generateEvents(String aggregateId, int numEvents) {
     String topic = "benchmark-app-event-store-changelog";
     Event event;
 
-    for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
-      event = Event.builder()
-          .payload(CustomerEvent.CustomerCreated.builder()
-              .id("cust-" + i)
-              .firstName("John " + i)
-              .lastName("Doe " + i)
-              .credits(100)
-              .build())
-          .build();
-
-      producer.send(new ProducerRecord<>(topic, event.getId(), event));
-
-      for (int j = 1; j <= NUMBER_OF_EVENTS_PER_AGGREGATE; j++) {
+    for (int i = 1; i <= numEvents; i++) {
+      if (i == 1) {
+        event = Event.builder()
+            .payload(CustomerEvent.CustomerCreated.builder()
+                .id(aggregateId)
+                .firstName("John " + i)
+                .lastName("Doe " + i)
+                .credits(100)
+                .build())
+            .build();
+      } else {
         event = Event.builder()
             .payload(CustomerEvent.CreditsAdded.builder()
-                .id("cust-" + i)
+                .id(aggregateId)
                 .amount(1)
                 .build())
             .build();
-
-        producer.send(new ProducerRecord<>(topic, event.getId(), event));
       }
-
-      if (i % 10_000 == 0) {
-        log.info("Number of customers created: {}", i);
-      }
+      producer.send(new ProducerRecord<>(topic, event.getId(), event));
     }
-
     producer.flush();
-    log.info("All done.");
   }
 
   private void sendCommandsAndLogExecutionTime(String aggregateId, int totalCommands) throws ExecutionException, InterruptedException {

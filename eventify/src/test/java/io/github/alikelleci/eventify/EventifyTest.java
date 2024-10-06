@@ -213,7 +213,7 @@ class EventifyTest {
       for (int i = 1; i <= numberOfAggregates; i++) {
         generateEvents("cust-" + i, numberOfEventsPerAggregate);
       }
-      log.info("Total events saved in store: {}", numberOfAggregates * numberOfEventsPerAggregate);
+      log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
       for (int i = 1; i <= 4; i++) {
         int number = faker.number().numberBetween(1, numberOfAggregates);
@@ -225,15 +225,15 @@ class EventifyTest {
       log.info("Number of events (approx.) in store: {}", eventStore.approximateNumEntries());
     }
 
-    private void generateEvents(String aggregateId, int totalEvents) {
+    private void generateEvents(String aggregateId, int numEvents) {
       Event event;
-      for (int i = 1; i <= totalEvents; i++) {
+      for (int i = 1; i <= numEvents; i++) {
         if (i == 1) {
           event = Event.builder()
               .payload(CustomerCreated.builder()
                   .id(aggregateId)
-                  .firstName("John")
-                  .lastName("Doe")
+                  .firstName("John " + i)
+                  .lastName("Doe " + i)
                   .credits(100)
                   .build())
               .build();
