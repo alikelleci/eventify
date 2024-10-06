@@ -212,7 +212,7 @@ class EventifyTest {
       int numberOfEventsPerAggregate = 1000;
 
       for (int i = 1; i <= numberOfAggregates; i++) {
-        generateEventsFor("cust-" + i, numberOfEventsPerAggregate, event ->
+        generateEventsFor("cust-" + i, numberOfEventsPerAggregate, true, event ->
             eventStore.put(event.getId(), event));
       }
       log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);

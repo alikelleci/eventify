@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
@@ -18,6 +19,29 @@ import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 public class CommandFactory {
 
   public static final Faker faker = new Faker();
+
+  public static void generateCommandsFor(String aggregateId, int numCommands, boolean includeCreation, Consumer<Command> consumer) {
+    for (int i = 1; i <= numCommands; i++) {
+      Object payload;
+      if (i == 1 && includeCreation) {
+        payload = CreateCustomer.builder()
+            .id(aggregateId)
+            .firstName("John " + i)
+            .lastName("Doe " + i)
+            .credits(100)
+            .build();
+      } else {
+        payload = AddCredits.builder()
+            .id(aggregateId)
+            .amount(1)
+            .build();
+      }
+
+      consumer.accept(Command.builder()
+          .payload(payload)
+          .build());
+    }
+  }
 
   public static Command buildCreateCustomerCommand(String aggregateId, String firstName, String lastName, int credits) {
     return Command.builder()

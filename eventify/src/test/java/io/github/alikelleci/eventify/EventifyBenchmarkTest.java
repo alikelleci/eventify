@@ -105,7 +105,7 @@ public class EventifyBenchmarkTest {
     String topic = "benchmark-app-event-store-changelog";
 
     for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
-      generateEventsFor("cust-" + i, NUMBER_OF_EVENTS_PER_AGGREGATE, event ->
+      generateEventsFor("cust-" + i, NUMBER_OF_EVENTS_PER_AGGREGATE, true, event ->
           producer.send(new ProducerRecord<>(topic, event.getId(), event)));
       producer.flush();
     }
