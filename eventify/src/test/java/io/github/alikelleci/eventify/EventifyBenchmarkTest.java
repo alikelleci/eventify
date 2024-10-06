@@ -36,12 +36,11 @@ import org.testcontainers.kafka.KafkaContainer;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
+import static io.github.alikelleci.eventify.factory.CommandFactory.generateCommandsFor;
 import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
 
 @Slf4j
@@ -84,7 +83,6 @@ public class EventifyBenchmarkTest {
   @AfterAll
   static void tearDown() {
     eventify.stop();
-    eventify.getKafkaStreams().cleanUp();
     producer.close();
     consumer.close();
     deleteTopics();
@@ -92,35 +90,39 @@ public class EventifyBenchmarkTest {
   }
 
   @Test
-  void test1() throws ExecutionException, InterruptedException {
-    for (int i = 1; i <= 4; i++) {
-      int number = faker.number().numberBetween(1, NUMBER_OF_AGGREGATES);
-      String aggregateId = "cust-" + number;
-      sendCommandsAndLogExecutionTime(aggregateId, 4);
+  void test1() {
+    int numOfAggregates = 4;
+    int numCommandsPerAggregate = 4;
+
+    for (int i = 1; i <= numOfAggregates; i++) {
+      String aggregateId = "cust-" + faker.number().numberBetween(1, NUMBER_OF_AGGREGATES);
+
+      log.info("Sending {} command(s) for: {}", numCommandsPerAggregate, aggregateId);
+      generateCommandsFor(aggregateId, numCommandsPerAggregate, false, this::sendCommandAndLogExecutionTime);
       log.info("------------------------------------------------------");
     }
+    log.info("Number of commands generated: {}", numOfAggregates * numCommandsPerAggregate);
   }
 
   private static void generateEvents() {
     String topic = "benchmark-app-event-store-changelog";
 
     for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
-      generateEventsFor("cust-" + i, NUMBER_OF_EVENTS_PER_AGGREGATE, true, event ->
+      String aggregateId = "cust-" + i;
+
+      generateEventsFor(aggregateId, NUMBER_OF_EVENTS_PER_AGGREGATE, true, event ->
           producer.send(new ProducerRecord<>(topic, event.getId(), event)));
       producer.flush();
     }
     log.info("Number of events generated: {}", NUMBER_OF_AGGREGATES * NUMBER_OF_EVENTS_PER_AGGREGATE);
   }
 
-  private void sendCommandsAndLogExecutionTime(String aggregateId, int totalCommands) throws ExecutionException, InterruptedException {
-    log.info("Sending {} command(s) for: {}", totalCommands, aggregateId);
-    for (int i = 1; i <= totalCommands; i++) {
-      StopWatch stopWatch = StopWatch.createStarted();
-      Command command = buildAddCreditsCommand(aggregateId, 1);
-      commandGateway.send(command.getPayload()).get();
-      stopWatch.stop();
-      log.info("Command {} execution time: {} milliseconds ({} seconds)", i, stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
-    }
+  @SneakyThrows
+  private void sendCommandAndLogExecutionTime(Command command) {
+    StopWatch stopWatch = StopWatch.createStarted();
+    commandGateway.send(command.getPayload()).get();
+    stopWatch.stop();
+    log.info("Command {} executed in: {} milliseconds ({} seconds)", command.getType(), stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
   }
 
   public static Eventify createEventify() {
