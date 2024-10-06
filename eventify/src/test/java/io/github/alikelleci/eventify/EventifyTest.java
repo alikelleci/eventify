@@ -27,7 +27,6 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -202,7 +201,6 @@ class EventifyTest {
     }
   }
 
-  @Disabled
   @Nested
   class PerformanceTests {
 
