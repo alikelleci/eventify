@@ -42,7 +42,7 @@ import static io.github.alikelleci.eventify.factory.CommandFactory.generateComma
 import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
 
 @Slf4j
-public class EventifyBenchmarkTest {
+public class EventifyBenchmarkIT {
 
   private static KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.8.0");
 
