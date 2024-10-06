@@ -10,7 +10,6 @@ import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.time.StopWatch;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -35,7 +34,6 @@ import org.testcontainers.kafka.KafkaContainer;
 
 import java.util.List;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -77,7 +75,6 @@ public class EventifyBenchmarkTest {
     while (!isReady.get()) {
       // state restoration in progress...
     }
-    log.info("Setup complete.");
   }
 
   @AfterAll
@@ -85,7 +82,6 @@ public class EventifyBenchmarkTest {
     eventify.stop();
     producer.close();
     consumer.close();
-    deleteTopics();
     kafka.close();
   }
 
@@ -213,19 +209,6 @@ public class EventifyBenchmarkTest {
               new NewTopic("events.customer", 1, (short) 1)
           ))
           .all().get();
-    }
-  }
-
-  @SneakyThrows
-  public static void deleteTopics() {
-    Properties properties = new Properties();
-    properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
-
-    try (AdminClient adminClient = AdminClient.create(properties)) {
-      Set<String> topics = adminClient.listTopics().names().get();
-      if (CollectionUtils.isNotEmpty(topics)) {
-        adminClient.deleteTopics(topics).all().get();
-      }
     }
   }
 
