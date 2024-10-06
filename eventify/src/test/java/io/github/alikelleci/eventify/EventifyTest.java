@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildIssueCreditsCommand;
+import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
@@ -214,7 +215,12 @@ class EventifyTest {
       }
       log.info("Total events saved in store: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
-      sendCommandsAndLogExecutionTime("cust-1", 4);
+      for (int i = 0; i < 4; i++) {
+        int number = faker.number().numberBetween(1, numberOfAggregates);
+        String aggregateId = "cust-" + number;
+        sendCommandsAndLogExecutionTime(aggregateId, 4);
+        log.info("------------------------------------------------------");
+      }
 
       log.info("Number of events (approx.) in store: {}", eventStore.approximateNumEntries());
     }
