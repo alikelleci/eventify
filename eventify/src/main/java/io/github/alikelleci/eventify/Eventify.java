@@ -38,6 +38,7 @@ import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
+import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 import org.springframework.core.annotation.AnnotationUtils;
 
@@ -67,6 +68,7 @@ public class Eventify {
 
   private final Properties streamsConfig;
   private final StateListener stateListener;
+  private final StateRestoreListener stateRestoreListener;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
 
@@ -74,10 +76,12 @@ public class Eventify {
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
+                     StateRestoreListener stateRestoreListener,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
                      ObjectMapper objectMapper) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
+    this.stateRestoreListener = stateRestoreListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
   }
@@ -229,8 +233,8 @@ public class Eventify {
 
   private void setUpListeners() {
     kafkaStreams.setStateListener(this.stateListener);
+    kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
     kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
-    kafkaStreams.setGlobalStateRestoreListener(new LoggingStateRestoreListener());
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
       log.info("Eventify is shutting down...");
@@ -273,6 +277,7 @@ public class Eventify {
 
     private Properties streamsConfig;
     private StateListener stateListener;
+    private StateRestoreListener stateRestoreListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
 
@@ -305,6 +310,11 @@ public class Eventify {
       return this;
     }
 
+    public EventifyBuilder stateRestoreListener(StateRestoreListener stateRestoreListener) {
+      this.stateRestoreListener = stateRestoreListener;
+      return this;
+    }
+
     public EventifyBuilder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
       this.uncaughtExceptionHandler = uncaughtExceptionHandler;
       return this;
@@ -321,6 +331,10 @@ public class Eventify {
             log.warn("State changed from {} to {}", oldState, newState);
       }
 
+      if (this.stateRestoreListener == null) {
+        this.stateRestoreListener = new LoggingStateRestoreListener();
+      }
+
       if (this.uncaughtExceptionHandler == null) {
         this.uncaughtExceptionHandler = throwable ->
             StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
@@ -333,6 +347,7 @@ public class Eventify {
       Eventify eventify = new Eventify(
           this.streamsConfig,
           this.stateListener,
+          this.stateRestoreListener,
           this.uncaughtExceptionHandler,
           this.objectMapper);
 
