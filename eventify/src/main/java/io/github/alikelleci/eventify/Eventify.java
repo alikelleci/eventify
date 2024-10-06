@@ -328,7 +328,7 @@ public class Eventify {
     public Eventify build() {
       if (this.stateListener == null) {
         this.stateListener = (newState, oldState) ->
-            log.warn("State changed from {} to {}", oldState, newState);
+            log.info("State changed from {} to {}", oldState, newState);
       }
 
       if (this.stateRestoreListener == null) {
