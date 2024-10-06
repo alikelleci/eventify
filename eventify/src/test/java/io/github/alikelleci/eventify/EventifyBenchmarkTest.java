@@ -71,7 +71,7 @@ public class EventifyBenchmarkTest {
     consumer = createConsumer();
 
     createTopics();
-    generateEvents();
+    generateEvents(NUMBER_OF_AGGREGATES, NUMBER_OF_EVENTS_PER_AGGREGATE);
 
     eventify.start();
     while (!isReady.get()) {
@@ -91,30 +91,34 @@ public class EventifyBenchmarkTest {
 
   @Test
   void test1() {
-    int numOfAggregates = 4;
+    int numOfTargetAggregates = 4;
     int numCommandsPerAggregate = 4;
+    generateCommands(numOfTargetAggregates, NUMBER_OF_AGGREGATES, numCommandsPerAggregate);
+  }
 
-    for (int i = 1; i <= numOfAggregates; i++) {
-      String aggregateId = "cust-" + faker.number().numberBetween(1, NUMBER_OF_AGGREGATES);
+  private static void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
+    String topic = "benchmark-app-event-store-changelog";
+
+    for (int i = 1; i <= numberOfAggregates; i++) {
+      String aggregateId = "cust-" + i;
+
+      generateEventsFor(aggregateId, numberOfEventsPerAggregate, true, event ->
+          producer.send(new ProducerRecord<>(topic, event.getId(), event)));
+
+      producer.flush();
+    }
+    log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
+  }
+
+  private void generateCommands(int numOfTargetAggregates, int numOfAggregates, int numCommandsPerAggregate) {
+    for (int i = 1; i <= numOfTargetAggregates; i++) {
+      String aggregateId = "cust-" + faker.number().numberBetween(1, numOfAggregates);
 
       log.info("Sending {} command(s) for: {}", numCommandsPerAggregate, aggregateId);
       generateCommandsFor(aggregateId, numCommandsPerAggregate, false, this::sendCommandAndLogExecutionTime);
       log.info("------------------------------------------------------");
     }
-    log.info("Number of commands generated: {}", numOfAggregates * numCommandsPerAggregate);
-  }
-
-  private static void generateEvents() {
-    String topic = "benchmark-app-event-store-changelog";
-
-    for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
-      String aggregateId = "cust-" + i;
-
-      generateEventsFor(aggregateId, NUMBER_OF_EVENTS_PER_AGGREGATE, true, event ->
-          producer.send(new ProducerRecord<>(topic, event.getId(), event)));
-      producer.flush();
-    }
-    log.info("Number of events generated: {}", NUMBER_OF_AGGREGATES * NUMBER_OF_EVENTS_PER_AGGREGATE);
+    log.info("Number of commands generated: {}", numOfTargetAggregates * numCommandsPerAggregate);
   }
 
   @SneakyThrows
