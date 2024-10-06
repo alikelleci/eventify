@@ -19,7 +19,6 @@ public class CommandFactory {
 
   public static final Faker faker = new Faker();
 
-
   public static Command buildCreateCustomerCommand(String aggregateId, String firstName, String lastName, int credits) {
     return Command.builder()
         .payload(CreateCustomer.builder()

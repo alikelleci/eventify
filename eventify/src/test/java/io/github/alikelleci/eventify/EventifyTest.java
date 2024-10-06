@@ -39,6 +39,7 @@ import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCredi
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildIssueCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
+import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
@@ -211,7 +212,8 @@ class EventifyTest {
       int numberOfEventsPerAggregate = 1000;
 
       for (int i = 1; i <= numberOfAggregates; i++) {
-        generateEvents("cust-" + i, numberOfEventsPerAggregate);
+        generateEventsFor("cust-" + i, numberOfEventsPerAggregate, event ->
+            eventStore.put(event.getId(), event));
       }
       log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
 
@@ -223,30 +225,6 @@ class EventifyTest {
       }
 
       log.info("Number of events (approx.) in store: {}", eventStore.approximateNumEntries());
-    }
-
-    private void generateEvents(String aggregateId, int numEvents) {
-      Event event;
-      for (int i = 1; i <= numEvents; i++) {
-        if (i == 1) {
-          event = Event.builder()
-              .payload(CustomerCreated.builder()
-                  .id(aggregateId)
-                  .firstName("John " + i)
-                  .lastName("Doe " + i)
-                  .credits(100)
-                  .build())
-              .build();
-        } else {
-          event = Event.builder()
-              .payload(CreditsAdded.builder()
-                  .id(aggregateId)
-                  .amount(1)
-                  .build())
-              .build();
-        }
-        eventStore.put(event.getId(), event);
-      }
     }
 
     private void sendCommandsAndLogExecutionTime(String aggregateId, int totalCommands) {

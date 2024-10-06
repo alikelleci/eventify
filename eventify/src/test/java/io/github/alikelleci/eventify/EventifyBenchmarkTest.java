@@ -1,12 +1,10 @@
 package io.github.alikelleci.eventify;
 
-import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.gateway.CommandGateway;
-import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.gateway.EventGateway;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
@@ -33,6 +31,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.kafka.KafkaContainer;
 
 import java.util.List;
 import java.util.Properties;
@@ -43,16 +42,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
+import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
 
 @Slf4j
-public class EventifyBenchmark {
+public class EventifyBenchmarkTest {
 
-  private static final Eventify eventify = createEventify();
-  private static final CommandGateway commandGateway = createCommandGateway();
-  private static final EventGateway eventGateway = createEventGateway();
+  private static KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.8.0");
 
-  private static final Producer<String, Message> producer = createProducer();
-  private static final Consumer<String, Message> consumer = createConsumer();
+  private static Eventify eventify;
+  private static CommandGateway commandGateway;
+  private static EventGateway eventGateway;
+
+  private static Producer<String, Message> producer;
+  private static Consumer<String, Message> consumer;
 
   public static final int NUMBER_OF_AGGREGATES = 1000;
   public static final int NUMBER_OF_EVENTS_PER_AGGREGATE = 1000;
@@ -61,10 +63,18 @@ public class EventifyBenchmark {
 
   @BeforeAll
   static void setup() {
+    kafka.start();
+
+    eventify = createEventify();
+    commandGateway = createCommandGateway();
+    eventGateway = createEventGateway();
+    producer = createProducer();
+    consumer = createConsumer();
+
     createTopics();
     generateEvents();
-    eventify.start();
 
+    eventify.start();
     while (!isReady.get()) {
       // state restoration in progress...
     }
@@ -78,6 +88,7 @@ public class EventifyBenchmark {
     producer.close();
     consumer.close();
     deleteTopics();
+    kafka.close();
   }
 
   @Test
@@ -91,37 +102,14 @@ public class EventifyBenchmark {
   }
 
   private static void generateEvents() {
-    for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
-      generateEvents("cust-" + i, NUMBER_OF_EVENTS_PER_AGGREGATE);
-    }
-    log.info("Number of events generated: {}", NUMBER_OF_AGGREGATES * NUMBER_OF_EVENTS_PER_AGGREGATE);
-  }
-
-  private static void generateEvents(String aggregateId, int numEvents) {
     String topic = "benchmark-app-event-store-changelog";
 
-    Event event;
-    for (int i = 1; i <= numEvents; i++) {
-      if (i == 1) {
-        event = Event.builder()
-            .payload(CustomerEvent.CustomerCreated.builder()
-                .id(aggregateId)
-                .firstName("John " + i)
-                .lastName("Doe " + i)
-                .credits(100)
-                .build())
-            .build();
-      } else {
-        event = Event.builder()
-            .payload(CustomerEvent.CreditsAdded.builder()
-                .id(aggregateId)
-                .amount(1)
-                .build())
-            .build();
-      }
-      producer.send(new ProducerRecord<>(topic, event.getId(), event));
+    for (int i = 1; i <= NUMBER_OF_AGGREGATES; i++) {
+      generateEventsFor("cust-" + i, NUMBER_OF_EVENTS_PER_AGGREGATE, event ->
+          producer.send(new ProducerRecord<>(topic, event.getId(), event)));
+      producer.flush();
     }
-    producer.flush();
+    log.info("Number of events generated: {}", NUMBER_OF_AGGREGATES * NUMBER_OF_EVENTS_PER_AGGREGATE);
   }
 
   private void sendCommandsAndLogExecutionTime(String aggregateId, int totalCommands) throws ExecutionException, InterruptedException {
@@ -138,7 +126,7 @@ public class EventifyBenchmark {
   public static Eventify createEventify() {
     Properties streamsConfig = new Properties();
     streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, "benchmark-app");
-    streamsConfig.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    streamsConfig.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     streamsConfig.put(StreamsConfig.STATE_DIR_CONFIG, "C:\\tmp\\kafka-streams");
     streamsConfig.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10_000);
 
@@ -147,7 +135,7 @@ public class EventifyBenchmark {
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
         .stateListener((newState, oldState) -> {
-          log.warn("State changed from {} to {}", oldState, newState);
+          log.info("State changed from {} to {}", oldState, newState);
           if (newState == KafkaStreams.State.RUNNING) {
             isReady.set(true);
           }
@@ -157,7 +145,7 @@ public class EventifyBenchmark {
 
   public static CommandGateway createCommandGateway() {
     Properties properties = new Properties();
-    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
 
     return CommandGateway.builder()
         .producerConfig(properties)
@@ -167,7 +155,7 @@ public class EventifyBenchmark {
 
   public static EventGateway createEventGateway() {
     Properties properties = new Properties();
-    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
 
     return EventGateway.builder()
         .producerConfig(properties)
@@ -176,7 +164,7 @@ public class EventifyBenchmark {
 
   public static Producer<String, Message> createProducer() {
     Properties properties = new Properties();
-    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
     properties.put(ProducerConfig.ACKS_CONFIG, "all");
@@ -192,7 +180,7 @@ public class EventifyBenchmark {
   public static Consumer<String, Message> createConsumer() {
     Properties properties = new Properties();
     properties.put(ConsumerConfig.GROUP_ID_CONFIG, "benchmark-consumer");
-    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     properties.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
@@ -208,11 +196,12 @@ public class EventifyBenchmark {
   @SneakyThrows
   public static void createTopics() {
     Properties properties = new Properties();
-    properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
 
     try (AdminClient adminClient = AdminClient.create(properties)) {
       adminClient.createTopics(List.of(
               new NewTopic("commands.customer", 1, (short) 1),
+              new NewTopic("commands.customer.results", 1, (short) 1),
               new NewTopic("events.customer", 1, (short) 1)
           ))
           .all().get();
@@ -222,7 +211,7 @@ public class EventifyBenchmark {
   @SneakyThrows
   public static void deleteTopics() {
     Properties properties = new Properties();
-    properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    properties.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
 
     try (AdminClient adminClient = AdminClient.create(properties)) {
       Set<String> topics = adminClient.listTopics().names().get();
