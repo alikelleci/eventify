@@ -89,7 +89,7 @@ public class EventifyBenchmarkTest {
   void test1() {
     int numOfTargetAggregates = 4;
     int numCommandsPerAggregate = 4;
-    generateCommands(NUMBER_OF_AGGREGATES, numOfTargetAggregates , numCommandsPerAggregate);
+    generateCommands(NUMBER_OF_AGGREGATES, numOfTargetAggregates, numCommandsPerAggregate);
   }
 
   private static void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
@@ -99,7 +99,7 @@ public class EventifyBenchmarkTest {
     for (int i = 1; i <= numberOfAggregates; i++) {
       String aggregateId = "cust-" + i;
 
-      generateEventsFor(aggregateId, numberOfEventsPerAggregate, true, event ->
+      generateEventsFor(aggregateId, numberOfEventsPerAggregate, true).forEach(event ->
           producer.send(new ProducerRecord<>(topic, event.getId(), event)));
 
       producer.flush();
@@ -113,7 +113,7 @@ public class EventifyBenchmarkTest {
       String aggregateId = "cust-" + faker.number().numberBetween(1, numOfAggregates);
 
       log.info("Sending {} command(s) for: {}", numCommandsPerAggregate, aggregateId);
-      generateCommandsFor(aggregateId, numCommandsPerAggregate, false, this::sendCommandAndLogExecutionTime);
+      generateCommandsFor(aggregateId, numCommandsPerAggregate, false).forEach(this::sendCommandAndLogExecutionTime);
       log.info("------------------------------------------------------");
     }
     log.info("Number of commands generated: {}", numOfTargetAggregates * numCommandsPerAggregate);

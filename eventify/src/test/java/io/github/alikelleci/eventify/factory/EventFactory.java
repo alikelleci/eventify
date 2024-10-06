@@ -1,18 +1,19 @@
 package io.github.alikelleci.eventify.factory;
 
 import com.github.javafaker.Faker;
-import io.github.alikelleci.eventify.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CreditsAdded;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 
-import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.List;
 
 public class EventFactory {
 
   public static final Faker faker = new Faker();
 
-  public static void generateEventsFor(String aggregateId, int numEvents, boolean includeCreation, Consumer<Event> consumer) {
+  public static List<Event> generateEventsFor(String aggregateId, int numEvents, boolean includeCreation) {
+    List<Event> list = new ArrayList<>();
     for (int i = 1; i <= numEvents; i++) {
       Object payload;
       if (i == 1 && includeCreation) {
@@ -28,9 +29,10 @@ public class EventFactory {
             .amount(1)
             .build();
       }
-      consumer.accept(Event.builder()
+      list.add(Event.builder()
           .payload(payload)
           .build());
     }
+    return list;
   }
 }

@@ -204,7 +204,7 @@ class EventifyTest {
   }
 
   @Nested
-  class PerformanceTests {
+  class BenchmarkTests {
 
     @Test
     void test1() {
@@ -222,7 +222,7 @@ class EventifyTest {
       for (int i = 1; i <= numberOfAggregates; i++) {
         String aggregateId = "cust-" + i;
 
-        generateEventsFor(aggregateId, numberOfEventsPerAggregate, true, event ->
+        generateEventsFor(aggregateId, numberOfEventsPerAggregate, true).forEach(event ->
             eventStore.put(event.getId(), event));
       }
       log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
@@ -234,7 +234,7 @@ class EventifyTest {
         String aggregateId = "cust-" + faker.number().numberBetween(1, numOfAggregates);
 
         log.info("Sending {} command(s) for: {}", numCommandsPerAggregate, aggregateId);
-        generateCommandsFor(aggregateId, numCommandsPerAggregate, false, this::sendCommandAndLogExecutionTime);
+        generateCommandsFor(aggregateId, numCommandsPerAggregate, false).forEach(this::sendCommandAndLogExecutionTime);
         log.info("------------------------------------------------------");
       }
       log.info("Number of commands generated: {}", numOfTargetAggregates * numCommandsPerAggregate);
