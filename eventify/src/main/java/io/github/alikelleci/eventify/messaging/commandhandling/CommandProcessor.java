@@ -97,6 +97,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   protected Aggregate loadAggregate(String aggregateId) {
+    long startTime = System.currentTimeMillis();
+
     AtomicLong sequence = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
 
@@ -137,8 +139,13 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
             .build())
         .orElse(null);
 
-    log.debug("Total events applied: {}", counter.get());
+    long endTime = System.currentTimeMillis();
+    long duration = endTime - startTime;
+    double durationInSec = duration / 1000.0;
+
+    log.debug("Number of events applied: {}", counter.get());
     log.debug("Aggregate state reconstructed: {}", aggregate);
+    log.debug("Aggregate state reconstructed in: {} ms ({} sec)", duration, ((int) durationInSec));
 
     // Save snapshot if needed
     Optional.ofNullable(aggregate)
