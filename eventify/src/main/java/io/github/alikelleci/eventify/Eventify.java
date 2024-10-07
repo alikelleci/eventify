@@ -202,11 +202,6 @@ public class Eventify {
   }
 
   public void start() {
-    if (kafkaStreams != null) {
-      log.info("Eventify already started.");
-      return;
-    }
-
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
       log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
@@ -221,14 +216,8 @@ public class Eventify {
   }
 
   public void stop() {
-    if (kafkaStreams == null) {
-      log.info("Eventify already stopped.");
-      return;
-    }
-
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofMillis(5000));
-    kafkaStreams = null;
   }
 
   private void setUpListeners() {
