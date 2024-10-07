@@ -59,6 +59,7 @@ jobs:
     steps:
       - name: Await manual approval
         uses: trstringer/manual-approval@v1
+        timeout-minutes: 60
         with:
           secret: ${{ github.TOKEN }}
           approvers: alikelleci
