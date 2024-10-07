@@ -55,7 +55,7 @@ jobs:
     needs: build
     steps:
       - name: Await manual approval
-        uses: : trstringer/manual-approval@v1
+        uses: trstringer/manual-approval@v1
         with:
           secret: ${{ github.TOKEN }}
           approvers: alikelleci
@@ -65,7 +65,6 @@ jobs:
           exclude-workflow-initiator-as-approver: false
           additional-approved-words: ''
           additional-denied-words: ''
-
 
   publish:
     name: Publish
