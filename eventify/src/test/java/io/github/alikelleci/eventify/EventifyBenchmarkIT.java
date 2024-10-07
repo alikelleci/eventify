@@ -116,8 +116,8 @@ public class EventifyBenchmarkIT {
 
       generateEventsFor(aggregateId, numberOfEventsPerAggregate, true)
           .forEach(event -> producer.send(new ProducerRecord<>(topic, event.getId(), event)));
-      producer.flush();
     }
+    producer.flush();
     log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
   }
 
