@@ -88,7 +88,21 @@ public class EventifyBenchmarkIT {
   @Test
   void test1() {
     int numOfTargetAggregates = 4;
+    int numCommandsPerAggregate = 2;
+    generateCommands(NUMBER_OF_AGGREGATES, numOfTargetAggregates, numCommandsPerAggregate);
+  }
+
+  @Test
+  void test2() {
+    int numOfTargetAggregates = 8;
     int numCommandsPerAggregate = 4;
+    generateCommands(NUMBER_OF_AGGREGATES, numOfTargetAggregates, numCommandsPerAggregate);
+  }
+
+  @Test
+  void test3() {
+    int numOfTargetAggregates = 16;
+    int numCommandsPerAggregate = 8;
     generateCommands(NUMBER_OF_AGGREGATES, numOfTargetAggregates, numCommandsPerAggregate);
   }
 
@@ -139,7 +153,7 @@ public class EventifyBenchmarkIT {
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
         .stateListener((newState, oldState) -> {
-          log.info("State changed from {} to {}", oldState, newState);
+          log.debug("State changed from {} to {}", oldState, newState);
           if (newState == KafkaStreams.State.RUNNING) {
             isReady.set(true);
           }
