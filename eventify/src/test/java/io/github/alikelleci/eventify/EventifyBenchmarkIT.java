@@ -2,10 +2,12 @@ package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
+import io.github.alikelleci.eventify.factory.SnapshotFactory;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.gateway.CommandGateway;
 import io.github.alikelleci.eventify.messaging.eventhandling.gateway.EventGateway;
+import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.SneakyThrows;
@@ -40,6 +42,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
 import static io.github.alikelleci.eventify.factory.CommandFactory.generateCommandsFor;
 import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
+import static io.github.alikelleci.eventify.factory.SnapshotFactory.generateSnapshotFor;
 
 @Slf4j
 public class EventifyBenchmarkIT {
@@ -54,7 +57,6 @@ public class EventifyBenchmarkIT {
   private static Consumer<String, Message> consumer;
 
   public static final int NUMBER_OF_AGGREGATES = 1000;
-  public static final int NUMBER_OF_EVENTS_PER_AGGREGATE = 1000;
 
   public static AtomicBoolean isReady = new AtomicBoolean(false);
 
@@ -69,7 +71,7 @@ public class EventifyBenchmarkIT {
     consumer = createConsumer();
 
     createTopics();
-    generateEvents(NUMBER_OF_AGGREGATES, NUMBER_OF_EVENTS_PER_AGGREGATE);
+    generateSnapshots(NUMBER_OF_AGGREGATES);
 
     eventify.start();
     while (!isReady.get()) {
@@ -107,18 +109,18 @@ public class EventifyBenchmarkIT {
     generateCommands(NUMBER_OF_AGGREGATES, numOfTargetAggregates, numCommandsPerAggregate);
   }
 
-  private static void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
-    String topic = "benchmark-app-event-store-changelog";
+  private static void generateSnapshots(int numberOfAggregates) {
+    String topic = "benchmark-app-snapshot-store-changelog";
 
-    log.info("Generating events...");
+    log.info("Generating snapshots...");
     for (int i = 1; i <= numberOfAggregates; i++) {
       String aggregateId = "cust-" + i;
 
-      generateEventsFor(aggregateId, numberOfEventsPerAggregate, true)
-          .forEach(event -> producer.send(new ProducerRecord<>(topic, event.getId(), event)));
-      producer.flush();
+      Aggregate snapshot = generateSnapshotFor(aggregateId);
+      producer.send(new ProducerRecord<>(topic, snapshot.getAggregateId(), snapshot));
     }
-    log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
+    producer.flush();
+    log.info("Number of snapshots generated: {}", numberOfAggregates);
   }
 
   private void generateCommands(int numOfAggregates, int numOfTargetAggregates, int numCommandsPerAggregate) {
