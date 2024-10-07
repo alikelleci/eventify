@@ -28,8 +28,8 @@ public class CommandFactory {
       if (i == 1 && includeCreation) {
         payload = CreateCustomer.builder()
             .id(aggregateId)
-            .firstName("John " + i)
-            .lastName("Doe " + i)
+            .firstName("John")
+            .lastName("Doe")
             .credits(100)
             .build();
       } else {

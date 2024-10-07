@@ -19,8 +19,8 @@ public class EventFactory {
       if (i == 1 && includeCreation) {
         payload = CustomerCreated.builder()
             .id(aggregateId)
-            .firstName("John " + i)
-            .lastName("Doe " + i)
+            .firstName("John")
+            .lastName("Doe")
             .credits(100)
             .build();
       } else {
