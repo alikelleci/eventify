@@ -19,6 +19,8 @@ jobs:
         with:
           distribution: 'adopt'
           java-version: '17'
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Cache Maven dependencies
         uses: actions/cache@v3
