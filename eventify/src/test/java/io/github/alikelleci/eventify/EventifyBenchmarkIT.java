@@ -80,6 +80,7 @@ public class EventifyBenchmarkIT {
   @AfterAll
   static void tearDown() {
     eventify.stop();
+    eventify.getKafkaStreams().cleanUp();
     producer.close();
     consumer.close();
     kafka.close();
