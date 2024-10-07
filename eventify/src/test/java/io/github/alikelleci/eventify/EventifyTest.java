@@ -15,10 +15,8 @@ import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
-import org.apache.commons.lang3.time.StopWatch;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -33,14 +31,10 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildIssueCreditsCommand;
-import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
-import static io.github.alikelleci.eventify.factory.CommandFactory.generateCommandsFor;
-import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
 import static io.github.alikelleci.eventify.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.util.Matchers.assertSnapshot;
@@ -201,54 +195,6 @@ class EventifyTest {
       assertThat(((Customer) snapshot.getPayload()).getCredits(), is(104));
       assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
     }
-  }
-
-  @Nested
-  class BenchmarkTests {
-
-    @Test
-    void test1() {
-      int numOfAggregates = 1000;
-      int numEventsPerAggregate = 1000;
-      generateEvents(numOfAggregates, numEventsPerAggregate);
-
-      int numOfTargetAggregates = 4;
-      int numCommandsPerAggregate = 4;
-      generateCommands(numOfAggregates, numOfTargetAggregates, numCommandsPerAggregate);
-    }
-
-    private void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
-      log.info("Generating events...");
-      for (int i = 1; i <= numberOfAggregates; i++) {
-        String aggregateId = "cust-" + i;
-
-        generateEventsFor(aggregateId, numberOfEventsPerAggregate, true)
-            .forEach(event -> eventStore.put(event.getId(), event));
-      }
-      log.info("Number of events generated: {}", numberOfAggregates * numberOfEventsPerAggregate);
-    }
-
-    private void generateCommands(int numOfAggregates, int numOfTargetAggregates, int numCommandsPerAggregate) {
-      log.info("Generating commands...");
-      for (int i = 1; i <= numOfTargetAggregates; i++) {
-        String aggregateId = "cust-" + faker.number().numberBetween(1, numOfAggregates);
-
-        log.info("Sending {} command(s) for: {}", numCommandsPerAggregate, aggregateId);
-        generateCommandsFor(aggregateId, numCommandsPerAggregate, false)
-            .forEach(this::sendCommandAndLogExecutionTime);
-        log.info("------------------------------------------------------");
-      }
-      log.info("Number of commands generated: {}", numOfTargetAggregates * numCommandsPerAggregate);
-    }
-
-    @SneakyThrows
-    private void sendCommandAndLogExecutionTime(Command command) {
-      StopWatch stopWatch = StopWatch.createStarted();
-      commandsTopic.pipeInput(command.getAggregateId(), command);
-      stopWatch.stop();
-      log.info("Command {} executed in: {} ms ({} sec)", command.getType(), stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
-    }
-
   }
 
   private List<Event> readEventsFromStore() {
