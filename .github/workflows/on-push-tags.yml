@@ -63,7 +63,7 @@ jobs:
           secret: ${{ github.TOKEN }}
           approvers: alikelleci
           minimum-approvals: 1
-          issue-title: "Publishing version ${{ GITHUB_REF_NAME }} "
+          issue-title: "Publishing a new version"
           issue-body: "Please approve or deny."
           exclude-workflow-initiator-as-approver: false
           additional-approved-words: ''
