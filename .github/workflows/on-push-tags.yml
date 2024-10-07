@@ -41,13 +41,7 @@ jobs:
       - name: Build with Maven
         run: |
           mvn versions:set -DnewVersion=${GITHUB_REF_NAME}
-          mvn --batch-mode package
-
-      - name: Run tests
-        run: mvn --batch-mode test
-
-      - name: Print version
-        run: echo "${GITHUB_REF_NAME}"
+          mvn --batch-mode install
 
   approval:
     name: Approval
