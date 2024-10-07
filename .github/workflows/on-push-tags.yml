@@ -55,7 +55,17 @@ jobs:
     needs: build
     steps:
       - name: Await manual approval
-        uses: actions/wait-for-approval@v1
+        uses: : trstringer/manual-approval@v1
+        with:
+          secret: ${{ github.TOKEN }}
+          approvers: alikelleci
+          minimum-approvals: 1
+          issue-title: "Deploying ${GITHUB_REF_NAME} to prod from staging"
+          issue-body: "Please approve or deny the deployment of version ${GITHUB_REF_NAME}."
+          exclude-workflow-initiator-as-approver: false
+          additional-approved-words: ''
+          additional-denied-words: ''
+
 
   publish:
     name: Publish
