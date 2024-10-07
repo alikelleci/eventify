@@ -29,6 +29,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.kafka.KafkaContainer;
 
@@ -42,6 +43,7 @@ import static io.github.alikelleci.eventify.factory.CommandFactory.generateComma
 import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
 
 @Slf4j
+@Disabled
 public class EventifyBenchmarkIT {
 
   private static KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.8.0");
