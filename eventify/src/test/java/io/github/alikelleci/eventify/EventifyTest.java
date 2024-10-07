@@ -17,7 +17,6 @@ import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
-import org.apache.commons.lang3.time.StopWatch;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -27,13 +26,11 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.factory.CommandFactory.buildCreateCustomerCommand;
@@ -60,8 +57,8 @@ class EventifyTest {
   @BeforeEach
   void setup() {
     Properties properties = new Properties();
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "example-app");
-    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1234");
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "test-app");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
@@ -200,48 +197,6 @@ class EventifyTest {
       assertThat(((Customer) snapshot.getPayload()).getCredits(), is(102));
       assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
     }
-  }
-
-  @Disabled
-  @Nested
-  class PerformanceTests {
-
-    @Test
-    void test1() {
-      int numberOfAggregates = 1_000_000;
-
-      for (int i = 1; i <= numberOfAggregates; i++) {
-        generateSnapshot("cust-" + i);
-      }
-      log.info("Total snapshots saved in store: {}", numberOfAggregates);
-
-      sendCommandsAndLogExecutionTime("cust-1", 4);
-
-      log.info("Number of snapshots (approx.) in store: {}", snapshotStore.approximateNumEntries());
-    }
-
-    private void generateSnapshot(String aggregateId) {
-      snapshotStore.put(aggregateId, Aggregate.builder()
-          .payload(Customer.builder()
-              .id(aggregateId)
-              .firstName("John")
-              .lastName("Doe")
-              .credits(100)
-              .build())
-          .build());
-    }
-
-    private void sendCommandsAndLogExecutionTime(String aggregateId, int totalCommands) {
-      log.info("Sending {} command(s) for: {}", totalCommands, aggregateId);
-      for (int i = 1; i <= totalCommands; i++) {
-        StopWatch stopWatch = StopWatch.createStarted();
-        Command command = buildAddCreditsCommand(aggregateId, 1);
-        commandsTopic.pipeInput(command.getAggregateId(), command);
-        stopWatch.stop();
-        log.info("Command {} execution time: {} milliseconds ({} seconds)", i, stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
-      }
-    }
-
   }
 
   private List<Event> readEventsFromStore() {
