@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.commandhandling.Reply.ReplyMode;
 import io.github.alikelleci.eventify.util.JacksonUtils;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
@@ -51,6 +52,7 @@ public interface CommandGateway {
     private Properties producerConfig;
     private Properties consumerConfig;
     private String replyTopic;
+    private ReplyMode replyMode;
     private ObjectMapper objectMapper;
 
     public CommandGatewayBuilder producerConfig(Properties producerConfig) {
@@ -81,6 +83,11 @@ public interface CommandGateway {
       return this;
     }
 
+    public CommandGatewayBuilder replyMode(ReplyMode replyMode) {
+      this.replyMode = replyMode;
+      return this;
+    }
+
     public CommandGatewayBuilder objectMapper(ObjectMapper objectMapper) {
       this.objectMapper = objectMapper;
       return this;
@@ -107,6 +114,7 @@ public interface CommandGateway {
           this.producerConfig,
           this.consumerConfig,
           this.replyTopic,
+          this.replyMode,
           this.objectMapper);
     }
   }

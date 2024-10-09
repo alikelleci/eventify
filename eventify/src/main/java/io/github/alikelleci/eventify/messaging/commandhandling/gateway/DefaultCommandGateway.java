@@ -5,6 +5,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.messaging.commandhandling.Reply;
+import io.github.alikelleci.eventify.messaging.commandhandling.Reply.ReplyMode;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -22,12 +24,12 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_MODE;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 
 @Slf4j
-public class DefaultCommandGateway extends AbstractCommandResultListener implements CommandGateway {
+public class DefaultCommandGateway extends AbstractReplyListener implements CommandGateway {
 
   //private final Map<String, CompletableFuture<Object>> futures = new ConcurrentHashMap<>();
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
@@ -35,24 +37,34 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
       .build();
 
   private final Producer<String, Command> producer;
+  private final ReplyMode replyMode;
 
-  protected DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
+  protected DefaultCommandGateway(Properties producerConfig,
+                                  Properties consumerConfig,
+                                  String replyTopic,
+                                  ReplyMode replyMode,
+                                  ObjectMapper objectMapper) {
     super(consumerConfig, replyTopic, objectMapper);
 
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
         new JsonSerializer<>(Command.class, objectMapper));
+
+    this.replyMode = replyMode;
   }
 
   @Override
   public <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp) {
+    String correlationId = UUID.randomUUID().toString();
+
     Command command = Command.builder()
         .timestamp(timestamp)
         .payload(payload)
         .metadata(Metadata.builder()
             .addAll(metadata)
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
+            .add(CORRELATION_ID, correlationId)
             .add(REPLY_TO, getReplyTopic())
+            .add(REPLY_MODE, replyMode.toString())
             .build())
         .build();
 
@@ -62,20 +74,20 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     producer.send(producerRecord);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
-    cache.put(command.getId(), future);
+    cache.put(correlationId, future);
 
     return (CompletableFuture<R>) future;
   }
 
   @Override
-  protected void onMessage(ConsumerRecords<String, Command> consumerRecords) {
+  protected void onMessage(ConsumerRecords<String, Reply> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
-      String messageId = consumerRecord.value().getId();
-      if (StringUtils.isBlank(messageId)) {
+      String correlationId = consumerRecord.value().getCorrelationId();
+      if (StringUtils.isBlank(correlationId)) {
         return;
       }
-      // CompletableFuture<Object> future = futures.remove(messageId);
-      CompletableFuture<Object> future = cache.getIfPresent(messageId);
+      // CompletableFuture<Object> future = futures.remove(correlationId);
+      CompletableFuture<Object> future = cache.getIfPresent(correlationId);
       if (future != null) {
         Exception exception = checkForErrors(consumerRecord);
         if (exception == null) {
@@ -83,19 +95,16 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
         } else {
           future.completeExceptionally(exception);
         }
-        cache.invalidate(messageId);
+        cache.invalidate(correlationId);
       }
     });
   }
 
-  private Exception checkForErrors(ConsumerRecord<String, Command> consumerRecord) {
-    Command command = consumerRecord.value();
-    Metadata metadata = command.getMetadata();
-
-    if (metadata.get(Metadata.RESULT).equals("failure")) {
-      return new CommandExecutionException(metadata.get(CAUSE));
+  private Exception checkForErrors(ConsumerRecord<String, Reply> consumerRecord) {
+    Reply reply = consumerRecord.value();
+    if (!reply.isSuccess()) {
+      return new CommandExecutionException(reply.getMessage());
     }
-
     return null;
   }
 

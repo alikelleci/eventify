@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.messaging.commandhandling.Reply;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -17,12 +17,12 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class AbstractCommandResultListener {
+public abstract class AbstractReplyListener {
 
-  private final Consumer<String, Command> consumer;
+  private final Consumer<String, Reply> consumer;
   private final String replyTopic;
 
-  protected AbstractCommandResultListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
+  protected AbstractReplyListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 //    consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
@@ -32,7 +32,7 @@ public abstract class AbstractCommandResultListener {
 
     this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
-        new JsonDeserializer<>(Command.class, objectMapper));
+        new JsonDeserializer<>(Reply.class, objectMapper));
 
     this.replyTopic = replyTopic;
 
@@ -47,7 +47,7 @@ public abstract class AbstractCommandResultListener {
 //      consumer.subscribe(Collections.singletonList(this.replyTopic));
       try {
         while (!closed.get()) {
-          ConsumerRecords<String, Command> consumerRecords = consumer.poll(Duration.ofMillis(1000));
+          ConsumerRecords<String, Reply> consumerRecords = consumer.poll(Duration.ofMillis(1000));
           onMessage(consumerRecords);
         }
       } catch (WakeupException e) {
@@ -65,7 +65,7 @@ public abstract class AbstractCommandResultListener {
     thread.start();
   }
 
-  protected abstract void onMessage(ConsumerRecords<String, Command> consumerRecords);
+  protected abstract void onMessage(ConsumerRecords<String, Reply> consumerRecords);
 
   protected String getReplyTopic() {
     return replyTopic;

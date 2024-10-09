@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandProcessor;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
+import io.github.alikelleci.eventify.messaging.commandhandling.Reply;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventProcessor;
@@ -55,8 +56,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
-
 @Slf4j
 @Getter
 public class Eventify {
@@ -102,6 +101,7 @@ public class Eventify {
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
     Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
     Serde<Aggregate> snapshotSerde = new JsonSerde<>(Aggregate.class, objectMapper);
+    Serde<Reply> replySerde = new JsonSerde<>(Reply.class, objectMapper);
 
     /*
      * -------------------------------------------------------------
@@ -143,12 +143,12 @@ public class Eventify {
           .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
               Produced.with(Serdes.String(), commandSerde));
 
-      // Results --> Push to reply topic
+      // Replies --> Push
       commandResults
-          .mapValues(CommandResult::getCommand)
-          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
-          .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
-              Produced.with(Serdes.String(), commandSerde)
+          .mapValues((key, result) -> Reply.builder().commandResult(result).build())
+          .filter((key, reply) -> StringUtils.isNotBlank(reply.getTo()))
+          .to((key, reply, recordContext) -> reply.getTo(),
+              Produced.with(Serdes.String(), replySerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 
       // Events --> Push
