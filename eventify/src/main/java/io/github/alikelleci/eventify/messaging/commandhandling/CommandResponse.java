@@ -5,16 +5,18 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Fai
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Value;
 import org.apache.commons.lang3.EnumUtils;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_MODE;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 
-@Data
+@Getter
 public class CommandResponse {
   String correlationId;
-  String to;
+  String replyTopic;
   String message;
   boolean success;
   Object payload;
@@ -24,7 +26,7 @@ public class CommandResponse {
     Metadata metadata = commandResult.getCommand().getMetadata();
 
     this.correlationId = metadata.get(CORRELATION_ID);
-    this.to = metadata.get(REPLY_TO);
+    this.replyTopic = metadata.get(REPLY_TO);
 
     if (commandResult instanceof Success result) {
       this.message = "Accepted";

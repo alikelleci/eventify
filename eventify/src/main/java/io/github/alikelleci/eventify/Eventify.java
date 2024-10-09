@@ -101,7 +101,7 @@ public class Eventify {
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
     Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
     Serde<Aggregate> snapshotSerde = new JsonSerde<>(Aggregate.class, objectMapper);
-    Serde<CommandResponse> replySerde = new JsonSerde<>(CommandResponse.class, objectMapper);
+    Serde<CommandResponse> responseSerde = new JsonSerde<>(CommandResponse.class, objectMapper);
 
     /*
      * -------------------------------------------------------------
@@ -143,12 +143,12 @@ public class Eventify {
           .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
               Produced.with(Serdes.String(), commandSerde));
 
-      // Replies --> Push
+      // Response --> Push
       commandResults
           .mapValues((key, result) -> CommandResponse.builder().commandResult(result).build())
-          .filter((key, commandResponse) -> StringUtils.isNotBlank(commandResponse.getTo()))
-          .to((key, commandResponse, recordContext) -> commandResponse.getTo(),
-              Produced.with(Serdes.String(), replySerde)
+          .filter((key, response) -> StringUtils.isNotBlank(response.getReplyTopic()))
+          .to((key, response, recordContext) -> response.getReplyTopic(),
+              Produced.with(Serdes.String(), responseSerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 
       // Events --> Push
