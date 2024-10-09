@@ -110,7 +110,7 @@ public class EventifyBenchmarkIT {
   }
 
   private static void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
-    String topic = "benchmark-app-event-store-changelog";
+    String topic = "eventify-app-event-store-changelog";
 
     log.info("Generating events...");
     for (int i = 1; i <= numberOfAggregates; i++) {
@@ -146,7 +146,7 @@ public class EventifyBenchmarkIT {
 
   public static Eventify createEventify() {
     Properties streamsConfig = new Properties();
-    streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, "benchmark-app");
+    streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, "eventify-app");
     streamsConfig.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     streamsConfig.put(StreamsConfig.STATE_DIR_CONFIG, "C:\\tmp\\kafka-streams");
     streamsConfig.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10_000);
@@ -200,7 +200,7 @@ public class EventifyBenchmarkIT {
 
   public static Consumer<String, Message> createConsumer() {
     Properties properties = new Properties();
-    properties.put(ConsumerConfig.GROUP_ID_CONFIG, "benchmark-consumer");
+    properties.put(ConsumerConfig.GROUP_ID_CONFIG, "eventify-consumer");
     properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     properties.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
