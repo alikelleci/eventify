@@ -17,12 +17,12 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class AbstractReplyListener {
+public abstract class AbstractCommandResponseListener {
 
   private final Consumer<String, CommandResponse> consumer;
   private final String replyTopic;
 
-  protected AbstractReplyListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
+  protected AbstractCommandResponseListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 //    consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);

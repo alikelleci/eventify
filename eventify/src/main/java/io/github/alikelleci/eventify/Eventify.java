@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandProcessor;
@@ -55,6 +56,8 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 
 @Slf4j
 @Getter
@@ -146,8 +149,8 @@ public class Eventify {
       // Response --> Push
       commandResults
           .mapValues((key, result) -> CommandResponse.builder().commandResult(result).build())
-          .filter((key, response) -> StringUtils.isNotBlank(response.getReplyTopic()))
-          .to((key, response, recordContext) -> response.getReplyTopic(),
+          .filter((key, response) -> StringUtils.isNotBlank(response.getMetadata().get(REPLY_TO)))
+          .to((key, response, recordContext) -> response.getMetadata().get(REPLY_TO),
               Produced.with(Serdes.String(), responseSerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 

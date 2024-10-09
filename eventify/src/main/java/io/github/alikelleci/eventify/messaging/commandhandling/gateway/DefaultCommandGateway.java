@@ -24,12 +24,13 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_MODE;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 
 @Slf4j
-public class DefaultCommandGateway extends AbstractReplyListener implements CommandGateway {
+public class DefaultCommandGateway extends AbstractCommandResponseListener implements CommandGateway {
 
   //private final Map<String, CompletableFuture<Object>> futures = new ConcurrentHashMap<>();
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
@@ -82,7 +83,7 @@ public class DefaultCommandGateway extends AbstractReplyListener implements Comm
   @Override
   protected void onMessage(ConsumerRecords<String, CommandResponse> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
-      String correlationId = consumerRecord.value().getCorrelationId();
+      String correlationId = consumerRecord.value().getMetadata().get(CORRELATION_ID);
       if (StringUtils.isBlank(correlationId)) {
         return;
       }
@@ -101,10 +102,13 @@ public class DefaultCommandGateway extends AbstractReplyListener implements Comm
   }
 
   private Exception checkForErrors(ConsumerRecord<String, CommandResponse> consumerRecord) {
-    CommandResponse commandResponse = consumerRecord.value();
-    if (!commandResponse.isSuccess()) {
-      return new CommandExecutionException(commandResponse.getMessage());
+    CommandResponse response = consumerRecord.value();
+    Metadata metadata = response.getMetadata();
+
+    if (metadata.get(Metadata.RESULT).equals("failure")) {
+      return new CommandExecutionException(metadata.get(CAUSE));
     }
+
     return null;
   }
 
