@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.messaging.commandhandling.Reply;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResponse;
 import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public abstract class AbstractReplyListener {
 
-  private final Consumer<String, Reply> consumer;
+  private final Consumer<String, CommandResponse> consumer;
   private final String replyTopic;
 
   protected AbstractReplyListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
@@ -32,7 +32,7 @@ public abstract class AbstractReplyListener {
 
     this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
-        new JsonDeserializer<>(Reply.class, objectMapper));
+        new JsonDeserializer<>(CommandResponse.class, objectMapper));
 
     this.replyTopic = replyTopic;
 
@@ -47,7 +47,7 @@ public abstract class AbstractReplyListener {
 //      consumer.subscribe(Collections.singletonList(this.replyTopic));
       try {
         while (!closed.get()) {
-          ConsumerRecords<String, Reply> consumerRecords = consumer.poll(Duration.ofMillis(1000));
+          ConsumerRecords<String, CommandResponse> consumerRecords = consumer.poll(Duration.ofMillis(1000));
           onMessage(consumerRecords);
         }
       } catch (WakeupException e) {
@@ -65,7 +65,7 @@ public abstract class AbstractReplyListener {
     thread.start();
   }
 
-  protected abstract void onMessage(ConsumerRecords<String, Reply> consumerRecords);
+  protected abstract void onMessage(ConsumerRecords<String, CommandResponse> consumerRecords);
 
   protected String getReplyTopic() {
     return replyTopic;

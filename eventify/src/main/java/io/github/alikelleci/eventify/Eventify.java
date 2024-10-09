@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandProcessor;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
-import io.github.alikelleci.eventify.messaging.commandhandling.Reply;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResponse;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventProcessor;
@@ -101,7 +101,7 @@ public class Eventify {
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
     Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
     Serde<Aggregate> snapshotSerde = new JsonSerde<>(Aggregate.class, objectMapper);
-    Serde<Reply> replySerde = new JsonSerde<>(Reply.class, objectMapper);
+    Serde<CommandResponse> replySerde = new JsonSerde<>(CommandResponse.class, objectMapper);
 
     /*
      * -------------------------------------------------------------
@@ -145,9 +145,9 @@ public class Eventify {
 
       // Replies --> Push
       commandResults
-          .mapValues((key, result) -> Reply.builder().commandResult(result).build())
-          .filter((key, reply) -> StringUtils.isNotBlank(reply.getTo()))
-          .to((key, reply, recordContext) -> reply.getTo(),
+          .mapValues((key, result) -> CommandResponse.builder().commandResult(result).build())
+          .filter((key, commandResponse) -> StringUtils.isNotBlank(commandResponse.getTo()))
+          .to((key, commandResponse, recordContext) -> commandResponse.getTo(),
               Produced.with(Serdes.String(), replySerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> 0));
 

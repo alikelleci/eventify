@@ -5,8 +5,8 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.messaging.commandhandling.Reply;
-import io.github.alikelleci.eventify.messaging.commandhandling.Reply.ReplyMode;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResponse;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResponse.ReplyMode;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -80,7 +80,7 @@ public class DefaultCommandGateway extends AbstractReplyListener implements Comm
   }
 
   @Override
-  protected void onMessage(ConsumerRecords<String, Reply> consumerRecords) {
+  protected void onMessage(ConsumerRecords<String, CommandResponse> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
       String correlationId = consumerRecord.value().getCorrelationId();
       if (StringUtils.isBlank(correlationId)) {
@@ -100,10 +100,10 @@ public class DefaultCommandGateway extends AbstractReplyListener implements Comm
     });
   }
 
-  private Exception checkForErrors(ConsumerRecord<String, Reply> consumerRecord) {
-    Reply reply = consumerRecord.value();
-    if (!reply.isSuccess()) {
-      return new CommandExecutionException(reply.getMessage());
+  private Exception checkForErrors(ConsumerRecord<String, CommandResponse> consumerRecord) {
+    CommandResponse commandResponse = consumerRecord.value();
+    if (!commandResponse.isSuccess()) {
+      return new CommandExecutionException(commandResponse.getMessage());
     }
     return null;
   }

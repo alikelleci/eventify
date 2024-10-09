@@ -12,7 +12,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_MODE;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 
 @Data
-public class Reply {
+public class CommandResponse {
   String correlationId;
   String to;
   String message;
@@ -20,7 +20,7 @@ public class Reply {
   Object payload;
 
   @Builder
-  protected Reply(CommandResult commandResult) {
+  protected CommandResponse(CommandResult commandResult) {
     Metadata metadata = commandResult.getCommand().getMetadata();
 
     this.correlationId = metadata.get(CORRELATION_ID);

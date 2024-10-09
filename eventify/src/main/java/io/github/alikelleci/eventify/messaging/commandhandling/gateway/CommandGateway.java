@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import io.github.alikelleci.eventify.messaging.commandhandling.Reply.ReplyMode;
+import io.github.alikelleci.eventify.messaging.commandhandling.CommandResponse.ReplyMode;
 import io.github.alikelleci.eventify.util.JacksonUtils;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
