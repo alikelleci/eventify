@@ -58,7 +58,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
-    log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
+    log.trace("Sending command: {} ({})", command.getType(), command.getAggregateId());
     producer.send(producerRecord);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
