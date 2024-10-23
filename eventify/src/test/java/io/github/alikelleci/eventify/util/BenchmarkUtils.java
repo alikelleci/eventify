@@ -15,8 +15,8 @@ public class BenchmarkUtils {
     Instant endTime = Instant.now();
 
     Duration duration = Duration.between(startTime, endTime);
-
     log.info("Execution time: {} ms ({} sec)", duration.toMillis(), duration.toSeconds());
+
     return result;
   }
 
@@ -26,7 +26,6 @@ public class BenchmarkUtils {
     Instant endTime = Instant.now();
 
     Duration duration = Duration.between(startTime, endTime);
-
     log.info("Execution time: {} ms ({} sec)", duration.toMillis(), duration.toSeconds());
   }
 
