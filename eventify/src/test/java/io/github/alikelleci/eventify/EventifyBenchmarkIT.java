@@ -10,7 +10,6 @@ import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.time.StopWatch;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -33,9 +32,10 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.kafka.KafkaContainer;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
@@ -138,10 +138,12 @@ public class EventifyBenchmarkIT {
 
   @SneakyThrows
   private void sendCommandAndLogExecutionTime(Command command) {
-    StopWatch stopWatch = StopWatch.createStarted();
+    Instant startTime = Instant.now();
     commandGateway.send(command.getPayload()).get();
-    stopWatch.stop();
-    log.info("Command {} executed in: {} ms ({} sec)", command.getType(), stopWatch.getTime(TimeUnit.MILLISECONDS), stopWatch.getTime(TimeUnit.SECONDS));
+    Instant endTime = Instant.now();
+
+    Duration duration = Duration.between(startTime, endTime);
+    log.info("Command {} executed in: {} ms ({} sec)", command.getType(), duration.toMillis(), duration.toSeconds());
   }
 
   public static Eventify createEventify() {
