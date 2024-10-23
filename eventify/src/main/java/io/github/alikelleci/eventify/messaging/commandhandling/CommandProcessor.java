@@ -16,6 +16,8 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -97,7 +99,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   protected Aggregate loadAggregate(String aggregateId) {
-    long startTime = System.currentTimeMillis();
+    Instant startTime = Instant.now();
 
     AtomicLong sequence = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
@@ -139,13 +141,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
             .build())
         .orElse(null);
 
-    long endTime = System.currentTimeMillis();
-    long duration = endTime - startTime;
-    double durationInSec = duration / 1000.0;
+    Instant endTime = Instant.now();
+    Duration duration = Duration.between(startTime, endTime);
 
     log.debug("Number of events applied: {}", counter.get());
     log.debug("Aggregate state reconstructed: {}", aggregate);
-    log.debug("Aggregate state reconstructed in: {} ms ({} sec)", duration, ((int) durationInSec));
+    log.debug("Aggregate state reconstructed in: {} ms ({} sec)", duration.toMillis(), duration.toSeconds());
 
     // Save snapshot if needed
     Optional.ofNullable(aggregate)
