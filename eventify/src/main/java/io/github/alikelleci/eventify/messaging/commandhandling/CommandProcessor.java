@@ -192,7 +192,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
         counter.incrementAndGet();
       }
     }
-    log.debug("Total events deleted: {}", counter.get());
+    log.debug("Number of events deleted: {}", counter.get());
   }
 
   private void logFailure(Exception e) {
