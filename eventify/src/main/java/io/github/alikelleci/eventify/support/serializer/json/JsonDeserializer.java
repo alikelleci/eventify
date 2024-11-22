@@ -1,11 +1,11 @@
-package io.github.alikelleci.eventify.support.serializer;
+package io.github.alikelleci.eventify.support.serializer.json;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.messaging.upcasting.annotations.Upcast;
-import io.github.alikelleci.eventify.util.JacksonUtils;
+import io.github.alikelleci.eventify.support.serializer.json.util.JacksonUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;

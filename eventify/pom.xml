@@ -80,6 +80,14 @@
             <version>${jackson.version}</version>
         </dependency>
 
+        <!--Avro-->
+        <dependency>
+            <groupId>org.apache.avro</groupId>
+            <artifactId>avro</artifactId>
+            <version>1.12.0</version>
+        </dependency>
+
+
         <!--Third-party -->
         <dependency>
             <groupId>org.projectlombok</groupId>

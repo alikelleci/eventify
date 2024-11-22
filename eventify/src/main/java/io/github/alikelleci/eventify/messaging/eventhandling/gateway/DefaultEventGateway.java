@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
+import io.github.alikelleci.eventify.support.serializer.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
