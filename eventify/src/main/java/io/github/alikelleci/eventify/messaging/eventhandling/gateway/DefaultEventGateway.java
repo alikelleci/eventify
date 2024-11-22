@@ -24,7 +24,7 @@ public class DefaultEventGateway implements EventGateway {
   protected DefaultEventGateway(Properties producerConfig, ObjectMapper objectMapper) {
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
-        new JsonSerializer<>(Event.class, objectMapper));
+        new JsonSerializer<>(objectMapper));
   }
 
   @Override

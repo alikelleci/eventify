@@ -41,7 +41,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
-        new JsonSerializer<>(Command.class, objectMapper));
+        new JsonSerializer<>(objectMapper));
   }
 
   @Override

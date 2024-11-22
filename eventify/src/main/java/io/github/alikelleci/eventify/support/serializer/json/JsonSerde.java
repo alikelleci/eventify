@@ -24,7 +24,7 @@ public class JsonSerde<T> implements Serde<T> {
   }
 
   public JsonSerde(Class<T> targetType, ObjectMapper objectMapper, MultiValuedMap<String, Upcaster> upcasters) {
-    this.jsonSerializer = new JsonSerializer<>(targetType, objectMapper);
+    this.jsonSerializer = new JsonSerializer<>(objectMapper);
     this.jsonDeserializer = new JsonDeserializer<>(targetType, objectMapper, upcasters);
   }
 
