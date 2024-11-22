@@ -6,7 +6,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
-import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
+import io.github.alikelleci.eventify.support.serializer.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -41,7 +41,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
-        new JsonSerializer<>(Command.class, objectMapper));
+        new JsonSerializer<>(objectMapper));
   }
 
   @Override

@@ -1,8 +1,8 @@
-package io.github.alikelleci.eventify.support.serializer;
+package io.github.alikelleci.eventify.support.serializer.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.util.JacksonUtils;
+import io.github.alikelleci.eventify.support.serializer.json.util.JacksonUtils;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -24,7 +24,7 @@ public class JsonSerde<T> implements Serde<T> {
   }
 
   public JsonSerde(Class<T> targetType, ObjectMapper objectMapper, MultiValuedMap<String, Upcaster> upcasters) {
-    this.jsonSerializer = new JsonSerializer<>(targetType, objectMapper);
+    this.jsonSerializer = new JsonSerializer<>(objectMapper);
     this.jsonDeserializer = new JsonDeserializer<>(targetType, objectMapper, upcasters);
   }
 

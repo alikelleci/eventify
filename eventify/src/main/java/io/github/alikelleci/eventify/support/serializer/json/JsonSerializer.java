@@ -1,7 +1,7 @@
-package io.github.alikelleci.eventify.support.serializer;
+package io.github.alikelleci.eventify.support.serializer.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.util.JacksonUtils;
+import io.github.alikelleci.eventify.support.serializer.json.util.JacksonUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Serializer;
@@ -10,19 +10,13 @@ import java.util.Map;
 
 public class JsonSerializer<T> implements Serializer<T> {
 
-  private final Class<T> targetType;
   private final ObjectMapper objectMapper;
 
   public JsonSerializer() {
-    this(null);
+    this(JacksonUtils.enhancedObjectMapper());
   }
 
-  public JsonSerializer(Class<T> targetType) {
-    this(targetType, JacksonUtils.enhancedObjectMapper());
-  }
-
-  public JsonSerializer(Class<T> targetType, ObjectMapper objectMapper) {
-    this.targetType = targetType;
+  public JsonSerializer(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
   }
 

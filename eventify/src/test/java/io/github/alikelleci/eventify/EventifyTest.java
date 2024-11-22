@@ -13,8 +13,8 @@ import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandl
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
-import io.github.alikelleci.eventify.support.serializer.JsonDeserializer;
-import io.github.alikelleci.eventify.support.serializer.JsonSerializer;
+import io.github.alikelleci.eventify.support.serializer.json.JsonDeserializer;
+import io.github.alikelleci.eventify.support.serializer.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -72,7 +72,7 @@ class EventifyTest {
     testDriver = new TopologyTestDriver(eventify.topology(), eventify.getStreamsConfig());
 
     commandsTopic = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
-        new StringSerializer(), new JsonSerializer<>(Command.class));
+        new StringSerializer(), new JsonSerializer<>());
 
     commandResultsTopic = testDriver.createOutputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value().concat(".results"),
         new StringDeserializer(), new JsonDeserializer<>(Command.class));
