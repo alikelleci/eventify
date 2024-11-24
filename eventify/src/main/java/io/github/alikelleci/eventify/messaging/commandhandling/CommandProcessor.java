@@ -151,8 +151,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     // Save snapshot if needed
     Optional.ofNullable(aggregate)
         .filter(aggr -> counter.get() > 0)
-        .filter(aggr -> aggr.getSnapshotTreshold() > 0)
-        .filter(aggr -> aggr.getVersion() % aggr.getSnapshotTreshold() == 0)
+        .filter(aggr -> aggr.getSnapshotThreshold() > 0)
+        .filter(aggr -> aggr.getVersion() % aggr.getSnapshotThreshold() == 0)
         .ifPresent(aggr -> {
           log.debug("Creating snapshot: {}", aggr);
           saveSnapshot(aggr);

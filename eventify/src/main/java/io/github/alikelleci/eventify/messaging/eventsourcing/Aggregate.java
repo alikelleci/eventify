@@ -56,7 +56,7 @@ public class Aggregate extends Message {
   }
 
   @Transient
-  public int getSnapshotTreshold() {
+  public int getSnapshotThreshold() {
     return Optional.ofNullable(getPayload())
         .map(Object::getClass)
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshotting.class))
