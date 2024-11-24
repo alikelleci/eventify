@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface EnableSnapshots {
+public @interface EnableSnapshotting {
   int threshold() default 500;
   boolean deleteEvents() default false;
 }

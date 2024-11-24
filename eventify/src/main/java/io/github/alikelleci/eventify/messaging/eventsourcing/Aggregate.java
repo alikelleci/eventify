@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.common.annotations.EnableSnapshots;
+import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
@@ -59,8 +59,8 @@ public class Aggregate extends Message {
   public int getSnapshotTreshold() {
     return Optional.ofNullable(getPayload())
         .map(Object::getClass)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshots.class))
-        .map(EnableSnapshots::threshold)
+        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshotting.class))
+        .map(EnableSnapshotting::threshold)
         .filter(threshold -> threshold > 0)
         .orElse(0);
   }
@@ -69,8 +69,8 @@ public class Aggregate extends Message {
   public boolean deleteEvents() {
     return Optional.ofNullable(getPayload())
         .map(Object::getClass)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshots.class))
-        .map(EnableSnapshots::deleteEvents)
+        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshotting.class))
+        .map(EnableSnapshotting::deleteEvents)
         .orElse(false);
   }
 }
