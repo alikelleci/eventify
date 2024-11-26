@@ -4,6 +4,8 @@ import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
 import org.apache.avro.specific.SpecificRecordBase;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Serializer;
 
 import java.io.ByteArrayOutputStream;
@@ -29,7 +31,7 @@ public class AvroSerializer<T extends SpecificRecordBase> implements Serializer<
       encoder.flush();
       return outputStream.toByteArray();
     } catch (Exception e) {
-      throw new RuntimeException("Failed to serialize Avro data for topic: " + topic, e);
+      throw new SerializationException("Failed to serialize Avro data for topic: " + topic, ExceptionUtils.getRootCause(e));
     }
   }
 
