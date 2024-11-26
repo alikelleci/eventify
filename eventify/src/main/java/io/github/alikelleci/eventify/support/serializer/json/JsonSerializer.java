@@ -34,7 +34,7 @@ public class JsonSerializer<T> implements Serializer<T> {
       return objectMapper.writeValueAsBytes(object);
 
     } catch (Exception e) {
-      throw new SerializationException("Error serializing JSON", ExceptionUtils.getRootCause(e));
+      throw new SerializationException("Failed to serialize JSON data for topic: " + topic, ExceptionUtils.getRootCause(e));
     }
   }
 
