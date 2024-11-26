@@ -9,5 +9,6 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface EnableSnapshotting {
   int threshold() default 500;
+
   boolean deleteEvents() default false;
 }

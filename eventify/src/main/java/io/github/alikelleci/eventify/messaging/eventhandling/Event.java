@@ -32,7 +32,7 @@ public class Event extends Message {
 
   @Builder
   private Event(Instant timestamp, Object payload, Metadata metadata) {
-   super(timestamp, payload, metadata);
+    super(timestamp, payload, metadata);
 
     this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
         .stream()
