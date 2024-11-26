@@ -29,6 +29,16 @@ public class JsonSerde<T> implements Serde<T> {
   }
 
   @Override
+  public Serializer<T> serializer() {
+    return this.jsonSerializer;
+  }
+
+  @Override
+  public Deserializer<T> deserializer() {
+    return this.jsonDeserializer;
+  }
+
+  @Override
   public void configure(Map<String, ?> configs, boolean isKey) {
     this.jsonSerializer.configure(configs, isKey);
     this.jsonDeserializer.configure(configs, isKey);
@@ -38,16 +48,6 @@ public class JsonSerde<T> implements Serde<T> {
   public void close() {
     this.jsonSerializer.close();
     this.jsonDeserializer.close();
-  }
-
-  @Override
-  public Serializer<T> serializer() {
-    return this.jsonSerializer;
-  }
-
-  @Override
-  public Deserializer<T> deserializer() {
-    return this.jsonDeserializer;
   }
 
   public JsonSerde<T> registerUpcaster(Object listener) {
