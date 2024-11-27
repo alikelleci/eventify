@@ -65,27 +65,27 @@ public class Metadata implements Map<String, String> {
     return Instant.parse(this.entries.get(TIMESTAMP));
   }
 
-  public static Builder builder() {
-    return new Builder();
+  public static MetadataBuilder builder() {
+    return new MetadataBuilder();
   }
 
-  public static class Builder {
+  public static class MetadataBuilder {
 
     private final Map<String, String> entries = new HashMap<>();
 
-    public Builder addAll(Metadata metadata) {
+    public MetadataBuilder addAll(Metadata metadata) {
       if (metadata != null) {
         this.entries.putAll(new HashMap<>(metadata));
       }
       return this;
     }
 
-    public Builder add(String key, String value) {
+    public MetadataBuilder add(String key, String value) {
       this.entries.put(key, value);
       return this;
     }
 
-    public Builder remove(String key) {
+    public MetadataBuilder remove(String key) {
       this.entries.remove(key);
       return this;
     }
