@@ -4,20 +4,25 @@ import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Singular;
 import lombok.ToString;
 import lombok.Value;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
 @Value
 @ToString(callSuper = true)
@@ -34,7 +39,7 @@ public class Aggregate extends Message {
   }
 
   @Builder
-  private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
+  private Aggregate(Instant timestamp, Object payload, @Singular("metadata") Map<String, String> metadata, String eventId, long version) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
@@ -52,7 +57,16 @@ public class Aggregate extends Message {
     this.eventId = eventId;
     this.version = version;
 
-    this.metadata.add(ID, getId());
+    this.metadata = extendMetadata(metadata);
+  }
+
+  private Map<String, String> extendMetadata(Map<String, String> metadata) {
+    Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
+    map.put(ID, getId());
+    map.remove(RESULT);
+    map.remove(CAUSE);
+
+    return new HashMap<>(map);
   }
 
   @Transient

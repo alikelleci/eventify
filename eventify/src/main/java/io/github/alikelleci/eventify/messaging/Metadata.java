@@ -3,7 +3,6 @@ package io.github.alikelleci.eventify.messaging;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.experimental.Delegate;
-import org.apache.commons.lang3.StringUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
@@ -32,31 +31,9 @@ public class Metadata implements Map<String, String> {
     this.entries = entries;
   }
 
-  public Metadata addAll(Metadata metadata) {
-    if (metadata != null) {
-      this.entries.putAll(new HashMap<>(metadata));
-    }
-    return this;
-  }
-
-  public Metadata add(String key, String value) {
-    this.entries.put(key, value);
-    return this;
-  }
-
-  public Metadata remove(String key) {
-    this.entries.remove(key);
-    return this;
-  }
 
   @Transient
-  protected Metadata filter() {
-    entries.keySet().removeIf(key -> StringUtils.startsWithIgnoreCase(key, "$"));
-    return this;
-  }
-
-  @Transient
-  public String getMessageId() {
+  public String getId() {
     return this.entries.get(ID);
   }
 
@@ -65,34 +42,5 @@ public class Metadata implements Map<String, String> {
     return Instant.parse(this.entries.get(TIMESTAMP));
   }
 
-  public static MetadataBuilder builder() {
-    return new MetadataBuilder();
-  }
-
-  public static class MetadataBuilder {
-
-    private final Map<String, String> entries = new HashMap<>();
-
-    public MetadataBuilder addAll(Metadata metadata) {
-      if (metadata != null) {
-        this.entries.putAll(new HashMap<>(metadata));
-      }
-      return this;
-    }
-
-    public MetadataBuilder add(String key, String value) {
-      this.entries.put(key, value);
-      return this;
-    }
-
-    public MetadataBuilder remove(String key) {
-      this.entries.remove(key);
-      return this;
-    }
-
-    public Metadata build() {
-      return new Metadata(this.entries);
-    }
-  }
 
 }

@@ -3,17 +3,23 @@ package io.github.alikelleci.eventify.messaging.commandhandling;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
+import lombok.Singular;
 import lombok.ToString;
 import lombok.Value;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
 @Value
 @ToString(callSuper = true)
@@ -26,7 +32,7 @@ public class Command extends Message {
   }
 
   @Builder
-  private Command(Instant timestamp, Object payload, Metadata metadata) {
+  private Command(Instant timestamp, Object payload, @Singular("metadata") Map<String, String> metadata) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
@@ -41,6 +47,15 @@ public class Command extends Message {
 
     this.id = this.aggregateId + "@" + getId();
 
-    this.metadata.add(ID, getId());
+    this.metadata = extendMetadata(metadata);
+  }
+
+  private Map<String, String> extendMetadata(Map<String, String> metadata) {
+    Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
+    map.put(ID, getId());
+    map.remove(RESULT);
+    map.remove(CAUSE);
+
+    return new HashMap<>(map);
   }
 }

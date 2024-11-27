@@ -32,10 +32,8 @@ public class DefaultEventGateway implements EventGateway {
     Event event = Event.builder()
         .timestamp(timestamp)
         .payload(payload)
-        .metadata(Metadata.builder()
-            .addAll(metadata)
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .build())
+        .metadata(metadata)
+        .metadata(CORRELATION_ID, UUID.randomUUID().toString())
         .build();
 
     ProducerRecord<String, Event> producerRecord = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);

@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import lombok.extern.slf4j.Slf4j;
@@ -50,9 +49,7 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
     return Aggregate.builder()
         .timestamp(event.getTimestamp())
         .payload(result)
-        .metadata(Metadata.builder()
-            .addAll(event.getMetadata())
-            .build())
+        .metadata(event.getMetadata())
         .eventId(event.getId())
         .build();
   }

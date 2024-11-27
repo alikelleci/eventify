@@ -18,6 +18,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -25,11 +26,11 @@ import java.util.concurrent.CompletableFuture;
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
 @Slf4j
 public class DefaultCommandGateway extends AbstractCommandResultListener implements CommandGateway {
 
-  //private final Map<String, CompletableFuture<Object>> futures = new ConcurrentHashMap<>();
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofMinutes(5))
       .build();
@@ -49,11 +50,9 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     Command command = Command.builder()
         .timestamp(timestamp)
         .payload(payload)
-        .metadata(Metadata.builder()
-            .addAll(metadata)
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(REPLY_TO, getReplyTopic())
-            .build())
+        .metadata(metadata)
+        .metadata(CORRELATION_ID, UUID.randomUUID().toString())
+        .metadata(REPLY_TO, getReplyTopic())
         .build();
 
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
@@ -74,7 +73,6 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
       if (StringUtils.isBlank(messageId)) {
         return;
       }
-      // CompletableFuture<Object> future = futures.remove(messageId);
       CompletableFuture<Object> future = cache.getIfPresent(messageId);
       if (future != null) {
         Exception exception = checkForErrors(consumerRecord);
@@ -90,9 +88,9 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
   private Exception checkForErrors(ConsumerRecord<String, Command> consumerRecord) {
     Command command = consumerRecord.value();
-    Metadata metadata = command.getMetadata();
+    Map<String, String> metadata = command.getMetadata();
 
-    if (metadata.get(Metadata.RESULT).equals("failure")) {
+    if (metadata.get(RESULT).equals("failure")) {
       return new CommandExecutionException(metadata.get(CAUSE));
     }
 
