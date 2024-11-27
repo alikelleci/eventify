@@ -13,13 +13,13 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
+import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 @Value
 @ToString(callSuper = true)
@@ -53,6 +53,8 @@ public class Command extends Message {
   private Map<String, String> extendMetadata(Map<String, String> metadata) {
     Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
     map.put(ID, getId());
+    map.put(TIMESTAMP, getTimestamp().toString());
+    map.put(CORRELATION_ID, UUID.randomUUID().toString());
 
     return new HashMap<>(map);
   }

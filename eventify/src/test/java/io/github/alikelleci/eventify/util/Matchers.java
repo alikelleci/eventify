@@ -5,6 +5,9 @@ import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
@@ -20,12 +23,10 @@ import static org.hamcrest.Matchers.startsWith;
 public class Matchers {
 
   public static void assertCommandResult(Command command, Command commandResult, boolean isSuccess) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(command.getMetadata());
+    metadata.remove(ID);
+    metadata.remove(RESULT);
+    metadata.remove(CAUSE);
 
     assertThat(commandResult.getType(), is(command.getType()));
     assertThat(commandResult.getId(), is(command.getId()));
@@ -40,10 +41,8 @@ public class Matchers {
     assertThat(commandResult.getMetadata().get(ID), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(ID), startsWith(commandResult.getAggregateId() + "@"));
     assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
-    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getMetadata().getMessageId()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
-    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
     assertThat(commandResult.getMetadata().get(RESULT), is(isSuccess ? "success" : "failure"));
     assertThat(commandResult.getMetadata().get(CAUSE), isSuccess ? emptyOrNullString() : notNullValue());
 
@@ -52,12 +51,10 @@ public class Matchers {
   }
 
   public static void assertEvent(Command command, Event event) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(command.getMetadata());
+    metadata.remove(ID);
+    metadata.remove(RESULT);
+    metadata.remove(CAUSE);
 
     assertThat(event.getType(), is(notNullValue()));
     assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
@@ -72,10 +69,8 @@ public class Matchers {
     assertThat(event.getMetadata().get(ID), is(notNullValue()));
     assertThat(event.getMetadata().get(ID), startsWith(event.getAggregateId() + "@"));
     assertThat(event.getMetadata().get(ID), is(event.getId()));
-    assertThat(event.getMetadata().get(ID), is(event.getMetadata().getMessageId()));
     assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
     assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
     assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
 
@@ -90,12 +85,10 @@ public class Matchers {
   }
 
   public static void assertSnapshot(Event event, Aggregate snapshot) {
-    Metadata metadata = Metadata.builder()
-        .addAll(event.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(event.getMetadata());
+    metadata.remove(ID);
+    metadata.remove(RESULT);
+    metadata.remove(CAUSE);
 
     assertThat(snapshot.getVersion(), is(notNullValue()));
     assertThat(snapshot.getEventId(), is(event.getId()));
@@ -112,10 +105,8 @@ public class Matchers {
     assertThat(snapshot.getMetadata().get(ID), is(notNullValue()));
     assertThat(snapshot.getMetadata().get(ID), startsWith(snapshot.getAggregateId() + "@"));
     assertThat(snapshot.getMetadata().get(ID), is(snapshot.getId()));
-    assertThat(snapshot.getMetadata().get(ID), is(snapshot.getMetadata().getMessageId()));
     assertThat(snapshot.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(snapshot.getMetadata().get(TIMESTAMP), is(snapshot.getTimestamp().toString()));
-    assertThat(snapshot.getMetadata().get(TIMESTAMP), is(snapshot.getMetadata().getTimestamp().toString()));
     assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
     assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
 

@@ -4,7 +4,6 @@ import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.AddCredits;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.CreateCustomer;
 import io.github.alikelleci.eventify.example.domain.CustomerCommand.IssueCredits;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 
 import java.util.ArrayList;
@@ -54,14 +53,12 @@ public class CommandFactory {
             .credits(credits)
             .birthday(faker.date().birthday(20, 60).toInstant())
             .build())
-        .metadata(Metadata.builder()
-            .add("custom-key", "custom-value")
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten")
-            .add(TIMESTAMP, "should-be-overwritten")
-            .add(RESULT, "should-be-overwritten")
-            .add(CAUSE, "should-be-overwritten")
-            .build())
+        .metadata("custom-key", "custom-value")
+        .metadata(CORRELATION_ID, UUID.randomUUID().toString())
+        .metadata(ID, "should-be-overwritten")
+        .metadata(TIMESTAMP, "should-be-overwritten")
+        .metadata(RESULT, "should-be-overwritten")
+        .metadata(CAUSE, "should-be-overwritten")
         .build();
   }
 
@@ -71,14 +68,12 @@ public class CommandFactory {
             .id(aggregateId)
             .amount(amount)
             .build())
-        .metadata(Metadata.builder()
-            .add("custom-key", "custom-value")
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten")
-            .add(TIMESTAMP, "should-be-overwritten")
-            .add(RESULT, "should-be-overwritten")
-            .add(CAUSE, "should-be-overwritten")
-            .build())
+        .metadata("custom-key", "custom-value")
+        .metadata(CORRELATION_ID, UUID.randomUUID().toString())
+        .metadata(ID, "should-be-overwritten")
+        .metadata(TIMESTAMP, "should-be-overwritten")
+        .metadata(RESULT, "should-be-overwritten")
+        .metadata(CAUSE, "should-be-overwritten")
         .build();
   }
 
@@ -88,14 +83,12 @@ public class CommandFactory {
             .id(aggregateId)
             .amount(amount)
             .build())
-        .metadata(Metadata.builder()
-            .add("custom-key", "custom-value")
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten")
-            .add(TIMESTAMP, "should-be-overwritten")
-            .add(RESULT, "should-be-overwritten")
-            .add(CAUSE, "should-be-overwritten")
-            .build())
+        .metadata("custom-key", "custom-value")
+        .metadata(CORRELATION_ID, UUID.randomUUID().toString())
+        .metadata(ID, "should-be-overwritten")
+        .metadata(TIMESTAMP, "should-be-overwritten")
+        .metadata(RESULT, "should-be-overwritten")
+        .metadata(CAUSE, "should-be-overwritten")
         .build();
   }
 }

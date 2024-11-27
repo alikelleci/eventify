@@ -28,14 +28,7 @@ public class DefaultEventGateway implements EventGateway {
   }
 
   @Override
-  public void publish(Object payload, Metadata metadata, Instant timestamp) {
-    Event event = Event.builder()
-        .timestamp(timestamp)
-        .payload(payload)
-        .metadata(metadata)
-        .metadata(CORRELATION_ID, UUID.randomUUID().toString())
-        .build();
-
+  public void publish(Event event) {
     ProducerRecord<String, Event> producerRecord = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
 
     log.trace("Publishing event: {} ({})", event.getType(), event.getAggregateId());

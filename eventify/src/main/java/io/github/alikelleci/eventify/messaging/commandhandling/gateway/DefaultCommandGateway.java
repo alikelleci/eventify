@@ -46,14 +46,8 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   }
 
   @Override
-  public <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp) {
-    Command command = Command.builder()
-        .timestamp(timestamp)
-        .payload(payload)
-        .metadata(metadata)
-        .metadata(CORRELATION_ID, UUID.randomUUID().toString())
-        .metadata(REPLY_TO, getReplyTopic())
-        .build();
+  public <R> CompletableFuture<R> send(Command command) {
+    command.getMetadata().put(REPLY_TO, getReplyTopic());
 
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 

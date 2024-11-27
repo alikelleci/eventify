@@ -23,6 +23,7 @@ import java.util.Optional;
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
+import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 @Value
 @ToString(callSuper = true)
@@ -63,6 +64,7 @@ public class Aggregate extends Message {
   private Map<String, String> extendMetadata(Map<String, String> metadata) {
     Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
     map.put(ID, getId());
+    map.put(TIMESTAMP, getTimestamp().toString());
     map.remove(RESULT);
     map.remove(CAUSE);
 
