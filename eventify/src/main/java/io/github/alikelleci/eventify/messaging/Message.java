@@ -20,7 +20,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 @Getter
 @ToString
 @EqualsAndHashCode
-public class Message {
+public abstract class Message {
   protected String id;
   protected Instant timestamp;
   protected String type;
