@@ -86,8 +86,8 @@ public class Eventify {
     this.objectMapper = objectMapper;
   }
 
-  public static EventifyBuilder builder() {
-    return new EventifyBuilder();
+  public static Builder builder() {
+    return new Builder();
   }
 
   public Topology topology() {
@@ -262,7 +262,7 @@ public class Eventify {
   }
 
 
-  public static class EventifyBuilder {
+  public static class Builder {
     private final List<Object> handlers = new ArrayList<>();
 
     private Properties streamsConfig;
@@ -271,13 +271,13 @@ public class Eventify {
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
 
-    public EventifyBuilder registerHandler(Object handler) {
+    public Builder registerHandler(Object handler) {
       handlers.add(handler);
 
       return this;
     }
 
-    public EventifyBuilder streamsConfig(Properties streamsConfig) {
+    public Builder streamsConfig(Properties streamsConfig) {
       this.streamsConfig = streamsConfig;
       this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
       this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
@@ -295,22 +295,22 @@ public class Eventify {
       return this;
     }
 
-    public EventifyBuilder stateListener(StateListener stateListener) {
+    public Builder stateListener(StateListener stateListener) {
       this.stateListener = stateListener;
       return this;
     }
 
-    public EventifyBuilder stateRestoreListener(StateRestoreListener stateRestoreListener) {
+    public Builder stateRestoreListener(StateRestoreListener stateRestoreListener) {
       this.stateRestoreListener = stateRestoreListener;
       return this;
     }
 
-    public EventifyBuilder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
+    public Builder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
       this.uncaughtExceptionHandler = uncaughtExceptionHandler;
       return this;
     }
 
-    public EventifyBuilder objectMapper(ObjectMapper objectMapper) {
+    public Builder objectMapper(ObjectMapper objectMapper) {
       this.objectMapper = objectMapper;
       return this;
     }
