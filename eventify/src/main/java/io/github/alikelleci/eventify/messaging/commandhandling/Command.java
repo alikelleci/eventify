@@ -53,8 +53,6 @@ public class Command extends Message {
   private Map<String, String> extendMetadata(Map<String, String> metadata) {
     Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
     map.put(ID, getId());
-    map.remove(RESULT);
-    map.remove(CAUSE);
 
     return new HashMap<>(map);
   }
