@@ -6,11 +6,12 @@ import lombok.Value;
 import lombok.experimental.Delegate;
 
 import java.beans.Transient;
+import java.util.HashMap;
 import java.util.Map;
 
 @Value
 @Builder(toBuilder = true)
-public class Metadata implements Map<String,String> {
+public class Metadata implements Map<String, String> {
   public static final String CORRELATION_ID = "$correlationId";
   public static final String REPLY_TO = "$replyTo";
   public static final String RESULT = "$result";

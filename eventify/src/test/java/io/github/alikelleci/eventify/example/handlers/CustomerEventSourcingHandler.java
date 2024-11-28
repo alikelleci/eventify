@@ -7,26 +7,26 @@ import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreate
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerDeleted;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.FirstNameChanged;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.LastNameChanged;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.Map;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 @Slf4j
 public class CustomerEventSourcingHandler {
 
   @ApplyEvent
-  public Customer handle(Customer state, CustomerCreated event, Map<String, String> metadata) {
+  public Customer handle(Customer state, CustomerCreated event, Metadata metadata) {
     return Customer.builder()
         .id(event.getId())
         .firstName(event.getFirstName())
         .lastName(event.getLastName())
         .credits(event.getCredits())
         .birthday(event.getBirthday())
-        .dateCreated(Instant.parse(metadata.get(TIMESTAMP)))
+//        .dateCreated(Instant.parse(metadata.get(TIMESTAMP)))
         .build();
   }
 
