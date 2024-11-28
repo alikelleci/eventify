@@ -51,7 +51,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     producer.send(producerRecord);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
-    cache.put(command.getId(), future);
+    cache.put(command.getMetadata().getCorrelationId(), future);
 
     return (CompletableFuture<R>) future;
   }
@@ -59,11 +59,11 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   @Override
   protected void onMessage(ConsumerRecords<String, Command> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
-      String messageId = consumerRecord.value().getId();
-      if (StringUtils.isBlank(messageId)) {
+      String correlationId = consumerRecord.value().getMetadata().getCorrelationId();
+      if (StringUtils.isBlank(correlationId)) {
         return;
       }
-      CompletableFuture<Object> future = cache.getIfPresent(messageId);
+      CompletableFuture<Object> future = cache.getIfPresent(correlationId);
       if (future != null) {
         Exception exception = checkForErrors(consumerRecord);
         if (exception == null) {
@@ -71,7 +71,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
         } else {
           future.completeExceptionally(exception);
         }
-        cache.invalidate(messageId);
+        cache.invalidate(correlationId);
       }
     });
   }
