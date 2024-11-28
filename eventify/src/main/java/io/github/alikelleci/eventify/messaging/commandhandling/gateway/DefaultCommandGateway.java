@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.support.serializer.json.JsonSerializer;
@@ -78,7 +79,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
   private Exception checkForErrors(ConsumerRecord<String, Command> consumerRecord) {
     Command command = consumerRecord.value();
-    Map<String, String> metadata = command.getMetadata();
+    Metadata metadata = command.getMetadata();
 
     if (metadata.get(RESULT).equals("failure")) {
       return new CommandExecutionException(metadata.get(CAUSE));
