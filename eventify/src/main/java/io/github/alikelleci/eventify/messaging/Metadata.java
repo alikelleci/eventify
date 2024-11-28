@@ -4,11 +4,9 @@ import lombok.Builder;
 import lombok.Singular;
 import lombok.Value;
 import lombok.experimental.Delegate;
-import lombok.extern.jackson.Jacksonized;
 
 import java.beans.Transient;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 
 @Value
@@ -25,7 +23,6 @@ public class Metadata implements Map<String, String> {
     this.entries = Collections.emptyMap();
   }
 
-  @Jacksonized
   @Builder(toBuilder = true)
   private Metadata(@Singular Map<String, String> entries) {
     this.entries = entries;
