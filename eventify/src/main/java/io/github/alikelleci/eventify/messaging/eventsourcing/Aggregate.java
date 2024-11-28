@@ -60,7 +60,9 @@ public class Aggregate extends Message {
     }
 
     public AggregateBuilder metadata(Metadata metadata) {
-      metadata.getEntries().forEach(metadataBuilder::entry);
+      if (metadata != null) {
+        metadata.getEntries().forEach(metadataBuilder::entry);
+      }
       return this;
     }
 

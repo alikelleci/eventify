@@ -60,7 +60,9 @@ public class Event extends Message {
     }
 
     public EventBuilder metadata(Metadata metadata) {
-      metadata.getEntries().forEach(metadataBuilder::entry);
+      if (metadata != null) {
+        metadata.getEntries().forEach(metadataBuilder::entry);
+      }
       return this;
     }
 

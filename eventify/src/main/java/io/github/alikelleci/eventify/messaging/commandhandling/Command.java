@@ -49,7 +49,9 @@ public class Command extends Message {
     }
 
     public CommandBuilder metadata(Metadata metadata) {
-      metadata.getEntries().forEach(metadataBuilder::entry);
+      if (metadata != null) {
+        metadata.getEntries().forEach(metadataBuilder::entry);
+      }
       return this;
     }
 
