@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.AGGREGATE_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
@@ -67,6 +68,7 @@ public class Event extends Message {
     Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
     map.put(ID, getId());
     map.put(TIMESTAMP, getTimestamp().toString());
+    map.put(AGGREGATE_ID, getAggregateId());
     map.remove(RESULT);
     map.remove(CAUSE);
     map.remove(REPLY_TO);

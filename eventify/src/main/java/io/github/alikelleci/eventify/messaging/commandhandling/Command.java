@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.AGGREGATE_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
@@ -57,6 +58,7 @@ public class Command extends Message {
     Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
     map.put(ID, getId());
     map.put(TIMESTAMP, getTimestamp().toString());
+    map.put(AGGREGATE_ID, getAggregateId());
     map.put(CORRELATION_ID, UUID.randomUUID().toString());
     map.remove(RESULT);
     map.remove(CAUSE);
