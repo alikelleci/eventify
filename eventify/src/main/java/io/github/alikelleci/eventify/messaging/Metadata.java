@@ -10,7 +10,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Value
-@Builder(toBuilder = true)
 public class Metadata implements Map<String, String> {
   public static final String CORRELATION_ID = "$correlationId";
   public static final String REPLY_TO = "$replyTo";
@@ -18,8 +17,16 @@ public class Metadata implements Map<String, String> {
   public static final String CAUSE = "$cause";
 
   @Delegate
-  @Singular
   Map<String, String> entries;
+
+  protected Metadata() {
+    this.entries = new HashMap<>();
+  }
+
+  @Builder(toBuilder = true)
+  protected Metadata(@Singular Map<String, String> entries) {
+    this.entries = entries;
+  }
 
   @Transient
   public String getCorrelationId() {
