@@ -19,12 +19,12 @@ public class Metadata implements Map<String, String> {
   @Delegate
   Map<String, String> entries;
 
-  protected Metadata() {
+  private Metadata() {
     this.entries = new HashMap<>();
   }
 
   @Builder(toBuilder = true)
-  protected Metadata(@Singular Map<String, String> entries) {
+  private Metadata(@Singular Map<String, String> entries) {
     this.entries = entries;
   }
 
