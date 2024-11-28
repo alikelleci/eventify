@@ -1,11 +1,12 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
+import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
+import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import lombok.Value;
@@ -25,50 +26,127 @@ public class Aggregate extends Message {
   String eventId;
   long version;
 
-  private Aggregate() {
-    this.aggregateId = null;
-    this.eventId = null;
-    this.version = 0;
+  private Aggregate(AggregateBuilder builder) {
+    this.id = builder.id;
+    this.timestamp = builder.timestamp;
+    this.type = builder.type;
+    this.payload = builder.payload;
+    this.metadata = builder.metadata;
+    this.aggregateId = builder.aggregateId;
+    this.eventId = builder.eventId;
+    this.version = builder.version;
   }
 
-  @Builder(toBuilder = true)
-  private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
-    super(timestamp, payload, metadata);
+  public static AggregateBuilder builder() {
+    return new AggregateBuilder();
+  }
 
-    this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
-        .stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> {
-          field.setAccessible(true);
-          return (String) ReflectionUtils.getField(field, getPayload());
-        })
-        .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
-
-    this.id = this.aggregateId + "@" + getId();
-
-    this.eventId = eventId;
-    this.version = version;
+  public AggregateBuilder toBuilder() {
+    return new AggregateBuilder()
+        .id(this.id)
+        .type(this.type)
+        .timestamp(this.timestamp)
+        .payload(this.payload)
+        .metadata(this.metadata)
+        .aggregateId(this.aggregateId)
+        .eventId(this.eventId)
+        .version(this.version);
   }
 
   public static class AggregateBuilder {
-    private final Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
+    private String id;
+    private Instant timestamp;
+    private String type;
+    private Object payload;
+    private Metadata metadata = Metadata.builder().build();
+    private String aggregateId;
+    private String eventId;
+    private long version = 0;
+
+    private AggregateBuilder id(String id) {
+      this.id = id;
+      return this;
+    }
+
+    private AggregateBuilder type(String type) {
+      this.type = type;
+      return this;
+    }
+
+    public AggregateBuilder timestamp(Instant timestamp) {
+      if (timestamp == null) {
+        timestamp = Instant.now();
+      }
+      this.timestamp = timestamp;
+      return this;
+    }
+
+    public AggregateBuilder payload(Object payload) {
+      this.payload = payload;
+      return this;
+    }
 
     public AggregateBuilder metadata(String key, String value) {
-      this.metadataBuilder.entry(key, value);
+      this.metadata = this.metadata.toBuilder()
+          .entry(key, value)
+          .build();
       return this;
     }
 
     public AggregateBuilder metadata(Metadata metadata) {
+      Metadata.MetadataBuilder builder = this.metadata.toBuilder();
       if (metadata != null) {
-        metadata.getEntries().forEach(metadataBuilder::entry);
+        metadata.getEntries().forEach(builder::entry);
       }
+      this.metadata = builder.build();
+      return this;
+    }
+
+    private AggregateBuilder aggregateId(String aggregateId) {
+      this.aggregateId = aggregateId;
+      return this;
+    }
+
+    public AggregateBuilder eventId(String eventId) {
+      this.eventId = eventId;
+      return this;
+    }
+
+    public AggregateBuilder version(long version) {
+      this.version = version;
       return this;
     }
 
     public Aggregate build() {
-      Metadata metadata = metadataBuilder.build();
-      return new Aggregate(timestamp, payload, metadata, eventId, version);
+      if (this.payload == null) {
+        throw new PayloadMissingException("Message payload is missing.");
+      }
+      if (this.timestamp == null) {
+        this.timestamp = Instant.now();
+      }
+      if (this.type == null) {
+        this.type = payload.getClass().getSimpleName();
+      }
+      if (this.aggregateId == null) {
+        this.aggregateId = getAggregateId(this.payload);
+      }
+      if (this.id == null) {
+        this.id = this.aggregateId + "@" + UlidCreator.getMonotonicUlid(this.timestamp.toEpochMilli()).toString();
+      }
+
+      return new Aggregate(this);
+    }
+
+    private String getAggregateId(Object payload) {
+      return FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class)
+          .stream()
+          .filter(field -> field.getType() == String.class)
+          .findFirst()
+          .map(field -> {
+            field.setAccessible(true);
+            return (String) ReflectionUtils.getField(field, this.payload);
+          })
+          .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
     }
   }
 

@@ -1,9 +1,7 @@
 package io.github.alikelleci.eventify.messaging;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.common.exceptions.TopicInfoMissingException;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -25,16 +23,6 @@ public abstract class Message {
   protected Object payload;
   protected Metadata metadata;
 
-  protected Message() {
-  }
-
-  protected Message(Instant timestamp, Object payload, Metadata metadata) {
-    this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
-    this.type = getPayload().getClass().getSimpleName();
-    this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
-    this.id = UlidCreator.getMonotonicUlid(getTimestamp().toEpochMilli()).toString();
-    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
-  }
 
   @Transient
   public TopicInfo getTopicInfo() {
