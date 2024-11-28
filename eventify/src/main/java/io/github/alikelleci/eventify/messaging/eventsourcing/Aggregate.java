@@ -22,6 +22,7 @@ import java.util.Optional;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
@@ -67,6 +68,7 @@ public class Aggregate extends Message {
     map.put(TIMESTAMP, getTimestamp().toString());
     map.remove(RESULT);
     map.remove(CAUSE);
+    map.remove(REPLY_TO);
 
     return new HashMap<>(map);
   }
