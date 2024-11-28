@@ -25,6 +25,7 @@ import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
+import static io.github.alikelleci.eventify.messaging.Metadata.REVISION;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 @Value
@@ -69,6 +70,7 @@ public class Event extends Message {
     map.put(ID, getId());
     map.put(TIMESTAMP, getTimestamp().toString());
     map.put(AGGREGATE_ID, getAggregateId());
+    map.put(REVISION, String.valueOf(getRevision()));
     map.remove(RESULT);
     map.remove(CAUSE);
     map.remove(REPLY_TO);

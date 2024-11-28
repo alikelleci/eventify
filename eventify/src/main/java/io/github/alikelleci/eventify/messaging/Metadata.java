@@ -16,6 +16,8 @@ public class Metadata implements Map<String, String> {
   public static final String TIMESTAMP = "$timestamp";
   public static final String AGGREGATE_ID = "$aggregateId";
   public static final String CORRELATION_ID = "$correlationId";
+  public static final String EVENT_ID = "$eventId";
+  public static final String VERSION = "$version";
   public static final String REPLY_TO = "$replyTo";
   public static final String REVISION = "$revision";
   public static final String RESULT = "$result";

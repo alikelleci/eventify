@@ -22,10 +22,12 @@ import java.util.Optional;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.AGGREGATE_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.messaging.Metadata.EVENT_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
+import static io.github.alikelleci.eventify.messaging.Metadata.VERSION;
 
 @Value
 @ToString(callSuper = true)
@@ -68,6 +70,8 @@ public class Aggregate extends Message {
     map.put(ID, getId());
     map.put(TIMESTAMP, getTimestamp().toString());
     map.put(AGGREGATE_ID, getAggregateId());
+    map.put(EVENT_ID, getEventId());
+    map.put(VERSION, String.valueOf(getVersion()));
     map.remove(RESULT);
     map.remove(CAUSE);
     map.remove(REPLY_TO);
