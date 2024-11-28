@@ -9,6 +9,7 @@ import java.util.Map;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.AGGREGATE_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.EVENT_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
@@ -51,6 +52,8 @@ public class Matchers {
     assertThat(commandResult.getMetadata().get(AGGREGATE_ID), is(commandResult.getAggregateId()));
     assertThat(commandResult.getMetadata().get(RESULT), is(isSuccess ? "success" : "failure"));
     assertThat(commandResult.getMetadata().get(CAUSE), isSuccess ? emptyOrNullString() : notNullValue());
+    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
+
 
     // Payload
     assertThat(commandResult.getPayload(), is(command.getPayload()));
@@ -84,6 +87,7 @@ public class Matchers {
     assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
     assertThat(event.getMetadata().get(REVISION), is(notNullValue()));
     assertThat(event.getMetadata().get(REVISION), is(String.valueOf(event.getRevision())));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
 
     // Payload
     assertThat(event.getPayload(), is(notNullValue()));
@@ -127,6 +131,7 @@ public class Matchers {
     assertThat(snapshot.getMetadata().get(EVENT_ID), is(snapshot.getEventId()));
     assertThat(snapshot.getMetadata().get(VERSION), is(notNullValue()));
     assertThat(snapshot.getMetadata().get(VERSION), is(String.valueOf(snapshot.getVersion())));
+    assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(event.getMetadata().get(CORRELATION_ID)));
 
     // Payload
     assertThat(snapshot.getPayload(), is(notNullValue()));
