@@ -12,8 +12,6 @@ import org.springframework.core.annotation.AnnotationUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 @Getter
@@ -25,19 +23,18 @@ public abstract class Message {
   protected String type;
   @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
   protected Object payload;
-  protected Map<String, String> metadata;
+  protected Metadata metadata;
 
   protected Message() {
   }
 
-  protected Message(Instant timestamp, Object payload, Map<String, String> metadata) {
+  protected Message(Instant timestamp, Object payload, Metadata metadata) {
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     this.type = getPayload().getClass().getSimpleName();
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.id = UlidCreator.getMonotonicUlid(getTimestamp().toEpochMilli()).toString();
-    this.metadata = Optional.ofNullable(metadata).orElse(new HashMap<>());
+    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
   }
-
 
   @Transient
   public TopicInfo getTopicInfo() {

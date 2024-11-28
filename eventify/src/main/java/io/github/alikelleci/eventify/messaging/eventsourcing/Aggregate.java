@@ -4,30 +4,18 @@ import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
-import lombok.Singular;
 import lombok.ToString;
 import lombok.Value;
-import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
-
-import static io.github.alikelleci.eventify.messaging.Metadata.AGGREGATE_ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.messaging.Metadata.EVENT_ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
-import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
-import static io.github.alikelleci.eventify.messaging.Metadata.VERSION;
 
 @Value
 @ToString(callSuper = true)
@@ -43,8 +31,8 @@ public class Aggregate extends Message {
     this.version = 0;
   }
 
-  @Builder
-  private Aggregate(Instant timestamp, Object payload, @Singular("metadata") Map<String, String> metadata, String eventId, long version) {
+  @Builder(toBuilder = true)
+  private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
     super(timestamp, payload, metadata);
 
     this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
@@ -61,22 +49,25 @@ public class Aggregate extends Message {
 
     this.eventId = eventId;
     this.version = version;
-
-    this.metadata = extendMetadata(metadata);
   }
 
-  private Map<String, String> extendMetadata(Map<String, String> metadata) {
-    Map<String, String> map = new HashMap<>(MapUtils.emptyIfNull(metadata));
-    map.put(ID, getId());
-    map.put(TIMESTAMP, getTimestamp().toString());
-    map.put(AGGREGATE_ID, getAggregateId());
-    map.put(EVENT_ID, getEventId());
-    map.put(VERSION, String.valueOf(getVersion()));
-    map.remove(RESULT);
-    map.remove(CAUSE);
-    map.remove(REPLY_TO);
+  public static class AggregateBuilder {
+    private final Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
 
-    return new HashMap<>(map);
+    public AggregateBuilder metadata(String key, String value) {
+      this.metadataBuilder.entry(key, value);
+      return this;
+    }
+
+    public AggregateBuilder metadata(Metadata metadata) {
+      metadata.getEntries().forEach(metadataBuilder::entry);
+      return this;
+    }
+
+    public Aggregate build() {
+      Metadata metadata = metadataBuilder.build();
+      return new Aggregate(timestamp, payload, metadata, eventId, version);
+    }
   }
 
   @Transient
