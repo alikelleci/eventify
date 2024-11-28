@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -10,11 +9,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import java.time.Instant;
 import java.util.Properties;
-import java.util.UUID;
-
-import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 
 @Slf4j
 public class DefaultEventGateway implements EventGateway {
