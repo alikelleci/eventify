@@ -132,11 +132,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
 
     aggregate = Optional.ofNullable(aggregate)
-        .map(aggr -> Aggregate.builder()
-            .timestamp(aggr.getTimestamp())
-            .payload(aggr.getPayload())
-            .metadata(aggr.getMetadata())
-            .eventId(aggr.getEventId())
+        .map(aggr -> aggr.toBuilder()
             .version(sequence.get())
             .build())
         .orElse(null);

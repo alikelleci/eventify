@@ -6,13 +6,13 @@ import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingExcepti
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.Value;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 
 @Value
 public class Event implements Message {
@@ -54,7 +54,7 @@ public class Event implements Message {
         .type(this.type)
         .timestamp(this.timestamp)
         .payload(this.payload)
-        .metadata(this.metadata)
+        .addMetadata(this.metadata)
         .aggregateId(this.aggregateId)
         .revision(this.revision);
   }
@@ -91,19 +91,29 @@ public class Event implements Message {
       return this;
     }
 
-    public EventBuilder metadata(String key, String value) {
+    public EventBuilder addMetadata(String key, String value) {
       this.metadata = this.metadata.toBuilder()
           .entry(key, value)
           .build();
       return this;
     }
 
-    public EventBuilder metadata(Metadata metadata) {
+    public EventBuilder addMetadata(Metadata metadata) {
       Metadata.MetadataBuilder builder = this.metadata.toBuilder();
       if (metadata != null) {
         metadata.getEntries().forEach(builder::entry);
       }
       this.metadata = builder.build();
+      return this;
+    }
+
+    public EventBuilder removeMetadata(String key) {
+      Map<String, String> map = new HashMap<>(this.metadata.getEntries());
+      map.keySet().removeIf(k -> k.equals(key));
+      this.metadata = this.metadata.toBuilder()
+          .clearEntries()
+          .entries(map)
+          .build();
       return this;
     }
 

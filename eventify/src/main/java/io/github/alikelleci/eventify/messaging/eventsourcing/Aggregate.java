@@ -14,6 +14,8 @@ import org.springframework.util.ReflectionUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 @Value
@@ -59,7 +61,7 @@ public class Aggregate implements Message {
         .type(this.type)
         .timestamp(this.timestamp)
         .payload(this.payload)
-        .metadata(this.metadata)
+        .addMetadata(this.metadata)
         .aggregateId(this.aggregateId)
         .eventId(this.eventId)
         .version(this.version);
@@ -98,19 +100,29 @@ public class Aggregate implements Message {
       return this;
     }
 
-    public AggregateBuilder metadata(String key, String value) {
+    public AggregateBuilder addMetadata(String key, String value) {
       this.metadata = this.metadata.toBuilder()
           .entry(key, value)
           .build();
       return this;
     }
 
-    public AggregateBuilder metadata(Metadata metadata) {
+    public AggregateBuilder addMetadata(Metadata metadata) {
       Metadata.MetadataBuilder builder = this.metadata.toBuilder();
       if (metadata != null) {
         metadata.getEntries().forEach(builder::entry);
       }
       this.metadata = builder.build();
+      return this;
+    }
+
+    public AggregateBuilder removeMetadata(String key) {
+      Map<String, String> map = new HashMap<>(this.metadata.getEntries());
+      map.keySet().removeIf(k -> k.equals(key));
+      this.metadata = this.metadata.toBuilder()
+          .clearEntries()
+          .entries(map)
+          .build();
       return this;
     }
 

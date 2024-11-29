@@ -11,6 +11,8 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
@@ -52,7 +54,7 @@ public class Command implements Message {
         .type(this.type)
         .timestamp(this.timestamp)
         .payload(this.payload)
-        .metadata(this.metadata)
+        .addMetadata(this.metadata)
         .aggregateId(this.aggregateId);
   }
 
@@ -84,19 +86,29 @@ public class Command implements Message {
       return this;
     }
 
-    public CommandBuilder metadata(String key, String value) {
+    public CommandBuilder addMetadata(String key, String value) {
       this.metadata = this.metadata.toBuilder()
           .entry(key, value)
           .build();
       return this;
     }
 
-    public CommandBuilder metadata(Metadata metadata) {
+    public CommandBuilder addMetadata(Metadata metadata) {
       Metadata.MetadataBuilder builder = this.metadata.toBuilder();
       if (metadata != null) {
         metadata.getEntries().forEach(builder::entry);
       }
       this.metadata = builder.build();
+      return this;
+    }
+
+    public CommandBuilder removeMetadata(String key) {
+      Map<String, String> map = new HashMap<>(this.metadata.getEntries());
+      map.keySet().removeIf(k -> k.equals(key));
+      this.metadata = this.metadata.toBuilder()
+          .clearEntries()
+          .entries(map)
+          .build();
       return this;
     }
 
