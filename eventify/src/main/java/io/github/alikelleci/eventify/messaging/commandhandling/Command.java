@@ -6,8 +6,6 @@ import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingExcepti
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.Value;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
@@ -15,12 +13,20 @@ import org.springframework.util.ReflectionUtils;
 import java.time.Instant;
 
 @Value
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class Command extends Message {
-  String aggregateId;
+public class Command implements Message {
+  private String id;
+  private Instant timestamp;
+  private String type;
+  private Object payload;
+  private Metadata metadata;
+  private String aggregateId;
 
   private Command() {
+    this.id = null;
+    this.timestamp = null;
+    this.type = null;
+    this.payload = null;
+    this.metadata = null;
     this.aggregateId = null;
   }
 

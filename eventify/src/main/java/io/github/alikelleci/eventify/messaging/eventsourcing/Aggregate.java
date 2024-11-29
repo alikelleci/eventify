@@ -7,8 +7,6 @@ import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingExcepti
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.Value;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
@@ -19,12 +17,26 @@ import java.time.Instant;
 import java.util.Optional;
 
 @Value
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class Aggregate extends Message {
-  String aggregateId;
-  String eventId;
-  long version;
+public class Aggregate implements Message {
+  private String id;
+  private Instant timestamp;
+  private String type;
+  private Object payload;
+  private Metadata metadata;
+  private String aggregateId;
+  private String eventId;
+  private long version;
+
+  private Aggregate() {
+    this.id = null;
+    this.timestamp = null;
+    this.type = null;
+    this.payload = null;
+    this.metadata = null;
+    this.aggregateId = null;
+    this.eventId = null;
+    this.version = 0;
+  }
 
   private Aggregate(AggregateBuilder builder) {
     this.id = builder.id;

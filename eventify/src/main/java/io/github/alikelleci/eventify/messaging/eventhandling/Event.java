@@ -15,13 +15,21 @@ import org.springframework.util.ReflectionUtils;
 import java.time.Instant;
 
 @Value
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class Event extends Message {
-  String aggregateId;
-  int revision;
+public class Event implements Message {
+  private String id;
+  private Instant timestamp;
+  private String type;
+  private Object payload;
+  private Metadata metadata;
+  private String aggregateId;
+  private int revision;
 
   private Event() {
+    this.id = null;
+    this.timestamp = null;
+    this.type = null;
+    this.payload = null;
+    this.metadata = null;
     this.aggregateId = null;
     this.revision = 1;
   }
