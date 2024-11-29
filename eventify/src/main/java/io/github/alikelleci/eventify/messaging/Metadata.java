@@ -47,6 +47,11 @@ public class Metadata implements Map<String, String> {
     return this;
   }
 
+  public Metadata clearAll() {
+    this.entries.clear();
+    return this;
+  }
+
   @Transient
   public String getCorrelationId() {
     return this.entries.get(CORRELATION_ID);
