@@ -24,7 +24,7 @@ public interface CommandResult {
 
     @Override
     public Command getCommand() {
-      command.getMetadata().add(RESULT, "success");
+      command.getMetadata().put(RESULT, "success");
       command.getMetadata().remove(CAUSE);
 
       return command;
@@ -39,8 +39,8 @@ public interface CommandResult {
 
     @Override
     public Command getCommand() {
-      command.getMetadata().add(RESULT, "failure");
-      command.getMetadata().add(CAUSE, cause);
+      command.getMetadata().put(RESULT, "failure");
+      command.getMetadata().put(CAUSE, cause);
 
       return command;
     }
