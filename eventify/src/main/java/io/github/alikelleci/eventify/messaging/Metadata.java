@@ -82,6 +82,11 @@ public class Metadata implements Map<String, String> {
       return this;
     }
 
+    public MetadataBuilder clearAll() {
+      this.entries.clear();
+      return this;
+    }
+
     public Metadata build() {
       return new Metadata(this.entries);
     }
