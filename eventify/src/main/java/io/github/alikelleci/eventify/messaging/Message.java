@@ -36,7 +36,6 @@ public abstract class Message {
     this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
   }
 
-
   @Transient
   public TopicInfo getTopicInfo() {
     return Optional.ofNullable(getPayload())
