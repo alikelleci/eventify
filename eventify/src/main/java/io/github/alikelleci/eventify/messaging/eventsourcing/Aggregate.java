@@ -17,8 +17,6 @@ import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-
 @Value
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
@@ -51,8 +49,6 @@ public class Aggregate extends Message {
 
     this.eventId = eventId;
     this.version = version;
-
-    this.metadata.add(ID, getId());
   }
 
   @Transient

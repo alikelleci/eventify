@@ -13,9 +13,7 @@ import java.util.UUID;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 
 public class CommandFactory {
 
@@ -57,8 +55,6 @@ public class CommandFactory {
         .metadata(Metadata.builder()
             .add("custom-key", "custom-value")
             .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten")
-            .add(TIMESTAMP, "should-be-overwritten")
             .add(RESULT, "should-be-overwritten")
             .add(CAUSE, "should-be-overwritten")
             .build())
@@ -74,8 +70,6 @@ public class CommandFactory {
         .metadata(Metadata.builder()
             .add("custom-key", "custom-value")
             .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten")
-            .add(TIMESTAMP, "should-be-overwritten")
             .add(RESULT, "should-be-overwritten")
             .add(CAUSE, "should-be-overwritten")
             .build())
@@ -91,8 +85,6 @@ public class CommandFactory {
         .metadata(Metadata.builder()
             .add("custom-key", "custom-value")
             .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(ID, "should-be-overwritten")
-            .add(TIMESTAMP, "should-be-overwritten")
             .add(RESULT, "should-be-overwritten")
             .add(CAUSE, "should-be-overwritten")
             .build())

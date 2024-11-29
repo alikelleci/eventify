@@ -14,9 +14,6 @@ import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
-
 @Getter
 @ToString
 @EqualsAndHashCode
@@ -37,10 +34,6 @@ public abstract class Message {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.id = UlidCreator.getMonotonicUlid(getTimestamp().toEpochMilli()).toString();
     this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
-
-    this.metadata
-        .add(ID, getId())
-        .add(TIMESTAMP, getTimestamp().toString());
   }
 
 

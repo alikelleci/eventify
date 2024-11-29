@@ -10,11 +10,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import java.time.Instant;
 import java.util.Properties;
-import java.util.UUID;
-
-import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 
 @Slf4j
 public class DefaultEventGateway implements EventGateway {
@@ -28,16 +24,7 @@ public class DefaultEventGateway implements EventGateway {
   }
 
   @Override
-  public void publish(Object payload, Metadata metadata, Instant timestamp) {
-    Event event = Event.builder()
-        .timestamp(timestamp)
-        .payload(payload)
-        .metadata(Metadata.builder()
-            .addAll(metadata)
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .build())
-        .build();
-
+  public void publish(Event event) {
     ProducerRecord<String, Event> producerRecord = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
 
     log.trace("Publishing event: {} ({})", event.getType(), event.getAggregateId());

@@ -16,8 +16,6 @@ import org.springframework.util.ReflectionUtils;
 import java.time.Instant;
 import java.util.Optional;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-
 @Value
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
@@ -51,7 +49,5 @@ public class Event extends Message {
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, Revision.class))
         .map(Revision::value)
         .orElse(1);
-
-    this.metadata.add(ID, getId());
   }
 }

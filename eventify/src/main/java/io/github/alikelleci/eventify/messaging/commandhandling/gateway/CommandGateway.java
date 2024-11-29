@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.support.serializer.json.util.JacksonUtils;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.StringUtils;
@@ -9,37 +9,31 @@ import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import java.time.Instant;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 public interface CommandGateway {
 
-  <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp);
-
-  default <R> CompletableFuture<R> send(Object payload, Metadata metadata) {
-    return send(payload, metadata, null);
-  }
+  <R> CompletableFuture<R> send(Command command);
 
   default <R> CompletableFuture<R> send(Object payload) {
-    return send(payload, null, null);
+    return send(Command.builder()
+        .payload(payload)
+        .build());
   }
 
   @SneakyThrows
-  default <R> R sendAndWait(Object payload, Metadata metadata, Instant timestamp) {
-    CompletableFuture<R> future = send(payload, metadata, timestamp);
+  default <R> R sendAndWait(Command command) {
+    CompletableFuture<R> future = send(command);
     return future.get(1, TimeUnit.MINUTES);
   }
 
   @SneakyThrows
-  default <R> R sendAndWait(Object payload, Metadata metadata) {
-    return sendAndWait(payload, metadata, null);
-  }
-
-  @SneakyThrows
   default <R> R sendAndWait(Object payload) {
-    return sendAndWait(payload, null, null);
+    return sendAndWait(Command.builder()
+        .payload(payload)
+        .build());
   }
 
   public static CommandGatewayBuilder builder() {

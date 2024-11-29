@@ -13,8 +13,6 @@ import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
 
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
-
 @Value
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
@@ -40,7 +38,5 @@ public class Command extends Message {
         .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
 
     this.id = this.aggregateId + "@" + getId();
-
-    this.metadata.add(ID, getId());
   }
 }

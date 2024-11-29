@@ -17,7 +17,6 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -25,6 +24,7 @@ import java.util.concurrent.CompletableFuture;
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
 @Slf4j
 public class DefaultCommandGateway extends AbstractCommandResultListener implements CommandGateway {
@@ -45,16 +45,10 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   }
 
   @Override
-  public <R> CompletableFuture<R> send(Object payload, Metadata metadata, Instant timestamp) {
-    Command command = Command.builder()
-        .timestamp(timestamp)
-        .payload(payload)
-        .metadata(Metadata.builder()
-            .addAll(metadata)
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(REPLY_TO, getReplyTopic())
-            .build())
-        .build();
+  public <R> CompletableFuture<R> send(Command command) {
+    command.getMetadata()
+        .add(CORRELATION_ID, UUID.randomUUID().toString())
+        .add(REPLY_TO, getReplyTopic());
 
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
@@ -92,7 +86,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     Command command = consumerRecord.value();
     Metadata metadata = command.getMetadata();
 
-    if (metadata.get(Metadata.RESULT).equals("failure")) {
+    if (metadata.get(RESULT).equals("failure")) {
       return new CommandExecutionException(metadata.get(CAUSE));
     }
 
