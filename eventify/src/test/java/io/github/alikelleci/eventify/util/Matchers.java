@@ -116,8 +116,8 @@ public class Matchers {
     assertThat(snapshot.getMetadata().get(TIMESTAMP), is(notNullValue()));
     assertThat(snapshot.getMetadata().get(TIMESTAMP), is(snapshot.getTimestamp().toString()));
     assertThat(snapshot.getMetadata().get(TIMESTAMP), is(snapshot.getMetadata().getTimestamp().toString()));
-    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
-    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
+    assertThat(snapshot.getMetadata().get(RESULT), emptyOrNullString());
+    assertThat(snapshot.getMetadata().get(CAUSE), emptyOrNullString());
 
     // Payload
     assertThat(snapshot.getPayload(), is(notNullValue()));
