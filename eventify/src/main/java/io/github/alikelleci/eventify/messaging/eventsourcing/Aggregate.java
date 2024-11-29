@@ -54,13 +54,13 @@ public class Aggregate implements Message {
     Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
 
     public AggregateBuilder metadata(String key, String value) {
-      metadataBuilder = metadataBuilder.add(key, value);
+      metadataBuilder = metadataBuilder.put(key, value);
       return this;
     }
 
     public AggregateBuilder metadata(Map<String, String> metadata) {
       if (metadata != null) {
-        metadataBuilder = metadataBuilder.addAll(metadata);
+        metadataBuilder = metadataBuilder.putAll(metadata);
       }
       return this;
     }

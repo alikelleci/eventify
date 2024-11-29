@@ -53,10 +53,10 @@ public class CommandFactory {
             .birthday(faker.date().birthday(20, 60).toInstant())
             .build())
         .metadata(Metadata.builder()
-            .add("custom-key", "custom-value")
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(RESULT, "should-be-overwritten")
-            .add(CAUSE, "should-be-overwritten")
+            .put("custom-key", "custom-value")
+            .put(CORRELATION_ID, UUID.randomUUID().toString())
+            .put(RESULT, "should-be-overwritten")
+            .put(CAUSE, "should-be-overwritten")
             .build())
         .build();
   }
@@ -68,10 +68,10 @@ public class CommandFactory {
             .amount(amount)
             .build())
         .metadata(Metadata.builder()
-            .add("custom-key", "custom-value")
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(RESULT, "should-be-overwritten")
-            .add(CAUSE, "should-be-overwritten")
+            .put("custom-key", "custom-value")
+            .put(CORRELATION_ID, UUID.randomUUID().toString())
+            .put(RESULT, "should-be-overwritten")
+            .put(CAUSE, "should-be-overwritten")
             .build())
         .build();
   }
@@ -83,10 +83,10 @@ public class CommandFactory {
             .amount(amount)
             .build())
         .metadata(Metadata.builder()
-            .add("custom-key", "custom-value")
-            .add(CORRELATION_ID, UUID.randomUUID().toString())
-            .add(RESULT, "should-be-overwritten")
-            .add(CAUSE, "should-be-overwritten")
+            .put("custom-key", "custom-value")
+            .put(CORRELATION_ID, UUID.randomUUID().toString())
+            .put(RESULT, "should-be-overwritten")
+            .put(CAUSE, "should-be-overwritten")
             .build())
         .build();
   }

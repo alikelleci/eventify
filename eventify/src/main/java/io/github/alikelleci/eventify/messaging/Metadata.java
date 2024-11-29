@@ -44,19 +44,19 @@ public class Metadata implements Map<String, String> {
 
     private final Map<String, String> entries = new HashMap<>();
 
-    public MetadataBuilder add(String key, String value) {
+    public MetadataBuilder put(String key, String value) {
       this.entries.put(key, value);
       return this;
     }
 
-    public MetadataBuilder addAll(Map<String, String> metadata) {
+    public MetadataBuilder putAll(Map<String, String> metadata) {
       if (metadata != null) {
         this.entries.putAll(metadata);
       }
       return this;
     }
 
-    public MetadataBuilder addAll(Metadata metadata) {
+    public MetadataBuilder putAll(Metadata metadata) {
       if (metadata != null) {
         this.entries.putAll(metadata);
       }
