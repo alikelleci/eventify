@@ -1,15 +1,12 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.util.IdUtils;
 import lombok.Builder;
 import lombok.Value;
-import org.springframework.core.annotation.AnnotationUtils;
 
-import java.beans.Transient;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -23,7 +20,6 @@ public class Aggregate implements Message {
   Metadata metadata;
   String aggregateId;
   String eventId;
-  long version;
 
   private Aggregate() {
     this.id = null;
@@ -33,7 +29,6 @@ public class Aggregate implements Message {
     this.metadata = null;
     this.aggregateId = null;
     this.eventId = null;
-    this.version = 0;
   }
 
   @Builder
@@ -47,7 +42,6 @@ public class Aggregate implements Message {
     this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
 
     this.eventId = eventId;
-    this.version = version;
   }
 
   public static class AggregateBuilder {
@@ -69,25 +63,5 @@ public class Aggregate implements Message {
       Metadata metadata = metadataBuilder.build();
       return new Aggregate(timestamp, payload, metadata, eventId, version);
     }
-  }
-
-
-  @Transient
-  public int getSnapshotThreshold() {
-    return Optional.ofNullable(getPayload())
-        .map(Object::getClass)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshotting.class))
-        .map(EnableSnapshotting::threshold)
-        .filter(threshold -> threshold > 0)
-        .orElse(0);
-  }
-
-  @Transient
-  public boolean deleteEvents() {
-    return Optional.ofNullable(getPayload())
-        .map(Object::getClass)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshotting.class))
-        .map(EnableSnapshotting::deleteEvents)
-        .orElse(false);
   }
 }
