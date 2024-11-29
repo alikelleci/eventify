@@ -1,14 +1,10 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
-import com.github.f4b6a3.ulid.UlidCreator;
-import io.github.alikelleci.eventify.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.util.IdUtils;
 import lombok.Value;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -132,27 +128,15 @@ public class Event implements Message {
         throw new PayloadMissingException("Message payload is missing.");
       }
       this.type = payload.getClass().getSimpleName();
-      this.aggregateId = getAggregateId(this.payload);
+      this.aggregateId = IdUtils.getAggregateId(this.payload);
 
       if (this.timestamp == null) {
         this.timestamp = Instant.now();
       }
       if (this.id == null) {
-        this.id = this.aggregateId + "@" + UlidCreator.getMonotonicUlid(this.timestamp.toEpochMilli()).toString();
+        this.id = IdUtils.createCompoundKey(this.aggregateId, this.timestamp);
       }
       return new Event(this);
-    }
-
-    private String getAggregateId(Object payload) {
-      return FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class)
-          .stream()
-          .filter(field -> field.getType() == String.class)
-          .findFirst()
-          .map(field -> {
-            field.setAccessible(true);
-            return (String) ReflectionUtils.getField(field, this.payload);
-          })
-          .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
     }
   }
 }
