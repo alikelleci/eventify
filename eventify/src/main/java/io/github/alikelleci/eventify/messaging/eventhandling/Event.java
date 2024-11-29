@@ -12,13 +12,13 @@ import java.util.Map;
 
 @Value
 public class Event implements Message {
-  private String id;
-  private Instant timestamp;
-  private String type;
-  private Object payload;
-  private Metadata metadata;
-  private String aggregateId;
-  private int revision;
+  String id;
+  Instant timestamp;
+  String type;
+  Object payload;
+  Metadata metadata;
+  String aggregateId;
+  int revision;
 
   private Event() {
     this.id = null;

@@ -1,17 +1,12 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import com.github.f4b6a3.ulid.UlidCreator;
-import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.util.IdUtils;
 import lombok.Value;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.util.ReflectionUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
@@ -21,14 +16,14 @@ import java.util.Optional;
 
 @Value
 public class Aggregate implements Message {
-  private String id;
-  private Instant timestamp;
-  private String type;
-  private Object payload;
-  private Metadata metadata;
-  private String aggregateId;
-  private String eventId;
-  private long version;
+  String id;
+  Instant timestamp;
+  String type;
+  Object payload;
+  Metadata metadata;
+  String aggregateId;
+  String eventId;
+  long version;
 
   private Aggregate() {
     this.id = null;
