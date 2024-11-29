@@ -4,7 +4,6 @@ import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
-import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.util.IdUtils;
 import lombok.Builder;
 import lombok.Value;
@@ -12,6 +11,7 @@ import org.springframework.core.annotation.AnnotationUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 
 @Value
@@ -54,13 +54,13 @@ public class Aggregate implements Message {
     Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
 
     public AggregateBuilder metadata(String key, String value) {
-      this.metadataBuilder.add(key, value);
+      metadataBuilder = metadataBuilder.add(key, value);
       return this;
     }
 
-    public AggregateBuilder metadata(Metadata metadata) {
+    public AggregateBuilder metadata(Map<String, String> metadata) {
       if (metadata != null) {
-        metadataBuilder.addAll(metadata);
+        metadataBuilder = metadataBuilder.addAll(metadata);
       }
       return this;
     }

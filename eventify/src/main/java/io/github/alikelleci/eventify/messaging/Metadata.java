@@ -30,17 +30,6 @@ public class Metadata implements Map<String, String> {
     return entries.toString();
   }
 
-  public Metadata addAll(Metadata metadata) {
-    if (metadata != null) {
-      this.entries.putAll(metadata);
-    }
-    return this;
-  }
-
-  public Metadata add(String key, String value) {
-    this.entries.put(key, value);
-    return this;
-  }
 
   @Transient
   public String getCorrelationId() {
@@ -55,15 +44,22 @@ public class Metadata implements Map<String, String> {
 
     private final Map<String, String> entries = new HashMap<>();
 
-    public MetadataBuilder addAll(Metadata metadata) {
+    public MetadataBuilder add(String key, String value) {
+      this.entries.put(key, value);
+      return this;
+    }
+
+    public MetadataBuilder addAll(Map<String, String> metadata) {
       if (metadata != null) {
-        this.entries.putAll(new HashMap<>(metadata));
+        this.entries.putAll(metadata);
       }
       return this;
     }
 
-    public MetadataBuilder add(String key, String value) {
-      this.entries.put(key, value);
+    public MetadataBuilder addAll(Metadata metadata) {
+      if (metadata != null) {
+        this.entries.putAll(metadata);
+      }
       return this;
     }
 

@@ -8,6 +8,7 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -41,22 +42,20 @@ public class Command implements Message {
     this.aggregateId = IdUtils.getAggregateId(getPayload());
     this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
 
-    if (getMetadata().getCorrelationId() == null) {
-      getMetadata().add(CORRELATION_ID, UUID.randomUUID().toString());
-    }
+    getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }
 
   public static class CommandBuilder {
     Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
 
     public CommandBuilder metadata(String key, String value) {
-      this.metadataBuilder.add(key, value);
+      metadataBuilder = metadataBuilder.add(key, value);
       return this;
     }
 
-    public CommandBuilder metadata(Metadata metadata) {
+    public CommandBuilder metadata(Map<String, String> metadata) {
       if (metadata != null) {
-        metadataBuilder.addAll(metadata);
+        metadataBuilder = metadataBuilder.addAll(metadata);
       }
       return this;
     }

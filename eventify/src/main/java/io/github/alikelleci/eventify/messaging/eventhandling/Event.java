@@ -10,6 +10,7 @@ import lombok.Value;
 import org.springframework.core.annotation.AnnotationUtils;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
@@ -57,13 +58,13 @@ public class Event implements Message {
     Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
 
     public EventBuilder metadata(String key, String value) {
-      this.metadataBuilder.add(key, value);
+      metadataBuilder.add(key, value);
       return this;
     }
 
-    public EventBuilder metadata(Metadata metadata) {
+    public EventBuilder metadata(Map<String, String> metadata) {
       if (metadata != null) {
-        metadataBuilder.addAll(metadata);
+        metadataBuilder = metadataBuilder.addAll(metadata);
       }
       return this;
     }
