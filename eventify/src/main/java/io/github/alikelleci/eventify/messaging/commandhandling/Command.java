@@ -11,6 +11,9 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
+import java.util.UUID;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 
 @Value
 public class Command implements Message {
@@ -111,6 +114,9 @@ public class Command implements Message {
       }
       if (this.type == null) {
         this.type = payload.getClass().getSimpleName();
+      }
+      if (metadata.getCorrelationId() == null) {
+        metadata.put(CORRELATION_ID, UUID.randomUUID().toString());
       }
       if (this.aggregateId == null) {
         this.aggregateId = getAggregateId(this.payload);
