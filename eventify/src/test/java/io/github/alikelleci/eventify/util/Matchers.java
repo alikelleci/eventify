@@ -96,8 +96,8 @@ public class Matchers {
         assertThat(snapshotMetadata, hasEntry(key, value)));
     assertThat(snapshot.getMetadata(), is(notNullValue()));
     assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(event.getMetadata().get(CORRELATION_ID)));
-    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
-    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
+    assertThat(snapshot.getMetadata().get(RESULT), emptyOrNullString());
+    assertThat(snapshot.getMetadata().get(CAUSE), emptyOrNullString());
 
     // Payload
     assertThat(snapshot.getPayload(), is(notNullValue()));
