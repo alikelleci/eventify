@@ -42,7 +42,29 @@ public class Command implements Message {
     this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
 
     if (getMetadata().getCorrelationId() == null) {
-      getMetadata().put(CORRELATION_ID, UUID.randomUUID().toString());
+      getMetadata().add(CORRELATION_ID, UUID.randomUUID().toString());
     }
   }
+
+  public static class CommandBuilder {
+    Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
+
+    public CommandBuilder metadata(String key, String value) {
+      this.metadataBuilder.add(key, value);
+      return this;
+    }
+
+    public CommandBuilder metadata(Metadata metadata) {
+      if (metadata != null) {
+        metadataBuilder.addAll(metadata);
+      }
+      return this;
+    }
+
+    public Command build() {
+      Metadata metadata = metadataBuilder.build();
+      return new Command(timestamp, payload, metadata);
+    }
+  }
+
 }

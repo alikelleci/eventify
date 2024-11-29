@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.util.IdUtils;
 import lombok.Builder;
 import lombok.Value;
@@ -48,6 +49,28 @@ public class Aggregate implements Message {
     this.eventId = eventId;
     this.version = version;
   }
+
+  public static class AggregateBuilder {
+    Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
+
+    public AggregateBuilder metadata(String key, String value) {
+      this.metadataBuilder.add(key, value);
+      return this;
+    }
+
+    public AggregateBuilder metadata(Metadata metadata) {
+      if (metadata != null) {
+        metadataBuilder.addAll(metadata);
+      }
+      return this;
+    }
+
+    public Aggregate build() {
+      Metadata metadata = metadataBuilder.build();
+      return new Aggregate(timestamp, payload, metadata, eventId, version);
+    }
+  }
+
 
   @Transient
   public int getSnapshotThreshold() {

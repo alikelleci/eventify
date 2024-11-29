@@ -46,4 +46,25 @@ public class Event implements Message {
         .map(Revision::value)
         .orElse(1);
   }
+
+  public static class EventBuilder {
+    Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
+
+    public EventBuilder metadata(String key, String value) {
+      this.metadataBuilder.add(key, value);
+      return this;
+    }
+
+    public EventBuilder metadata(Metadata metadata) {
+      if (metadata != null) {
+        metadataBuilder.addAll(metadata);
+      }
+      return this;
+    }
+
+    public Event build() {
+      Metadata metadata = metadataBuilder.build();
+      return new Event(timestamp, payload, metadata);
+    }
+  }
 }
