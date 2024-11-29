@@ -32,7 +32,7 @@ public class Metadata implements Map<String, String> {
 
   public Metadata addAll(Metadata metadata) {
     if (metadata != null) {
-      this.entries.putAll(new HashMap<>(metadata));
+      this.entries.putAll(metadata);
     }
     return this;
   }
