@@ -12,6 +12,9 @@ import org.springframework.core.annotation.AnnotationUtils;
 import java.time.Instant;
 import java.util.Optional;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
+
 @Value
 public class Event implements Message {
   String id;
@@ -45,6 +48,9 @@ public class Event implements Message {
     this.revision = Optional.ofNullable(AnnotationUtils.findAnnotation(getPayload().getClass(), Revision.class))
         .map(Revision::value)
         .orElse(1);
+
+    getMetadata().remove(RESULT);
+    getMetadata().remove(CAUSE);
   }
 
   public static class EventBuilder {

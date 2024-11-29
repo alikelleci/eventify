@@ -1,9 +1,11 @@
 package io.github.alikelleci.eventify.util;
 
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+
+import java.util.HashMap;
+import java.util.Map;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
@@ -19,11 +21,8 @@ import static org.hamcrest.Matchers.startsWith;
 public class Matchers {
 
   public static void assertCommandResult(Command command, Command commandResult, boolean isSuccess) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(command.getMetadata());
+    metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
     assertThat(commandResult.getType(), is(command.getType()));
     assertThat(commandResult.getId(), is(command.getId()));
@@ -44,11 +43,8 @@ public class Matchers {
   }
 
   public static void assertEvent(Command command, Event event) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(command.getMetadata());
+    metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
     assertThat(event.getType(), is(notNullValue()));
     assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
@@ -75,11 +71,8 @@ public class Matchers {
   }
 
   public static void assertSnapshot(Event event, Aggregate snapshot) {
-    Metadata metadata = Metadata.builder()
-        .addAll(event.getMetadata())
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(event.getMetadata());
+    metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
     assertThat(snapshot.getVersion(), is(notNullValue()));
     assertThat(snapshot.getEventId(), is(event.getId()));

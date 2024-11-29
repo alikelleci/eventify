@@ -42,16 +42,6 @@ public class Metadata implements Map<String, String> {
     return this;
   }
 
-  public Metadata remove(String key) {
-    this.entries.remove(key);
-    return this;
-  }
-
-  public Metadata clearAll() {
-    this.entries.clear();
-    return this;
-  }
-
   @Transient
   public String getCorrelationId() {
     return this.entries.get(CORRELATION_ID);
@@ -74,16 +64,6 @@ public class Metadata implements Map<String, String> {
 
     public MetadataBuilder add(String key, String value) {
       this.entries.put(key, value);
-      return this;
-    }
-
-    public MetadataBuilder remove(String key) {
-      this.entries.remove(key);
-      return this;
-    }
-
-    public MetadataBuilder clearAll() {
-      this.entries.clear();
       return this;
     }
 
