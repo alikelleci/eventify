@@ -1,46 +1,45 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
+import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.util.IdUtils;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.Value;
-import org.apache.commons.lang3.reflect.FieldUtils;
-import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 
 @Value
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class Command extends Message {
+public class Command implements Message {
+  String id;
+  Instant timestamp;
+  String type;
+  Object payload;
+  Metadata metadata;
   String aggregateId;
 
   private Command() {
+    this.id = null;
+    this.timestamp = null;
+    this.type = null;
+    this.payload = null;
+    this.metadata = null;
     this.aggregateId = null;
   }
 
   @Builder
   private Command(Instant timestamp, Object payload, Metadata metadata) {
-    super(timestamp, payload, metadata);
+    this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
+    this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
+    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
 
-    this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
-        .stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> {
-          field.setAccessible(true);
-          return (String) ReflectionUtils.getField(field, getPayload());
-        })
-        .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
-
-    this.id = this.aggregateId + "@" + getId();
+    this.type = getPayload().getClass().getSimpleName();
+    this.aggregateId = IdUtils.getAggregateId(getPayload());
+    this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
 
     if (getMetadata().getCorrelationId() == null) {
       getMetadata().put(CORRELATION_ID, UUID.randomUUID().toString());

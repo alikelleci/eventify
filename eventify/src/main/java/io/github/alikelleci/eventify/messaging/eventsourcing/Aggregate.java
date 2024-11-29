@@ -1,31 +1,35 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.common.annotations.EnableSnapshotting;
-import io.github.alikelleci.eventify.common.exceptions.AggregateIdMissingException;
+import io.github.alikelleci.eventify.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.util.IdUtils;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.Value;
-import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.core.annotation.AnnotationUtils;
-import org.springframework.util.ReflectionUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
 
 @Value
-@ToString(callSuper = true)
-@EqualsAndHashCode(callSuper = true)
-public class Aggregate extends Message {
+public class Aggregate implements Message {
+  String id;
+  Instant timestamp;
+  String type;
+  Object payload;
+  Metadata metadata;
   String aggregateId;
   String eventId;
   long version;
 
   private Aggregate() {
+    this.id = null;
+    this.timestamp = null;
+    this.type = null;
+    this.payload = null;
+    this.metadata = null;
     this.aggregateId = null;
     this.eventId = null;
     this.version = 0;
@@ -33,19 +37,13 @@ public class Aggregate extends Message {
 
   @Builder
   private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
-    super(timestamp, payload, metadata);
+    this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
+    this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
+    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
 
-    this.aggregateId = FieldUtils.getFieldsListWithAnnotation(getPayload().getClass(), AggregateId.class)
-        .stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> {
-          field.setAccessible(true);
-          return (String) ReflectionUtils.getField(field, getPayload());
-        })
-        .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
-
-    this.id = this.aggregateId + "@" + getId();
+    this.type = getPayload().getClass().getSimpleName();
+    this.aggregateId = IdUtils.getAggregateId(getPayload());
+    this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
 
     this.eventId = eventId;
     this.version = version;
