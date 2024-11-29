@@ -11,10 +11,6 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import lombok.extern.slf4j.Slf4j;
 
-import java.time.Instant;
-import java.util.Map;
-
-
 @Slf4j
 public class CustomerEventSourcingHandler {
 
