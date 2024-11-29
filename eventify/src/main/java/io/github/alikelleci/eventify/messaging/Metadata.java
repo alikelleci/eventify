@@ -25,6 +25,11 @@ public class Metadata implements Map<String, String> {
     this.entries = entries;
   }
 
+  @Override
+  public String toString() {
+    return entries.toString();
+  }
+
   public Metadata addAll(Metadata metadata) {
     if (metadata != null) {
       this.entries.putAll(new HashMap<>(metadata));
@@ -45,11 +50,6 @@ public class Metadata implements Map<String, String> {
   @Transient
   public String getCorrelationId() {
     return this.entries.get(CORRELATION_ID);
-  }
-
-  @Override
-  public String toString() {
-    return this.entries.toString();
   }
 
   public static MetadataBuilder builder() {
