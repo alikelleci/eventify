@@ -21,10 +21,10 @@ import static org.hamcrest.Matchers.startsWith;
 public class Matchers {
 
   public static void assertCommandResult(Command command, Command commandResult, boolean isSuccess) {
-    Map<String, String> commandMetadata = new HashMap<>(command.getMetadata());
+    Map<String, String> commandMetadata = new HashMap<>(command.getMetadata().getEntries());
     commandMetadata.keySet().removeIf(key -> key.startsWith("$"));
 
-    Map<String, String> commandResultMetadata = new HashMap<>(commandResult.getMetadata());
+    Map<String, String> commandResultMetadata = new HashMap<>(commandResult.getMetadata().getEntries());
     commandResultMetadata.keySet().removeIf(key -> key.startsWith("$"));
 
     assertThat(commandResult.getType(), is(command.getType()));
@@ -46,10 +46,10 @@ public class Matchers {
   }
 
   public static void assertEvent(Command command, Event event) {
-    Map<String, String> commandMetadata = new HashMap<>(command.getMetadata());
+    Map<String, String> commandMetadata = new HashMap<>(command.getMetadata().getEntries());
     commandMetadata.keySet().removeIf(key -> key.startsWith("$"));
 
-    Map<String, String> eventMetadata = new HashMap<>(event.getMetadata());
+    Map<String, String> eventMetadata = new HashMap<>(event.getMetadata().getEntries());
     eventMetadata.keySet().removeIf(key -> key.startsWith("$"));
 
     assertThat(event.getType(), is(notNullValue()));
@@ -77,10 +77,10 @@ public class Matchers {
   }
 
   public static void assertSnapshot(Event event, Aggregate snapshot) {
-    Map<String, String> eventMetadata = new HashMap<>(event.getMetadata());
+    Map<String, String> eventMetadata = new HashMap<>(event.getMetadata().getEntries());
     eventMetadata.keySet().removeIf(key -> key.startsWith("$"));
 
-    Map<String, String> snapshotMetadata = new HashMap<>(snapshot.getMetadata());
+    Map<String, String> snapshotMetadata = new HashMap<>(snapshot.getMetadata().getEntries());
     snapshotMetadata.keySet().removeIf(key -> key.startsWith("$"));
 
     assertThat(snapshot.getVersion(), is(notNullValue()));
@@ -93,7 +93,7 @@ public class Matchers {
     // Metadata
     assertThat(snapshotMetadata.size(), is(eventMetadata.size()));
     eventMetadata.forEach((key, value) ->
-        assertThat(snapshot.getMetadata(), hasEntry(key, value)));
+        assertThat(snapshotMetadata, hasEntry(key, value)));
     assertThat(snapshot.getMetadata(), is(notNullValue()));
     assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(event.getMetadata().get(CORRELATION_ID)));
     assertThat(event.getMetadata().get(RESULT), emptyOrNullString());

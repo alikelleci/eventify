@@ -116,7 +116,7 @@ public class Command implements Message {
         this.type = payload.getClass().getSimpleName();
       }
       if (metadata.getCorrelationId() == null) {
-        metadata.put(CORRELATION_ID, UUID.randomUUID().toString());
+        this.metadata = metadata.toBuilder().entry(CORRELATION_ID, UUID.randomUUID().toString()).build();
       }
       if (this.aggregateId == null) {
         this.aggregateId = getAggregateId(this.payload);
