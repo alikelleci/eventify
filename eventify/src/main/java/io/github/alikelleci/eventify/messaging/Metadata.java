@@ -1,14 +1,12 @@
 package io.github.alikelleci.eventify.messaging;
 
 import lombok.EqualsAndHashCode;
-import lombok.ToString;
 import lombok.experimental.Delegate;
 
 import java.beans.Transient;
 import java.util.HashMap;
 import java.util.Map;
 
-@ToString
 @EqualsAndHashCode
 public class Metadata implements Map<String, String> {
   public static final String CORRELATION_ID = "$correlationId";
@@ -47,6 +45,11 @@ public class Metadata implements Map<String, String> {
   @Transient
   public String getCorrelationId() {
     return this.entries.get(CORRELATION_ID);
+  }
+
+  @Override
+  public String toString() {
+    return this.entries.toString();
   }
 
   public static MetadataBuilder builder() {

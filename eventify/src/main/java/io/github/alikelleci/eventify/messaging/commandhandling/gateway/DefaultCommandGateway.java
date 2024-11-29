@@ -18,11 +18,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.REPLY_TO;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
@@ -45,9 +43,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
   @Override
   public <R> CompletableFuture<R> send(Command command) {
-    command.getMetadata()
-        .add(CORRELATION_ID, UUID.randomUUID().toString())
-        .add(REPLY_TO, getReplyTopic());
+    command.getMetadata().add(REPLY_TO, getReplyTopic());
 
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 

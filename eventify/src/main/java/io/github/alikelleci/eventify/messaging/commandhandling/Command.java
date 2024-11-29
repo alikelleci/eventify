@@ -12,6 +12,9 @@ import org.apache.commons.lang3.reflect.FieldUtils;
 import org.springframework.util.ReflectionUtils;
 
 import java.time.Instant;
+import java.util.UUID;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 
 @Value
 @ToString(callSuper = true)
@@ -38,5 +41,9 @@ public class Command extends Message {
         .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
 
     this.id = this.aggregateId + "@" + getId();
+
+    if (getMetadata().getCorrelationId() == null) {
+      getMetadata().put(CORRELATION_ID, UUID.randomUUID().toString());
+    }
   }
 }
