@@ -44,10 +44,6 @@ public class Event implements Message {
     this.revision = builder.revision;
   }
 
-  public static EventBuilder builder() {
-    return new EventBuilder();
-  }
-
   public EventBuilder toBuilder() {
     return new EventBuilder()
         .id(this.id)
@@ -57,6 +53,10 @@ public class Event implements Message {
         .addMetadata(this.metadata)
         .aggregateId(this.aggregateId)
         .revision(this.revision);
+  }
+
+  public static EventBuilder builder() {
+    return new EventBuilder();
   }
 
   public static class EventBuilder {

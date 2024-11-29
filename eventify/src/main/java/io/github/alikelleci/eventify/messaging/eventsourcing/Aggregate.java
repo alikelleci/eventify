@@ -51,10 +51,6 @@ public class Aggregate implements Message {
     this.version = builder.version;
   }
 
-  public static AggregateBuilder builder() {
-    return new AggregateBuilder();
-  }
-
   public AggregateBuilder toBuilder() {
     return new AggregateBuilder()
         .id(this.id)
@@ -65,6 +61,10 @@ public class Aggregate implements Message {
         .aggregateId(this.aggregateId)
         .eventId(this.eventId)
         .version(this.version);
+  }
+
+  public static AggregateBuilder builder() {
+    return new AggregateBuilder();
   }
 
   public static class AggregateBuilder {

@@ -44,10 +44,6 @@ public class Command implements Message {
     this.aggregateId = builder.aggregateId;
   }
 
-  public static CommandBuilder builder() {
-    return new CommandBuilder();
-  }
-
   public CommandBuilder toBuilder() {
     return new CommandBuilder()
         .id(this.id)
@@ -56,6 +52,10 @@ public class Command implements Message {
         .payload(this.payload)
         .addMetadata(this.metadata)
         .aggregateId(this.aggregateId);
+  }
+
+  public static CommandBuilder builder() {
+    return new CommandBuilder();
   }
 
   public static class CommandBuilder {
