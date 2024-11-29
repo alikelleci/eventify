@@ -121,20 +121,17 @@ public class Command implements Message {
       if (this.payload == null) {
         throw new PayloadMissingException("Message payload is missing.");
       }
+      this.type = payload.getClass().getSimpleName();
+      this.aggregateId = getAggregateId(this.payload);
+
       if (this.timestamp == null) {
         this.timestamp = Instant.now();
       }
-      if (this.type == null) {
-        this.type = payload.getClass().getSimpleName();
+      if (this.id == null) {
+        this.id = this.aggregateId + "@" + UlidCreator.getMonotonicUlid(this.timestamp.toEpochMilli()).toString();
       }
       if (metadata.getCorrelationId() == null) {
         this.metadata = metadata.toBuilder().entry(CORRELATION_ID, UUID.randomUUID().toString()).build();
-      }
-      if (this.aggregateId == null) {
-        this.aggregateId = getAggregateId(this.payload);
-      }
-      if (this.id == null) {
-        this.id = this.aggregateId + "@" + UlidCreator.getMonotonicUlid(this.timestamp.toEpochMilli()).toString();
       }
 
       return new Command(this);
