@@ -40,14 +40,9 @@ public class Metadata {
     return this.entries.get(key);
   }
 
-  public void put(String key, String value) {
+  public void add(String key, String value) {
     this.entries.put(key, value);
   }
-
-  public void remove(String key) {
-    this.entries.remove(key);
-  }
-
 
   @Transient
   public String getCorrelationId() {
