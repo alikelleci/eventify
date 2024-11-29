@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -21,9 +20,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
-
-import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
 
 @Slf4j
 public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>> {
@@ -78,11 +74,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
         .map(payload -> Event.builder()
             .timestamp(command.getTimestamp())
             .payload(payload)
-            .metadata(Metadata.builder()
-                .addAll(command.getMetadata())
-                .remove(RESULT)
-                .remove(CAUSE)
-                .build())
+            .metadata(command.getMetadata())
             .build())
         .toList();
 

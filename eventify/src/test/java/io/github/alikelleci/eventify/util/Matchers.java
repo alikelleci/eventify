@@ -1,14 +1,15 @@
 package io.github.alikelleci.eventify.util;
 
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import static io.github.alikelleci.eventify.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.messaging.Metadata.ID;
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.messaging.Metadata.RESULT;
-import static io.github.alikelleci.eventify.messaging.Metadata.TIMESTAMP;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.emptyOrNullString;
 import static org.hamcrest.Matchers.hasEntry;
@@ -20,12 +21,8 @@ import static org.hamcrest.Matchers.startsWith;
 public class Matchers {
 
   public static void assertCommandResult(Command command, Command commandResult, boolean isSuccess) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(command.getMetadata());
+    metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
     assertThat(commandResult.getType(), is(command.getType()));
     assertThat(commandResult.getId(), is(command.getId()));
@@ -34,16 +31,10 @@ public class Matchers {
 
     // Metadata
     assertThat(commandResult.getMetadata(), is(notNullValue()));
-    assertThat(commandResult.getMetadata().size(), is(metadata.size() + (isSuccess ? 2 : 3))); // ID, RESULT and CAUSE are added
+    assertThat(commandResult.getMetadata().size(), is(metadata.size() + (isSuccess ? 1 : 2))); // RESULT and/or CAUSE added
     metadata.forEach((key, value) ->
         assertThat(commandResult.getMetadata(), hasEntry(key, value)));
-    assertThat(commandResult.getMetadata().get(ID), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get(ID), startsWith(commandResult.getAggregateId() + "@"));
-    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getId()));
-    assertThat(commandResult.getMetadata().get(ID), is(commandResult.getMetadata().getMessageId()));
-    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getTimestamp().toString()));
-    assertThat(commandResult.getMetadata().get(TIMESTAMP), is(commandResult.getMetadata().getTimestamp().toString()));
+    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(commandResult.getMetadata().get(RESULT), is(isSuccess ? "success" : "failure"));
     assertThat(commandResult.getMetadata().get(CAUSE), isSuccess ? emptyOrNullString() : notNullValue());
 
@@ -52,12 +43,8 @@ public class Matchers {
   }
 
   public static void assertEvent(Command command, Event event) {
-    Metadata metadata = Metadata.builder()
-        .addAll(command.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(command.getMetadata());
+    metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
     assertThat(event.getType(), is(notNullValue()));
     assertThat(event.getId(), startsWith(command.getAggregateId().concat("@")));
@@ -66,16 +53,10 @@ public class Matchers {
 
     // Metadata
     assertThat(event.getMetadata(), is(notNullValue()));
-    assertThat(event.getMetadata().size(), is(metadata.size() + 1)); // ID is added
+    assertThat(event.getMetadata().size(), is(metadata.size()));
     metadata.forEach((key, value) ->
         assertThat(event.getMetadata(), hasEntry(key, value)));
-    assertThat(event.getMetadata().get(ID), is(notNullValue()));
-    assertThat(event.getMetadata().get(ID), startsWith(event.getAggregateId() + "@"));
-    assertThat(event.getMetadata().get(ID), is(event.getId()));
-    assertThat(event.getMetadata().get(ID), is(event.getMetadata().getMessageId()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getTimestamp().toString()));
-    assertThat(event.getMetadata().get(TIMESTAMP), is(event.getMetadata().getTimestamp().toString()));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
     assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
 
@@ -90,12 +71,8 @@ public class Matchers {
   }
 
   public static void assertSnapshot(Event event, Aggregate snapshot) {
-    Metadata metadata = Metadata.builder()
-        .addAll(event.getMetadata())
-        .remove(ID)
-        .remove(RESULT)
-        .remove(CAUSE)
-        .build();
+    Map<String, String> metadata = new HashMap<>(event.getMetadata());
+    metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
     assertThat(snapshot.getEventId(), is(event.getId()));
     assertThat(snapshot.getType(), is(notNullValue()));
@@ -105,18 +82,12 @@ public class Matchers {
 
     // Metadata
     assertThat(snapshot.getMetadata(), is(notNullValue()));
-    assertThat(snapshot.getMetadata().size(), is(metadata.size() + 1)); // ID is added
+    assertThat(snapshot.getMetadata().size(), is(metadata.size() ));
     metadata.forEach((key, value) ->
         assertThat(snapshot.getMetadata(), hasEntry(key, value)));
-    assertThat(snapshot.getMetadata().get(ID), is(notNullValue()));
-    assertThat(snapshot.getMetadata().get(ID), startsWith(snapshot.getAggregateId() + "@"));
-    assertThat(snapshot.getMetadata().get(ID), is(snapshot.getId()));
-    assertThat(snapshot.getMetadata().get(ID), is(snapshot.getMetadata().getMessageId()));
-    assertThat(snapshot.getMetadata().get(TIMESTAMP), is(notNullValue()));
-    assertThat(snapshot.getMetadata().get(TIMESTAMP), is(snapshot.getTimestamp().toString()));
-    assertThat(snapshot.getMetadata().get(TIMESTAMP), is(snapshot.getMetadata().getTimestamp().toString()));
-    assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
-    assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
+    assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(event.getMetadata().get(CORRELATION_ID)));
+    assertThat(snapshot.getMetadata().get(RESULT), emptyOrNullString());
+    assertThat(snapshot.getMetadata().get(CAUSE), emptyOrNullString());
 
     // Payload
     assertThat(snapshot.getPayload(), is(notNullValue()));

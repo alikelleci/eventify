@@ -1,25 +1,22 @@
 package io.github.alikelleci.eventify.messaging.eventhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.support.serializer.json.util.JacksonUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
-import java.time.Instant;
 import java.util.Properties;
 
 
 public interface EventGateway {
 
-  void publish(Object payload, Metadata metadata, Instant timestamp);
-
-  default void publish(Object payload, Metadata metadata) {
-    publish(payload, metadata, null);
-  }
+  void publish(Event event);
 
   default void publish(Object payload) {
-    publish(payload, null, null);
+    publish(Event.builder()
+        .payload(payload)
+        .build());
   }
 
   public static EventGatewayBuilder builder() {
