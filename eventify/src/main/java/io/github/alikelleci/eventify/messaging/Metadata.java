@@ -21,13 +21,11 @@ public class Metadata implements Map<String, String> {
 
   private Metadata() {
     this.entries = new HashMap<>();
-//    this.entries = Collections.emptyMap();
   }
 
   @JsonCreator
   private Metadata(Map<String, String> entries) {
     this.entries = new HashMap<>(entries);;
-//    this.entries = Collections.unmodifiableMap(entries);
   }
 
   @Override
