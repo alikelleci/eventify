@@ -1,8 +1,8 @@
-package io.github.alikelleci.eventify.support.serializer.json;
+package io.github.alikelleci.eventify.support.serialization.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.support.serializer.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.support.serialization.json.util.JacksonUtils;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.kafka.common.serialization.Deserializer;

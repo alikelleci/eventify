@@ -13,8 +13,8 @@ import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandl
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
-import io.github.alikelleci.eventify.support.serializer.json.JsonDeserializer;
-import io.github.alikelleci.eventify.support.serializer.json.JsonSerializer;
+import io.github.alikelleci.eventify.support.serialization.json.JsonDeserializer;
+import io.github.alikelleci.eventify.support.serialization.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;

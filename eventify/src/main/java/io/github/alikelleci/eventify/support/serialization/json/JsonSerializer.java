@@ -1,7 +1,7 @@
-package io.github.alikelleci.eventify.support.serializer.json;
+package io.github.alikelleci.eventify.support.serialization.json;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.support.serializer.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.support.serialization.json.util.JacksonUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Serializer;

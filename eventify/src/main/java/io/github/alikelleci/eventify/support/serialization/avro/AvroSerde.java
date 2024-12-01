@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.support.serializer.avro;
+package io.github.alikelleci.eventify.support.serialization.avro;
 
 import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.kafka.common.serialization.Deserializer;
