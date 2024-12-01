@@ -16,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
+
 @Slf4j
 public class CustomerEventSourcingHandler {
 
@@ -25,7 +27,7 @@ public class CustomerEventSourcingHandler {
                          Metadata metadata,
                          @Timestamp Instant timestamp,
                          @MessageId String messageId,
-                         @MetadataValue("$correlationId") String correlationId) {
+                         @MetadataValue(CORRELATION_ID) String correlationId) {
     return Customer.builder()
         .id(event.getId())
         .firstName(event.getFirstName())
