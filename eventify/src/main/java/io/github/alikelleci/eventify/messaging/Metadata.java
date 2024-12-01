@@ -1,9 +1,11 @@
 package io.github.alikelleci.eventify.messaging;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Delegate;
 
 import java.beans.Transient;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,12 +19,15 @@ public class Metadata implements Map<String, String> {
   @Delegate
   private final Map<String, String> entries;
 
-  protected Metadata() {
+  private Metadata() {
     this.entries = new HashMap<>();
+//    this.entries = Collections.emptyMap();
   }
 
-  protected Metadata(Map<String, String> entries) {
+  @JsonCreator
+  private Metadata(Map<String, String> entries) {
     this.entries = entries;
+//    this.entries = Collections.unmodifiableMap(entries);
   }
 
   @Override
