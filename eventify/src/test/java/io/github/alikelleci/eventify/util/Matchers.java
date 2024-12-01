@@ -34,6 +34,7 @@ public class Matchers {
     assertThat(commandResult.getMetadata().size(), is(metadata.size() + (isSuccess ? 1 : 2))); // RESULT and/or CAUSE added
     metadata.forEach((key, value) ->
         assertThat(commandResult.getMetadata(), hasEntry(key, value)));
+    assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(commandResult.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(commandResult.getMetadata().get(RESULT), is(isSuccess ? "success" : "failure"));
     assertThat(commandResult.getMetadata().get(CAUSE), isSuccess ? emptyOrNullString() : notNullValue());
@@ -56,6 +57,7 @@ public class Matchers {
     assertThat(event.getMetadata().size(), is(metadata.size()));
     metadata.forEach((key, value) ->
         assertThat(event.getMetadata(), hasEntry(key, value)));
+    assertThat(event.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(event.getMetadata().get(CORRELATION_ID), is(command.getMetadata().get(CORRELATION_ID)));
     assertThat(event.getMetadata().get(RESULT), emptyOrNullString());
     assertThat(event.getMetadata().get(CAUSE), emptyOrNullString());
@@ -86,6 +88,7 @@ public class Matchers {
     assertThat(snapshot.getMetadata().size(), is(metadata.size() ));
     metadata.forEach((key, value) ->
         assertThat(snapshot.getMetadata(), hasEntry(key, value)));
+    assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(notNullValue()));
     assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(event.getMetadata().get(CORRELATION_ID)));
     assertThat(snapshot.getMetadata().get(RESULT), emptyOrNullString());
     assertThat(snapshot.getMetadata().get(CAUSE), emptyOrNullString());
