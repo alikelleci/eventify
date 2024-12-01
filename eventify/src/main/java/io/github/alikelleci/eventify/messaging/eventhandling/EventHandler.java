@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.common.annotations.Priority;
+import io.github.alikelleci.eventify.messaging.Context;
 import io.github.alikelleci.eventify.messaging.eventhandling.exceptions.EventProcessingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -37,7 +38,8 @@ public class EventHandler implements Function<Event, Void> {
     if (method.getParameterCount() == 1) {
       result = method.invoke(target, event.getPayload());
     } else {
-      result = method.invoke(target, event.getPayload(), event.getMetadata());
+      boolean injectContext = method.getParameters()[1].getType() == Context.class;
+      result = method.invoke(target, event.getPayload(), injectContext ? new Context(event) : event.getMetadata());
     }
     return null;
   }

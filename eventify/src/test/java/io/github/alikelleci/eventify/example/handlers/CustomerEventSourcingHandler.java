@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerCreate
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.CustomerDeleted;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.FirstNameChanged;
 import io.github.alikelleci.eventify.example.domain.CustomerEvent.LastNameChanged;
-import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.messaging.Context;
 import io.github.alikelleci.eventify.messaging.eventsourcing.annotations.ApplyEvent;
 import lombok.extern.slf4j.Slf4j;
 
@@ -15,14 +15,14 @@ import lombok.extern.slf4j.Slf4j;
 public class CustomerEventSourcingHandler {
 
   @ApplyEvent
-  public Customer handle(Customer state, CustomerCreated event, Metadata metadata) {
+  public Customer handle(Customer state, CustomerCreated event, Context context) {
     return Customer.builder()
         .id(event.getId())
         .firstName(event.getFirstName())
         .lastName(event.getLastName())
         .credits(event.getCredits())
         .birthday(event.getBirthday())
-//        .dateCreated(metadata.getTimestamp())
+        .dateCreated(context.getTimestamp())
         .build();
   }
 

@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
+import io.github.alikelleci.eventify.messaging.Context;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import lombok.extern.slf4j.Slf4j;
@@ -36,7 +37,8 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
     if (method.getParameterCount() == 2) {
       result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, event.getPayload());
     } else {
-      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, event.getPayload(), event.getMetadata());
+      boolean injectContext = method.getParameters()[2].getType() == Context.class;
+      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, event.getPayload(), injectContext ? new Context(event) : event.getMetadata());
     }
     return createState(event, result);
   }

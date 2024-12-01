@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.resulthandling;
 
 import io.github.alikelleci.eventify.common.annotations.Priority;
+import io.github.alikelleci.eventify.messaging.Context;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.exceptions.ResultProcessingException;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +39,8 @@ public class ResultHandler implements Function<Command, Void> {
     if (method.getParameterCount() == 1) {
       result = method.invoke(target, command.getPayload());
     } else {
-      result = method.invoke(target, command.getPayload(), command.getMetadata());
+      boolean injectContext = method.getParameters()[1].getType() == Context.class;
+      result = method.invoke(target, command.getPayload(), injectContext ? new Context(command) : command.getMetadata());
     }
     return null;
   }
