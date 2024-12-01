@@ -6,7 +6,7 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
-import io.github.alikelleci.eventify.support.serializer.json.JsonSerializer;
+import io.github.alikelleci.eventify.support.serialization.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;

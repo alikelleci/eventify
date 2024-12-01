@@ -1,13 +1,13 @@
-package io.github.alikelleci.eventify.support.serializer.json.util;
+package io.github.alikelleci.eventify.support.serialization.json.util;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import io.github.alikelleci.eventify.support.serializer.json.custom.InstantDeserializer;
-import io.github.alikelleci.eventify.support.serializer.json.custom.MultiValuedMapDeserializer;
-import io.github.alikelleci.eventify.support.serializer.json.custom.MultiValuedMapSerializer;
+import io.github.alikelleci.eventify.support.serialization.json.custom.InstantDeserializer;
+import io.github.alikelleci.eventify.support.serialization.json.custom.MultiValuedMapDeserializer;
+import io.github.alikelleci.eventify.support.serialization.json.custom.MultiValuedMapSerializer;
 import org.apache.commons.collections4.MultiValuedMap;
 
 import java.time.Instant;

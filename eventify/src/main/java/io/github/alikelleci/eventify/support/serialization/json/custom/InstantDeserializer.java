@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.support.serializer.json.custom;
+package io.github.alikelleci.eventify.support.serialization.json.custom;
 
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;

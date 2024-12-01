@@ -1,6 +1,9 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.messaging.Context;
+import io.github.alikelleci.eventify.common.annotations.MessageId;
+import io.github.alikelleci.eventify.common.annotations.MetadataValue;
+import io.github.alikelleci.eventify.common.annotations.Timestamp;
+import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +11,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.function.BiFunction;
 
 @Slf4j
@@ -26,21 +30,47 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
     log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
-      return doInvoke(aggregate, event);
+      Object result = invokeHandler(target, aggregate, event);
+      return createState(event, result);
     } catch (Exception e) {
       throw new AggregateInvocationException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Aggregate doInvoke(Aggregate aggregate, Event event) throws InvocationTargetException, IllegalAccessException {
-    Object result;
-    if (method.getParameterCount() == 2) {
-      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, event.getPayload());
-    } else {
-      boolean injectContext = method.getParameters()[2].getType() == Context.class;
-      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, event.getPayload(), injectContext ? new Context(event) : event.getMetadata());
+  private Object invokeHandler(Object handler, Aggregate aggregate, Event event) throws InvocationTargetException, IllegalAccessException {
+    Object[] args = new Object[method.getParameterCount()];
+    Parameter[] parameters = method.getParameters();
+
+    for (int i = 0; i < parameters.length; i++) {
+      Parameter parameter = parameters[i];
+
+      if (i == 0) {
+        args[i] = aggregate != null ? aggregate.getPayload() : null;
+        continue;
+      }
+
+      if (i == 1) {
+        args[i] = event.getPayload();
+        continue;
+      }
+
+      if (parameter.getType().isAssignableFrom(Metadata.class)) {
+        args[i] = event.getMetadata();
+      } else if (parameter.isAnnotationPresent(Timestamp.class)) {
+        args[i] = event.getTimestamp();
+      } else if (parameter.isAnnotationPresent(MessageId.class)) {
+        args[i] = event.getId();
+      } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
+        MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
+        String key = annotation.value();
+        args[i] = key.isEmpty() ? event.getMetadata() : event.getMetadata().get(key);
+      } else {
+        throw new IllegalArgumentException("Unsupported parameter: " + parameter);
+      }
     }
-    return createState(event, result);
+
+    // Invoke the method
+    return method.invoke(handler, args);
   }
 
   private Aggregate createState(Event event, Object result) {
@@ -59,4 +89,5 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
   public Method getMethod() {
     return method;
   }
+
 }

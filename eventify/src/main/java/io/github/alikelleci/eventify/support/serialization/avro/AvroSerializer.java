@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.support.serializer.avro;
+package io.github.alikelleci.eventify.support.serialization.avro;
 
 import org.apache.avro.io.BinaryEncoder;
 import org.apache.avro.io.EncoderFactory;
