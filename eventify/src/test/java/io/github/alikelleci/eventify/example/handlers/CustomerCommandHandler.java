@@ -33,7 +33,7 @@ public class CustomerCommandHandler {
                               CreateCustomer command,
                               Metadata metadata,
                               @Timestamp Instant timestamp,
-                              @MessageId String commandId,
+                              @MessageId String messageId,
                               @MetadataValue("$correlationId") String correlationId) {
     if (state != null) {
       throw new ValidationException("Customer already exists.");

@@ -24,7 +24,7 @@ public class CustomerEventSourcingHandler {
                          CustomerCreated event,
                          Metadata metadata,
                          @Timestamp Instant timestamp,
-                         @MessageId String commandId,
+                         @MessageId String messageId,
                          @MetadataValue("$correlationId") String correlationId) {
     return Customer.builder()
         .id(event.getId())
