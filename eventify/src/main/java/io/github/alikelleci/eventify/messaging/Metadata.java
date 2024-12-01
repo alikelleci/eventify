@@ -5,7 +5,6 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Delegate;
 
 import java.beans.Transient;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,7 +24,7 @@ public class Metadata implements Map<String, String> {
 
   @JsonCreator
   private Metadata(Map<String, String> entries) {
-    this.entries = new HashMap<>(entries);;
+    this.entries = new HashMap<>(entries);
   }
 
   @Override

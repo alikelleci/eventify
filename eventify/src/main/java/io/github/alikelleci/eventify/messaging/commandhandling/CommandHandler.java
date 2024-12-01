@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
+import io.github.alikelleci.eventify.messaging.Context;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -52,7 +53,8 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
     if (method.getParameterCount() == 2) {
       result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, command.getPayload());
     } else {
-      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, command.getPayload(), command.getMetadata());
+      boolean injectContext = method.getParameters()[2].getType() == Context.class;
+      result = method.invoke(target, aggregate != null ? aggregate.getPayload() : null, command.getPayload(), injectContext ? new Context(command) : command.getMetadata());
     }
     return createEvents(command, result);
   }
