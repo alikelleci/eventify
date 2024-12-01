@@ -26,7 +26,7 @@ public class Metadata implements Map<String, String> {
 
   @JsonCreator
   private Metadata(Map<String, String> entries) {
-    this.entries = entries;
+    this.entries = new HashMap<>(entries);;
 //    this.entries = Collections.unmodifiableMap(entries);
   }
 
