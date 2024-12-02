@@ -1,10 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
-import io.github.alikelleci.eventify.common.annotations.MessageId;
-import io.github.alikelleci.eventify.common.annotations.MetadataValue;
+import io.github.alikelleci.eventify.common.ParameterValueResolver;
 import io.github.alikelleci.eventify.common.annotations.Priority;
-import io.github.alikelleci.eventify.common.annotations.Timestamp;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.exceptions.EventProcessingException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -49,28 +46,12 @@ public class EventHandler implements Function<Event, Void> {
       if (i == 0) {
         args[i] = event.getPayload();
       } else {
-        args[i] = resolveParameterValue(parameter, event);
+        args[i] = ParameterValueResolver.resolve(parameter, event);
       }
     }
 
     // Invoke the method
     return method.invoke(handler, args);
-  }
-
-  private Object resolveParameterValue(Parameter parameter, Event event) {
-    if (parameter.getType().isAssignableFrom(Metadata.class)) {
-      return event.getMetadata();
-    } else if (parameter.isAnnotationPresent(Timestamp.class)) {
-      return event.getTimestamp();
-    } else if (parameter.isAnnotationPresent(MessageId.class)) {
-      return event.getId();
-    } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
-      MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
-      String key = annotation.value();
-      return key.isEmpty() ? event.getMetadata() : event.getMetadata().get(key);
-    } else {
-      throw new IllegalArgumentException("Unsupported parameter: " + parameter);
-    }
   }
 
   public int getPriority() {

@@ -1,10 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.common.annotations.MessageId;
-import io.github.alikelleci.eventify.common.annotations.MetadataValue;
-import io.github.alikelleci.eventify.common.annotations.Timestamp;
+import io.github.alikelleci.eventify.common.ParameterValueResolver;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -65,28 +62,12 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
       } else if (i == 1) {
         args[i] = command.getPayload();
       } else {
-        args[i] = resolveParameterValue(parameter, command);
+        args[i] = ParameterValueResolver.resolve(parameter, command);
       }
     }
 
     // Invoke the method
     return method.invoke(handler, args);
-  }
-
-  private Object resolveParameterValue(Parameter parameter, Command command) {
-    if (parameter.getType().isAssignableFrom(Metadata.class)) {
-      return command.getMetadata();
-    } else if (parameter.isAnnotationPresent(Timestamp.class)) {
-      return command.getTimestamp();
-    } else if (parameter.isAnnotationPresent(MessageId.class)) {
-      return command.getId();
-    } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
-      MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
-      String key = annotation.value();
-      return key.isEmpty() ? command.getMetadata() : command.getMetadata().get(key);
-    } else {
-      throw new IllegalArgumentException("Unsupported parameter: " + parameter);
-    }
   }
 
   private List<Event> createEvents(Command command, Object result) {

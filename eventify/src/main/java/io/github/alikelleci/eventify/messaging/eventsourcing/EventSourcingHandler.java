@@ -1,9 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.common.annotations.MessageId;
-import io.github.alikelleci.eventify.common.annotations.MetadataValue;
-import io.github.alikelleci.eventify.common.annotations.Timestamp;
-import io.github.alikelleci.eventify.messaging.Metadata;
+import io.github.alikelleci.eventify.common.ParameterValueResolver;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import lombok.Getter;
@@ -50,28 +47,12 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
       } else if (i == 1) {
         args[i] = event.getPayload();
       } else {
-        args[i] = resolveParameterValue(parameter, event);
+        args[i] = ParameterValueResolver.resolve(parameter, event);
       }
     }
 
     // Invoke the method
     return method.invoke(handler, args);
-  }
-
-  private Object resolveParameterValue(Parameter parameter, Event event) {
-    if (parameter.getType().isAssignableFrom(Metadata.class)) {
-      return event.getMetadata();
-    } else if (parameter.isAnnotationPresent(Timestamp.class)) {
-      return event.getTimestamp();
-    } else if (parameter.isAnnotationPresent(MessageId.class)) {
-      return event.getId();
-    } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
-      MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
-      String key = annotation.value();
-      return key.isEmpty() ? event.getMetadata() : event.getMetadata().get(key);
-    } else {
-      throw new IllegalArgumentException("Unsupported parameter: " + parameter);
-    }
   }
 
   private Aggregate createState(Event event, Object result) {
