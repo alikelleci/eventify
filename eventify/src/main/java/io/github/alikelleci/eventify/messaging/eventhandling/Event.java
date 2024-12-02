@@ -12,6 +12,9 @@ import org.springframework.core.annotation.AnnotationUtils;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+
+import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 
 @Value
 public class Event implements Message {
@@ -46,6 +49,8 @@ public class Event implements Message {
     this.revision = Optional.ofNullable(AnnotationUtils.findAnnotation(getPayload().getClass(), Revision.class))
         .map(Revision::value)
         .orElse(1);
+
+    getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }
 
   public static class EventBuilder {
