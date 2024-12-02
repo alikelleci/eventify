@@ -4,7 +4,7 @@ import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +24,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, CommandResult> context;
-  private KeyValueStore<String, Aggregate> snapshotStore;
+  private KeyValueStore<String, AggregateState> snapshotStore;
 
   public CommandProcessor(Eventify eventify) {
     this.eventify = eventify;
@@ -43,10 +43,10 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     try {
       // Load aggregate state
-      Aggregate aggregate = loadAggregate(key);
+      AggregateState state = loadAggregate(key);
 
       // Execute command
-      List<Event> events = executeCommand(aggregate, command);
+      List<Event> events = executeCommand(state, command);
 
       // Return if no events
       if (CollectionUtils.isEmpty(events)) {
@@ -89,14 +89,14 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   }
 
-  protected List<Event> executeCommand(Aggregate aggregate, Command command) {
+  protected List<Event> executeCommand(AggregateState state, Command command) {
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return new ArrayList<>();
     }
 
-    return commandHandler.apply(aggregate, command);
+    return commandHandler.apply(state, command);
   }
 
   protected Aggregate loadAggregate(String aggregateId) {

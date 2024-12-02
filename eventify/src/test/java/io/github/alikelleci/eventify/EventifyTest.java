@@ -12,7 +12,7 @@ import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serialization.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +52,7 @@ class EventifyTest {
   private TestOutputTopic<String, Event> eventsTopic;
 
   private KeyValueStore<String, Event> eventStore;
-  private KeyValueStore<String, Aggregate> snapshotStore;
+  private KeyValueStore<String, AggregateState> snapshotStore;
 
   @BeforeEach
   void setup() {
@@ -213,13 +213,13 @@ class EventifyTest {
   }
 
 
-  private List<Aggregate> readSnapshotsFromStore() {
+  private List<AggregateState> readSnapshotsFromStore() {
     return IteratorUtils.toList(snapshotStore.all())
         .stream().map(keyValue -> keyValue.value)
         .toList();
   }
 
-  private Aggregate readSnapshotFromStore(String aggregateId) {
+  private AggregateState readSnapshotFromStore(String aggregateId) {
     return readSnapshotsFromStore().stream()
         .filter(aggregate -> aggregate.getAggregateId().equals(aggregateId))
         .filter(aggregate -> aggregate.getId().startsWith(aggregateId + "@"))

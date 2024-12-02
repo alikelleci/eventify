@@ -14,7 +14,7 @@ import java.util.function.BiFunction;
 
 @Slf4j
 @Getter
-public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggregate>, CommonParameterResolver {
+public class EventSourcingHandler implements BiFunction<AggregateState, Event, AggregateState>, CommonParameterResolver {
 
   private final Object handler;
   private final Method method;
@@ -25,25 +25,25 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
   }
 
   @Override
-  public Aggregate apply(Aggregate aggregate, Event event) {
+  public AggregateState apply(AggregateState state, Event event) {
     log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
-      Object result = invokeHandler(handler, aggregate, event);
+      Object result = invokeHandler(handler, state, event);
       return createState(event, result);
     } catch (Exception e) {
       throw new AggregateInvocationException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Object invokeHandler(Object handler, Aggregate aggregate, Event event) throws InvocationTargetException, IllegalAccessException {
+  private Object invokeHandler(Object handler, AggregateState state, Event event) throws InvocationTargetException, IllegalAccessException {
     Object[] args = new Object[method.getParameterCount()];
     Parameter[] parameters = method.getParameters();
 
     for (int i = 0; i < parameters.length; i++) {
       Parameter parameter = parameters[i];
       if (i == 0) {
-        args[i] = aggregate != null ? aggregate.getPayload() : null;
+        args[i] = state != null ? state.getPayload() : null;
       } else if (i == 1) {
         args[i] = event.getPayload();
       } else {
@@ -55,12 +55,12 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
     return method.invoke(handler, args);
   }
 
-  private Aggregate createState(Event event, Object result) {
+  private AggregateState createState(Event event, Object result) {
     if (result == null) {
       return null;
     }
 
-    return Aggregate.builder()
+    return AggregateState.builder()
         .timestamp(event.getTimestamp())
         .payload(result)
         .metadata(event.getMetadata())

@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.util;
 
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -72,7 +72,7 @@ public class Matchers {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  public static void assertSnapshot(Event event, Aggregate snapshot) {
+  public static void assertSnapshot(Event event, AggregateState state) {
     Map<String, String> metadata = new HashMap<>(event.getMetadata());
     metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 

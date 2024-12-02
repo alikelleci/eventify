@@ -4,7 +4,7 @@ import io.github.alikelleci.eventify.common.CommonParameterResolver;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
@@ -26,7 +26,7 @@ import java.util.function.BiFunction;
 
 @Slf4j
 @Getter
-public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>>, CommonParameterResolver {
+public class CommandHandler implements BiFunction<AggregateState, Command, List<Event>>, CommonParameterResolver {
 
   private final Object handler;
   private final Method method;
@@ -39,26 +39,26 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
   }
 
   @Override
-  public List<Event> apply(Aggregate aggregate, Command command) {
+  public List<Event> apply(AggregateState state, Command command) {
     log.trace("Handling command: {} ({})", command.getType(), command.getAggregateId());
 
     try {
       validate(command.getPayload());
-      Object result = invokeHandler(handler, aggregate, command);
+      Object result = invokeHandler(handler, state, command);
       return createEvents(command, result);
     } catch (Exception e) {
       throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Object invokeHandler(Object handler, Aggregate aggregate, Command command) throws InvocationTargetException, IllegalAccessException {
+  private Object invokeHandler(Object handler, AggregateState state, Command command) throws InvocationTargetException, IllegalAccessException {
     Object[] args = new Object[method.getParameterCount()];
     Parameter[] parameters = method.getParameters();
 
     for (int i = 0; i < parameters.length; i++) {
       Parameter parameter = parameters[i];
       if (i == 0) {
-        args[i] = aggregate != null ? aggregate.getPayload() : null;
+        args[i] = state != null ? state.getPayload() : null;
       } else if (i == 1) {
         args[i] = command.getPayload();
       } else {
