@@ -10,7 +10,7 @@ import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Suc
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.messaging.eventhandling.EventProcessor;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.messaging.resulthandling.ResultProcessor;
@@ -101,7 +101,7 @@ public class Eventify {
 
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
     Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
-    Serde<Aggregate> snapshotSerde = new JsonSerde<>(Aggregate.class, objectMapper);
+    Serde<AggregateState> snapshotSerde = new JsonSerde<>(AggregateState.class, objectMapper);
 
     /*
      * -------------------------------------------------------------

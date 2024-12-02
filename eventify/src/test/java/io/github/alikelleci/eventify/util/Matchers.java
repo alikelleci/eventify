@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.util;
 
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -72,35 +72,35 @@ public class Matchers {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  public static void assertSnapshot(Event event, Aggregate snapshot) {
+  public static void assertSnapshot(Event event, AggregateState state) {
     Map<String, String> metadata = new HashMap<>(event.getMetadata());
     metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
-    assertThat(snapshot.getVersion(), is(notNullValue()));
-    assertThat(snapshot.getEventId(), is(event.getId()));
-    assertThat(snapshot.getType(), is(notNullValue()));
-    assertThat(snapshot.getId(), startsWith(event.getAggregateId().concat("@")));
-    assertThat(snapshot.getAggregateId(), is(event.getAggregateId()));
-    assertThat(snapshot.getTimestamp(), is(event.getTimestamp()));
+    assertThat(state.getVersion(), is(notNullValue()));
+    assertThat(state.getEventId(), is(event.getId()));
+    assertThat(state.getType(), is(notNullValue()));
+    assertThat(state.getId(), startsWith(event.getAggregateId().concat("@")));
+    assertThat(state.getAggregateId(), is(event.getAggregateId()));
+    assertThat(state.getTimestamp(), is(event.getTimestamp()));
 
     // Metadata
-    assertThat(snapshot.getMetadata(), is(notNullValue()));
-    assertThat(snapshot.getMetadata().size(), is(metadata.size() ));
+    assertThat(state.getMetadata(), is(notNullValue()));
+    assertThat(state.getMetadata().size(), is(metadata.size() ));
     metadata.forEach((key, value) ->
-        assertThat(snapshot.getMetadata(), hasEntry(key, value)));
-    assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(notNullValue()));
-    assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(event.getMetadata().get(CORRELATION_ID)));
-    assertThat(snapshot.getMetadata().get(RESULT), emptyOrNullString());
-    assertThat(snapshot.getMetadata().get(CAUSE), emptyOrNullString());
+        assertThat(state.getMetadata(), hasEntry(key, value)));
+    assertThat(state.getMetadata().get(CORRELATION_ID), is(notNullValue()));
+    assertThat(state.getMetadata().get(CORRELATION_ID), is(event.getMetadata().get(CORRELATION_ID)));
+    assertThat(state.getMetadata().get(RESULT), emptyOrNullString());
+    assertThat(state.getMetadata().get(CAUSE), emptyOrNullString());
 
     // Payload
-    assertThat(snapshot.getPayload(), is(notNullValue()));
+    assertThat(state.getPayload(), is(notNullValue()));
   }
 
-  public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type, long version) {
-    assertSnapshot(event, snapshot);
-    assertThat(snapshot.getVersion(), is(version));
-    assertThat(snapshot.getType(), is(type.getSimpleName()));
-    assertThat(snapshot.getPayload(), instanceOf(type));
+  public static void assertSnapshot(Event event, AggregateState state, Class<?> type, long version) {
+    assertSnapshot(event, state);
+    assertThat(state.getVersion(), is(version));
+    assertThat(state.getType(), is(type.getSimpleName()));
+    assertThat(state.getPayload(), instanceOf(type));
   }
 }

@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Value
-public class Aggregate implements Message {
+public class AggregateState implements Message {
   String id;
   Instant timestamp;
   String type;
@@ -25,7 +25,7 @@ public class Aggregate implements Message {
   String eventId;
   long version;
 
-  private Aggregate() {
+  private AggregateState() {
     this.id = null;
     this.timestamp = null;
     this.type = null;
@@ -37,7 +37,7 @@ public class Aggregate implements Message {
   }
 
   @Builder
-  private Aggregate(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
+  private AggregateState(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
@@ -50,24 +50,24 @@ public class Aggregate implements Message {
     this.version = version;
   }
 
-  public static class AggregateBuilder {
+  public static class AggregateStateBuilder {
     Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
 
-    public AggregateBuilder metadata(String key, String value) {
+    public AggregateStateBuilder metadata(String key, String value) {
       metadataBuilder = metadataBuilder.put(key, value);
       return this;
     }
 
-    public AggregateBuilder metadata(Map<String, String> metadata) {
+    public AggregateStateBuilder metadata(Map<String, String> metadata) {
       if (metadata != null) {
         metadataBuilder = metadataBuilder.putAll(metadata);
       }
       return this;
     }
 
-    public Aggregate build() {
+    public AggregateState build() {
       Metadata metadata = metadataBuilder.build();
-      return new Aggregate(timestamp, payload, metadata, eventId, version);
+      return new AggregateState(timestamp, payload, metadata, eventId, version);
     }
   }
 

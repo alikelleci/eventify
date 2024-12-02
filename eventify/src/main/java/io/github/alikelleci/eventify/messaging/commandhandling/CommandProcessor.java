@@ -4,7 +4,7 @@ import io.github.alikelleci.eventify.Eventify;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +30,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, CommandResult> context;
   private KeyValueStore<String, Event> eventStore;
-  private KeyValueStore<String, Aggregate> snapshotStore;
+  private KeyValueStore<String, AggregateState> snapshotStore;
 
   public CommandProcessor(Eventify eventify) {
     this.eventify = eventify;
@@ -50,10 +50,10 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     try {
       // Load aggregate state
-      Aggregate aggregate = loadAggregate(key);
+      AggregateState state = loadAggregate(key);
 
       // Execute command
-      List<Event> events = executeCommand(aggregate, command);
+      List<Event> events = executeCommand(state, command);
 
       // Return if no events
       if (CollectionUtils.isEmpty(events)) {
@@ -88,17 +88,17 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   }
 
-  protected List<Event> executeCommand(Aggregate aggregate, Command command) {
+  protected List<Event> executeCommand(AggregateState state, Command command) {
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return new ArrayList<>();
     }
 
-    return commandHandler.apply(aggregate, command);
+    return commandHandler.apply(state, command);
   }
 
-  protected Aggregate loadAggregate(String aggregateId) {
+  protected AggregateState loadAggregate(String aggregateId) {
     Instant startTime = Instant.now();
 
     AtomicLong sequence = new AtomicLong(0);
@@ -107,11 +107,11 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     String from = aggregateId.concat("@");
     String to = aggregateId.concat("@~");
 
-    Aggregate aggregate = loadFromSnapshot(aggregateId);
-    if (aggregate != null) {
-      log.debug("Snapshot found: {}", aggregate);
-      from = aggregate.getEventId();
-      sequence.set(aggregate.getVersion());
+    AggregateState state = loadFromSnapshot(aggregateId);
+    if (state != null) {
+      log.debug("Snapshot found: {}", state);
+      from = state.getEventId();
+      sequence.set(state.getVersion());
     }
 
     log.debug("Loading aggregate state by applying events...");
@@ -119,10 +119,10 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value;
-        if (aggregate == null || !aggregate.getEventId().equals(event.getId())) {
+        if (state == null || !state.getEventId().equals(event.getId())) {
           EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
-            aggregate = eventSourcingHandler.apply(aggregate, event);
+            state = eventSourcingHandler.apply(state, event);
 
             sequence.incrementAndGet();
             counter.incrementAndGet();
@@ -131,8 +131,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       }
     }
 
-    aggregate = Optional.ofNullable(aggregate)
-        .map(aggr -> Aggregate.builder()
+    state = Optional.ofNullable(state)
+        .map(aggr -> AggregateState.builder()
             .timestamp(aggr.getTimestamp())
             .payload(aggr.getPayload())
             .metadata(aggr.getMetadata())
@@ -145,11 +145,11 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     Duration duration = Duration.between(startTime, endTime);
 
     log.debug("Number of events applied: {}", counter.get());
-    log.debug("Aggregate state reconstructed: {}", aggregate);
+    log.debug("Aggregate state reconstructed: {}", state);
     log.debug("Aggregate state reconstructed in: {} ms ({} sec)", duration.toMillis(), duration.toSeconds());
 
     // Save snapshot if needed
-    Optional.ofNullable(aggregate)
+    Optional.ofNullable(state)
         .filter(aggr -> counter.get() > 0)
         .filter(aggr -> aggr.getSnapshotThreshold() > 0)
         .filter(aggr -> aggr.getVersion() % aggr.getSnapshotThreshold() == 0)
@@ -164,10 +164,10 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
           }
         });
 
-    return aggregate;
+    return state;
   }
 
-  protected Aggregate loadFromSnapshot(String aggregateId) {
+  protected AggregateState loadFromSnapshot(String aggregateId) {
     return snapshotStore.get(aggregateId);
   }
 
@@ -175,15 +175,15 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     eventStore.putIfAbsent(event.getId(), event);
   }
 
-  protected void saveSnapshot(Aggregate aggregate) {
-    snapshotStore.put(aggregate.getAggregateId(), aggregate);
+  protected void saveSnapshot(AggregateState state) {
+    snapshotStore.put(state.getAggregateId(), state);
   }
 
-  protected void deleteEvents(Aggregate aggregate) {
+  protected void deleteEvents(AggregateState state) {
     AtomicLong counter = new AtomicLong(0);
 
-    String from = aggregate.getAggregateId().concat("@");
-    String to = aggregate.getEventId();
+    String from = state.getAggregateId().concat("@");
+    String to = state.getEventId();
 
     try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {

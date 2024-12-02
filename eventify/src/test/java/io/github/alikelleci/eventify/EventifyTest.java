@@ -12,7 +12,7 @@ import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serialization.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +52,7 @@ class EventifyTest {
   private TestOutputTopic<String, Event> eventsTopic;
 
   private KeyValueStore<String, Event> eventStore;
-  private KeyValueStore<String, Aggregate> snapshotStore;
+  private KeyValueStore<String, AggregateState> snapshotStore;
 
   @BeforeEach
   void setup() {
@@ -185,15 +185,15 @@ class EventifyTest {
       assertThat(eventsInStore.size(), is(6));
       assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
 
-      Aggregate snapshot = snapshotStore.get("cust-1");
-      assertThat(snapshot, is(notNullValue()));
+      AggregateState state = snapshotStore.get("cust-1");
+      assertThat(state, is(notNullValue()));
 
-      assertSnapshot(events.get(4), snapshot, Customer.class, 5);
-      assertThat(((Customer) snapshot.getPayload()).getId(), is("cust-1"));
-      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is("John"));
-      assertThat(((Customer) snapshot.getPayload()).getLastName(), is("Doe"));
-      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(104));
-      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
+      assertSnapshot(events.get(4), state, Customer.class, 5);
+      assertThat(((Customer) state.getPayload()).getId(), is("cust-1"));
+      assertThat(((Customer) state.getPayload()).getFirstName(), is("John"));
+      assertThat(((Customer) state.getPayload()).getLastName(), is("Doe"));
+      assertThat(((Customer) state.getPayload()).getCredits(), is(104));
+      assertThat(((Customer) state.getPayload()).getBirthday(), is(notNullValue()));
     }
   }
 
@@ -211,13 +211,13 @@ class EventifyTest {
   }
 
 
-  private List<Aggregate> readSnapshotsFromStore() {
+  private List<AggregateState> readSnapshotsFromStore() {
     return IteratorUtils.toList(snapshotStore.all())
         .stream().map(keyValue -> keyValue.value)
         .toList();
   }
 
-  private Aggregate readSnapshotFromStore(String aggregateId) {
+  private AggregateState readSnapshotFromStore(String aggregateId) {
     return readSnapshotsFromStore().stream()
         .filter(aggregate -> aggregate.getAggregateId().equals(aggregateId))
         .filter(aggregate -> aggregate.getId().startsWith(aggregateId + "@"))
