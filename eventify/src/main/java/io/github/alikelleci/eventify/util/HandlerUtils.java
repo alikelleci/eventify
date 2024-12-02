@@ -56,15 +56,15 @@ public class HandlerUtils {
   }
 
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
-    if (method.getParameterCount() >= 2) {
-      Class<?> type = method.getParameters()[1].getType();
+    if (method.getParameterCount() >= 1) {
+      Class<?> type = method.getParameters()[0].getType();
       eventify.getCommandHandlers().put(type, new CommandHandler(listener, method));
     }
   }
 
   private void addEventSourcingHandler(Eventify eventify, Object listener, Method method) {
-    if (method.getParameterCount() >= 2) {
-      Class<?> type = method.getParameters()[1].getType();
+    if (method.getParameterCount() >= 1) {
+      Class<?> type = method.getParameters()[0].getType();
       eventify.getEventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
     }
   }

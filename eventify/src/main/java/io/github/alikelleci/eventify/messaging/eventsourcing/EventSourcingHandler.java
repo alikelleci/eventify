@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
 import io.github.alikelleci.eventify.common.CommonParameterResolver;
+import io.github.alikelleci.eventify.common.annotations.AggregateRoot;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import lombok.Getter;
@@ -43,9 +44,9 @@ public class EventSourcingHandler implements BiFunction<AggregateState, Event, A
     for (int i = 0; i < parameters.length; i++) {
       Parameter parameter = parameters[i];
       if (i == 0) {
-        args[i] = state != null ? state.getPayload() : null;
-      } else if (i == 1) {
         args[i] = event.getPayload();
+      } else if (parameter.getType().isAnnotationPresent(AggregateRoot.class)) {
+        args[i] = state != null ? state.getPayload() : null;
       } else {
         args[i] = resolve(parameter, event);
       }

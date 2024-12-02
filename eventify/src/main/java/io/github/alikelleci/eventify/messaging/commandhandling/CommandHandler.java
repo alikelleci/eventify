@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.common.CommonParameterResolver;
+import io.github.alikelleci.eventify.common.annotations.AggregateRoot;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
@@ -58,9 +59,9 @@ public class CommandHandler implements BiFunction<AggregateState, Command, List<
     for (int i = 0; i < parameters.length; i++) {
       Parameter parameter = parameters[i];
       if (i == 0) {
-        args[i] = state != null ? state.getPayload() : null;
-      } else if (i == 1) {
         args[i] = command.getPayload();
+      } else if (parameter.getType().isAnnotationPresent(AggregateRoot.class)) {
+        args[i] = state != null ? state.getPayload() : null;
       } else {
         args[i] = resolve(parameter, command);
       }
