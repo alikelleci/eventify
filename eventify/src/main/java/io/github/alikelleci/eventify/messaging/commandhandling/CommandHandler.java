@@ -1,10 +1,7 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.common.annotations.MessageId;
-import io.github.alikelleci.eventify.common.annotations.MetadataValue;
-import io.github.alikelleci.eventify.common.annotations.Timestamp;
+import io.github.alikelleci.eventify.common.ParameterValueResolver;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
-import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
@@ -12,6 +9,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -27,15 +25,16 @@ import java.util.Set;
 import java.util.function.BiFunction;
 
 @Slf4j
+@Getter
 public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>> {
 
-  private final Object target;
+  private final Object handler;
   private final Method method;
 
   private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
-  public CommandHandler(Object target, Method method) {
-    this.target = target;
+  public CommandHandler(Object handler, Method method) {
+    this.handler = handler;
     this.method = method;
   }
 
@@ -45,7 +44,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
 
     try {
       validate(command.getPayload());
-      Object result = invokeHandler(target, aggregate, command);
+      Object result = invokeHandler(handler, aggregate, command);
       return createEvents(command, result);
     } catch (Exception e) {
       throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
@@ -58,29 +57,12 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
 
     for (int i = 0; i < parameters.length; i++) {
       Parameter parameter = parameters[i];
-
       if (i == 0) {
         args[i] = aggregate != null ? aggregate.getPayload() : null;
-        continue;
-      }
-
-      if (i == 1) {
+      } else if (i == 1) {
         args[i] = command.getPayload();
-        continue;
-      }
-
-      if (parameter.getType().isAssignableFrom(Metadata.class)) {
-        args[i] = command.getMetadata();
-      } else if (parameter.isAnnotationPresent(Timestamp.class)) {
-        args[i] = command.getTimestamp();
-      } else if (parameter.isAnnotationPresent(MessageId.class)) {
-        args[i] = command.getId();
-      } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
-        MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
-        String key = annotation.value();
-        args[i] = key.isEmpty() ? command.getMetadata() : command.getMetadata().get(key);
       } else {
-        throw new IllegalArgumentException("Unsupported parameter: " + parameter);
+        args[i] = ParameterValueResolver.resolve(parameter, command);
       }
     }
 
@@ -123,10 +105,6 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
     if (!CollectionUtils.isEmpty(violations)) {
       throw new ConstraintViolationException(violations);
     }
-  }
-
-  public Method getMethod() {
-    return method;
   }
 
 }
