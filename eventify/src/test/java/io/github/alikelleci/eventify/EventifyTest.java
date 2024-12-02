@@ -116,15 +116,15 @@ class EventifyTest {
       assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) commands.get(0).getPayload()).getCredits()));
       assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) commands.get(0).getPayload()).getBirthday()));
 
-      AggregateState snapshot = snapshotStore.get("cust-1");
-      assertThat(snapshot, is(notNullValue()));
+      AggregateState state = snapshotStore.get("cust-1");
+      assertThat(state, is(notNullValue()));
 
-      assertSnapshot(events.get(0), snapshot, Customer.class);
-      assertThat(((Customer) snapshot.getPayload()).getId(), is("cust-1"));
-      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is("John"));
-      assertThat(((Customer) snapshot.getPayload()).getLastName(), is("Doe"));
-      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(100));
-      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
+      assertSnapshot(events.get(0), state, Customer.class);
+      assertThat(((Customer) state.getPayload()).getId(), is("cust-1"));
+      assertThat(((Customer) state.getPayload()).getFirstName(), is("John"));
+      assertThat(((Customer) state.getPayload()).getLastName(), is("Doe"));
+      assertThat(((Customer) state.getPayload()).getCredits(), is(100));
+      assertThat(((Customer) state.getPayload()).getBirthday(), is(notNullValue()));
     }
 
     @Test
@@ -142,8 +142,8 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
 
-      AggregateState snapshot = snapshotStore.get("cust-1");
-      assertThat(snapshot, is(nullValue()));
+      AggregateState state = snapshotStore.get("cust-1");
+      assertThat(state, is(nullValue()));
     }
 
   }
@@ -187,15 +187,15 @@ class EventifyTest {
       assertEvent(commands.get(4), events.get(4), CreditsAdded.class);
       assertEvent(commands.get(7), events.get(5), CreditsIssued.class);
 
-      AggregateState snapshot = snapshotStore.get("cust-1");
-      assertThat(snapshot, is(notNullValue()));
+      AggregateState state = snapshotStore.get("cust-1");
+      assertThat(state, is(notNullValue()));
 
-      assertSnapshot(events.get(5), snapshot, Customer.class);
-      assertThat(((Customer) snapshot.getPayload()).getId(), is("cust-1"));
-      assertThat(((Customer) snapshot.getPayload()).getFirstName(), is("John"));
-      assertThat(((Customer) snapshot.getPayload()).getLastName(), is("Doe"));
-      assertThat(((Customer) snapshot.getPayload()).getCredits(), is(102));
-      assertThat(((Customer) snapshot.getPayload()).getBirthday(), is(notNullValue()));
+      assertSnapshot(events.get(5), state, Customer.class);
+      assertThat(((Customer) state.getPayload()).getId(), is("cust-1"));
+      assertThat(((Customer) state.getPayload()).getFirstName(), is("John"));
+      assertThat(((Customer) state.getPayload()).getLastName(), is("Doe"));
+      assertThat(((Customer) state.getPayload()).getCredits(), is(102));
+      assertThat(((Customer) state.getPayload()).getBirthday(), is(notNullValue()));
     }
   }
 
@@ -221,8 +221,8 @@ class EventifyTest {
 
   private AggregateState readSnapshotFromStore(String aggregateId) {
     return readSnapshotsFromStore().stream()
-        .filter(aggregate -> aggregate.getAggregateId().equals(aggregateId))
-        .filter(aggregate -> aggregate.getId().startsWith(aggregateId + "@"))
+        .filter(state -> state.getAggregateId().equals(aggregateId))
+        .filter(state -> state.getId().startsWith(aggregateId + "@"))
         .findFirst()
         .orElse(null);
   }

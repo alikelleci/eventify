@@ -116,8 +116,8 @@ public class EventifyBenchmarkIT {
     for (int i = 1; i <= numberOfAggregates; i++) {
       String aggregateId = "cust-" + i;
 
-      AggregateState snapshot = generateSnapshotFor(aggregateId);
-      producer.send(new ProducerRecord<>(topic, snapshot.getAggregateId(), snapshot));
+      AggregateState state = generateSnapshotFor(aggregateId);
+      producer.send(new ProducerRecord<>(topic, state.getAggregateId(), state));
     }
     producer.flush();
     log.info("Number of snapshots generated: {}", numberOfAggregates);
