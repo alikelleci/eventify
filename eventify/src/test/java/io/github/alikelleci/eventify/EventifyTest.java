@@ -219,8 +219,8 @@ class EventifyTest {
 
   private AggregateState readSnapshotFromStore(String aggregateId) {
     return readSnapshotsFromStore().stream()
-        .filter(aggregate -> aggregate.getAggregateId().equals(aggregateId))
-        .filter(aggregate -> aggregate.getId().startsWith(aggregateId + "@"))
+        .filter(state -> state.getAggregateId().equals(aggregateId))
+        .filter(state -> state.getId().startsWith(aggregateId + "@"))
         .findFirst()
         .orElse(null);
   }

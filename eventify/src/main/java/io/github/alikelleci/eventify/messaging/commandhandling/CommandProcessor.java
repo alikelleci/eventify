@@ -150,17 +150,17 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     // Save snapshot if needed
     Optional.ofNullable(state)
-        .filter(aggr -> counter.get() > 0)
-        .filter(aggr -> aggr.getSnapshotThreshold() > 0)
-        .filter(aggr -> aggr.getVersion() % aggr.getSnapshotThreshold() == 0)
-        .ifPresent(aggr -> {
-          log.debug("Creating snapshot: {}", aggr);
-          saveSnapshot(aggr);
+        .filter(s -> counter.get() > 0)
+        .filter(s -> s.getSnapshotThreshold() > 0)
+        .filter(s -> s.getVersion() % s.getSnapshotThreshold() == 0)
+        .ifPresent(s -> {
+          log.debug("Creating snapshot: {}", s);
+          saveSnapshot(s);
 
           // Delete events after snapshot
-          if (aggr.deleteEvents()) {
+          if (s.deleteEvents()) {
             log.debug("Events prior to this snapshot will be deleted");
-            deleteEvents(aggr);
+            deleteEvents(s);
           }
         });
 
