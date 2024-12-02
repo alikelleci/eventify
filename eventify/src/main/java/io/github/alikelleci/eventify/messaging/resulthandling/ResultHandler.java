@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.common.annotations.Timestamp;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.exceptions.ResultProcessingException;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -17,13 +18,14 @@ import java.util.Optional;
 import java.util.function.Function;
 
 @Slf4j
+@Getter
 public class ResultHandler implements Function<Command, Void> {
 
-  private final Object target;
+  private final Object handler;
   private final Method method;
 
-  public ResultHandler(Object target, Method method) {
-    this.target = target;
+  public ResultHandler(Object handler, Method method) {
+    this.handler = handler;
     this.method = method;
   }
 
@@ -32,7 +34,7 @@ public class ResultHandler implements Function<Command, Void> {
     log.trace("Handling command result: {} ({})", command.getType(), command.getAggregateId());
 
     try {
-      Object result = invokeHandler(target, command);
+      Object result = invokeHandler(handler, command);
       return null;
     } catch (Exception e) {
       throw new ResultProcessingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
@@ -45,24 +47,10 @@ public class ResultHandler implements Function<Command, Void> {
 
     for (int i = 0; i < parameters.length; i++) {
       Parameter parameter = parameters[i];
-
       if (i == 0) {
         args[i] = command.getPayload();
-        continue;
-      }
-
-      if (parameter.getType().isAssignableFrom(Metadata.class)) {
-        args[i] = command.getMetadata();
-      } else if (parameter.isAnnotationPresent(Timestamp.class)) {
-        args[i] = command.getTimestamp();
-      } else if (parameter.isAnnotationPresent(MessageId.class)) {
-        args[i] = command.getId();
-      } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
-        MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
-        String key = annotation.value();
-        args[i] = key.isEmpty() ? command.getMetadata() : command.getMetadata().get(key);
       } else {
-        throw new IllegalArgumentException("Unsupported parameter: " + parameter);
+        args[i] = resolveParameterValue(parameter, command);
       }
     }
 
@@ -70,9 +58,20 @@ public class ResultHandler implements Function<Command, Void> {
     return method.invoke(handler, args);
   }
 
-
-  public Method getMethod() {
-    return method;
+  private Object resolveParameterValue(Parameter parameter, Command command) {
+    if (parameter.getType().isAssignableFrom(Metadata.class)) {
+      return command.getMetadata();
+    } else if (parameter.isAnnotationPresent(Timestamp.class)) {
+      return command.getTimestamp();
+    } else if (parameter.isAnnotationPresent(MessageId.class)) {
+      return command.getId();
+    } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
+      MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
+      String key = annotation.value();
+      return key.isEmpty() ? command.getMetadata() : command.getMetadata().get(key);
+    } else {
+      throw new IllegalArgumentException("Unsupported parameter: " + parameter);
+    }
   }
 
   public int getPriority() {
@@ -80,4 +79,5 @@ public class ResultHandler implements Function<Command, Void> {
         .map(Priority::value)
         .orElse(0);
   }
+
 }

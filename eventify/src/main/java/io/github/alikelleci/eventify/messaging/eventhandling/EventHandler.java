@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.common.annotations.Priority;
 import io.github.alikelleci.eventify.common.annotations.Timestamp;
 import io.github.alikelleci.eventify.messaging.Metadata;
 import io.github.alikelleci.eventify.messaging.eventhandling.exceptions.EventProcessingException;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -16,13 +17,14 @@ import java.util.Optional;
 import java.util.function.Function;
 
 @Slf4j
+@Getter
 public class EventHandler implements Function<Event, Void> {
 
-  private final Object target;
+  private final Object handler;
   private final Method method;
 
-  public EventHandler(Object target, Method method) {
-    this.target = target;
+  public EventHandler(Object handler, Method method) {
+    this.handler = handler;
     this.method = method;
   }
 
@@ -31,7 +33,7 @@ public class EventHandler implements Function<Event, Void> {
     log.trace("Handling event: {} ({})", event.getType(), event.getAggregateId());
 
     try {
-      Object result = invokeHandler(target, event);
+      Object result = invokeHandler(handler, event);
       return null;
     } catch (Exception e) {
       throw new EventProcessingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
@@ -44,24 +46,10 @@ public class EventHandler implements Function<Event, Void> {
 
     for (int i = 0; i < parameters.length; i++) {
       Parameter parameter = parameters[i];
-
       if (i == 0) {
         args[i] = event.getPayload();
-        continue;
-      }
-
-      if (parameter.getType().isAssignableFrom(Metadata.class)) {
-        args[i] = event.getMetadata();
-      } else if (parameter.isAnnotationPresent(Timestamp.class)) {
-        args[i] = event.getTimestamp();
-      } else if (parameter.isAnnotationPresent(MessageId.class)) {
-        args[i] = event.getId();
-      } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
-        MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
-        String key = annotation.value();
-        args[i] = key.isEmpty() ? event.getMetadata() : event.getMetadata().get(key);
       } else {
-        throw new IllegalArgumentException("Unsupported parameter: " + parameter);
+        args[i] = resolveParameterValue(parameter, event);
       }
     }
 
@@ -69,8 +57,20 @@ public class EventHandler implements Function<Event, Void> {
     return method.invoke(handler, args);
   }
 
-  public Method getMethod() {
-    return method;
+  private Object resolveParameterValue(Parameter parameter, Event event) {
+    if (parameter.getType().isAssignableFrom(Metadata.class)) {
+      return event.getMetadata();
+    } else if (parameter.isAnnotationPresent(Timestamp.class)) {
+      return event.getTimestamp();
+    } else if (parameter.isAnnotationPresent(MessageId.class)) {
+      return event.getId();
+    } else if (parameter.isAnnotationPresent(MetadataValue.class)) {
+      MetadataValue annotation = parameter.getAnnotation(MetadataValue.class);
+      String key = annotation.value();
+      return key.isEmpty() ? event.getMetadata() : event.getMetadata().get(key);
+    } else {
+      throw new IllegalArgumentException("Unsupported parameter: " + parameter);
+    }
   }
 
   public int getPriority() {
