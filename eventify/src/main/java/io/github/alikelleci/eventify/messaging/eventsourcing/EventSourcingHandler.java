@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.common.ParameterValueResolver;
+import io.github.alikelleci.eventify.common.CommonParameterResolver;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import lombok.Getter;
@@ -14,7 +14,7 @@ import java.util.function.BiFunction;
 
 @Slf4j
 @Getter
-public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggregate> {
+public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggregate>, CommonParameterResolver {
 
   private final Object handler;
   private final Method method;
@@ -47,7 +47,7 @@ public class EventSourcingHandler implements BiFunction<Aggregate, Event, Aggreg
       } else if (i == 1) {
         args[i] = event.getPayload();
       } else {
-        args[i] = ParameterValueResolver.resolve(parameter, event);
+        args[i] = resolve(parameter, event);
       }
     }
 
