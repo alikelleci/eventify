@@ -31,8 +31,8 @@ import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 public class CustomerCommandHandler {
 
   @HandleCommand
-  public CustomerEvent handle(Customer state,
-                              CreateCustomer command,
+  public CustomerEvent handle(CreateCustomer command,
+                              Customer state,
                               Metadata metadata,
                               @Timestamp Instant timestamp,
                               @MessageId String messageId,
@@ -51,7 +51,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(Customer state, ChangeFirstName command) {
+  public CustomerEvent handle(ChangeFirstName command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -63,7 +63,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(Customer state, ChangeLastName command) {
+  public CustomerEvent handle(ChangeLastName command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -75,7 +75,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(Customer state, AddCredits command) {
+  public CustomerEvent handle(AddCredits command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -87,7 +87,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(Customer state, IssueCredits command) {
+  public CustomerEvent handle(IssueCredits command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -103,7 +103,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(Customer state, DeleteCustomer command) {
+  public CustomerEvent handle(DeleteCustomer command,Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }

@@ -22,8 +22,8 @@ import static io.github.alikelleci.eventify.messaging.Metadata.CORRELATION_ID;
 public class CustomerEventSourcingHandler {
 
   @ApplyEvent
-  public Customer handle(Customer state,
-                         CustomerCreated event,
+  public Customer handle(CustomerCreated event,
+                         Customer state,
                          Metadata metadata,
                          @Timestamp Instant timestamp,
                          @MessageId String messageId,
@@ -39,35 +39,35 @@ public class CustomerEventSourcingHandler {
   }
 
   @ApplyEvent
-  public Customer handle(Customer state, FirstNameChanged event) {
+  public Customer handle(FirstNameChanged event, Customer state) {
     return state.toBuilder()
         .firstName(event.getFirstName())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(Customer state, LastNameChanged event) {
+  public Customer handle(LastNameChanged event, Customer state) {
     return state.toBuilder()
         .lastName(event.getLastName())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(Customer state, CreditsAdded event) {
+  public Customer handle(CreditsAdded event, Customer state) {
     return state.toBuilder()
         .credits(state.getCredits() + event.getAmount())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(Customer state, CreditsIssued event) {
+  public Customer handle(CreditsIssued event, Customer state) {
     return state.toBuilder()
         .credits(state.getCredits() - event.getAmount())
         .build();
   }
 
   @ApplyEvent
-  public Customer handle(Customer state, CustomerDeleted event) {
+  public Customer handle(CustomerDeleted event, Customer state) {
     return null;
   }
 }
