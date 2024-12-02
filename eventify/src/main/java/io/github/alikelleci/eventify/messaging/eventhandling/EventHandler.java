@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
-import io.github.alikelleci.eventify.common.ParameterValueResolver;
+import io.github.alikelleci.eventify.common.CommonParameterResolver;
 import io.github.alikelleci.eventify.common.annotations.Priority;
 import io.github.alikelleci.eventify.messaging.eventhandling.exceptions.EventProcessingException;
 import lombok.Getter;
@@ -15,7 +15,7 @@ import java.util.function.Function;
 
 @Slf4j
 @Getter
-public class EventHandler implements Function<Event, Void> {
+public class EventHandler implements Function<Event, Void>, CommonParameterResolver {
 
   private final Object handler;
   private final Method method;
@@ -46,7 +46,7 @@ public class EventHandler implements Function<Event, Void> {
       if (i == 0) {
         args[i] = event.getPayload();
       } else {
-        args[i] = ParameterValueResolver.resolve(parameter, event);
+        args[i] = resolve(parameter, event);
       }
     }
 

@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.messaging.commandhandling;
 
-import io.github.alikelleci.eventify.common.ParameterValueResolver;
+import io.github.alikelleci.eventify.common.CommonParameterResolver;
 import io.github.alikelleci.eventify.common.exceptions.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.messaging.commandhandling.exceptions.CommandExecutionException;
 import io.github.alikelleci.eventify.messaging.eventhandling.Event;
@@ -26,7 +26,7 @@ import java.util.function.BiFunction;
 
 @Slf4j
 @Getter
-public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>> {
+public class CommandHandler implements BiFunction<Aggregate, Command, List<Event>>, CommonParameterResolver {
 
   private final Object handler;
   private final Method method;
@@ -62,7 +62,7 @@ public class CommandHandler implements BiFunction<Aggregate, Command, List<Event
       } else if (i == 1) {
         args[i] = command.getPayload();
       } else {
-        args[i] = ParameterValueResolver.resolve(parameter, command);
+        args[i] = resolve(parameter, command);
       }
     }
 

@@ -8,9 +8,9 @@ import io.github.alikelleci.eventify.messaging.Metadata;
 
 import java.lang.reflect.Parameter;
 
-public class ParameterValueResolver {
+public interface CommonParameterResolver {
 
-  public static Object resolve(Parameter parameter, Message message) {
+  default Object resolve(Parameter parameter, Message message) {
     if (parameter.getType().isAssignableFrom(Metadata.class)) {
       return message.getMetadata();
     } else if (parameter.isAnnotationPresent(Timestamp.class)) {

@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.messaging.resulthandling;
 
-import io.github.alikelleci.eventify.common.ParameterValueResolver;
+import io.github.alikelleci.eventify.common.CommonParameterResolver;
 import io.github.alikelleci.eventify.common.annotations.Priority;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.resulthandling.exceptions.ResultProcessingException;
@@ -16,7 +16,7 @@ import java.util.function.Function;
 
 @Slf4j
 @Getter
-public class ResultHandler implements Function<Command, Void> {
+public class ResultHandler implements Function<Command, Void>, CommonParameterResolver {
 
   private final Object handler;
   private final Method method;
@@ -47,7 +47,7 @@ public class ResultHandler implements Function<Command, Void> {
       if (i == 0) {
         args[i] = command.getPayload();
       } else {
-        args[i] = ParameterValueResolver.resolve(parameter, command);
+        args[i] = resolve(parameter, command);
       }
     }
 
