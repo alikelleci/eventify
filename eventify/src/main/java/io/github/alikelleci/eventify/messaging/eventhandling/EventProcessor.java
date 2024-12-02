@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.Eventify;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -19,7 +19,7 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, Event> context;
-  private KeyValueStore<String, Aggregate> snapshotStore;
+  private KeyValueStore<String, AggregateState> snapshotStore;
 
   public EventProcessor(Eventify eventify) {
     this.eventify = eventify;
@@ -47,17 +47,17 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
     EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
       // 1. Load aggregate state
-      Aggregate aggregate = loadSnapshot(key);
+      AggregateState state = loadSnapshot(key);
 
       // TODO: fix this, a delete can trigger this twice
-      if (aggregate == null || !StringUtils.equals(aggregate.getEventId(), event.getId())) {
+      if (state == null || !StringUtils.equals(state.getEventId(), event.getId())) {
         // 2. Apply event
-        aggregate = eventSourcingHandler.apply(aggregate, event);
+        state = eventSourcingHandler.apply(state, event);
 
         // 3. Save snapshot
-        if (aggregate != null) {
-          log.debug("Creating snapshot: {}", aggregate);
-          saveSnapshot(aggregate);
+        if (state != null) {
+          log.debug("Creating snapshot: {}", state);
+          saveSnapshot(state);
         } else {
           deleteSnapshot(key);
         }
@@ -72,12 +72,12 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   }
 
-  protected Aggregate loadSnapshot(String aggregateId) {
+  protected AggregateState loadSnapshot(String aggregateId) {
     return snapshotStore.get(aggregateId);
   }
 
-  protected void saveSnapshot(Aggregate aggregate) {
-    snapshotStore.put(aggregate.getAggregateId(), aggregate);
+  protected void saveSnapshot(AggregateState state) {
+    snapshotStore.put(state.getAggregateId(), state);
   }
 
   private void deleteSnapshot(String key) {

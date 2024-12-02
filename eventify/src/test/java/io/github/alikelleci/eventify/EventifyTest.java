@@ -116,7 +116,7 @@ class EventifyTest {
       assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) commands.get(0).getPayload()).getCredits()));
       assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) commands.get(0).getPayload()).getBirthday()));
 
-      Aggregate snapshot = snapshotStore.get("cust-1");
+      AggregateState snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(notNullValue()));
 
       assertSnapshot(events.get(0), snapshot, Customer.class);
@@ -142,7 +142,7 @@ class EventifyTest {
       List<Event> events = eventsTopic.readValuesToList();
       assertThat(events.size(), is(0));
 
-      Aggregate snapshot = snapshotStore.get("cust-1");
+      AggregateState snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(nullValue()));
     }
 
@@ -187,7 +187,7 @@ class EventifyTest {
       assertEvent(commands.get(4), events.get(4), CreditsAdded.class);
       assertEvent(commands.get(7), events.get(5), CreditsIssued.class);
 
-      Aggregate snapshot = snapshotStore.get("cust-1");
+      AggregateState snapshot = snapshotStore.get("cust-1");
       assertThat(snapshot, is(notNullValue()));
 
       assertSnapshot(events.get(5), snapshot, Customer.class);

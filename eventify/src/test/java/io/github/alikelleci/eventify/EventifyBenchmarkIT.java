@@ -2,12 +2,11 @@ package io.github.alikelleci.eventify;
 
 import io.github.alikelleci.eventify.example.handlers.CustomerCommandHandler;
 import io.github.alikelleci.eventify.example.handlers.CustomerEventSourcingHandler;
-import io.github.alikelleci.eventify.factory.SnapshotFactory;
 import io.github.alikelleci.eventify.messaging.Message;
 import io.github.alikelleci.eventify.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.messaging.commandhandling.gateway.CommandGateway;
 import io.github.alikelleci.eventify.messaging.eventhandling.gateway.EventGateway;
-import io.github.alikelleci.eventify.messaging.eventsourcing.Aggregate;
+import io.github.alikelleci.eventify.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.support.serialization.json.JsonSerializer;
 import lombok.SneakyThrows;
@@ -42,7 +41,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.alikelleci.eventify.factory.CommandFactory.faker;
 import static io.github.alikelleci.eventify.factory.CommandFactory.generateCommandsFor;
-import static io.github.alikelleci.eventify.factory.EventFactory.generateEventsFor;
 import static io.github.alikelleci.eventify.factory.SnapshotFactory.generateSnapshotFor;
 
 @Slf4j
@@ -118,7 +116,7 @@ public class EventifyBenchmarkIT {
     for (int i = 1; i <= numberOfAggregates; i++) {
       String aggregateId = "cust-" + i;
 
-      Aggregate snapshot = generateSnapshotFor(aggregateId);
+      AggregateState snapshot = generateSnapshotFor(aggregateId);
       producer.send(new ProducerRecord<>(topic, snapshot.getAggregateId(), snapshot));
     }
     producer.flush();

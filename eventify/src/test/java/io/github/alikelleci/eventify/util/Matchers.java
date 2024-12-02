@@ -72,7 +72,7 @@ public class Matchers {
     assertThat(event.getPayload(), instanceOf(type));
   }
 
-  public static void assertSnapshot(Event event, AggregateState state) {
+  public static void assertSnapshot(Event event, AggregateState snapshot) {
     Map<String, String> metadata = new HashMap<>(event.getMetadata());
     metadata.keySet().removeIf(key -> key.startsWith("$") && !key.equals(CORRELATION_ID));
 
@@ -84,7 +84,7 @@ public class Matchers {
 
     // Metadata
     assertThat(snapshot.getMetadata(), is(notNullValue()));
-    assertThat(snapshot.getMetadata().size(), is(metadata.size() ));
+    assertThat(snapshot.getMetadata().size(), is(metadata.size()));
     metadata.forEach((key, value) ->
         assertThat(snapshot.getMetadata(), hasEntry(key, value)));
     assertThat(snapshot.getMetadata().get(CORRELATION_ID), is(notNullValue()));
@@ -96,7 +96,7 @@ public class Matchers {
     assertThat(snapshot.getPayload(), is(notNullValue()));
   }
 
-  public static void assertSnapshot(Event event, Aggregate snapshot, Class<?> type) {
+  public static void assertSnapshot(Event event, AggregateState snapshot, Class<?> type) {
     assertSnapshot(event, snapshot);
     assertThat(snapshot.getType(), is(type.getSimpleName()));
     assertThat(snapshot.getPayload(), instanceOf(type));

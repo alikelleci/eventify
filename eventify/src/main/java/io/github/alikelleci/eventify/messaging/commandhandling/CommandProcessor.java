@@ -55,13 +55,13 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
       // Apply events
       for (Event event : events) {
-        aggregate = applyEvent(aggregate, event);
+        state = applyEvent(state, event);
       }
 
       // Save snapshot
-      if (aggregate != null) {
-        log.debug("Creating snapshot: {}", aggregate);
-        saveSnapshot(aggregate);
+      if (state != null) {
+        log.debug("Creating snapshot: {}", state);
+        saveSnapshot(state);
       } else {
         deleteSnapshot(key);
       }
@@ -99,28 +99,28 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     return commandHandler.apply(state, command);
   }
 
-  protected Aggregate loadAggregate(String aggregateId) {
+  protected AggregateState loadAggregate(String aggregateId) {
     log.debug("Loading aggregate state...");
-    Aggregate aggregate = loadFromSnapshot(aggregateId);
+    AggregateState state = loadFromSnapshot(aggregateId);
 
-    log.debug("Current aggregate state: {}", aggregate);
-    return aggregate;
+    log.debug("Current aggregate state: {}", state);
+    return state;
   }
 
-  protected Aggregate loadFromSnapshot(String aggregateId) {
+  protected AggregateState loadFromSnapshot(String aggregateId) {
     return snapshotStore.get(aggregateId);
   }
 
-  protected Aggregate applyEvent(Aggregate aggregate, Event event) {
+  protected AggregateState applyEvent(AggregateState state, Event event) {
     EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
     if (eventSourcingHandler != null) {
-      aggregate = eventSourcingHandler.apply(aggregate, event);
+      state = eventSourcingHandler.apply(state, event);
     }
-    return aggregate;
+    return state;
   }
 
-  protected void saveSnapshot(Aggregate aggregate) {
-    snapshotStore.put(aggregate.getAggregateId(), aggregate);
+  protected void saveSnapshot(AggregateState state) {
+    snapshotStore.put(state.getAggregateId(), state);
   }
 
   private void deleteSnapshot(String key) {
