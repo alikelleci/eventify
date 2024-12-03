@@ -85,7 +85,7 @@ public class Matchers {
 
     // Metadata
     assertThat(state.getMetadata(), is(notNullValue()));
-    assertThat(state.getMetadata().size(), is(metadata.size() ));
+    assertThat(state.getMetadata().size(), is(metadata.size()));
     metadata.forEach((key, value) ->
         assertThat(state.getMetadata(), hasEntry(key, value)));
     assertThat(state.getMetadata().get(CORRELATION_ID), is(notNullValue()));
