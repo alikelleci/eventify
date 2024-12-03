@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.spring.starter;
 
-import io.github.alikelleci.eventify.Eventify;
-import io.github.alikelleci.eventify.util.HandlerUtils;
+import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 
 import java.util.List;
