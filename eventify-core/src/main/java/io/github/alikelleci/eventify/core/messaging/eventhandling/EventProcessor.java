@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;

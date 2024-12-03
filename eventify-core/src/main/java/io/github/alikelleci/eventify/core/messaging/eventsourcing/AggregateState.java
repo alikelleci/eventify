@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.messaging.eventsourcing;
 
-import io.github.alikelleci.eventify.core.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.Metadata;

@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.gateway.EventGateway;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import lombok.SneakyThrows;
@@ -40,7 +41,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import static io.github.alikelleci.eventify.core.factory.CommandFactory.faker;
 import static io.github.alikelleci.eventify.core.factory.CommandFactory.generateCommandsFor;
-import static io.github.alikelleci.eventify.core.factory.EventFactory.generateEventsFor;
+import static io.github.alikelleci.eventify.core.factory.SnapshotFactory.generateSnapshotFor;
 
 @Slf4j
 @Disabled

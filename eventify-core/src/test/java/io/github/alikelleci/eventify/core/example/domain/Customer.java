@@ -2,8 +2,6 @@ package io.github.alikelleci.eventify.core.example.domain;
 
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
-import io.github.alikelleci.eventify.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.common.annotations.AggregateRoot;
 import lombok.Builder;
 import lombok.Value;
 
