@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
-import io.github.alikelleci.eventify.core.util.AnnotationScanner;
+import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
@@ -113,7 +113,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
   }
 
   public JsonDeserializer<T> registerUpcaster(Object handler) {
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
+    AnnotationUtils.findAnnotatedMethods(handler.getClass(), Upcast.class)
         .forEach(method -> addUpcaster(handler, method));
 
     return this;

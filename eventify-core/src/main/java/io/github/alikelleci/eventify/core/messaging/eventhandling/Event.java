@@ -4,7 +4,7 @@ import io.github.alikelleci.eventify.core.common.annotations.Revision;
 import io.github.alikelleci.eventify.core.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.util.AnnotationScanner;
+import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import lombok.Builder;
 import lombok.Value;
@@ -44,7 +44,7 @@ public class Event implements Message {
     this.aggregateId = IdUtils.getAggregateId(getPayload());
     this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
 
-    this.revision = Optional.ofNullable(AnnotationScanner.findAnnotation(getPayload().getClass(), Revision.class))
+    this.revision = Optional.ofNullable(AnnotationUtils.findAnnotation(getPayload().getClass(), Revision.class))
         .map(Revision::value)
         .orElse(1);
 

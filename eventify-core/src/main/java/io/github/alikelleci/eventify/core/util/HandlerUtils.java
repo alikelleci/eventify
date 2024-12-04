@@ -19,19 +19,19 @@ import java.lang.reflect.Method;
 public class HandlerUtils {
 
   public void registerHandler(Eventify eventify, Object handler) {
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
+    AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
         .forEach(method -> addCommandHandler(eventify, handler, method));
 
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
+    AnnotationUtils.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
         .forEach(method -> addEventSourcingHandler(eventify, handler, method));
 
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleResult.class)
+    AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleResult.class)
         .forEach(method -> addResultHandler(eventify, handler, method));
 
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
+    AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(eventify, handler, method));
 
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
+    AnnotationUtils.findAnnotatedMethods(handler.getClass(), Upcast.class)
         .forEach(method -> addUpcaster(eventify, handler, method));
   }
 
