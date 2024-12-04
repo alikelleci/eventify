@@ -4,10 +4,10 @@ import io.github.alikelleci.eventify.core.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
+import io.github.alikelleci.eventify.core.util.AnnotationScanner;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import lombok.Builder;
 import lombok.Value;
-import org.springframework.core.annotation.AnnotationUtils;
 
 import java.beans.Transient;
 import java.time.Instant;
@@ -76,7 +76,7 @@ public class AggregateState implements Message {
   public int getSnapshotThreshold() {
     return Optional.ofNullable(getPayload())
         .map(Object::getClass)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshotting.class))
+        .map(aClass -> AnnotationScanner.findAnnotation(aClass, EnableSnapshotting.class))
         .map(EnableSnapshotting::threshold)
         .filter(threshold -> threshold > 0)
         .orElse(0);
@@ -86,7 +86,7 @@ public class AggregateState implements Message {
   public boolean deleteEvents() {
     return Optional.ofNullable(getPayload())
         .map(Object::getClass)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, EnableSnapshotting.class))
+        .map(aClass -> AnnotationScanner.findAnnotation(aClass, EnableSnapshotting.class))
         .map(EnableSnapshotting::deleteEvents)
         .orElse(false);
   }

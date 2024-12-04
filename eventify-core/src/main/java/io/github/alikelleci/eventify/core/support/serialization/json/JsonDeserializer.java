@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.core.util.AnnotationScanner;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
@@ -13,14 +14,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Deserializer;
-import org.springframework.core.annotation.AnnotationUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -116,22 +113,10 @@ public class JsonDeserializer<T> implements Deserializer<T> {
   }
 
   public JsonDeserializer<T> registerUpcaster(Object handler) {
-    List<Method> upcasterMethods = findMethodsWithAnnotation(handler.getClass(), Upcast.class);
-
-    upcasterMethods
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
         .forEach(method -> addUpcaster(handler, method));
 
     return this;
-  }
-
-  private <A extends Annotation> List<Method> findMethodsWithAnnotation(Class<?> c, Class<A> annotation) {
-    List<Method> methods = new ArrayList<>();
-    for (Method method : c.getDeclaredMethods()) {
-      if (AnnotationUtils.findAnnotation(method, annotation) != null) {
-        methods.add(method);
-      }
-    }
-    return methods;
   }
 
   private void addUpcaster(Object listener, Method method) {

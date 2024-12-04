@@ -19,6 +19,7 @@ import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.core.support.LoggingStateRestoreListener;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerde;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.core.util.AnnotationScanner;
 import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -40,7 +41,6 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
-import org.springframework.core.annotation.AnnotationUtils;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -234,7 +234,7 @@ public class Eventify {
 
   private Set<String> getCommandTopics() {
     return commandHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+        .map(aClass -> AnnotationScanner.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
         .map(TopicInfo::value)
         .collect(Collectors.toSet());
@@ -246,7 +246,7 @@ public class Eventify {
             eventSourcingHandlers.keySet()
         )
         .flatMap(Collection::stream)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+        .map(aClass -> AnnotationScanner.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
         .map(TopicInfo::value)
         .collect(Collectors.toSet());
@@ -254,7 +254,7 @@ public class Eventify {
 
   private Set<String> getResultTopics() {
     return resultHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+        .map(aClass -> AnnotationScanner.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
         .map(TopicInfo::value)
         .map(topic -> topic.concat(".results"))
