@@ -9,52 +9,68 @@ import java.util.Set;
 
 public class AnnotationScanner {
 
-
-  // Find a specific annotation on a class, including its hierarchy and meta-annotations
+  /**
+   * Find a specific annotation on a class or its hierarchy, including interfaces and meta-annotations.
+   *
+   * @param clazz           the class to search
+   * @param annotationClass the annotation type to look for
+   * @return the annotation if found, or null if not found
+   */
   public static <A extends Annotation> A findAnnotation(Class<?> clazz, Class<A> annotationClass) {
-    if (clazz == null) {
+    if (clazz == null || annotationClass == null) {
       return null;
     }
 
-    // Check if the annotation is directly present on the class
-    A annotation = clazz.getAnnotation(annotationClass);
-    if (annotation != null) {
-      return annotation;
-    }
-
-    // Check for meta-annotations
-    for (Annotation declaredAnnotation : clazz.getDeclaredAnnotations()) {
-      annotation = declaredAnnotation.annotationType().getAnnotation(annotationClass);
+    Set<Class<?>> visited = new HashSet<>();
+    while (clazz != null && visited.add(clazz)) {
+      // Check directly for the annotation
+      A annotation = clazz.getAnnotation(annotationClass);
       if (annotation != null) {
         return annotation;
       }
-    }
 
-    // Recursively check interfaces
-    for (Class<?> iface : clazz.getInterfaces()) {
-      annotation = findAnnotation(iface, annotationClass);
-      if (annotation != null) {
-        return annotation;
+      // Check meta-annotations
+      for (Annotation declaredAnnotation : clazz.getDeclaredAnnotations()) {
+        annotation = declaredAnnotation.annotationType().getAnnotation(annotationClass);
+        if (annotation != null) {
+          return annotation;
+        }
       }
+
+      // Check interfaces
+      for (Class<?> iface : clazz.getInterfaces()) {
+        annotation = findAnnotation(iface, annotationClass);
+        if (annotation != null) {
+          return annotation;
+        }
+      }
+
+      // Move up the class hierarchy
+      clazz = clazz.getSuperclass();
     }
 
-    // Recursively check superclass
-    return findAnnotation(clazz.getSuperclass(), annotationClass);
+    return null;
   }
 
-  // Find a specific annotation on a method, including meta-annotations
+  /**
+   * Find a specific annotation on a method, including meta-annotations.
+   *
+   * @param method          the method to search
+   * @param annotationClass the annotation type to look for
+   * @return the annotation if found, or null if not found
+   */
   public static <A extends Annotation> A findAnnotation(Method method, Class<A> annotationClass) {
-    if (method == null) {
+    if (method == null || annotationClass == null) {
       return null;
     }
 
-    // Check if the annotation is directly present on the method
+    // Check directly for the annotation
     A annotation = method.getAnnotation(annotationClass);
     if (annotation != null) {
       return annotation;
     }
 
-    // Check for meta-annotations
+    // Check meta-annotations
     for (Annotation declaredAnnotation : method.getDeclaredAnnotations()) {
       annotation = declaredAnnotation.annotationType().getAnnotation(annotationClass);
       if (annotation != null) {
@@ -65,40 +81,56 @@ public class AnnotationScanner {
     return null;
   }
 
-  // Find all methods in the class hierarchy that are annotated with a specific annotation.
+  /**
+   * Find all methods in a class hierarchy annotated with a specific annotation.
+   *
+   * @param clazz           the class to search
+   * @param annotationClass the annotation type to look for
+   * @return a list of methods annotated with the specified annotation
+   */
   public static <A extends Annotation> List<Method> findAnnotatedMethods(Class<?> clazz, Class<A> annotationClass) {
+    if (clazz == null || annotationClass == null) {
+      return List.of();
+    }
+
     Set<Method> methods = new HashSet<>();
-    findAnnotatedMethodsRecursive(clazz, annotationClass, methods);
+    Set<Class<?>> visited = new HashSet<>();
+
+    while (clazz != null && visited.add(clazz)) {
+      // Check all methods in the current class
+      for (Method method : clazz.getDeclaredMethods()) {
+        if (isAnnotatedWith(method, annotationClass)) {
+          methods.add(method);
+        }
+      }
+
+      // Check interfaces
+      for (Class<?> iface : clazz.getInterfaces()) {
+        methods.addAll(findAnnotatedMethods(iface, annotationClass));
+      }
+
+      // Move up the class hierarchy
+      clazz = clazz.getSuperclass();
+    }
+
     return new ArrayList<>(methods);
   }
 
-  private static <A extends Annotation> void findAnnotatedMethodsRecursive(
-      Class<?> clazz, Class<A> annotationClass, Set<Method> methods) {
-    if (clazz == null) {
-      return;
+  /**
+   * Helper to check if a method is annotated with a specific annotation, including meta-annotations.
+   */
+  private static <A extends Annotation> boolean isAnnotatedWith(Method method, Class<A> annotationClass) {
+    if (method.isAnnotationPresent(annotationClass)) {
+      return true;
     }
 
-    // Check methods in the current class
-    for (Method method : clazz.getDeclaredMethods()) {
-      if (method.isAnnotationPresent(annotationClass)) {
-        methods.add(method);
-      } else {
-        // Check meta-annotations
-        for (Annotation declaredAnnotation : method.getDeclaredAnnotations()) {
-          if (declaredAnnotation.annotationType().isAnnotationPresent(annotationClass)) {
-            methods.add(method);
-            break;
-          }
-        }
+    // Check meta-annotations
+    for (Annotation declaredAnnotation : method.getDeclaredAnnotations()) {
+      if (declaredAnnotation.annotationType().isAnnotationPresent(annotationClass)) {
+        return true;
       }
     }
 
-    // Recursively check interfaces
-    for (Class<?> iface : clazz.getInterfaces()) {
-      findAnnotatedMethodsRecursive(iface, annotationClass, methods);
-    }
-
-    // Recursively check superclass
-    findAnnotatedMethodsRecursive(clazz.getSuperclass(), annotationClass, methods);
+    return false;
   }
 }
