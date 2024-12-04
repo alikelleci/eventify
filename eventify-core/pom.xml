@@ -17,10 +17,22 @@
     <description>Event Sourcing framework for the JVM</description>
 
     <properties>
-        <kafka.version>3.8.0</kafka.version>
+        <kafka.version>3.9.0</kafka.version>
         <jackson.version>2.16.2</jackson.version>
         <lombok.version>1.18.34</lombok.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>1.20.4</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!--Kafka-->
@@ -79,7 +91,6 @@
             <artifactId>avro</artifactId>
             <version>1.12.0</version>
         </dependency>
-
 
         <!--Third-party -->
         <dependency>
@@ -159,19 +170,16 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>1.20.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>1.20.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
-            <version>1.20.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
