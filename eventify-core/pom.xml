@@ -41,13 +41,6 @@
             <scope>test</scope>
         </dependency>
 
-        <!--Spring-->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-core</artifactId>
-            <version>6.1.13</version>
-        </dependency>
-
         <!--Jackson-->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>

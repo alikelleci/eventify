@@ -12,48 +12,29 @@ import io.github.alikelleci.eventify.core.messaging.resulthandling.annotations.H
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import lombok.experimental.UtilityClass;
-import org.springframework.core.annotation.AnnotationUtils;
 
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
 
 @UtilityClass
 public class HandlerUtils {
 
   public void registerHandler(Eventify eventify, Object handler) {
-    List<Method> commandHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleCommand.class);
-    List<Method> eventSourcingMethods = findMethodsWithAnnotation(handler.getClass(), ApplyEvent.class);
-    List<Method> resultHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleResult.class);
-    List<Method> eventHandlerMethods = findMethodsWithAnnotation(handler.getClass(), HandleEvent.class);
-    List<Method> upcasterMethods = findMethodsWithAnnotation(handler.getClass(), Upcast.class);
-
-    commandHandlerMethods
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
         .forEach(method -> addCommandHandler(eventify, handler, method));
 
-    eventSourcingMethods
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
         .forEach(method -> addEventSourcingHandler(eventify, handler, method));
 
-    resultHandlerMethods
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleResult.class)
         .forEach(method -> addResultHandler(eventify, handler, method));
 
-    eventHandlerMethods
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(eventify, handler, method));
 
-    upcasterMethods
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
         .forEach(method -> addUpcaster(eventify, handler, method));
   }
 
-  private <A extends Annotation> List<Method> findMethodsWithAnnotation(Class<?> c, Class<A> annotation) {
-    List<Method> methods = new ArrayList<>();
-    for (Method method : c.getDeclaredMethods()) {
-      if (AnnotationUtils.findAnnotation(method, annotation) != null) {
-        methods.add(method);
-      }
-    }
-    return methods;
-  }
 
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() >= 1) {
