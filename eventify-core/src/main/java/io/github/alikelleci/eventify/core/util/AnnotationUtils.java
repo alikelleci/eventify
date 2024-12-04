@@ -7,7 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class AnnotationScanner {
+public class AnnotationUtils {
 
   /**
    * Find a specific annotation on a class or its hierarchy, including interfaces and meta-annotations.
