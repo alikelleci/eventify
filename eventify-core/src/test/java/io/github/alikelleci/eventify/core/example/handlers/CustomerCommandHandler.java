@@ -4,7 +4,12 @@ import io.github.alikelleci.eventify.core.common.annotations.MessageId;
 import io.github.alikelleci.eventify.core.common.annotations.MetadataValue;
 import io.github.alikelleci.eventify.core.common.annotations.Timestamp;
 import io.github.alikelleci.eventify.core.example.domain.Customer;
-import io.github.alikelleci.eventify.core.example.domain.CustomerCommand;
+import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.AddCredits;
+import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.ChangeFirstName;
+import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.ChangeLastName;
+import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.CreateCustomer;
+import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.DeleteCustomer;
+import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.core.example.domain.CustomerEvent;
 import io.github.alikelleci.eventify.core.example.domain.CustomerEvent.CreditsAdded;
 import io.github.alikelleci.eventify.core.example.domain.CustomerEvent.CreditsIssued;
@@ -26,7 +31,7 @@ import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_
 public class CustomerCommandHandler {
 
   @HandleCommand
-  public CustomerEvent handle(CustomerCommand.CreateCustomer command,
+  public CustomerEvent handle(CreateCustomer command,
                               Customer state,
                               Metadata metadata,
                               @Timestamp Instant timestamp,
@@ -46,7 +51,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(CustomerCommand.ChangeFirstName command, Customer state) {
+  public CustomerEvent handle(ChangeFirstName command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -58,7 +63,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(CustomerCommand.ChangeLastName command, Customer state) {
+  public CustomerEvent handle(ChangeLastName command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -70,7 +75,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(CustomerCommand.AddCredits command, Customer state) {
+  public CustomerEvent handle(AddCredits command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -82,7 +87,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(CustomerCommand.IssueCredits command, Customer state) {
+  public CustomerEvent handle(IssueCredits command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
@@ -98,7 +103,7 @@ public class CustomerCommandHandler {
   }
 
   @HandleCommand
-  public CustomerEvent handle(CustomerCommand.DeleteCustomer command, Customer state) {
+  public CustomerEvent handle(DeleteCustomer command, Customer state) {
     if (state == null) {
       throw new ValidationException("Customer does not exists.");
     }
