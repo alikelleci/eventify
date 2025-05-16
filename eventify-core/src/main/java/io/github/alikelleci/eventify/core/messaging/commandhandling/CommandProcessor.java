@@ -145,8 +145,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     Duration duration = Duration.between(startTime, endTime);
 
     log.debug("Number of events applied: {}", counter.get());
-    log.debug("Aggregate state reconstructed: {}", state);
-    log.debug("Aggregate state reconstructed in: {} ms ({} sec)", duration.toMillis(), duration.toSeconds());
+    log.debug("Aggregate state reconstructed in {} ms ({} sec): {}", duration.toMillis(), duration.toSeconds(), state);
 
     // Save snapshot if needed
     Optional.ofNullable(state)
