@@ -26,7 +26,7 @@ public class DefaultEventGateway implements EventGateway {
   public void publish(Event event) {
     ProducerRecord<String, Event> producerRecord = new ProducerRecord<>(event.getTopicInfo().value(), null, event.getTimestamp().toEpochMilli(), event.getAggregateId(), event);
 
-    log.trace("Publishing event: {} ({})", event.getType(), event.getAggregateId());
+    log.debug("Publishing event: {} ({})", event.getType(), event.getAggregateId());
     producer.send(producerRecord);
   }
 }

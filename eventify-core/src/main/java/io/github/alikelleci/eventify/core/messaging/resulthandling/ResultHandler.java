@@ -28,7 +28,7 @@ public class ResultHandler implements Function<Command, Void>, CommonParameterRe
 
   @Override
   public Void apply(Command command) {
-    log.trace("Handling command result: {} ({})", command.getType(), command.getAggregateId());
+    log.debug("Handling command result: {} ({})", command.getType(), command.getAggregateId());
 
     try {
       Object result = invokeHandler(handler, command);
