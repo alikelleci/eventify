@@ -28,8 +28,6 @@ public class ResultHandler implements Function<Command, Void>, CommonParameterRe
 
   @Override
   public Void apply(Command command) {
-    log.debug("Handling command result: {} ({})", command.getType(), command.getAggregateId());
-
     try {
       Object result = invokeHandler(handler, command);
       return null;

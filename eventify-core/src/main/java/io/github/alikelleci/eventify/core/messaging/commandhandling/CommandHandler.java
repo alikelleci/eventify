@@ -41,8 +41,6 @@ public class CommandHandler implements BiFunction<AggregateState, Command, List<
 
   @Override
   public List<Event> apply(AggregateState state, Command command) {
-    log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
-
     try {
       validate(command.getPayload());
       Object result = invokeHandler(handler, state, command);

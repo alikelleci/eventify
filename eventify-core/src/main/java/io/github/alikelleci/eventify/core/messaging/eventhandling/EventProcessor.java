@@ -37,6 +37,7 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
     if (CollectionUtils.isNotEmpty(eventHandlers)) {
       eventHandlers.stream()
           .sorted(Comparator.comparingInt(EventHandler::getPriority).reversed())
+          .peek(handler -> log.debug("Handling event: {} ({})", event.getType(), event.getAggregateId()))
           .forEach(handler ->
               handler.apply(event));
     }

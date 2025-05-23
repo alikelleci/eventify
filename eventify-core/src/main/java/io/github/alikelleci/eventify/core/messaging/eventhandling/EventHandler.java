@@ -27,8 +27,6 @@ public class EventHandler implements Function<Event, Void>, CommonParameterResol
 
   @Override
   public Void apply(Event event) {
-    log.debug("Handling event: {} ({})", event.getType(), event.getAggregateId());
-
     try {
       Object result = invokeHandler(handler, event);
       return null;

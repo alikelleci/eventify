@@ -49,11 +49,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     Command command = fixedKeyRecord.value();
 
     try {
-      // Load aggregate state
-      AggregateState state = loadAggregate(key);
-
       // Execute command
-      List<Event> events = executeCommand(state, command);
+      List<Event> events = executeCommand(key, command);
 
       // Return if no events
       if (CollectionUtils.isEmpty(events)) {
@@ -88,13 +85,15 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   }
 
-  protected List<Event> executeCommand(AggregateState state, Command command) {
+  protected List<Event> executeCommand(String aggregateId, Command command) {
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return new ArrayList<>();
     }
 
+    log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
+    AggregateState state = loadAggregate(aggregateId);
     return commandHandler.apply(state, command);
   }
 
@@ -122,6 +121,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
         if (state == null || !state.getEventId().equals(event.getId())) {
           EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
+            log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
             state = eventSourcingHandler.apply(state, event);
 
             sequence.incrementAndGet();

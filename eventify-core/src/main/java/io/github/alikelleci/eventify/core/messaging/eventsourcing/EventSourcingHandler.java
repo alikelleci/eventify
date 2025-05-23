@@ -27,8 +27,6 @@ public class EventSourcingHandler implements BiFunction<AggregateState, Event, A
 
   @Override
   public AggregateState apply(AggregateState state, Event event) {
-    log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
-
     try {
       Object result = invokeHandler(handler, state, event);
       return createState(event, result);

@@ -48,6 +48,7 @@ public class ResultProcessor implements FixedKeyProcessor<String, Command, Comma
             if (handleAll ||
                 (handleSuccess && StringUtils.equals(result, "success")) ||
                 (handleFailure && StringUtils.equals(result, "failure"))) {
+              log.debug("Handling command result: {} ({})", command.getType(), command.getAggregateId());
               handler.apply(command);
             }
           });
