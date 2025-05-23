@@ -57,11 +57,6 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
         return;
       }
 
-      // Save events
-      for (Event event : events) {
-        saveEvent(event);
-      }
-
       // Forward success
       context.forward(fixedKeyRecord.withValue(Success.builder()
           .command(command)
@@ -94,7 +89,14 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
     AggregateState state = loadAggregate(aggregateId);
-    return commandHandler.apply(state, command);
+    List<Event> events = commandHandler.apply(state, command);
+
+    // Save events
+    for (Event event : events) {
+      saveEvent(event);
+    }
+
+    return events;
   }
 
   protected AggregateState loadAggregate(String aggregateId) {
