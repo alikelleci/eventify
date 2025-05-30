@@ -5,7 +5,9 @@ import io.github.alikelleci.eventify.core.example.handlers.CustomerEventSourcing
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.gateway.CommandGateway;
+import io.github.alikelleci.eventify.core.messaging.commandhandling.gateway.KafkaCommandGateway;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.gateway.EventGateway;
+import io.github.alikelleci.eventify.core.messaging.eventhandling.gateway.KafkaEventGateway;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import lombok.SneakyThrows;
@@ -48,7 +50,7 @@ public class EventifyBenchmarkIT {
 
   private static KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.8.0");
 
-  private static Eventify eventify;
+  private static KafkaEventify eventify;
   private static CommandGateway commandGateway;
   private static EventGateway eventGateway;
 
@@ -146,14 +148,14 @@ public class EventifyBenchmarkIT {
     log.info("Command {} executed in: {} ms ({} sec)", command.getType(), duration.toMillis(), duration.toSeconds());
   }
 
-  public static Eventify createEventify() {
+  public static KafkaEventify createEventify() {
     Properties streamsConfig = new Properties();
     streamsConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, "example-app");
     streamsConfig.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     streamsConfig.put(StreamsConfig.STATE_DIR_CONFIG, "C:\\tmp\\kafka-streams");
     streamsConfig.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 10_000);
 
-    return Eventify.builder()
+    return KafkaEventify.builder()
         .streamsConfig(streamsConfig)
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
@@ -170,7 +172,7 @@ public class EventifyBenchmarkIT {
     Properties properties = new Properties();
     properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
 
-    return CommandGateway.builder()
+    return KafkaCommandGateway.builder()
         .producerConfig(properties)
         .replyTopic("my-reply-channel")
         .build();
@@ -180,7 +182,7 @@ public class EventifyBenchmarkIT {
     Properties properties = new Properties();
     properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
 
-    return EventGateway.builder()
+    return KafkaEventGateway.builder()
         .producerConfig(properties)
         .build();
   }

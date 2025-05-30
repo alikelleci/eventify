@@ -17,12 +17,12 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public abstract class AbstractCommandResultListener {
+public abstract class AbstractKafkaCommandResultListener {
 
   private final Consumer<String, Command> consumer;
   private final String replyTopic;
 
-  protected AbstractCommandResultListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
+  protected AbstractKafkaCommandResultListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 //    consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);

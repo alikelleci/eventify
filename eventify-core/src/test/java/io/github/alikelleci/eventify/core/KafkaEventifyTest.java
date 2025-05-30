@@ -44,7 +44,7 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
 @Slf4j
-class EventifyTest {
+class KafkaEventifyTest {
 
   private TopologyTestDriver testDriver;
   private TestInputTopic<String, Command> commandsTopic;
@@ -60,7 +60,7 @@ class EventifyTest {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "example-app");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
-    Eventify eventify = Eventify.builder()
+    KafkaEventify eventify = KafkaEventify.builder()
         .streamsConfig(properties)
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
