@@ -19,20 +19,23 @@ import org.apache.commons.collections4.MultiValuedMap;
 public interface Eventify {
 
   void start();
-
   void stop();
 
   Map<Class<?>, CommandHandler> getCommandHandlers();
-
   MultiValuedMap<Class<?>, EventHandler> getEventHandlers();
-
   Map<Class<?>, EventSourcingHandler> getEventSourcingHandlers();
-
   MultiValuedMap<Class<?>, ResultHandler> getResultHandlers();
-
   MultiValuedMap<String, Upcaster> getUpcasters();
 
   default Set<String> getCommandTopics() {
+    return getCommandHandlers().keySet().stream()
+        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+        .filter(Objects::nonNull)
+        .map(TopicInfo::value)
+        .collect(Collectors.toSet());
+  }
+
+  default Set<String> getCommandTopicsWithHandler() {
     return getCommandHandlers().keySet().stream()
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)

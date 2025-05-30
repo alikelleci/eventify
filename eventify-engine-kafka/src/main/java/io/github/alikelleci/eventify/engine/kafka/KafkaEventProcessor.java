@@ -15,7 +15,7 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.KeyValueStore;
 
 @Slf4j
-public class KafkaEventProcessor implements EventProcessor, FixedKeyProcessor<String, Event, Event> {
+public class KafkaEventProcessor extends EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, Event> context;
