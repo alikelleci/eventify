@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.core.messaging.eventhandling.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.core.support.serialization.json.JacksonUtils;
 import java.util.Properties;
 
 public class PulsarEventGateway implements EventGateway {
