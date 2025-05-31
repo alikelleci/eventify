@@ -1,87 +1,31 @@
 package io.github.alikelleci.eventify.core.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Failure;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
-import jakarta.validation.ValidationException;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
-import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
-import org.apache.kafka.streams.processor.api.FixedKeyRecord;
-import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.KeyValueStore;
-
+import io.github.alikelleci.eventify.core.support.AutoCloseableIterator;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
-
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
+public abstract class CommandProcessor {
 
-  private final Eventify eventify;
-  private FixedKeyProcessorContext<String, CommandResult> context;
-  private KeyValueStore<String, Event> eventStore;
-  private KeyValueStore<String, AggregateState> snapshotStore;
-
-  public CommandProcessor(Eventify eventify) {
-    this.eventify = eventify;
-  }
-
-  @Override
-  public void init(FixedKeyProcessorContext<String, CommandResult> context) {
-    this.context = context;
-    this.eventStore = context.getStateStore("event-store");
-    this.snapshotStore = context.getStateStore("snapshot-store");
-  }
-
-  @Override
-  public void process(FixedKeyRecord<String, Command> fixedKeyRecord) {
-    String key = fixedKeyRecord.key();
-    Command command = fixedKeyRecord.value();
-
-    try {
-      // Execute command
-      List<Event> events = executeCommand(key, command);
-
-      // Return if no events
-      if (CollectionUtils.isEmpty(events)) {
-        return;
-      }
-
-      // Forward success
-      context.forward(fixedKeyRecord.withValue(Success.builder()
-          .command(command)
-          .events(events)
-          .build()));
-
-    } catch (Exception e) {
-      // Log failure
-      logFailure(e);
-
-      // Forward failure
-      context.forward(fixedKeyRecord.withValue(Failure.builder()
-          .command(command)
-          .cause(ExceptionUtils.getRootCauseMessage(e))
-          .build()));
-    }
-  }
-
-  @Override
-  public void close() {
-
-  }
+  protected abstract Eventify getEventify();
+  protected abstract AggregateState loadFromSnapshot(String aggregateId);
+  protected abstract void saveSnapshot(AggregateState state);
+  protected abstract AutoCloseableIterator<Event> loadEvents(String aggregateId, String from, String to);
+  protected abstract void deleteEvents(Iterator<Event> events);
+  protected abstract void saveEvent(Event event);
 
   protected List<Event> executeCommand(String aggregateId, Command command) {
-    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
+    CommandHandler commandHandler = getEventify().getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return new ArrayList<>();
@@ -91,7 +35,6 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AggregateState state = loadAggregate(aggregateId);
     List<Event> events = commandHandler.apply(state, command);
 
-    // Save events
     for (Event event : events) {
       saveEvent(event);
     }
@@ -99,7 +42,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     return events;
   }
 
-  protected AggregateState loadAggregate(String aggregateId) {
+  private AggregateState loadAggregate(String aggregateId) {
     Instant startTime = Instant.now();
 
     AtomicLong sequence = new AtomicLong(0);
@@ -111,17 +54,18 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AggregateState state = loadFromSnapshot(aggregateId);
     if (state != null) {
       log.debug("Snapshot found: {}", state);
+
       from = state.getEventId();
       sequence.set(state.getVersion());
     }
 
     log.debug("Loading aggregate state by applying events...");
 
-    try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
+    try (AutoCloseableIterator<Event> iterator = loadEvents(aggregateId, from, to)) {
       while (iterator.hasNext()) {
-        Event event = iterator.next().value;
+        Event event = iterator.next();
         if (state == null || !state.getEventId().equals(event.getId())) {
-          EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+          EventSourcingHandler eventSourcingHandler = getEventify().getEventSourcingHandlers().get(event.getPayload().getClass());
           if (eventSourcingHandler != null) {
             log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
             state = eventSourcingHandler.apply(state, event);
@@ -168,42 +112,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     return state;
   }
 
-  protected AggregateState loadFromSnapshot(String aggregateId) {
-    return snapshotStore.get(aggregateId);
-  }
-
-  protected void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getId(), event);
-  }
-
-  protected void saveSnapshot(AggregateState state) {
-    snapshotStore.put(state.getAggregateId(), state);
-  }
-
-  protected void deleteEvents(AggregateState state) {
-    AtomicLong counter = new AtomicLong(0);
-
+  private void deleteEvents(AggregateState state) {
     String from = state.getAggregateId().concat("@");
     String to = state.getEventId();
 
-    try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
-      while (iterator.hasNext()) {
-        Event event = iterator.next().value;
-        eventStore.delete(event.getId());
-        counter.incrementAndGet();
-      }
-    }
-    log.debug("Number of events deleted: {}", counter.get());
-  }
-
-  private void logFailure(Exception e) {
-    Throwable throwable = ExceptionUtils.getRootCause(e);
-    String message = ExceptionUtils.getRootCauseMessage(e);
-
-    if (throwable instanceof ValidationException) {
-      log.debug("Handling command failed: {}", message, throwable);
-    } else {
-      log.error("Handling command failed: {}", message, throwable);
+    try (AutoCloseableIterator<Event> foundEvents = loadEvents(state.getAggregateId(), from, to)) {
+      deleteEvents(foundEvents);
     }
   }
 }

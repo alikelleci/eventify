@@ -19,4 +19,8 @@
         <appender-ref ref="STDOUT" />
     </logger>
 
+    <logger name="org.apache.kafka" level="WARN" additivity="false">
+        <appender-ref ref="STDOUT" />
+    </logger>
+
 </configuration>
