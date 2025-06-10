@@ -17,7 +17,7 @@
     <description>Event Sourcing framework for the JVM</description>
 
     <properties>
-        <kafka.version>3.9.0</kafka.version>
+        <kafka.version>3.9.1</kafka.version>
         <jackson.version>2.16.2</jackson.version>
         <lombok.version>1.18.34</lombok.version>
     </properties>
@@ -83,13 +83,6 @@
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
             <version>${jackson.version}</version>
-        </dependency>
-
-        <!--Avro-->
-        <dependency>
-            <groupId>org.apache.avro</groupId>
-            <artifactId>avro</artifactId>
-            <version>1.12.0</version>
         </dependency>
 
         <!--Third-party -->
