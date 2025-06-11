@@ -16,6 +16,8 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import java.util.Collection;
 import java.util.Comparator;
 
+import static io.github.alikelleci.eventify.core.messaging.Metadata.RESULT;
+
 @Slf4j
 public class ResultProcessor implements FixedKeyProcessor<String, Command, Command> {
 
@@ -44,7 +46,7 @@ public class ResultProcessor implements FixedKeyProcessor<String, Command, Comma
             boolean handleSuccess = handler.getMethod().isAnnotationPresent(HandleSuccess.class);
             boolean handleFailure = handler.getMethod().isAnnotationPresent(HandleFailure.class);
 
-            String result = command.getMetadata().get(Metadata.RESULT);
+            String result = command.getMetadata().get(RESULT);
             if (handleAll ||
                 (handleSuccess && StringUtils.equals(result, "success")) ||
                 (handleFailure && StringUtils.equals(result, "failure"))) {

@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_ID;
+
 @Value
 public class Event implements Message {
   String id;
@@ -48,7 +50,7 @@ public class Event implements Message {
         .map(Revision::value)
         .orElse(1);
 
-    getMetadata().putIfAbsent(Metadata.CORRELATION_ID, UUID.randomUUID().toString());
+    getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }
 
   public static class EventBuilder {
