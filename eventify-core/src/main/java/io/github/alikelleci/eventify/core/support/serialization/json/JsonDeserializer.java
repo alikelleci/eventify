@@ -63,7 +63,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
       JsonNode upcasted = upcast(jsonNode);
       return objectMapper.convertValue(upcasted, targetType);
     } catch (Exception e) {
-      throw new SerializationException("Failed to deserialize JSON data for topic: " + topic, ExceptionUtils.getRootCause(e));
+      throw new SerializationException("Error deserializing JSON", e);
     }
   }
 
