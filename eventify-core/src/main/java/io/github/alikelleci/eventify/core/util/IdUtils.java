@@ -27,6 +27,10 @@ public class IdUtils {
   @SneakyThrows
   private static String getFieldValue(Field field, Object target) {
     field.setAccessible(true);
-    return field.get(target).toString();
+    Object value = field.get(target);
+    if (value == null) {
+      throw new AggregateIdMissingException("Aggregate identifier cannot be null.");
+    }
+    return value.toString();
   }
 }
