@@ -69,7 +69,7 @@ class EventifyTest {
 //        .registerHandler(new CustomerEventUpcaster())
         .build();
 
-    testDriver = new TopologyTestDriver(eventify.topology(), eventify.getStreamsConfig());
+    testDriver = new TopologyTestDriver(eventify.topology());
 
     commandsTopic = testDriver.createInputTopic(CustomerCommand.class.getAnnotation(TopicInfo.class).value(),
         new StringSerializer(), new JsonSerializer<>());
