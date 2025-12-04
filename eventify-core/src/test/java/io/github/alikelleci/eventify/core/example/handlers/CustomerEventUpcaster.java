@@ -1,9 +1,9 @@
 package io.github.alikelleci.eventify.core.example.handlers;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.node.ObjectNode;
 
 @Slf4j
 public class CustomerEventUpcaster {

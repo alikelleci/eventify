@@ -1,9 +1,9 @@
 package io.github.alikelleci.eventify.core.messaging.upcasting;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.github.alikelleci.eventify.core.messaging.upcasting.exceptions.UpcastingException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import tools.jackson.databind.JsonNode;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;

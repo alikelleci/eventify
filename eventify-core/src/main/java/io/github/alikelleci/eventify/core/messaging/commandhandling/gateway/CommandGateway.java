@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.messaging.commandhandling.gateway;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
 import lombok.SneakyThrows;
@@ -8,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;

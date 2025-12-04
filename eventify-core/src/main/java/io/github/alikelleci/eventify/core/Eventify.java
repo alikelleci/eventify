@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
@@ -41,6 +40,7 @@ import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.util.ArrayList;

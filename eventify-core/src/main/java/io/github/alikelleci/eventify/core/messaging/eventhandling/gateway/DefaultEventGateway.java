@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.messaging.eventhandling.gateway;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
@@ -8,6 +7,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Properties;
 

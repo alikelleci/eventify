@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.messaging.commandhandling.gateway;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -11,6 +10,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.util.Collections;

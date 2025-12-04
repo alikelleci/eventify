@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.messaging.commandhandling.gateway;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
@@ -15,6 +14,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.StringSerializer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.time.Duration;
 import java.util.Properties;

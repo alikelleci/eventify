@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.support.serialization.json;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
 import org.apache.commons.collections4.MultiValuedMap;
@@ -8,6 +7,7 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.Map;
 
