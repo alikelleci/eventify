@@ -33,8 +33,6 @@ public class JacksonUtils {
 //          .configure(MapperFeature.DEFAULT_VIEW_INCLUSION, false)
           .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
           .configure(DeserializationFeature.FAIL_ON_INVALID_SUBTYPE, false)
-//          .configure(DeserializationFeature.READ_DATE_TIMESTAMPS_AS_NANOSECONDS, false)
-//          .configure(SerializationFeature.WRITE_DATE_TIMESTAMPS_AS_NANOSECONDS, false)
           .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
           .configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
           .configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
