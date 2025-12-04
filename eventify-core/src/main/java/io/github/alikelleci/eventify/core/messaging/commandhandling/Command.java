@@ -4,6 +4,8 @@ import io.github.alikelleci.eventify.core.common.exceptions.PayloadMissingExcept
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.util.IdUtils;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
@@ -15,6 +17,7 @@ import java.util.UUID;
 import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_ID;
 
 @Value
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Command implements Message {
   String id;
   Instant timestamp;
@@ -22,15 +25,6 @@ public class Command implements Message {
   Object payload;
   Metadata metadata;
   String aggregateId;
-
-  private Command() {
-    this.id = null;
-    this.timestamp = null;
-    this.type = null;
-    this.payload = null;
-    this.metadata = null;
-    this.aggregateId = null;
-  }
 
   @Builder
   private Command(Instant timestamp, Object payload, Metadata metadata) {

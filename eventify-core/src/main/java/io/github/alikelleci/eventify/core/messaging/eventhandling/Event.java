@@ -6,6 +6,8 @@ import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
@@ -17,6 +19,7 @@ import java.util.UUID;
 import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_ID;
 
 @Value
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Event implements Message {
   String id;
   Instant timestamp;
@@ -25,16 +28,6 @@ public class Event implements Message {
   Metadata metadata;
   String aggregateId;
   int revision;
-
-  private Event() {
-    this.id = null;
-    this.timestamp = null;
-    this.type = null;
-    this.payload = null;
-    this.metadata = null;
-    this.aggregateId = null;
-    this.revision = 1;
-  }
 
   @Builder
   private Event(Instant timestamp, Object payload, Metadata metadata) {

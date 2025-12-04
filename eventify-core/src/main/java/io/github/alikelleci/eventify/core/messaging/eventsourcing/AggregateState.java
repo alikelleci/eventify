@@ -6,6 +6,8 @@ import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
@@ -15,6 +17,7 @@ import java.util.Map;
 import java.util.Optional;
 
 @Value
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class AggregateState implements Message {
   String id;
   Instant timestamp;
@@ -24,17 +27,6 @@ public class AggregateState implements Message {
   String aggregateId;
   String eventId;
   long version;
-
-  private AggregateState() {
-    this.id = null;
-    this.timestamp = null;
-    this.type = null;
-    this.payload = null;
-    this.metadata = null;
-    this.aggregateId = null;
-    this.eventId = null;
-    this.version = 0;
-  }
 
   @Builder
   private AggregateState(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
