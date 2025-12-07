@@ -111,7 +111,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AggregateState state = loadFromSnapshot(aggregateId);
     if (state != null) {
       log.debug("Snapshot found: {}", state);
-      from = state.getEventId();
+      from = state.getEventId().concat("\0"); // Start after the snapshot event
       sequence.set(state.getVersion());
     }
 
@@ -120,15 +120,13 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value;
-        if (state == null || !state.getEventId().equals(event.getId())) {
-          EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
-          if (eventSourcingHandler != null) {
-            log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
-            state = eventSourcingHandler.apply(state, event);
+        EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+        if (eventSourcingHandler != null) {
+          log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
+          state = eventSourcingHandler.apply(state, event);
 
-            sequence.incrementAndGet();
-            counter.incrementAndGet();
-          }
+          sequence.incrementAndGet();
+          counter.incrementAndGet();
         }
       }
     }
