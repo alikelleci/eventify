@@ -17,7 +17,7 @@
     <description>Event Sourcing framework for the JVM</description>
 
     <properties>
-        <kafka.version>4.1.1</kafka.version>
+        <kafka.version>3.9.1</kafka.version>
         <jackson.version>2.16.2</jackson.version>
         <lombok.version>1.18.42</lombok.version>
     </properties>
