@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.example.handlers;
+package io.github.alikelleci.eventify.core.example.customer.core;
 
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import lombok.extern.slf4j.Slf4j;

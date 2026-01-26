@@ -1,45 +1,52 @@
-package io.github.alikelleci.eventify.core.example.domain;
+package io.github.alikelleci.eventify.core.example.customer.shared;
 
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
 
-@TopicInfo("events.customer")
-public interface CustomerEvent {
+@TopicInfo("commands.customer")
+public interface CustomerCommand {
 
   @Value
   @Builder
-  class CustomerCreated implements CustomerEvent {
+  class CreateCustomer implements CustomerCommand {
     @AggregateId
     private String id;
+    @NotBlank
     private String firstName;
+    @NotBlank
     private String lastName;
+    @Max(100)
     private int credits;
     private Instant birthday;
   }
 
   @Value
   @Builder
-  class FirstNameChanged implements CustomerEvent {
+  class ChangeFirstName implements CustomerCommand {
     @AggregateId
     private String id;
+    @NotBlank
     private String firstName;
   }
 
   @Value
   @Builder
-  class LastNameChanged implements CustomerEvent {
+  class ChangeLastName implements CustomerCommand {
     @AggregateId
     private String id;
+    @NotBlank
     private String lastName;
   }
 
   @Value
   @Builder
-  class CreditsAdded implements CustomerEvent {
+  class AddCredits implements CustomerCommand {
     @AggregateId
     private String id;
     private int amount;
@@ -47,7 +54,7 @@ public interface CustomerEvent {
 
   @Value
   @Builder
-  class CreditsIssued implements CustomerEvent {
+  class IssueCredits implements CustomerCommand {
     @AggregateId
     private String id;
     private int amount;
@@ -55,7 +62,7 @@ public interface CustomerEvent {
 
   @Value
   @Builder
-  class CustomerDeleted implements CustomerEvent {
+  class DeleteCustomer implements CustomerCommand {
     @AggregateId
     private String id;
   }
