@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.example.domain;
+package io.github.alikelleci.eventify.core.example.customer.core;
 
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;

@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core;
 
-import io.github.alikelleci.eventify.core.example.handlers.CustomerCommandHandler;
-import io.github.alikelleci.eventify.core.example.handlers.CustomerEventSourcingHandler;
+import io.github.alikelleci.eventify.core.example.customer.core.CustomerCommandHandler;
+import io.github.alikelleci.eventify.core.example.customer.core.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.gateway.CommandGateway;
