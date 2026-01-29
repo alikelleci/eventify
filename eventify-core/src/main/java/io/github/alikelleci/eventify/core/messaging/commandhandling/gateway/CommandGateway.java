@@ -24,16 +24,26 @@ public interface CommandGateway {
   }
 
   @SneakyThrows
-  default <R> R sendAndWait(Command command) {
+  default <R> R sendAndWait(Command command, long timeout, TimeUnit unit) {
     CompletableFuture<R> future = send(command);
-    return future.get(1, TimeUnit.MINUTES);
+    return future.get(timeout, unit);
+  }
+
+  @SneakyThrows
+  default <R> R sendAndWait(Object payload, long timeout, TimeUnit unit) {
+    return sendAndWait(Command.builder()
+        .payload(payload)
+        .build(), timeout, unit);
+  }
+
+  @SneakyThrows
+  default <R> R sendAndWait(Command command) {
+    return sendAndWait(command, 1, TimeUnit.MINUTES);
   }
 
   @SneakyThrows
   default <R> R sendAndWait(Object payload) {
-    return sendAndWait(Command.builder()
-        .payload(payload)
-        .build());
+    return sendAndWait(payload, 1, TimeUnit.MINUTES);
   }
 
   public static CommandGatewayBuilder builder() {
