@@ -1,9 +1,9 @@
 package io.github.alikelleci.eventify.core.factory;
 
 import com.github.javafaker.Faker;
-import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.AddCredits;
-import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.CreateCustomer;
-import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.IssueCredits;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.AddCredits;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.CreateCustomer;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 

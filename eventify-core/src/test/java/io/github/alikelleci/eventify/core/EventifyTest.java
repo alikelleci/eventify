@@ -1,15 +1,15 @@
 package io.github.alikelleci.eventify.core;
 
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.example.domain.Customer;
-import io.github.alikelleci.eventify.core.example.domain.CustomerCommand;
-import io.github.alikelleci.eventify.core.example.domain.CustomerCommand.CreateCustomer;
-import io.github.alikelleci.eventify.core.example.domain.CustomerEvent;
-import io.github.alikelleci.eventify.core.example.domain.CustomerEvent.CreditsAdded;
-import io.github.alikelleci.eventify.core.example.domain.CustomerEvent.CreditsIssued;
-import io.github.alikelleci.eventify.core.example.domain.CustomerEvent.CustomerCreated;
-import io.github.alikelleci.eventify.core.example.handlers.CustomerCommandHandler;
-import io.github.alikelleci.eventify.core.example.handlers.CustomerEventSourcingHandler;
+import io.github.alikelleci.eventify.core.example.customer.core.Customer;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.CreateCustomer;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CreditsAdded;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CreditsIssued;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CustomerCreated;
+import io.github.alikelleci.eventify.core.example.customer.core.CustomerCommandHandler;
+import io.github.alikelleci.eventify.core.example.customer.core.CustomerEventSourcingHandler;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;

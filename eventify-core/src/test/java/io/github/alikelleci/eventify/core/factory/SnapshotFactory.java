@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.factory;
 
 import com.github.javafaker.Faker;
-import io.github.alikelleci.eventify.core.example.domain.Customer;
+import io.github.alikelleci.eventify.core.example.customer.core.Customer;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 
 public class SnapshotFactory {

@@ -1,8 +1,8 @@
 package io.github.alikelleci.eventify.core.factory;
 
 import com.github.javafaker.Faker;
-import io.github.alikelleci.eventify.core.example.domain.CustomerEvent.CreditsAdded;
-import io.github.alikelleci.eventify.core.example.domain.CustomerEvent.CustomerCreated;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CreditsAdded;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 
 import java.util.ArrayList;
