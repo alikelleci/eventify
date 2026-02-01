@@ -238,7 +238,7 @@ class EventifyTestV2 {
 
     @Test
     @DisplayName("Should upcast events")
-    void eventsWithoutUpcasting() {
+    void upcasting() {
       Command command = buildCreateCustomerCommand("customer-1", "Liam", "Moore", 100);
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
