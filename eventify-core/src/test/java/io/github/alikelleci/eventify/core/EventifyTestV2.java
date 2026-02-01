@@ -10,7 +10,6 @@ import io.github.alikelleci.eventify.core.example.customer.core.CustomerResultHa
 import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand;
 import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent;
 import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CreditsAdded;
-import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CreditsIssued;
 import io.github.alikelleci.eventify.core.example.customer.shared.CustomerEvent.CustomerCreated;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
@@ -37,21 +36,19 @@ import java.util.Properties;
 
 import static io.github.alikelleci.eventify.core.factory.CommandFactory.buildAddCreditsCommand;
 import static io.github.alikelleci.eventify.core.factory.CommandFactory.buildCreateCustomerCommand;
-import static io.github.alikelleci.eventify.core.factory.CommandFactory.buildIssueCreditsCommand;
 import static io.github.alikelleci.eventify.core.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.core.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.core.util.Matchers.assertSnapshot;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInRelativeOrder;
 import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 
 @Slf4j
 @DisplayName("Eventify Test")
-class EventifyTestV4 {
+class EventifyTestV2 {
 
   private TopologyTestDriver testDriver;
   private TestInputTopic<String, Command> commandsTopic;
