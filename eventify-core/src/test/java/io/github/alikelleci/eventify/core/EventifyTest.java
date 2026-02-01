@@ -26,6 +26,7 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -92,9 +93,11 @@ class EventifyTest {
   }
 
   @Nested
+  @DisplayName("Basic Tests")
   class BasicTests {
 
     @Test
+    @DisplayName("Should process command and produce event")
     void commandShouldSucceed() {
       List<Command> commands = List.of(
           buildCreateCustomerCommand("cust-1", "John", "Doe", 100)
@@ -122,6 +125,7 @@ class EventifyTest {
     }
 
     @Test
+    @DisplayName("Should handle command validation failure")
     void commandShouldFail() {
       List<Command> commands = List.of(
           buildAddCreditsCommand("cust-1", 100)
@@ -143,9 +147,11 @@ class EventifyTest {
   }
 
   @Nested
+  @DisplayName("Advanced Tests")
   class AdvancedTests {
 
     @Test
+    @DisplayName("Should process multiple command and produce events")
     void multipleCommandShouldSucceed() {
       List<Command> commands = List.of(
           buildCreateCustomerCommand("cust-1", "John", "Doe", 100),
