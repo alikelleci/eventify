@@ -27,36 +27,32 @@ public class Matchers {
     }
   }
 
-  public static void assertEvent(Command command, Event event) {
+
+  public static void assertEvent(Command command, Event event, Class<?> type) {
     assertThat(event)
         .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
             .withIgnoredFields("id", "type", "revision")
             .build())
         .isEqualTo(command);
-  }
 
-  public static void assertEvent(Command command, Event event, Class<?> type) {
-    assertEvent(command, event);
+    assertThat(event.getId()).isNotBlank();
     assertThat(event.getType()).isEqualTo(type.getSimpleName());
+    assertThat(event.getRevision()).isNotNegative();
     assertThat(event.getPayload()).isInstanceOf(type);
   }
 
-  public static void assertSnapshot(Event event, AggregateState state) {
+
+  public static void assertSnapshot(Event event, AggregateState state, Class<?> type, long version) {
     assertThat(state)
         .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
             .withIgnoredFields("id", "type", "payload", "eventId", "version")
             .build())
         .isEqualTo(event);
 
-    assertThat(state.getEventId()).isEqualTo(event.getId());
-    assertThat(state.getVersion()).isNotNegative();
-
-  }
-
-  public static void assertSnapshot(Event event, AggregateState state, Class<?> type, long version) {
-    assertSnapshot(event, state);
-    assertThat(state.getVersion()).isEqualTo(version);
+    assertThat(state.getId()).isNotBlank();
     assertThat(state.getType()).isEqualTo(type.getSimpleName());
+    assertThat(state.getEventId()).isEqualTo(event.getId());
+    assertThat(state.getVersion()).isEqualTo(version);
     assertThat(state.getPayload()).isInstanceOf(type);
   }
 }
