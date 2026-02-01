@@ -19,11 +19,11 @@ public class Matchers {
         .isEqualTo(command);
 
     if (isSuccess) {
-      assertThat(commandResult.getMetadata().get(RESULT)).isEqualTo("success");
-      assertThat(commandResult.getMetadata().get(CAUSE)).isBlank();
+      assertThat(commandResult.getMetadata()).containsEntry(RESULT, "success");
+      assertThat(commandResult.getMetadata()).doesNotContainKey(CAUSE);
     } else {
-      assertThat(commandResult.getMetadata().get(RESULT)).isEqualTo("failure");
-      assertThat(commandResult.getMetadata().get(CAUSE)).isNotBlank();
+      assertThat(commandResult.getMetadata()).containsEntry(RESULT, "failure");
+      assertThat(commandResult.getMetadata()).hasEntrySatisfying(CAUSE, value -> assertThat(value).isNotBlank());
     }
   }
 
