@@ -39,10 +39,7 @@ import static io.github.alikelleci.eventify.core.factory.CommandFactory.buildIss
 import static io.github.alikelleci.eventify.core.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.core.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.core.util.Matchers.assertSnapshot;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInRelativeOrder;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 class EventifyTest {
@@ -105,23 +102,23 @@ class EventifyTest {
       commands.forEach(command -> commandsTopic.pipeInput(command.getAggregateId(), command));
 
       List<Command> commandResults = commandResultsTopic.readValuesToList();
-      assertThat(commandResults.size(), is(commands.size()));
+      assertThat(commandResults).hasSize(commands.size());
 
       assertCommandResult(commands.get(0), commandResults.get(0), true);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events.size(), is(1));
+      assertThat(events).hasSize(1);
 
       assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getId(), is(((CreateCustomer) commands.get(0).getPayload()).getId()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName(), is(((CreateCustomer) commands.get(0).getPayload()).getFirstName()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName(), is(((CreateCustomer) commands.get(0).getPayload()).getLastName()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits(), is(((CreateCustomer) commands.get(0).getPayload()).getCredits()));
-      assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday(), is(((CreateCustomer) commands.get(0).getPayload()).getBirthday()));
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getId()).isEqualTo(((CreateCustomer) commands.get(0).getPayload()).getId());
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getFirstName()).isEqualTo(((CreateCustomer) commands.get(0).getPayload()).getFirstName());
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getLastName()).isEqualTo(((CreateCustomer) commands.get(0).getPayload()).getLastName());
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getCredits()).isEqualTo(((CreateCustomer) commands.get(0).getPayload()).getCredits());
+      assertThat(((CustomerCreated) events.get(0).getPayload()).getBirthday()).isEqualTo(((CreateCustomer) commands.get(0).getPayload()).getBirthday());
 
       List<Event> eventsInStore = readEventsFromStore();
-      assertThat(eventsInStore.size(), is(1));
-      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
+      assertThat(eventsInStore).hasSize(1);
+      assertThat(eventsInStore).containsExactlyElementsOf(events);
     }
 
     @Test
@@ -133,15 +130,15 @@ class EventifyTest {
       commands.forEach(command -> commandsTopic.pipeInput(command.getAggregateId(), command));
 
       List<Command> commandResults = commandResultsTopic.readValuesToList();
-      assertThat(commandResults.size(), is(commands.size()));
+      assertThat(commandResults).hasSize(commands.size());
 
       assertCommandResult(commands.get(0), commandResults.get(0), false);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events.size(), is(0));
+      assertThat(events).isEmpty();
 
       List<Event> eventsInStore = readEventsFromStore();
-      assertThat(eventsInStore.size(), is(0));
+      assertThat(eventsInStore).isEmpty();
     }
 
   }
@@ -166,7 +163,7 @@ class EventifyTest {
       commands.forEach(command -> commandsTopic.pipeInput(command.getAggregateId(), command));
 
       List<Command> commandResults = commandResultsTopic.readValuesToList();
-      assertThat(commandResults.size(), is(commands.size()));
+      assertThat(commandResults).hasSize(commands.size());
 
       assertCommandResult(commands.get(0), commandResults.get(0), true);
       assertCommandResult(commands.get(1), commandResults.get(1), true);
@@ -178,7 +175,7 @@ class EventifyTest {
       assertCommandResult(commands.get(7), commandResults.get(7), true);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events.size(), is(6));
+      assertThat(events).hasSize(6);
 
       assertEvent(commands.get(0), events.get(0), CustomerCreated.class);
       assertEvent(commands.get(1), events.get(1), CreditsAdded.class);
@@ -188,18 +185,18 @@ class EventifyTest {
       assertEvent(commands.get(7), events.get(5), CreditsIssued.class);
 
       List<Event> eventsInStore = readEventsFromStore();
-      assertThat(eventsInStore.size(), is(6));
-      assertThat(eventsInStore, containsInRelativeOrder(events.toArray(new Event[0])));
+      assertThat(eventsInStore).hasSize(6);
+      assertThat(eventsInStore).containsExactlyElementsOf(events);
 
       AggregateState state = snapshotStore.get("cust-1");
-      assertThat(state, is(notNullValue()));
+      assertThat(state).isNotNull();
 
       assertSnapshot(events.get(4), state, Customer.class, 5);
-      assertThat(((Customer) state.getPayload()).getId(), is("cust-1"));
-      assertThat(((Customer) state.getPayload()).getFirstName(), is("John"));
-      assertThat(((Customer) state.getPayload()).getLastName(), is("Doe"));
-      assertThat(((Customer) state.getPayload()).getCredits(), is(104));
-      assertThat(((Customer) state.getPayload()).getBirthday(), is(notNullValue()));
+      assertThat(((Customer) state.getPayload()).getId()).isEqualTo("cust-1");
+      assertThat(((Customer) state.getPayload()).getFirstName()).isEqualTo("John");
+      assertThat(((Customer) state.getPayload()).getLastName()).isEqualTo("Doe");
+      assertThat(((Customer) state.getPayload()).getCredits()).isEqualTo(104);
+      assertThat(((Customer) state.getPayload()).getBirthday()).isNotNull();
     }
   }
 

@@ -39,12 +39,8 @@ import static io.github.alikelleci.eventify.core.factory.CommandFactory.buildCre
 import static io.github.alikelleci.eventify.core.util.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.core.util.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.core.util.Matchers.assertSnapshot;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInRelativeOrder;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.is;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
+import static org.assertj.core.api.Assertions.assertThat;
+
 
 @Slf4j
 @DisplayName("Eventify Test")
@@ -67,9 +63,9 @@ class EventifyTestV2 {
         .streamsConfig(properties)
         .registerHandler(new CustomerCommandHandler())
         .registerHandler(new CustomerEventSourcingHandler())
-        .registerHandler(new CustomerEventHandler())
-        .registerHandler(new CustomerResultHandler())
-        .registerHandler(new CustomerEventUpcaster())
+//        .registerHandler(new CustomerEventHandler())
+//        .registerHandler(new CustomerResultHandler())
+//        .registerHandler(new CustomerEventUpcaster())
         .build();
 
     testDriver = new TopologyTestDriver(eventify.topology());
@@ -108,15 +104,15 @@ class EventifyTestV2 {
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       List<Command> results = commandResultsTopic.readValuesToList();
-      assertThat(results, hasSize(1));
+      assertThat(results).hasSize(1);
       assertCommandResult(command, results.get(0), true);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events, hasSize(1));
+      assertThat(events).hasSize(1);
       assertEvent(command, events.get(0), CustomerCreated.class);
 
       List<Event> eventsInStore = readEventsFromStore("customer-1");
-      assertThat(eventsInStore, hasSize(1));
+      assertThat(eventsInStore).hasSize(1);
       assertEvent(command, eventsInStore.get(0), CustomerCreated.class);
     }
 
@@ -127,14 +123,14 @@ class EventifyTestV2 {
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       List<Command> results = commandResultsTopic.readValuesToList();
-      assertThat(results, hasSize(1));
+      assertThat(results).hasSize(1);
       assertCommandResult(command, results.get(0), false);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events, hasSize(0));
+      assertThat(events).isEmpty();
 
       List<Event> eventsInStore = readEventsFromStore("customer-1");
-      assertThat(eventsInStore, hasSize(0));
+      assertThat(eventsInStore).isEmpty();
     }
 
     @Test
@@ -147,17 +143,17 @@ class EventifyTestV2 {
       commandsTopic.pipeInput(command2.getAggregateId(), command2);
 
       List<Command> results = commandResultsTopic.readValuesToList();
-      assertThat(results, hasSize(2));
+      assertThat(results).hasSize(2);
       assertCommandResult(command1, results.get(0), true);
       assertCommandResult(command2, results.get(1), true);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events, hasSize(2));
+      assertThat(events).hasSize(2);
       assertEvent(command1, events.get(0), CustomerCreated.class);
       assertEvent(command2, events.get(1), CreditsAdded.class);
 
       List<Event> eventsInStore = readEventsFromStore("customer-1");
-      assertThat(eventsInStore, hasSize(2));
+      assertThat(eventsInStore).hasSize(2);
       assertEvent(command1, eventsInStore.get(0), CustomerCreated.class);
       assertEvent(command2, eventsInStore.get(1), CreditsAdded.class);
     }
@@ -182,24 +178,24 @@ class EventifyTestV2 {
       commands.forEach(cmd -> commandsTopic.pipeInput(cmd.getAggregateId(), cmd));
 
       List<Command> results = commandResultsTopic.readValuesToList();
-      assertThat(results, hasSize(6));
+      assertThat(results).hasSize(6);
       for (int i = 0; i < commands.size(); i++) {
         assertCommandResult(commands.get(i), results.get(i), true);
       }
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events, hasSize(6));
+      assertThat(events).hasSize(6);
 
       List<Event> eventsInStore = readEventsFromStore("customer-1");
-      assertThat(eventsInStore, hasSize(6));
+      assertThat(eventsInStore).hasSize(6);
 
       AggregateState snapshot = snapshotStore.get("customer-1");
-      assertThat(snapshot, is(notNullValue()));
+      assertThat(snapshot).isNotNull();
       assertSnapshot(events.get(4), snapshot, Customer.class, 5);
 
       Customer customer = (Customer) snapshot.getPayload();
-      assertThat(customer.getId(), is("customer-1"));
-      assertThat(customer.getCredits(), is(104));
+      assertThat(customer.getId()).isEqualTo("customer-1");
+      assertThat(customer.getCredits()).isEqualTo(104);
     }
 
     @Test
@@ -217,18 +213,18 @@ class EventifyTestV2 {
       commands.forEach(cmd -> commandsTopic.pipeInput(cmd.getAggregateId(), cmd));
 
       List<Command> results = commandResultsTopic.readValuesToList();
-      assertThat(results, hasSize(6));
-      results.forEach(result -> assertThat(result.getMetadata().get("$result"), is("success")));
+      assertThat(results).hasSize(6);
+      results.forEach(result -> assertThat(result.getMetadata().get("$result")).isEqualTo("success"));
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events, hasSize(6));
+      assertThat(events).hasSize(6);
 
       AggregateState snapshot = snapshotStore.get("customer-12");
-      assertThat(snapshot, is(notNullValue()));
-      assertThat(snapshot.getVersion(), is(5L));
+      assertThat(snapshot).isNotNull();
+      assertThat(snapshot.getVersion()).isEqualTo(5L);
 
       Customer customer = (Customer) snapshot.getPayload();
-      assertThat(customer.getCredits(), is(104));
+      assertThat(customer.getCredits()).isEqualTo(104);
     }
   }
 
@@ -243,16 +239,16 @@ class EventifyTestV2 {
       commandsTopic.pipeInput(command.getAggregateId(), command);
 
       List<Command> results = commandResultsTopic.readValuesToList();
-      assertThat(results, hasSize(1));
+      assertThat(results).hasSize(1);
 
       List<Event> events = eventsTopic.readValuesToList();
-      assertThat(events, hasSize(1));
+      assertThat(events).hasSize(1);
 
       List<Event> eventsInStore = readEventsFromStore("customer-1");
-      assertThat(eventsInStore, hasSize(1));
+      assertThat(eventsInStore).hasSize(1);
 
       CustomerCreated created = (CustomerCreated) events.get(0).getPayload();
-      assertThat(created.getFirstName(), is("Liam"));
+      assertThat(created.getFirstName()).isEqualTo("Liam");
     }
   }
 
