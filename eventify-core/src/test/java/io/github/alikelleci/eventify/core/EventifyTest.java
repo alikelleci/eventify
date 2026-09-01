@@ -18,7 +18,6 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -48,7 +47,6 @@ import static io.github.alikelleci.eventify.core.util.Matchers.assertSnapshot;
 import static org.assertj.core.api.Assertions.assertThat;
 
 
-@Slf4j
 @DisplayName("Eventify Test")
 class EventifyTest {
 
@@ -180,7 +178,7 @@ class EventifyTest {
     }
 
     @Test
-    @DisplayName("Should change first and last name and reflect updated state")
+    @DisplayName("Should change first and last name and produce correct events")
     void changeNames() {
       Command create = buildCreateCustomerCommand("customer-1", "John", "Doe", 100);
       Command changeFirst = buildChangeFirstNameCommand("customer-1", "Jane");
@@ -350,6 +348,7 @@ class EventifyTest {
       AggregateState snapshot = snapshotStore.get("customer-1");
       assertThat(snapshot).isNotNull();
       assertSnapshot(eventList.get(4), snapshot, Customer.class, 5);
+      assertThat(((Customer) snapshot.getPayload()).getId()).isEqualTo("customer-1");
       assertThat(((Customer) snapshot.getPayload()).getCredits()).isEqualTo(104);
 
       // 7th command: state rebuilt from snapshot + event 6, then adds 10
@@ -386,7 +385,8 @@ class EventifyTest {
     @Test
     @DisplayName("Should apply upcasters when replaying stored events")
     void upcastingAppliedOnReplay() {
-      // CustomerCreated has no @Revision so revision=1, upcasters rev1→2→3 fire, setting firstName to "John v3 -> v4"
+      // CustomerCreated has no @Revision so defaults to revision=1. Upcasters rev1→2→3 fire and hardcode firstName,
+      // resulting in "John v3 -> v4" regardless of the original value
       Command create = buildCreateCustomerCommand("customer-1", "Original", "Name", 100);
       commands.pipeInput(create.getAggregateId(), create);
 
