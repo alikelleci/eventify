@@ -2,7 +2,10 @@ package io.github.alikelleci.eventify.core.factory;
 
 import com.github.javafaker.Faker;
 import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.AddCredits;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.ChangeFirstName;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.ChangeLastName;
 import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.CreateCustomer;
+import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.DeleteCustomer;
 import io.github.alikelleci.eventify.core.example.customer.shared.CustomerCommand.IssueCredits;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
@@ -88,6 +91,24 @@ public class CommandFactory {
             .put(RESULT, "should-be-overwritten")
             .put(CAUSE, "should-be-overwritten")
             .build())
+        .build();
+  }
+
+  public static Command buildChangeFirstNameCommand(String aggregateId, String firstName) {
+    return Command.builder()
+        .payload(ChangeFirstName.builder().id(aggregateId).firstName(firstName).build())
+        .build();
+  }
+
+  public static Command buildChangeLastNameCommand(String aggregateId, String lastName) {
+    return Command.builder()
+        .payload(ChangeLastName.builder().id(aggregateId).lastName(lastName).build())
+        .build();
+  }
+
+  public static Command buildDeleteCustomerCommand(String aggregateId) {
+    return Command.builder()
+        .payload(DeleteCustomer.builder().id(aggregateId).build())
         .build();
   }
 }
