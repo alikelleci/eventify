@@ -205,7 +205,7 @@ class EventifyTest {
     }
 
     @Test
-    @DisplayName("Should issue credits and reduce balance")
+    @DisplayName("Should issue credits and produce CreditsIssued event")
     void issueCredits() {
       Command create = buildCreateCustomerCommand("customer-1", "John", "Doe", 100);
       Command issue = buildIssueCreditsCommand("customer-1", 40);
@@ -334,8 +334,9 @@ class EventifyTest {
           buildAddCreditsCommand("customer-1", 1), // 5th event stored
           buildAddCreditsCommand("customer-1", 1)  // 6th command triggers snapshot at version 5
       );
-      Command addAfterSnapshot = buildAddCreditsCommand("customer-1", 10);
       commandList.forEach(cmd -> commands.pipeInput(cmd.getAggregateId(), cmd));
+
+      Command addAfterSnapshot = buildAddCreditsCommand("customer-1", 10);
       commands.pipeInput(addAfterSnapshot.getAggregateId(), addAfterSnapshot);
 
       // Snapshot at version 5, credits = 104
@@ -364,7 +365,7 @@ class EventifyTest {
     TopologyTestDriver driver;
     TestInputTopic<String, Command> commands;
     TestOutputTopic<String, Command> results;
-    TestOutputTopic<String, Event> events;
+    KeyValueStore<String, Event> eventStore;
 
     @BeforeEach
     void setup() {
@@ -373,7 +374,7 @@ class EventifyTest {
           .build().topology());
       commands = commandsTopic(driver);
       results = commandResultsTopic(driver);
-      events = eventsTopic(driver);
+      eventStore = driver.getKeyValueStore("event-store");
     }
 
     @AfterEach
@@ -398,7 +399,7 @@ class EventifyTest {
       assertCommandResult(addCredits, resultList.get(1), true);
 
       // The upcasted firstName is visible on the event read from the store (deserialized through upcaster chain)
-      List<Event> storedEvents = readEventsFromStore(driver.getKeyValueStore("event-store"), "customer-1");
+      List<Event> storedEvents = readEventsFromStore(eventStore, "customer-1");
       assertThat(storedEvents).hasSize(2);
       assertThat(((CustomerCreated) storedEvents.get(0).getPayload()).getFirstName()).isEqualTo("John v3 -> v4");
     }
