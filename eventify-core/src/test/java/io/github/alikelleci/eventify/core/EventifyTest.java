@@ -339,19 +339,20 @@ class EventifyTest {
       Command addAfterSnapshot = buildAddCreditsCommand("customer-1", 10);
       commands.pipeInput(addAfterSnapshot.getAggregateId(), addAfterSnapshot);
 
-      // Snapshot at version 5, credits = 104
-      AggregateState snapshot = snapshotStore.get("customer-1");
-      assertThat(snapshot).isNotNull();
-      assertThat(snapshot.getVersion()).isEqualTo(5);
-      assertThat(((Customer) snapshot.getPayload()).getCredits()).isEqualTo(104);
-
-      // 7th command: state rebuilt from snapshot + event 6, then adds 10
       List<Command> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(7);
       assertCommandResult(addAfterSnapshot, resultList.get(6), true);
 
       List<Event> eventList = events.readValuesToList();
       assertThat(eventList).hasSize(7);
+
+      // Snapshot at version 5, credits = 104
+      AggregateState snapshot = snapshotStore.get("customer-1");
+      assertThat(snapshot).isNotNull();
+      assertSnapshot(eventList.get(4), snapshot, Customer.class, 5);
+      assertThat(((Customer) snapshot.getPayload()).getCredits()).isEqualTo(104);
+
+      // 7th command: state rebuilt from snapshot + event 6, then adds 10
       assertEvent(addAfterSnapshot, eventList.get(6), CreditsAdded.class);
       assertThat(((CreditsAdded) eventList.get(6).getPayload()).getAmount()).isEqualTo(10);
     }
