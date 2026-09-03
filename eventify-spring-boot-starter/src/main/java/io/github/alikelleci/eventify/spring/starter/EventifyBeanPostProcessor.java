@@ -1,9 +1,12 @@
 package io.github.alikelleci.eventify.spring.starter;
 
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.common.annotations.HandleMessage;
+import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class EventifyBeanPostProcessor implements BeanPostProcessor {
@@ -27,9 +30,14 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
 
   @Override
   public Object postProcessAfterInitialization(final Object bean, final String beanName) {
-    apps.forEach(eventify ->
-        HandlerUtils.registerHandler(eventify, bean));
-
+    if (isHandler(bean)) {
+      apps.forEach(eventify -> HandlerUtils.registerHandler(eventify, bean));
+    }
     return bean;
+  }
+
+  private boolean isHandler(Object bean) {
+    return Arrays.stream(bean.getClass().getDeclaredMethods())
+        .anyMatch(method -> AnnotationUtils.findAnnotation(method, HandleMessage.class) != null);
   }
 }
