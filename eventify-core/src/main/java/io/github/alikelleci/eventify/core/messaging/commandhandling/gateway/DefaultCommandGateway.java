@@ -32,7 +32,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofMinutes(5))
       .removalListener((String key, CompletableFuture<Object> future, RemovalCause cause) -> {
-        if (cause.wasEvicted() && future != null) {
+        if (cause.wasEvicted()) {
           future.completeExceptionally(new TimeoutException("Command timed out: no reply received within the allowed time."));
         }
       })
