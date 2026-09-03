@@ -52,13 +52,13 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   public <R> CompletableFuture<R> send(Command command) {
     command.getMetadata().put(REPLY_TO, getReplyTopic());
 
+    CompletableFuture<Object> future = new CompletableFuture<>();
+    cache.put(command.getId(), future);
+
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
     log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
     producer.send(producerRecord);
-
-    CompletableFuture<Object> future = new CompletableFuture<>();
-    cache.put(command.getId(), future);
 
     return (CompletableFuture<R>) future;
   }
