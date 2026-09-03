@@ -101,7 +101,7 @@ class EventifyTest {
 
     @BeforeEach
     void setup() {
-      driver = new TopologyTestDriver(baseBuilder().build().topology());
+      driver = new TopologyTestDriver(baseBuilder().build().writeTopology());
       commands = commandsTopic(driver);
       results = commandResultsTopic(driver);
       events = eventsTopic(driver);
@@ -276,7 +276,7 @@ class EventifyTest {
 
     @BeforeEach
     void setup() {
-      driver = new TopologyTestDriver(baseBuilder().build().topology());
+      driver = new TopologyTestDriver(baseBuilder().build().writeTopology());
       commands = commandsTopic(driver);
       results = commandResultsTopic(driver);
       events = eventsTopic(driver);
@@ -371,7 +371,7 @@ class EventifyTest {
     void setup() {
       driver = new TopologyTestDriver(baseBuilder()
           .registerHandler(new CustomerEventUpcaster())
-          .build().topology());
+          .build().writeTopology());
       commands = commandsTopic(driver);
       results = commandResultsTopic(driver);
       eventStore = driver.getKeyValueStore("event-store");

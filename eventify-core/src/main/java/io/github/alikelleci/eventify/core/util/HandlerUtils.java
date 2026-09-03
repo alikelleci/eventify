@@ -7,8 +7,6 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.annotations.HandleEvent;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.annotations.HandleResult;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import lombok.experimental.UtilityClass;
@@ -25,16 +23,12 @@ public class HandlerUtils {
     AnnotationUtils.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
         .forEach(method -> addEventSourcingHandler(eventify, handler, method));
 
-    AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleResult.class)
-        .forEach(method -> addResultHandler(eventify, handler, method));
-
     AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(eventify, handler, method));
 
     AnnotationUtils.findAnnotatedMethods(handler.getClass(), Upcast.class)
         .forEach(method -> addUpcaster(eventify, handler, method));
   }
-
 
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() >= 1) {
@@ -47,13 +41,6 @@ public class HandlerUtils {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
       eventify.getEventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
-    }
-  }
-
-  private void addResultHandler(Eventify eventify, Object listener, Method method) {
-    if (method.getParameterCount() >= 1) {
-      Class<?> type = method.getParameters()[0].getType();
-      eventify.getResultHandlers().put(type, new ResultHandler(listener, method));
     }
   }
 

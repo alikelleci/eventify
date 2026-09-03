@@ -1,13 +1,11 @@
 package io.github.alikelleci.eventify.core.messaging.eventhandling;
 
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
-import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.util.Collection;
 import java.util.Comparator;
@@ -17,7 +15,6 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   private final Eventify eventify;
   private FixedKeyProcessorContext<String, Event> context;
-  private KeyValueStore<String, Event> eventStore;
 
   public EventProcessor(Eventify eventify) {
     this.eventify = eventify;
@@ -26,7 +23,6 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
   @Override
   public void init(FixedKeyProcessorContext<String, Event> context) {
     this.context = context;
-    this.eventStore = context.getStateStore("event-store");
   }
 
   @Override
@@ -38,13 +34,7 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
       eventHandlers.stream()
           .sorted(Comparator.comparingInt(EventHandler::getPriority).reversed())
           .peek(handler -> log.debug("Handling event: {} ({})", event.getType(), event.getAggregateId()))
-          .forEach(handler ->
-              handler.apply(event));
-    }
-
-    EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
-    if (eventSourcingHandler != null) {
-      saveEvent(event);
+          .forEach(handler -> handler.apply(event));
     }
 
     context.forward(fixedKeyRecord);
@@ -52,11 +42,5 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
   @Override
   public void close() {
-
   }
-
-  private void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getId(), event);
-  }
-
 }

@@ -12,8 +12,6 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.EventProcessor;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultProcessor;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.core.support.LoggingStateRestoreListener;
@@ -44,7 +42,6 @@ import org.apache.kafka.streams.state.Stores;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -54,7 +51,6 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 
@@ -63,7 +59,6 @@ import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 public class Eventify {
   private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
   private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
-  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
   private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
   private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
 
@@ -73,7 +68,8 @@ public class Eventify {
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
 
-  private KafkaStreams kafkaStreams;
+  private KafkaStreams writeStreams;
+  private KafkaStreams readStreams;
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
@@ -91,141 +87,118 @@ public class Eventify {
     return new EventifyBuilder();
   }
 
-  public Topology topology() {
+  public Topology writeTopology() {
     StreamsBuilder builder = new StreamsBuilder();
-
-    /*
-     * -------------------------------------------------------------
-     * SERDES
-     * -------------------------------------------------------------
-     */
 
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
     Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
     Serde<AggregateState> snapshotSerde = new JsonSerde<>(AggregateState.class, objectMapper);
-
-    /*
-     * -------------------------------------------------------------
-     * STORES
-     * -------------------------------------------------------------
-     */
 
     // Event store
     builder.addStateStore(Stores
         .keyValueStoreBuilder(Stores.persistentKeyValueStore("event-store"), Serdes.String(), eventSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
-    // Snapshot Store
+    // Snapshot store
     builder.addStateStore(Stores
         .keyValueStoreBuilder(Stores.persistentKeyValueStore("snapshot-store"), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
-    /*
-     * -------------------------------------------------------------
-     * COMMAND HANDLING
-     * -------------------------------------------------------------
-     */
+    // --> Commands
+    KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), commandSerde))
+        .filter((key, command) -> key != null)
+        .filter((key, command) -> command != null)
+        .filter((key, command) -> command.getPayload() != null);
 
-    if (!getCommandTopics().isEmpty()) {
-      // --> Commands
-      KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), commandSerde))
-          .filter((key, command) -> key != null)
-          .filter((key, command) -> command != null)
-          .filter((key, command) -> command.getPayload() != null);
+    // Commands --> Results
+    KStream<String, CommandResult> commandResults = commands
+        .processValues(() -> new CommandProcessor(this), "event-store", "snapshot-store")
+        .filter((key, result) -> result != null);
 
-      // Commands --> Results
-      KStream<String, CommandResult> commandResults = commands
-          .processValues(() -> new CommandProcessor(this), "event-store", "snapshot-store")
-          .filter((key, result) -> result != null);
+    // Results --> Push
+    commandResults
+        .mapValues(CommandResult::getCommand)
+        .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
+            Produced.with(Serdes.String(), commandSerde));
 
-      // Results --> Push
-      commandResults
-          .mapValues(CommandResult::getCommand)
-          .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
-              Produced.with(Serdes.String(), commandSerde));
+    // Results --> Push to reply topic
+    commandResults
+        .mapValues(CommandResult::getCommand)
+        .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
+        .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
+            Produced.with(Serdes.String(), commandSerde)
+                .withStreamPartitioner((topic, key, value, numPartitions) -> Optional.of(Set.of(0))));
 
-      // Results --> Push to reply topic
-      commandResults
-          .mapValues(CommandResult::getCommand)
-          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
-          .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
-              Produced.with(Serdes.String(), commandSerde)
-                  .withStreamPartitioner((topic, key, value, numPartitions) -> Optional.of(Set.of(0))));
+    // Events --> Push
+    commandResults
+        .filter((key, result) -> result instanceof Success)
+        .mapValues((key, result) -> (Success) result)
+        .flatMapValues(Success::getEvents)
+        .filter((key, event) -> event != null)
+        .to((key, event, recordContext) -> event.getTopicInfo().value(),
+            Produced.with(Serdes.String(), eventSerde));
 
-      // Events --> Push
-      commandResults
-          .filter((key, result) -> result instanceof Success)
-          .mapValues((key, result) -> (Success) result)
-          .flatMapValues(Success::getEvents)
-          .filter((key, event) -> event != null)
-          .to((key, event, recordContext) -> event.getTopicInfo().value(),
-              Produced.with(Serdes.String(), eventSerde));
-    }
+    return builder.build();
+  }
 
-    /*
-     * -------------------------------------------------------------
-     * EVENT HANDLING
-     * -------------------------------------------------------------
-     */
+  public Topology readTopology() {
+    StreamsBuilder builder = new StreamsBuilder();
 
-    if (!getEventTopics().isEmpty()) {
-      // --> Events
-      KStream<String, Event> events = builder.stream(getEventTopics(), Consumed.with(Serdes.String(), eventSerde))
-          .filter((key, event) -> key != null)
-          .filter((key, event) -> event != null)
-          .filter((key, event) -> event.getPayload() != null);
+    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
 
-      // Events --> Void
-      events
-          .processValues(() -> new EventProcessor(this), "event-store");
-    }
+    // --> Events
+    KStream<String, Event> events = builder.stream(getEventTopics(), Consumed.with(Serdes.String(), eventSerde))
+        .filter((key, event) -> key != null)
+        .filter((key, event) -> event != null)
+        .filter((key, event) -> event.getPayload() != null);
 
-    /*
-     * -------------------------------------------------------------
-     * RESULT HANDLING
-     * -------------------------------------------------------------
-     */
-
-    if (!getResultTopics().isEmpty()) {
-      // --> Results
-      KStream<String, Command> results = builder.stream(getResultTopics(), Consumed.with(Serdes.String(), commandSerde))
-          .filter((key, command) -> key != null)
-          .filter((key, command) -> command != null)
-          .filter((key, command) -> command.getPayload() != null);
-
-      // Results --> Void
-      results
-          .processValues(() -> new ResultProcessor(this));
-    }
-
+    // Events --> Void
+    events.processValues(() -> new EventProcessor(this));
 
     return builder.build();
   }
 
   public void start() {
-    Topology topology = topology();
-    if (topology.describe().subtopologies().isEmpty()) {
-      log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
-      return;
+    if (!getCommandTopics().isEmpty()) {
+      Properties writeConfig = new Properties();
+      writeConfig.putAll(streamsConfig);
+      writeConfig.put(StreamsConfig.APPLICATION_ID_CONFIG,
+          writeConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-write");
+
+      writeStreams = new KafkaStreams(writeTopology(), writeConfig);
+      setUpListeners(writeStreams);
+      log.info("Eventify write topology starting...");
+      writeStreams.start();
     }
 
-    kafkaStreams = new KafkaStreams(topology, streamsConfig);
-    setUpListeners();
+    if (!getEventTopics().isEmpty()) {
+      Properties readConfig = new Properties();
+      readConfig.putAll(streamsConfig);
+      readConfig.put(StreamsConfig.APPLICATION_ID_CONFIG,
+          readConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-read");
 
-    log.info("Eventify is starting...");
-    kafkaStreams.start();
+      readStreams = new KafkaStreams(readTopology(), readConfig);
+      setUpListeners(readStreams);
+      log.info("Eventify read topology starting...");
+      readStreams.start();
+    }
+
+    if (writeStreams == null && readStreams == null) {
+      log.info("Eventify is not started: no handlers registered.");
+    }
   }
 
   public void stop() {
     log.info("Eventify is shutting down...");
-    kafkaStreams.close(Duration.ofSeconds(60));
+    if (writeStreams != null) writeStreams.close(Duration.ofSeconds(60));
+    if (readStreams != null) readStreams.close(Duration.ofSeconds(60));
     log.info("Eventify shut down complete.");
   }
 
-  private void setUpListeners() {
-    kafkaStreams.setStateListener(this.stateListener);
-    kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
-    kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
+  private void setUpListeners(KafkaStreams streams) {
+    streams.setStateListener(this.stateListener);
+    streams.setGlobalStateRestoreListener(this.stateRestoreListener);
+    streams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 
     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
   }
@@ -239,23 +212,10 @@ public class Eventify {
   }
 
   private Set<String> getEventTopics() {
-    return Stream.of(
-            eventHandlers.keySet(),
-            eventSourcingHandlers.keySet()
-        )
-        .flatMap(Collection::stream)
+    return eventHandlers.keySet().stream()
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
         .map(TopicInfo::value)
-        .collect(Collectors.toSet());
-  }
-
-  private Set<String> getResultTopics() {
-    return resultHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
-        .filter(Objects::nonNull)
-        .map(TopicInfo::value)
-        .map(topic -> topic.concat(".results"))
         .collect(Collectors.toSet());
   }
 
@@ -271,7 +231,6 @@ public class Eventify {
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
-
       return this;
     }
 
@@ -284,12 +243,6 @@ public class Eventify {
       this.streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, CustomRocksDbConfig.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
-
-//    ArrayList<String> interceptors = new ArrayList<>();
-//    interceptors.add(CommonProducerInterceptor.class.getName());
-//
-//    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
-
       return this;
     }
 
@@ -344,7 +297,5 @@ public class Eventify {
 
       return eventify;
     }
-
   }
-
 }

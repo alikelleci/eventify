@@ -17,7 +17,6 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
     this.apps = apps.stream()
         .filter(eventify -> eventify.getCommandHandlers().isEmpty())
         .filter(eventify -> eventify.getEventSourcingHandlers().isEmpty())
-        .filter(eventify -> eventify.getResultHandlers().isEmpty())
         .filter(eventify -> eventify.getEventHandlers().isEmpty())
         .filter(eventify -> eventify.getUpcasters().isEmpty())
         .toList();

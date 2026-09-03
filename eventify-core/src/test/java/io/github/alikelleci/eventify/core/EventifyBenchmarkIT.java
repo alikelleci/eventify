@@ -5,7 +5,6 @@ import io.github.alikelleci.eventify.core.example.customer.core.CustomerEventSou
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.gateway.CommandGateway;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.gateway.EventGateway;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import lombok.SneakyThrows;
@@ -50,8 +49,6 @@ public class EventifyBenchmarkIT {
 
   private static Eventify eventify;
   private static CommandGateway commandGateway;
-  private static EventGateway eventGateway;
-
   private static Producer<String, Message> producer;
   private static Consumer<String, Message> consumer;
 
@@ -66,7 +63,6 @@ public class EventifyBenchmarkIT {
 
     eventify = createEventify();
     commandGateway = createCommandGateway();
-    eventGateway = createEventGateway();
     producer = createProducer();
     consumer = createConsumer();
 
@@ -82,7 +78,6 @@ public class EventifyBenchmarkIT {
   @AfterAll
   static void tearDown() {
     eventify.stop();
-    eventify.getKafkaStreams().cleanUp();
     producer.close();
     consumer.close();
     kafka.close();
@@ -110,7 +105,7 @@ public class EventifyBenchmarkIT {
   }
 
   private static void generateEvents(int numberOfAggregates, int numberOfEventsPerAggregate) {
-    String topic = "example-app-event-store-changelog";
+    String topic = "example-app-write-event-store-changelog";
 
     log.info("Generating events...");
     for (int i = 1; i <= numberOfAggregates; i++) {
@@ -175,15 +170,6 @@ public class EventifyBenchmarkIT {
         .build();
   }
 
-  public static EventGateway createEventGateway() {
-    Properties properties = new Properties();
-    properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
-
-    return EventGateway.builder()
-        .producerConfig(properties)
-        .build();
-  }
-
   public static Producer<String, Message> createProducer() {
     Properties properties = new Properties();
     properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
@@ -229,5 +215,4 @@ public class EventifyBenchmarkIT {
           .all().get();
     }
   }
-
 }
