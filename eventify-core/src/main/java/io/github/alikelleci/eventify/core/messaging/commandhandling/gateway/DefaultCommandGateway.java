@@ -87,7 +87,7 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     Command command = consumerRecord.value();
     Metadata metadata = command.getMetadata();
 
-    if (metadata.get(RESULT).equals("failure")) {
+    if ("failure".equals(metadata.get(RESULT))) {
       return new CommandExecutionException(metadata.get(CAUSE));
     }
 
