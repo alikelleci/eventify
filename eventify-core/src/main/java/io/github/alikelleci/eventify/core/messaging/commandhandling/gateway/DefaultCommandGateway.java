@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core.messaging.commandhandling.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.exceptions.CommandExecutionException;
@@ -19,6 +20,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import java.time.Duration;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeoutException;
 
 import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
@@ -29,6 +31,11 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
   private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
       .expireAfterWrite(Duration.ofMinutes(5))
+      .removalListener((String key, CompletableFuture<Object> future, RemovalCause cause) -> {
+        if (cause.wasEvicted() && future != null) {
+          future.completeExceptionally(new TimeoutException("Command timed out: no reply received within the allowed time."));
+        }
+      })
       .build();
 
   private final Producer<String, Command> producer;
