@@ -70,6 +70,7 @@ public class Eventify {
 
   private KafkaStreams writeStreams;
   private KafkaStreams readStreams;
+  private volatile boolean stopped = false;
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
@@ -185,10 +186,15 @@ public class Eventify {
 
     if (writeStreams == null && readStreams == null) {
       log.info("Eventify is not started: no handlers registered.");
+      return;
     }
+
+    registerShutdownHook();
   }
 
   public void stop() {
+    if (stopped) return;
+    stopped = true;
     log.info("Eventify is shutting down...");
     if (writeStreams != null) writeStreams.close(Duration.ofSeconds(60));
     if (readStreams != null) readStreams.close(Duration.ofSeconds(60));
@@ -199,7 +205,9 @@ public class Eventify {
     streams.setStateListener(this.stateListener);
     streams.setGlobalStateRestoreListener(this.stateRestoreListener);
     streams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
+  }
 
+  private void registerShutdownHook() {
     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
   }
 
