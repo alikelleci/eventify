@@ -70,7 +70,6 @@ public class Eventify {
 
   private KafkaStreams writeStreams;
   private KafkaStreams readStreams;
-  private volatile boolean stopped = false;
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
@@ -160,11 +159,15 @@ public class Eventify {
   }
 
   public void start() {
+    String appId = streamsConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG);
+    if (appId == null) {
+      throw new IllegalStateException("application.id is required in streamsConfig.");
+    }
+
     if (!getCommandTopics().isEmpty()) {
       Properties writeConfig = new Properties();
       writeConfig.putAll(streamsConfig);
-      writeConfig.put(StreamsConfig.APPLICATION_ID_CONFIG,
-          writeConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-write");
+      writeConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, appId + "-write");
 
       writeStreams = new KafkaStreams(writeTopology(), writeConfig);
       setUpListeners(writeStreams);
@@ -175,8 +178,7 @@ public class Eventify {
     if (!getEventTopics().isEmpty()) {
       Properties readConfig = new Properties();
       readConfig.putAll(streamsConfig);
-      readConfig.put(StreamsConfig.APPLICATION_ID_CONFIG,
-          readConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-read");
+      readConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, appId + "-read");
 
       readStreams = new KafkaStreams(readTopology(), readConfig);
       setUpListeners(readStreams);
@@ -193,8 +195,6 @@ public class Eventify {
   }
 
   public void stop() {
-    if (stopped) return;
-    stopped = true;
     log.info("Eventify is shutting down...");
     if (writeStreams != null) writeStreams.close(Duration.ofSeconds(60));
     if (readStreams != null) readStreams.close(Duration.ofSeconds(60));
