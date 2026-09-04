@@ -9,8 +9,8 @@ Eventify is a **functional event sourcing framework** for the JVM. You define yo
 1. [Core Concepts](#1-core-concepts)
 2. [Installation](#2-installation)
 3. [Setup](#3-setup)
-4. [Defining Commands and Events](#4-defining-commands-and-events)
-5. [Defining the Aggregate](#5-defining-the-aggregate)
+4. [Defining the Aggregate](#4-defining-the-aggregate)
+5. [Defining Commands and Events](#5-defining-commands-and-events)
 6. [Handling Commands](#6-handling-commands)
 7. [Rebuilding State with Event Sourcing](#7-rebuilding-state-with-event-sourcing)
 8. [Handling Events](#8-handling-events)
@@ -97,7 +97,30 @@ Each handler class is a plain Java object. Eventify inspects it for annotated me
 
 ---
 
-## 4. Defining Commands and Events
+## 4. Defining the Aggregate
+
+The aggregate is a plain immutable class annotated with `@AggregateRoot`. It holds the current state of your domain entity.
+
+```java
+@Value
+@Builder(toBuilder = true)
+@AggregateRoot
+public class Customer {
+    @AggregateId
+    String id;
+    String firstName;
+    String lastName;
+    Instant createdAt;
+}
+```
+
+- `@AggregateRoot` marks the class as an aggregate. It is also used by the framework to inject the current state into handler methods.
+- `@Builder(toBuilder = true)` is recommended so that event sourcing handlers can produce updated state using `state.toBuilder()...build()`.
+- The class should be immutable — use Lombok `@Value` or make all fields `final`.
+
+---
+
+## 5. Defining Commands and Events
 
 Commands and events are plain immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic they belong to. Every command and event class must have exactly one `String` field annotated with `@AggregateId` — this is the identifier of the aggregate they belong to.
 
@@ -169,29 +192,6 @@ public interface CustomerEvent {
     }
 }
 ```
-
----
-
-## 5. Defining the Aggregate
-
-The aggregate is a plain immutable class annotated with `@AggregateRoot`. It holds the current state of your domain entity.
-
-```java
-@Value
-@Builder(toBuilder = true)
-@AggregateRoot
-public class Customer {
-    @AggregateId
-    String id;
-    String firstName;
-    String lastName;
-    Instant createdAt;
-}
-```
-
-- `@AggregateRoot` marks the class as an aggregate. It is also used by the framework to inject the current state into handler methods.
-- `@Builder(toBuilder = true)` is recommended so that event sourcing handlers can produce updated state using `state.toBuilder()...build()`.
-- The class should be immutable — use Lombok `@Value` or make all fields `final`.
 
 ---
 
@@ -308,7 +308,16 @@ public class CustomerEventSourcingHandler {
 
 - Always return a **new** state object — never mutate the existing one.
 - Return `null` to signal that the aggregate has been deleted. Subsequent commands will receive `null` as the state.
-- The same additional parameters available in command handlers (`@Timestamp`, `@MessageId`, `Metadata`, `@MetadataValue`) can be injected here too.
+
+### Injectable parameters
+
+| Parameter | What is injected |
+|---|---|
+| Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not exist yet. |
+| `Metadata` | The full metadata map of the event. |
+| `@Timestamp Instant` | The timestamp of the event. |
+| `@MessageId String` | The unique ID of the event message. |
+| `@MetadataValue("key") String` | A specific value from the metadata map. |
 
 ---
 
@@ -348,7 +357,14 @@ public void on(CustomerCreated event) {
 }
 ```
 
-The same injectable parameters (`Metadata`, `@Timestamp`, `@MessageId`, `@MetadataValue`) are available here as well.
+### Injectable parameters
+
+| Parameter | What is injected |
+|---|---|
+| `Metadata` | The full metadata map of the event. |
+| `@Timestamp Instant` | The timestamp of the event. |
+| `@MessageId String` | The unique ID of the event message. |
+| `@MetadataValue("key") String` | A specific value from the metadata map. |
 
 ---
 
