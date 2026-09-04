@@ -1,8 +1,6 @@
 # Eventify
 
-Eventify is a **functional event sourcing framework** for the JVM, built entirely on top of Apache Kafka and Kafka Streams. Commands and events flow through Kafka topics, and the event store is backed by RocksDB — the embedded local storage that Kafka Streams manages for you. There is no separate database, no external event store service, and nothing else to run besides a Kafka broker.
-
-You define your domain logic as simple annotated methods on plain Java classes — no base classes to extend, no framework interfaces to implement. Eventify takes care of storing events, rebuilding aggregate state, routing messages, and publishing results.
+Eventify is a **functional event sourcing framework** for the JVM. You define your domain logic as plain annotated Java methods — no base classes to extend, no framework interfaces to implement. Eventify takes care of storing events, rebuilding aggregate state, routing messages, and publishing results. It is built entirely on Apache Kafka and Kafka Streams: commands and events flow through Kafka topics, and the event store is persisted locally via RocksDB, the embedded storage engine managed by Kafka Streams. A Kafka broker is the only infrastructure you need.
 
 ---
 
@@ -10,17 +8,18 @@ You define your domain logic as simple annotated methods on plain Java classes �
 
 1. [Core Concepts](#1-core-concepts)
 2. [Installation](#2-installation)
-3. [Defining Commands and Events](#3-defining-commands-and-events)
-4. [Defining the Aggregate](#4-defining-the-aggregate)
-5. [Handling Commands](#5-handling-commands)
-6. [Rebuilding State with Event Sourcing](#6-rebuilding-state-with-event-sourcing)
-7. [Handling Events](#7-handling-events)
-8. [Upcasting](#8-upcasting)
-9. [Snapshotting](#9-snapshotting)
-10. [Sending Commands with the Command Gateway](#10-sending-commands-with-the-command-gateway)
-11. [Spring Boot Integration](#11-spring-boot-integration)
-12. [Testing](#12-testing)
-13. [Annotations Quick Reference](#13-annotations-quick-reference)
+3. [Setup](#3-setup)
+4. [Defining Commands and Events](#4-defining-commands-and-events)
+5. [Defining the Aggregate](#5-defining-the-aggregate)
+6. [Handling Commands](#6-handling-commands)
+7. [Rebuilding State with Event Sourcing](#7-rebuilding-state-with-event-sourcing)
+8. [Handling Events](#8-handling-events)
+9. [Upcasting](#9-upcasting)
+10. [Snapshotting](#10-snapshotting)
+11. [Command Gateway](#11-command-gateway)
+12. [Spring Boot Integration](#12-spring-boot-integration)
+13. [Testing](#13-testing)
+14. [Annotations Quick Reference](#14-annotations-quick-reference)
 
 ---
 
@@ -75,11 +74,32 @@ For Spring Boot, use the starter instead:
 
 ---
 
-## 3. Defining Commands and Events
+## 3. Setup
 
-Commands and events are plain immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic they belong to.
+Build an `Eventify` instance with your Kafka configuration, register your handler classes, and call `start()`.
 
-Every command and event class must have exactly one `String` field annotated with `@AggregateId` — this is the identifier of the aggregate they belong to.
+```java
+Properties props = new Properties();
+props.put(StreamsConfig.APPLICATION_ID_CONFIG, "my-app");
+props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+
+Eventify eventify = Eventify.builder()
+    .streamsConfig(props)
+    .registerHandler(new CustomerCommandHandler())
+    .registerHandler(new CustomerEventSourcingHandler())
+    .registerHandler(new CustomerEventHandler())
+    .build();
+
+eventify.start();
+```
+
+Each handler class is a plain Java object. Eventify inspects it for annotated methods and registers them automatically. You can register as many handler classes as you need. For Spring Boot, see [Spring Boot Integration](#12-spring-boot-integration) — handler registration and startup are handled automatically.
+
+---
+
+## 4. Defining Commands and Events
+
+Commands and events are plain immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic they belong to. Every command and event class must have exactly one `String` field annotated with `@AggregateId` — this is the identifier of the aggregate they belong to.
 
 ### Commands
 
@@ -152,7 +172,7 @@ public interface CustomerEvent {
 
 ---
 
-## 4. Defining the Aggregate
+## 5. Defining the Aggregate
 
 The aggregate is a plain immutable class annotated with `@AggregateRoot`. It holds the current state of your domain entity.
 
@@ -175,7 +195,7 @@ public class Customer {
 
 ---
 
-## 5. Handling Commands
+## 6. Handling Commands
 
 Create a plain class and annotate methods with `@HandleCommand`. The first parameter is always the command payload. The framework injects the remaining parameters automatically.
 
@@ -255,7 +275,7 @@ public CustomerEvent handle(CreateCustomer command,
 
 ---
 
-## 6. Rebuilding State with Event Sourcing
+## 7. Rebuilding State with Event Sourcing
 
 Create a plain class and annotate methods with `@ApplyEvent`. These methods define how each event transforms the aggregate state. The first parameter is the event payload; the second is the current state.
 
@@ -292,7 +312,7 @@ public class CustomerEventSourcingHandler {
 
 ---
 
-## 7. Handling Events
+## 8. Handling Events
 
 Create a plain class and annotate methods with `@HandleEvent` to react to published events. This is where you implement side-effects such as updating a read model or sending a notification.
 
@@ -332,9 +352,9 @@ The same injectable parameters (`Metadata`, `@Timestamp`, `@MessageId`, `@Metada
 
 ---
 
-## 8. Upcasting
+## 9. Upcasting
 
-As your application evolves, the structure of your events may change. Upcasting lets you migrate old stored events to a newer schema transparently, without touching the event store.
+As your application evolves, the structure of your events may change. Upcasting lets you migrate old stored events to a newer schema transparently, without modifying the event store.
 
 ### How it works
 
@@ -380,13 +400,13 @@ public class CustomerEventUpcaster {
 }
 ```
 
-- `type` is the fully qualified class name of the event payload. For nested classes, use `$` as the separator (e.g. `com.example.CustomerEvent$CustomerCreated`).
-- `revision` is the **source** revision — the version of the event as it is stored, not the target.
-- If an event has no `@Revision` annotation, it defaults to revision `1`.
+- `type` is the fully qualified class name of the event payload. For nested classes, use `$` as the separator.
+- `revision` is the **source** revision — the version as stored, not the target.
+- Events without a `@Revision` annotation default to revision `1`.
 
 ---
 
-## 9. Snapshotting
+## 10. Snapshotting
 
 By default, aggregate state is rebuilt by replaying all events from the beginning. For aggregates with a long history, this can become slow. Snapshotting solves this by periodically saving the current state so that only events after the last snapshot need to be replayed.
 
@@ -411,9 +431,9 @@ Snapshotting is completely transparent — you do not need to change any handler
 
 ---
 
-## 10. Sending Commands with the Command Gateway
+## 11. Command Gateway
 
-The `CommandGateway` is the client-side entry point for sending commands and receiving results. It sends the command to Kafka and waits for the result asynchronously.
+The `CommandGateway` is the client-side component for sending commands and receiving results. It is typically used in your API layer (e.g. a REST controller) to dispatch commands to the Eventify application and await their outcome.
 
 ### Setup
 
@@ -423,7 +443,7 @@ producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 CommandGateway gateway = CommandGateway.builder()
     .producerConfig(producerConfig)
-    .replyTopic("my-app.replies") // a dedicated single-partition topic for results
+    .replyTopic("my-app.replies")
     .build();
 ```
 
@@ -446,11 +466,9 @@ CustomerCreated result = gateway.sendAndWait(command, 30, TimeUnit.SECONDS);
 
 If the command fails, `sendAndWait` throws a `CommandExecutionException` with the failure message. With `send`, the future completes exceptionally with the same exception.
 
-> The reply topic must exist in Kafka before the gateway is started and should have exactly **one partition**.
-
 ---
 
-## 11. Spring Boot Integration
+## 12. Spring Boot Integration
 
 The Spring Boot starter auto-configures Eventify and automatically registers any Spring bean that contains handler methods.
 
@@ -499,7 +517,7 @@ That's it. The starter detects all beans with handler methods and registers them
 
 ---
 
-## 12. Testing
+## 13. Testing
 
 Eventify works with the Kafka Streams `TopologyTestDriver`, which runs the entire processing pipeline in-memory without a running Kafka broker. This makes tests fast and deterministic.
 
@@ -592,7 +610,7 @@ KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("s
 
 ---
 
-## 13. Annotations Quick Reference
+## 14. Annotations Quick Reference
 
 | Annotation | Where | Description |
 |---|---|---|
