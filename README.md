@@ -471,17 +471,19 @@ CommandGateway gateway = CommandGateway.builder()
 
 ```java
 // Async — returns a CompletableFuture
-CompletableFuture<CustomerCreated> future = gateway.send(
+CompletableFuture<CreateCustomer> future = gateway.send(
     CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build()
 );
 
 // Blocking — waits up to 1 minute by default
-CustomerCreated result = gateway.sendAndWait(
+CreateCustomer result = gateway.sendAndWait(
     CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build()
 );
 
 // Blocking with a custom timeout
-CustomerCreated result = gateway.sendAndWait(command, 30, TimeUnit.SECONDS);
+CreateCustomer result = gateway.sendAndWait(
+    CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build(),
+    30, TimeUnit.SECONDS);
 ```
 
 If the command fails, `sendAndWait` throws a `CommandExecutionException` containing the failure message. When using `send`, the returned future completes exceptionally with the same exception.
