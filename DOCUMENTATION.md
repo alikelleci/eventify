@@ -1,8 +1,8 @@
 # Eventify
 
-Eventify is a **functional event sourcing framework** for the JVM. It lets you build event-driven applications using plain Java classes and annotations — no base classes to extend, no framework interfaces to implement.
+Eventify is a **functional event sourcing framework** for the JVM, built entirely on top of Apache Kafka and Kafka Streams. Commands and events flow through Kafka topics, and the event store is backed by RocksDB — the embedded local storage that Kafka Streams manages for you. There is no separate database, no external event store service, and nothing else to run besides a Kafka broker.
 
-You define your domain logic as simple annotated methods. Eventify takes care of storing events, rebuilding aggregate state, routing messages, and publishing results.
+You define your domain logic as simple annotated methods on plain Java classes — no base classes to extend, no framework interfaces to implement. Eventify takes care of storing events, rebuilding aggregate state, routing messages, and publishing results.
 
 ---
 
