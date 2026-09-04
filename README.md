@@ -15,6 +15,8 @@ A Kafka broker is the only infrastructure you need.
     - [Installation](#21-installation)
     - [Configuration](#22-configuration)
     - [Spring Boot Integration](#23-spring-boot-integration)
+        - [Declare an Eventify bean](#231-declare-an-eventify-bean)
+        - [Annotate your handler classes as Spring beans](#232-annotate-your-handler-classes-as-spring-beans)
 3. [Domain Modeling](#3-domain-modeling)
     - [Defining an Aggregate](#31-defining-an-aggregate)
     - [Commands and Events](#32-commands-and-events)
@@ -23,6 +25,8 @@ A Kafka broker is the only infrastructure you need.
     - [Event Sourcing Handlers](#42-event-sourcing-handlers)
     - [Event Handlers](#43-event-handlers)
 5. [Command Gateway](#5-command-gateway)
+    - [Configuration](#51-configuration)
+    - [Sending Commands](#52-sending-commands)
 6. [Advanced Features](#6-advanced-features)
     - [Snapshotting](#61-snapshotting)
     - [Event Upcasting](#62-event-upcasting)
@@ -111,7 +115,7 @@ Each handler class is a plain Java object. Eventify inspects each object for ann
 
 The Spring Boot starter auto-configures Eventify and automatically registers any Spring bean that contains handler methods.
 
-#### 1. Declare an Eventify bean
+### 2.3.1 Declare an Eventify bean
 
 ```java
 @Configuration
@@ -130,7 +134,7 @@ public class EventifyConfig {
 }
 ```
 
-#### 2. Annotate your handler classes as Spring beans
+### 2.3.2 Annotate your handler classes as Spring beans
 
 ```java
 @Component
@@ -435,7 +439,7 @@ public void on(CustomerCreated event) {
 
 The `CommandGateway` is the client-side component used to send commands and receive their results. It is typically used in your API layer, such as a REST controller, to dispatch commands to Eventify and await their outcome.
 
-### Configuration
+### 5.1 Configuration
 
 ```java
 Properties producerConfig = new Properties();
@@ -447,7 +451,7 @@ CommandGateway gateway = CommandGateway.builder()
     .build();
 ```
 
-### Sending commands
+### 5.2 Sending Commands
 
 ```java
 // Async — returns a CompletableFuture
@@ -661,3 +665,5 @@ KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("s
 | `@Timestamp` | Method parameter | Injects the message timestamp as an `Instant`. |
 | `@MessageId` | Method parameter | Injects the unique message ID as a `String`. |
 | `@MetadataValue("key")` | Method parameter | Injects a specific metadata value as a `String`. |
+
+---
