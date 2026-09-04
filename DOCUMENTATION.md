@@ -16,7 +16,7 @@ Eventify is a **functional event sourcing framework** for the JVM. You define yo
 8. [Handling Events](#8-handling-events)
 9. [Upcasting](#9-upcasting)
 10. [Snapshotting](#10-snapshotting)
-11. [Command Gateway](#11-command-gateway)
+11. [Sending Commands with the Command Gateway](#11-sending-commands-with-the-command-gateway)
 12. [Spring Boot Integration](#12-spring-boot-integration)
 13. [Testing](#13-testing)
 14. [Annotations Quick Reference](#14-annotations-quick-reference)
@@ -431,7 +431,7 @@ Snapshotting is completely transparent — you do not need to change any handler
 
 ---
 
-## 11. Command Gateway
+## 11. Sending Commands with the Command Gateway
 
 The `CommandGateway` is the client-side component for sending commands and receiving results. It is typically used in your API layer (e.g. a REST controller) to dispatch commands to the Eventify application and await their outcome.
 
