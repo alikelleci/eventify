@@ -58,7 +58,7 @@ Add the core dependency to your project:
 <dependency>
     <groupId>io.github.alikelleci</groupId>
     <artifactId>eventify-core</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>x.y.z</version>
 </dependency>
 ```
 
@@ -68,7 +68,7 @@ For Spring Boot, use the starter instead:
 <dependency>
     <groupId>io.github.alikelleci</groupId>
     <artifactId>eventify-spring-boot-starter</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>x.y.z</version>
 </dependency>
 ```
 
