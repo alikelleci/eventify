@@ -277,7 +277,7 @@ public CustomerEvent handle(CreateCustomer command,
 
 ## 7. Rebuilding State with Event Sourcing
 
-Create a plain class and annotate methods with `@ApplyEvent`. These methods define how each event transforms the aggregate state. The first parameter is the event payload; the second is the current state.
+Create a plain class and annotate methods with `@ApplyEvent`. These methods define how each event is applied to produce the next aggregate state. The first parameter is the event payload; all remaining parameters are resolved by type and can appear in any order.
 
 ```java
 public class CustomerEventSourcingHandler {
