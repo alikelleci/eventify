@@ -107,7 +107,18 @@ Eventify eventify = Eventify.builder()
 eventify.start();
 ```
 
-Each handler class is a plain Java object. Eventify inspects each object for annotated methods and registers them automatically. You can register as many handler classes as your application requires. When using Spring Boot, see [Spring Boot Integration](#23-spring-boot-integration)—handler registration and startup are handled automatically.
+Each handler class is a plain Java object. Eventify inspects each object for annotated methods and registers them automatically. You can register as many handler classes as your application requires.
+
+#### Builder options
+
+| Method | Required | Description |
+|---|---|---|
+| `streamsConfig(Properties)` | Yes | Kafka Streams configuration. |
+| `registerHandler(Object)` | At least one | Registers a handler class containing annotated methods. |
+| `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
+| `stateListener(StateListener)` | No | Callback invoked on Kafka Streams state transitions. Defaults to a log statement. |
+| `stateRestoreListener(StateRestoreListener)` | No | Callback invoked during state store restoration. Defaults to a logging implementation. |
+| `uncaughtExceptionHandler(StreamsUncaughtExceptionHandler)` | No | Handler for uncaught stream thread exceptions. Defaults to `SHUTDOWN_CLIENT`. |
 
 ---
 
@@ -156,7 +167,9 @@ public class CustomerEventHandler {
 }
 ```
 
-That's it. The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application is ready.
+The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application context is ready.
+
+> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`). If you register handlers manually in the builder, the Spring bean post-processor will skip that `Eventify` instance entirely. Use one approach or the other, not both.
 
 ---
 
@@ -451,6 +464,14 @@ CommandGateway gateway = CommandGateway.builder()
     .build();
 ```
 
+#### Builder options
+
+| Method | Required | Description |
+|---|---|---|
+| `producerConfig(Properties)` | Yes | Kafka producer configuration. |
+| `replyTopic(String)` | Yes | Topic on which command results are received. |
+| `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
+
 ### 5.2 Sending Commands
 
 ```java
@@ -639,7 +660,9 @@ class CustomerTest {
 }
 ```
 
-You can also inspect the event store and snapshot store directly in your tests:
+#### Inspecting the stores directly
+
+You can query the event store and snapshot store directly in your tests:
 
 ```java
 KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
