@@ -86,8 +86,6 @@ For Spring Boot, use the starter instead:
 </dependency>
 ```
 
----
-
 ### 2.2 Configuration
 
 Create an `Eventify` instance with your Kafka configuration, register your handler classes, and call `start()`.
@@ -120,13 +118,11 @@ Each handler class is a plain Java object. Eventify inspects each object for ann
 | `stateRestoreListener(StateRestoreListener)` | No | Callback invoked during state store restoration. Defaults to a logging implementation. |
 | `uncaughtExceptionHandler(StreamsUncaughtExceptionHandler)` | No | Handler for uncaught stream thread exceptions. Defaults to `SHUTDOWN_CLIENT`. |
 
----
-
 ### 2.3 Spring Boot Integration
 
 The Spring Boot starter auto-configures Eventify and automatically registers any Spring bean that contains handler methods.
 
-### 2.3.1 Declare an Eventify bean
+#### 2.3.1 Declare an Eventify bean
 
 ```java
 @Configuration
@@ -145,7 +141,7 @@ public class EventifyConfig {
 }
 ```
 
-### 2.3.2 Annotate your handler classes as Spring beans
+#### 2.3.2 Annotate your handler classes as Spring beans
 
 ```java
 @Component
@@ -195,8 +191,6 @@ public class Customer {
 - `@AggregateRoot` marks the class as an aggregate. Eventify also uses it to identify the aggregate state that can be injected into handler methods.
 - `@Builder(toBuilder = true)` is recommended so that event-sourcing handlers can create updated state using `state.toBuilder()...build()`.
 - The class should be immutable—use Lombok `@Value` or make all fields `final`.
-
----
 
 ### 3.2 Commands and Events
 
@@ -353,8 +347,6 @@ public CustomerEvent handle(CreateCustomer command,
 | `@MessageId String` | The unique ID of the command message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |
 
----
-
 ### 4.2 Event Sourcing Handlers
 
 Create a plain class and annotate its event-sourcing methods with `@ApplyEvent`. These methods define how each event is applied to produce the next aggregate state. The first parameter is the event payload; all remaining parameters are resolved by type and can appear in any order.
@@ -398,8 +390,6 @@ public class CustomerEventSourcingHandler {
 | `@Timestamp Instant` | The event timestamp. |
 | `@MessageId String` | The unique ID of the event message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |
-
----
 
 ### 4.3 Event Handlers
 
@@ -519,8 +509,6 @@ public class Customer {
 | `deleteEvents` | `false` | If `true`, events before the snapshot are deleted after the snapshot is created, reducing storage usage. |
 
 Snapshotting is transparent to your handlers—you do not need to change any handler code.
-
----
 
 ### 6.2 Event Upcasting
 
@@ -688,5 +676,3 @@ KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("s
 | `@Timestamp` | Method parameter | Injects the message timestamp as an `Instant`. |
 | `@MessageId` | Method parameter | Injects the unique message ID as a `String`. |
 | `@MetadataValue("key")` | Method parameter | Injects a specific metadata value as a `String`. |
-
----
