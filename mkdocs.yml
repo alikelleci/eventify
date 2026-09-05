@@ -12,14 +12,14 @@ theme:
     code: JetBrains Mono
   palette:
     - scheme: default
-      primary: custom
-      accent: custom
+      primary: teal
+      accent: teal
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - scheme: slate
-      primary: custom
-      accent: custom
+      primary: teal
+      accent: teal
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -31,9 +31,6 @@ theme:
     - search.highlight
     - search.suggest
     - content.code.copy
-
-extra_css:
-  - stylesheets/extra.css
 
 markdown_extensions:
   - admonition
