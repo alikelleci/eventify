@@ -169,7 +169,7 @@ public class CustomerEventHandler {
 
 The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application context is ready.
 
-> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`). If you register handlers manually in the builder, the Spring bean post-processor will skip that `Eventify` instance entirely. Use one approach or the other, not both.
+> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`).
 
 ---
 
