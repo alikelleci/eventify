@@ -7,24 +7,30 @@ repo_url: https://github.com/alikelleci/eventify
 
 theme:
   name: material
+  font:
+    text: Inter
+    code: JetBrains Mono
   palette:
     - scheme: default
-      primary: indigo
-      accent: indigo
+      primary: teal
+      accent: teal
       toggle:
-        icon: material/brightness-7
+        icon: material/weather-night
         name: Switch to dark mode
     - scheme: slate
-      primary: indigo
-      accent: indigo
+      primary: teal
+      accent: teal
       toggle:
-        icon: material/brightness-4
+        icon: material/weather-sunny
         name: Switch to light mode
   features:
     - navigation.sections
     - navigation.top
+    - navigation.instant
     - search.highlight
+    - search.suggest
     - content.code.copy
+    - content.code.annotate
 
 markdown_extensions:
   - admonition
@@ -33,7 +39,19 @@ markdown_extensions:
   - pymdownx.superfences
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
   - tables
+  - attr_list
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/alikelleci/eventify
+    - icon: fontawesome/brands/java
+      link: https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core
+
+copyright: Copyright &copy; Ali Kelleci
 
 nav:
   - Home: index.md
