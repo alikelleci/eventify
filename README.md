@@ -187,7 +187,7 @@ public class Customer {
 
 ### 3.2 Commands and Events
 
-Commands and events are plain, immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic to which they belong. Every command and event class must contain exactly one `String` field annotated with `@AggregateId`. This field identifies the aggregate to which the message belongs.
+Commands and events are plain, immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic used for those messages. Every command and event class must contain exactly one `String` field annotated with `@AggregateId`. This field identifies the target aggregate instance.
 
 #### Commands
 
