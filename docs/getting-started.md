@@ -54,19 +54,6 @@ Each handler class is a plain Java object. Eventify inspects each object for ann
 | `stateRestoreListener(StateRestoreListener)` | No | Callback invoked during state store restoration. Defaults to a logging implementation. |
 | `uncaughtExceptionHandler(StreamsUncaughtExceptionHandler)` | No | Handler for uncaught stream thread exceptions. Defaults to `SHUTDOWN_CLIENT`. |
 
-### Default Streams configuration
-
-The following properties are applied automatically if not explicitly set in your `streamsConfig`:
-
-| Property | Default value |
-|---|---|
-| `processing.guarantee` | `exactly_once_v2` |
-| `topology.optimization` | `all` |
-| `default.deserialization.exception.handler` | `LogAndContinueExceptionHandler` |
-| Producer `compression.type` | `zstd` |
-
-> **Note:** `exactly_once_v2` requires a Kafka cluster with at least 3 brokers in production. For local development a single broker is sufficient.
-
 ## Spring Boot Integration
 
 The Spring Boot starter auto-configures Eventify and automatically registers any Spring bean that contains handler methods.
@@ -114,4 +101,4 @@ public class CustomerEventHandler {
 
 The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application context is ready.
 
-> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`). If you register handlers manually in the builder, the Spring bean post-processor will skip that `Eventify` instance entirely. Use one approach or the other, not both.
+> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`).

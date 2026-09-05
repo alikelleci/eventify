@@ -46,15 +46,13 @@ public class CustomerCommandHandler {
 
 | Return type | Behavior |
 |---|---|
-| A single event payload | One event is recorded and published. A success result is forwarded to the results topic. |
-| A `List` of event payloads | Multiple events are recorded and published. A success result is forwarded. |
-| `null` | No events are produced and no result record is written to any topic. |
+| A single event payload | One event is recorded and published. |
+| A `List` of event payloads | Multiple events are recorded and published. |
+| `null` | No events are produced, and no result is forwarded. |
 
 ### Throwing exceptions
 
-Throw any exception to signal a business-rule failure. Eventify catches the exception and produces a failure result containing its message. The failure is written to the results topic (and the reply topic if applicable). Your handler does not need to create failure responses manually.
-
-> **`null` vs exception:** returning `null` is a silent no-op—nothing is forwarded anywhere. Throwing an exception produces a visible failure result that the caller receives. Use `null` only when you intentionally want to ignore a command without any acknowledgement.
+Throw any exception to signal a business-rule failure. Eventify catches the exception and produces a failure result containing its message. Your handler does not need to create failure responses manually.
 
 ### Injectable parameters
 

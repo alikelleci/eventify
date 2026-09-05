@@ -29,11 +29,9 @@ As your application evolves, the structure of your events may change. Upcasting 
 
 ### How it works
 
-1. Annotate your event class with `@Revision(n)` to declare its current schema version. Events without this annotation default to revision `1`.
+1. Annotate your event class with `@Revision(n)` to declare its current schema version.
 2. Write an upcaster method for each revision that needs to be migrated and annotate it with `@Upcast(type, revision)`.
-3. When an older event is read, Eventify automatically chains the required upcasters in ascending revision order until the event reaches the current revision.
-
-Each upcaster migrates from its declared `revision` to `revision + 1`. So an upcaster with `revision = 1` transforms a revision-1 event into a revision-2 event, and so on.
+3. When an older event is read, Eventify automatically chains the required upcasters in ascending revision order.
 
 ### Example
 
@@ -74,5 +72,5 @@ public class CustomerEventUpcaster {
 ```
 
 - `type` is the fully qualified class name of the event payload. For nested classes, use `$` as the separator.
-- `revision` is the **source** revision—the version of the event as stored, not the target. The target is always `revision + 1`.
-- Upcasters are chained automatically: a stored revision-1 event will pass through both upcasters above before being deserialized as revision 3.
+- `revision` is the **source** revision—the version stored in the event store, not the target revision.
+- Events without a `@Revision` annotation default to revision `1`.

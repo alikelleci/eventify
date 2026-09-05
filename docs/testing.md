@@ -84,20 +84,9 @@ class CustomerTest {
 
 ## Inspecting the stores directly
 
-You can query the event store and snapshot store directly in your tests. Event store keys use the compound format `aggregateId@timestamp`, so a range scan from `aggregateId@` to `aggregateId@~` retrieves all events for a given aggregate.
+You can query the event store and snapshot store directly in your tests:
 
 ```java
 KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
 KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
 ```
-
-## Reserved metadata keys
-
-The following metadata keys are used internally by Eventify and are available for assertions in tests:
-
-| Key | Description |
-|---|---|
-| `$correlationId` | Auto-generated UUID assigned to every command and propagated to its events. |
-| `$result` | Set to `"success"` or `"failure"` on the command result. |
-| `$cause` | Set to the failure message when `$result` is `"failure"`. |
-| `$replyTo` | The reply topic set by the `CommandGateway`. |

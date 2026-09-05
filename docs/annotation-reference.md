@@ -10,7 +10,7 @@
 | `@HandleCommand` | Method | Marks a command-handler method. |
 | `@ApplyEvent` | Method | Marks an event-sourcing handler method. |
 | `@HandleEvent` | Method | Marks an event-handler method. |
-| `@Upcast(type, revision)` | Method | Marks an upcaster method for a specific event type and source revision. The method migrates from `revision` to `revision + 1`. |
+| `@Upcast(type, revision)` | Method | Marks an upcaster method for a specific event type and source revision. |
 | `@Priority(n)` | `@HandleEvent` method | Controls invocation order when multiple handlers exist for the same event. Higher values run first. |
 | `@Timestamp` | Method parameter | Injects the message timestamp as an `Instant`. |
 | `@MessageId` | Method parameter | Injects the unique message ID as a `String`. |
