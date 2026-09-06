@@ -7,6 +7,8 @@ repo_url: https://github.com/alikelleci/eventify
 
 theme:
   name: material
+  icon:
+    logo: material/lightning-bolt
   font:
     text: Inter
     code: JetBrains Mono
@@ -50,7 +52,7 @@ extra:
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/alikelleci/eventify
-    - icon: fontawesome/brands/java
+    - icon: material/language-java
       link: https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core
 
 copyright: Copyright &copy; Ali Kelleci
