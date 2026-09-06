@@ -43,6 +43,9 @@ markdown_extensions:
   - tables
   - attr_list
 
+extra_css:
+  - stylesheets/extra.css
+
 extra:
   social:
     - icon: fontawesome/brands/github
