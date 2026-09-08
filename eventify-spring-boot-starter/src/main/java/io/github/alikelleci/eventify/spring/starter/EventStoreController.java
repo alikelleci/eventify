@@ -82,7 +82,11 @@ public class EventStoreController {
 
       HostInfo activeHost = metadata.activeHost();
 
-      if (!forwarded && !activeHost.equals(thisHost)) {
+      if (!activeHost.equals(thisHost)) {
+        if (forwarded) {
+          log.warn("Aggregate {} not owned by this node after forwarding, possible rebalance in progress", aggregateId);
+          return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+        }
         try {
           log.debug("Forwarding request for aggregate {} to {}", aggregateId, activeHost);
           String url = UriComponentsBuilder.newInstance()
