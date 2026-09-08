@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -72,8 +73,9 @@ public class EventStoreController {
 
   @GetMapping("/{aggregateId}/events")
   public ResponseEntity<List<Event>> getEvents(@PathVariable("aggregateId") String aggregateId,
-                                               @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
-    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/events");
+                                               @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded,
+                                               @RequestHeader(value = "Authorization", required = false) String authorization) {
+    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/events", authorization);
     if (routingResult != null) {
       if (routingResult.getStatusCode().is2xxSuccessful()) {
         @SuppressWarnings("unchecked")
@@ -103,8 +105,9 @@ public class EventStoreController {
   @GetMapping("/{aggregateId}/state")
   public ResponseEntity<Object> getState(@PathVariable("aggregateId") String aggregateId,
                                          @RequestParam(name = "at", required = false) Instant at,
-                                         @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
-    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/state");
+                                         @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded,
+                                         @RequestHeader(value = "Authorization", required = false) String authorization) {
+    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/state", authorization);
     if (routingResult != null) {
       if (routingResult.getStatusCode().is2xxSuccessful()) {
         return ResponseEntity.ok(routingResult.getBody());
@@ -164,7 +167,7 @@ public class EventStoreController {
     }
   }
 
-  private ResponseEntity<?> checkRouting(String aggregateId, boolean forwarded, String path) {
+  private ResponseEntity<?> checkRouting(String aggregateId, boolean forwarded, String path, String authorization) {
     KafkaStreams streams = eventify.getKafkaStreams();
 
     if (streams.state() != KafkaStreams.State.RUNNING) {
@@ -202,7 +205,11 @@ public class EventStoreController {
           .queryParam("forwarded", true)
           .buildAndExpand(aggregateId)
           .toUriString();
-      Object result = restClient.get().uri(url).retrieve().body(Object.class);
+      Object result = restClient.get()
+          .uri(url)
+          .headers(h -> { if (authorization != null) h.set("Authorization", authorization); })
+          .retrieve()
+          .body(Object.class);
       return ResponseEntity.ok(result);
     } catch (Exception e) {
       log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
