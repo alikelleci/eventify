@@ -63,8 +63,8 @@ public class EventStoreController {
   }
 
   @GetMapping("/aggregates/{aggregateId}/events")
-  public ResponseEntity<List<Event>> getEvents(@PathVariable String aggregateId,
-                                               @RequestParam(defaultValue = "false") boolean forwarded) {
+  public ResponseEntity<List<Event>> getEvents(@PathVariable("aggregateId") String aggregateId,
+                                               @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
     KafkaStreams streams = eventify.getKafkaStreams();
 
     if (streams.state() != KafkaStreams.State.RUNNING) {
