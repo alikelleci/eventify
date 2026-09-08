@@ -72,34 +72,36 @@ public class EventStoreController {
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
 
-    KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
+    if (!thisHost.equals(HostInfo.unavailable())) {
+      KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
 
-    if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
-      log.warn("Metadata unavailable for aggregate {}: {}", aggregateId, metadata);
-      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
-    }
-
-    HostInfo activeHost = metadata.activeHost();
-
-    if (!forwarded && !thisHost.equals(HostInfo.unavailable()) && !activeHost.equals(thisHost)) {
-      try {
-        log.debug("Forwarding request for aggregate {} to {}", aggregateId, activeHost);
-        String url = UriComponentsBuilder.newInstance()
-            .scheme("http")
-            .host(activeHost.host())
-            .port(activeHost.port())
-            .path("/eventify/aggregates/{aggregateId}/events")
-            .queryParam("forwarded", true)
-            .buildAndExpand(aggregateId)
-            .toUriString();
-        List<Event> result = restClient.get()
-            .uri(url)
-            .retrieve()
-            .body(new ParameterizedTypeReference<>() {});
-        return ResponseEntity.ok(result);
-      } catch (Exception e) {
-        log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
+      if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
+        log.warn("Metadata unavailable for aggregate {}: {}", aggregateId, metadata);
         return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+      }
+
+      HostInfo activeHost = metadata.activeHost();
+
+      if (!forwarded && !activeHost.equals(thisHost)) {
+        try {
+          log.debug("Forwarding request for aggregate {} to {}", aggregateId, activeHost);
+          String url = UriComponentsBuilder.newInstance()
+              .scheme("http")
+              .host(activeHost.host())
+              .port(activeHost.port())
+              .path("/eventify/aggregates/{aggregateId}/events")
+              .queryParam("forwarded", true)
+              .buildAndExpand(aggregateId)
+              .toUriString();
+          List<Event> result = restClient.get()
+              .uri(url)
+              .retrieve()
+              .body(new ParameterizedTypeReference<>() {});
+          return ResponseEntity.ok(result);
+        } catch (Exception e) {
+          log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
+          return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+        }
       }
     }
 
