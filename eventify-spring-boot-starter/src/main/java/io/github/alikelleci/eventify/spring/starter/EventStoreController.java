@@ -60,6 +60,11 @@ public class EventStoreController {
     this.thisHost = (uri != null && uri.getHost() != null && uri.getPort() != -1)
         ? new HostInfo(uri.getHost(), uri.getPort())
         : HostInfo.unavailable();
+
+    if (thisHost.equals(HostInfo.unavailable())) {
+      log.warn("'{}' is not configured, running in single-node mode. Multi-node routing is disabled.",
+          StreamsConfig.APPLICATION_SERVER_CONFIG);
+    }
   }
 
   @GetMapping("/aggregates/{aggregateId}/events")
