@@ -30,7 +30,7 @@ public class EventifyAutoConfiguration {
   }
 
   @Bean
-  @ConditionalOnClass(name = "org.springframework.web.client.RestTemplate")
+  @ConditionalOnClass(name = "org.springframework.web.client.RestClient")
   public EventStoreController eventStoreController(@Autowired Eventify eventify) {
     return new EventStoreController(eventify);
   }

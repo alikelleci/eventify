@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
@@ -43,6 +44,7 @@ public class EventStoreController {
   private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
   private static final String EVENT_STORE = "event-store";
+  private static final String SNAPSHOT_STORE = "snapshot-store";
   // '~' is near the top of printable ASCII, so aggregateId@~ upper-bounds a prefix scan on aggregateId@
   private static final String KEY_RANGE_PREFIX = "@";
   private static final String KEY_RANGE_SUFFIX = "@~";
@@ -112,17 +114,27 @@ public class EventStoreController {
     }
 
     try {
-      ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
+      ReadOnlyKeyValueStore<String, AggregateState> snapshotStore = eventify.getKafkaStreams()
+          .store(StoreQueryParameters.fromNameAndType(SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()));
+      ReadOnlyKeyValueStore<String, Event> eventStore = eventify.getKafkaStreams()
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
       String upperBound = at != null
           ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli())
           : aggregateId + KEY_RANGE_SUFFIX;
 
-      AggregateState state = null;
-      long version = 0;
+      // Start from snapshot if available and not doing a point-in-time query before it
+      AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
+          .filter(snap -> at == null || snap.getEventId().compareTo(upperBound) < 0)
+          .orElse(null);
 
-      try (KeyValueIterator<String, Event> it = store.range(aggregateId + KEY_RANGE_PREFIX, upperBound)) {
+      String from = state != null
+          ? state.getEventId() + "\0"  // resume after snapshot event, same as CommandProcessor
+          : aggregateId + KEY_RANGE_PREFIX;
+
+      long version = state != null ? state.getVersion() : 0;
+
+      try (KeyValueIterator<String, Event> it = eventStore.range(from, upperBound)) {
         while (it.hasNext()) {
           Event event = it.next().value;
           EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
@@ -137,7 +149,6 @@ public class EventStoreController {
         return ResponseEntity.status(NOT_FOUND).build();
       }
 
-      // Rebuild with correct version
       state = AggregateState.builder()
           .timestamp(state.getTimestamp())
           .payload(state.getPayload())
