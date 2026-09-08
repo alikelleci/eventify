@@ -68,12 +68,14 @@ public class EventStoreController {
     KafkaStreams streams = eventify.getKafkaStreams();
 
     if (streams.state() != KafkaStreams.State.RUNNING) {
+      log.warn("Kafka Streams is not running, current state: {}", streams.state());
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
 
     KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
 
     if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
+      log.warn("Metadata unavailable for aggregate {}: {}", aggregateId, metadata);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
 
