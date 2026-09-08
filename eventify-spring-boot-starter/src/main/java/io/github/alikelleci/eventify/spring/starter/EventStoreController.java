@@ -1,0 +1,85 @@
+package io.github.alikelleci.eventify.spring.starter;
+
+import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyQueryMetadata;
+import org.apache.kafka.streams.StoreQueryParameters;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.state.HostInfo;
+import org.apache.kafka.streams.state.KeyValueIterator;
+import org.apache.kafka.streams.state.QueryableStoreTypes;
+import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
+
+@Slf4j
+@RestController
+@RequestMapping("/eventify")
+public class EventStoreController {
+
+  private final Eventify eventify;
+  private final HostInfo thisHost;
+  private final RestTemplate restTemplate = new RestTemplate();
+
+  public EventStoreController(Eventify eventify) {
+    this.eventify = eventify;
+    String applicationServer = eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
+    String[] parts = applicationServer.split(":");
+    this.thisHost = (parts.length == 2)
+        ? new HostInfo(parts[0], Integer.parseInt(parts[1]))
+        : HostInfo.unavailable();
+  }
+
+  @GetMapping("/aggregates/{aggregateId}/events")
+  public ResponseEntity<List<Event>> getEvents(@PathVariable String aggregateId,
+                                               @RequestParam(defaultValue = "false") boolean forwarded) {
+    if (eventify.getKafkaStreams().state() != KafkaStreams.State.RUNNING) {
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    }
+
+    KeyQueryMetadata metadata = eventify.getKafkaStreams()
+        .queryMetadataForKey("event-store", aggregateId, Serdes.String().serializer());
+
+    if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    }
+
+    if (!forwarded && !thisHost.equals(HostInfo.unavailable()) && !metadata.activeHost().equals(thisHost)) {
+      log.debug("Forwarding request for aggregate {} to {}", aggregateId, metadata.activeHost());
+      String url = UriComponentsBuilder.newInstance()
+          .scheme("http")
+          .host(metadata.activeHost().host())
+          .port(metadata.activeHost().port())
+          .path("/eventify/aggregates/{aggregateId}/events")
+          .queryParam("forwarded", true)
+          .buildAndExpand(aggregateId)
+          .toUriString();
+      return restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<List<Event>>() {});
+    }
+
+    ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
+        .store(StoreQueryParameters.fromNameAndType("event-store", QueryableStoreTypes.keyValueStore()));
+
+    List<Event> events = new ArrayList<>();
+    try (KeyValueIterator<String, Event> it = store.range(aggregateId + "@", aggregateId + "@~")) {
+      it.forEachRemaining(kv -> events.add(kv.value));
+    }
+    return ResponseEntity.ok(events);
+  }
+}
