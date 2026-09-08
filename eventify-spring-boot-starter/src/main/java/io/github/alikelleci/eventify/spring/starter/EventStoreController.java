@@ -13,14 +13,13 @@ import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.springframework.core.ParameterizedTypeReference;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
@@ -35,7 +34,7 @@ public class EventStoreController {
 
   private final Eventify eventify;
   private final HostInfo thisHost;
-  private final RestTemplate restTemplate = new RestTemplate();
+  private final RestClient restClient = RestClient.create();
 
   public EventStoreController(Eventify eventify) {
     this.eventify = eventify;
@@ -74,7 +73,11 @@ public class EventStoreController {
             .queryParam("forwarded", true)
             .buildAndExpand(aggregateId)
             .toUriString();
-        return restTemplate.exchange(url, HttpMethod.GET, null, new ParameterizedTypeReference<List<Event>>() {});
+        List<Event> result = restClient.get()
+            .uri(url)
+            .retrieve()
+            .body(new ParameterizedTypeReference<>() {});
+        return ResponseEntity.ok(result);
       } catch (Exception e) {
         log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
         return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
