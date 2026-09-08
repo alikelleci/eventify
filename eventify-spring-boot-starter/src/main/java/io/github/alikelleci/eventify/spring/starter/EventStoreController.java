@@ -14,6 +14,7 @@ import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -32,16 +35,30 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 @RequestMapping("/eventify")
 public class EventStoreController {
 
+  private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
+  private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
+
+  private static final String EVENT_STORE = "event-store";
+  // '~' is near the top of printable ASCII, so aggregateId@~ upper-bounds a prefix scan on aggregateId@
+  private static final String KEY_RANGE_PREFIX = "@";
+  private static final String KEY_RANGE_SUFFIX = "@~";
+
   private final Eventify eventify;
   private final HostInfo thisHost;
-  private final RestClient restClient = RestClient.create();
+  private final RestClient restClient;
 
   public EventStoreController(Eventify eventify) {
     this.eventify = eventify;
+
+    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+    factory.setConnectTimeout(CONNECT_TIMEOUT);
+    factory.setReadTimeout(READ_TIMEOUT);
+    this.restClient = RestClient.builder().requestFactory(factory).build();
+
     String applicationServer = eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
-    String[] parts = applicationServer.split(":");
-    this.thisHost = (parts.length == 2)
-        ? new HostInfo(parts[0], Integer.parseInt(parts[1]))
+    URI uri = applicationServer.isBlank() ? null : URI.create("http://" + applicationServer);
+    this.thisHost = (uri != null && uri.getHost() != null && uri.getPort() != -1)
+        ? new HostInfo(uri.getHost(), uri.getPort())
         : HostInfo.unavailable();
   }
 
@@ -54,7 +71,7 @@ public class EventStoreController {
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
 
-    KeyQueryMetadata metadata = streams.queryMetadataForKey("event-store", aggregateId, Serdes.String().serializer());
+    KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
 
     if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
@@ -86,10 +103,10 @@ public class EventStoreController {
 
     try {
       ReadOnlyKeyValueStore<String, Event> store = streams
-          .store(StoreQueryParameters.fromNameAndType("event-store", QueryableStoreTypes.keyValueStore()));
+          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
       List<Event> events = new ArrayList<>();
-      try (KeyValueIterator<String, Event> it = store.range(aggregateId + "@", aggregateId + "@~")) {
+      try (KeyValueIterator<String, Event> it = store.range(aggregateId + KEY_RANGE_PREFIX, aggregateId + KEY_RANGE_SUFFIX)) {
         it.forEachRemaining(kv -> events.add(kv.value));
       }
       return ResponseEntity.ok(events);
