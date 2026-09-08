@@ -105,13 +105,13 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AtomicLong sequence = new AtomicLong(0);
     AtomicLong counter = new AtomicLong(0);
 
-    String from = aggregateId.concat("@");
-    String to = aggregateId.concat("@~");
+    String from = aggregateId + "@";
+    String to = aggregateId + "@~";
 
     AggregateState state = loadFromSnapshot(aggregateId);
     if (state != null) {
       log.debug("Snapshot found: {}", state);
-      from = state.getEventId().concat("\0"); // Start after the snapshot event
+      from = state.getEventId() + "\0"; // Start after the snapshot event
       sequence.set(state.getVersion());
     }
 
@@ -181,7 +181,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   protected void deleteEvents(AggregateState state) {
     AtomicLong counter = new AtomicLong(0);
 
-    String from = state.getAggregateId().concat("@");
+    String from = state.getAggregateId() + "@";
     String to = state.getEventId();
 
     try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
