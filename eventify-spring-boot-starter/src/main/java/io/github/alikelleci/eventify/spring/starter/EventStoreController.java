@@ -146,7 +146,7 @@ public class EventStoreController {
           .version(version)
           .build();
 
-      return ResponseEntity.ok(state.getPayload());
+      return ResponseEntity.ok(state);
     } catch (Exception e) {
       log.debug("Event store temporarily unavailable for aggregate {}", aggregateId, e);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
