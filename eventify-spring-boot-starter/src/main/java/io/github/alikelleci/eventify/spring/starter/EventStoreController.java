@@ -32,7 +32,7 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @Slf4j
 @RestController
-@RequestMapping("/eventify")
+@RequestMapping("/_eventify")
 public class EventStoreController {
 
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
@@ -67,7 +67,7 @@ public class EventStoreController {
     }
   }
 
-  @GetMapping("/aggregates/{aggregateId}/events")
+  @GetMapping("/{aggregateId}/events")
   public ResponseEntity<List<Event>> getEvents(@PathVariable("aggregateId") String aggregateId,
                                                @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
     KafkaStreams streams = eventify.getKafkaStreams();
@@ -98,7 +98,7 @@ public class EventStoreController {
               .scheme("http")
               .host(activeHost.host())
               .port(activeHost.port())
-              .path("/eventify/aggregates/{aggregateId}/events")
+              .path("/_eventify/{aggregateId}/events")
               .queryParam("forwarded", true)
               .buildAndExpand(aggregateId)
               .toUriString();
