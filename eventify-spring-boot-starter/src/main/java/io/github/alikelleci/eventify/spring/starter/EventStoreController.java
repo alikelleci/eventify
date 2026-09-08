@@ -45,9 +45,6 @@ public class EventStoreController {
 
   private static final String EVENT_STORE = "event-store";
   private static final String SNAPSHOT_STORE = "snapshot-store";
-  // '~' is near the top of printable ASCII, so aggregateId@~ upper-bounds a prefix scan on aggregateId@
-  private static final String KEY_RANGE_PREFIX = "@";
-  private static final String KEY_RANGE_SUFFIX = "@~";
 
   private final Eventify eventify;
   private final HostInfo thisHost;
@@ -91,7 +88,9 @@ public class EventStoreController {
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
       List<Event> events = new ArrayList<>();
-      try (KeyValueIterator<String, Event> it = store.range(aggregateId + KEY_RANGE_PREFIX, aggregateId + KEY_RANGE_SUFFIX)) {
+      String from = aggregateId + "@";
+      String to = aggregateId + "@~";
+      try (KeyValueIterator<String, Event> it = store.range(from, to)) {
         it.forEachRemaining(kv -> events.add(kv.value));
       }
       return ResponseEntity.ok(events);
@@ -119,22 +118,23 @@ public class EventStoreController {
       ReadOnlyKeyValueStore<String, Event> eventStore = eventify.getKafkaStreams()
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
-      String upperBound = at != null
+      String from = aggregateId + "@";
+      String to = at != null
           ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli())
-          : aggregateId + KEY_RANGE_SUFFIX;
+          : aggregateId + "@~";
 
       // Start from snapshot if available and not doing a point-in-time query before it
       AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
-          .filter(snap -> at == null || snap.getEventId().compareTo(upperBound) < 0)
+          .filter(snap -> at == null || snap.getEventId().compareTo(to) < 0)
           .orElse(null);
 
-      String from = state != null
-          ? state.getEventId() + "\0"  // resume after snapshot event, same as CommandProcessor
-          : aggregateId + KEY_RANGE_PREFIX;
+      if (state != null) {
+        from = state.getEventId() + "\0"; // resume after snapshot event, same as CommandProcessor
+      }
 
       long version = state != null ? state.getVersion() : 0;
 
-      try (KeyValueIterator<String, Event> it = eventStore.range(from, upperBound)) {
+      try (KeyValueIterator<String, Event> it = eventStore.range(from, to)) {
         while (it.hasNext()) {
           Event event = it.next().value;
           EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
