@@ -1,7 +1,10 @@
 package io.github.alikelleci.eventify.spring.starter;
 
+import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
@@ -12,7 +15,6 @@ import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,9 +27,11 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @Slf4j
@@ -70,52 +74,18 @@ public class EventStoreController {
   @GetMapping("/{aggregateId}/events")
   public ResponseEntity<List<Event>> getEvents(@PathVariable("aggregateId") String aggregateId,
                                                @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
-    KafkaStreams streams = eventify.getKafkaStreams();
-
-    if (streams.state() != KafkaStreams.State.RUNNING) {
-      log.warn("Kafka Streams is not running, current state: {}", streams.state());
-      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
-    }
-
-    if (!thisHost.equals(HostInfo.unavailable())) {
-      KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
-
-      if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
-        log.warn("Metadata unavailable for aggregate {}: {}", aggregateId, metadata);
-        return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/events");
+    if (routingResult != null) {
+      if (routingResult.getStatusCode().is2xxSuccessful()) {
+        @SuppressWarnings("unchecked")
+        List<Event> body = (List<Event>) routingResult.getBody();
+        return ResponseEntity.ok(body);
       }
-
-      HostInfo activeHost = metadata.activeHost();
-
-      if (!activeHost.equals(thisHost)) {
-        if (forwarded) {
-          log.warn("Aggregate {} not owned by this node after forwarding, possible rebalance in progress", aggregateId);
-          return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
-        }
-        try {
-          log.debug("Forwarding request for aggregate {} to {}", aggregateId, activeHost);
-          String url = UriComponentsBuilder.newInstance()
-              .scheme("http")
-              .host(activeHost.host())
-              .port(activeHost.port())
-              .path("/_eventify/{aggregateId}/events")
-              .queryParam("forwarded", true)
-              .buildAndExpand(aggregateId)
-              .toUriString();
-          List<Event> result = restClient.get()
-              .uri(url)
-              .retrieve()
-              .body(new ParameterizedTypeReference<>() {});
-          return ResponseEntity.ok(result);
-        } catch (Exception e) {
-          log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
-          return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
-        }
-      }
+      return ResponseEntity.status(routingResult.getStatusCode()).build();
     }
 
     try {
-      ReadOnlyKeyValueStore<String, Event> store = streams
+      ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
       List<Event> events = new ArrayList<>();
@@ -125,6 +95,106 @@ public class EventStoreController {
       return ResponseEntity.ok(events);
     } catch (Exception e) {
       log.debug("Event store temporarily unavailable for aggregate {}", aggregateId, e);
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    }
+  }
+
+  @GetMapping("/{aggregateId}/state")
+  public ResponseEntity<Object> getState(@PathVariable("aggregateId") String aggregateId,
+                                         @RequestParam(name = "at", required = false) Instant at,
+                                         @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
+    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/state");
+    if (routingResult != null) {
+      if (routingResult.getStatusCode().is2xxSuccessful()) {
+        return ResponseEntity.ok(routingResult.getBody());
+      }
+      return ResponseEntity.status(routingResult.getStatusCode()).build();
+    }
+
+    try {
+      ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
+          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
+
+      String upperBound = at != null
+          ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli())
+          : aggregateId + KEY_RANGE_SUFFIX;
+
+      AggregateState state = null;
+      long version = 0;
+
+      try (KeyValueIterator<String, Event> it = store.range(aggregateId + KEY_RANGE_PREFIX, upperBound)) {
+        while (it.hasNext()) {
+          Event event = it.next().value;
+          EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+          if (handler != null) {
+            state = handler.apply(state, event);
+            version++;
+          }
+        }
+      }
+
+      if (state == null) {
+        return ResponseEntity.status(NOT_FOUND).build();
+      }
+
+      // Rebuild with correct version
+      state = AggregateState.builder()
+          .timestamp(state.getTimestamp())
+          .payload(state.getPayload())
+          .metadata(state.getMetadata())
+          .eventId(state.getEventId())
+          .version(version)
+          .build();
+
+      return ResponseEntity.ok(state.getPayload());
+    } catch (Exception e) {
+      log.debug("Event store temporarily unavailable for aggregate {}", aggregateId, e);
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    }
+  }
+
+  private ResponseEntity<?> checkRouting(String aggregateId, boolean forwarded, String path) {
+    KafkaStreams streams = eventify.getKafkaStreams();
+
+    if (streams.state() != KafkaStreams.State.RUNNING) {
+      log.warn("Kafka Streams is not running, current state: {}", streams.state());
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    }
+
+    if (thisHost.equals(HostInfo.unavailable())) {
+      return null; // single-node: query locally
+    }
+
+    KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
+    if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
+      log.warn("Metadata unavailable for aggregate {}: {}", aggregateId, metadata);
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    }
+
+    HostInfo activeHost = metadata.activeHost();
+    if (activeHost.equals(thisHost)) {
+      return null; // owned by this node: query locally
+    }
+
+    if (forwarded) {
+      log.warn("Aggregate {} not owned by this node after forwarding, possible rebalance in progress", aggregateId);
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+    }
+
+    try {
+      log.debug("Forwarding request for aggregate {} to {}", aggregateId, activeHost);
+      String url = UriComponentsBuilder.newInstance()
+          .scheme("http")
+          .host(activeHost.host())
+          .port(activeHost.port())
+          .path(path)
+          .queryParam("forwarded", true)
+          .buildAndExpand(aggregateId)
+          .toUriString();
+      Object result = restClient.get().uri(url).retrieve().body(Object.class);
+      return ResponseEntity.ok(result);
+    } catch (Exception e) {
+      log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
   }
