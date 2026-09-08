@@ -38,7 +38,7 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 @Slf4j
 @RestController
 @RequestMapping("/_eventify")
-public class EventStoreController {
+public class EventifyQueryController {
 
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
   private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
@@ -50,7 +50,7 @@ public class EventStoreController {
   private final HostInfo thisHost;
   private final RestClient restClient;
 
-  public EventStoreController(Eventify eventify) {
+  public EventifyQueryController(Eventify eventify) {
     this.eventify = eventify;
 
     SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
