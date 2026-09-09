@@ -40,6 +40,10 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 @RequestMapping("/_eventify")
 public class EventifyQueryController {
 
+  private static final int DEFAULT_PAGE_SIZE = 50;
+
+  record EventsPage(List<Event> events, String nextCursor) {}
+
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
   private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
@@ -71,13 +75,15 @@ public class EventifyQueryController {
   }
 
   @GetMapping("/{aggregateId}/events")
-  public ResponseEntity<List<Event>> getEvents(@PathVariable("aggregateId") String aggregateId,
-                                               @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
+  public ResponseEntity<EventsPage> getEvents(@PathVariable("aggregateId") String aggregateId,
+                                              @RequestParam(name = "cursor", required = false) String cursor,
+                                              @RequestParam(name = "limit", defaultValue = "" + DEFAULT_PAGE_SIZE) int limit,
+                                              @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
     ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/events");
     if (routingResult != null) {
       if (routingResult.getStatusCode().is2xxSuccessful()) {
         @SuppressWarnings("unchecked")
-        List<Event> body = (List<Event>) routingResult.getBody();
+        EventsPage body = (EventsPage) routingResult.getBody();
         return ResponseEntity.ok(body);
       }
       return ResponseEntity.status(routingResult.getStatusCode()).build();
@@ -87,13 +93,25 @@ public class EventifyQueryController {
       ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
-      List<Event> events = new ArrayList<>();
+      // before cursor is a compound key (aggregateId@ULID), scan backwards from there
       String from = aggregateId + "@";
-      String to = aggregateId + "@~";
-      try (KeyValueIterator<String, Event> it = store.range(from, to)) {
-        it.forEachRemaining(kv -> events.add(kv.value));
+      String to = cursor != null ? aggregateId + "@" + cursor : aggregateId + "@~";
+
+      List<Event> events = new ArrayList<>();
+      try (KeyValueIterator<String, Event> it = store.reverseRange(from, to)) {
+        while (it.hasNext() && events.size() <= limit) {
+          events.add(it.next().value);
+        }
       }
-      return ResponseEntity.ok(events);
+
+      // fetched limit+1 — there are more events
+      String nextCursor = null;
+      if (events.size() > limit) {
+        events.remove(events.size() - 1);
+        nextCursor = events.get(events.size() - 1).getId().substring(aggregateId.length() + 1); // strip aggregateId@
+      }
+
+      return ResponseEntity.ok(new EventsPage(events, nextCursor));
     } catch (Exception e) {
       log.debug("Event store temporarily unavailable for aggregate {}", aggregateId, e);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
