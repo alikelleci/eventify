@@ -107,8 +107,8 @@ public class EventifyQueryController {
       // fetched limit+1 — there are more events
       String nextCursor = null;
       if (events.size() > limit) {
-        events.remove(events.size() - 1);
-        nextCursor = events.get(events.size() - 1).getId().substring(aggregateId.length() + 1); // strip aggregateId@
+        Event extra = events.remove(events.size() - 1);
+        nextCursor = extra.getId().substring(aggregateId.length() + 1); // strip aggregateId@
       }
 
       return ResponseEntity.ok(new EventsPage(events, nextCursor));
