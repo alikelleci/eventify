@@ -66,7 +66,6 @@ export class EventsComponent {
   @HostListener('window:resize')
   onResize() {
     this.isMobile.set(window.innerWidth < 1024);
-    if (!this.isMobile()) this.drawerVisible.set(false);
   }
 
   onListScroll(el: HTMLDivElement) {
@@ -109,7 +108,7 @@ export class EventsComponent {
     this.selectedEvent.set(event);
     this.selectedState.set(null);
     this.activeTab.set('event');
-    if (this.isMobile()) this.drawerVisible.set(true);
+    this.drawerVisible.set(true);
     this.loadingState.set(true);
     this.svc.getState(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {

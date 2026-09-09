@@ -2,9 +2,8 @@
 
 <div class="flex h-full overflow-hidden">
 
-  <!-- Left panel: search + event list -->
-  <div class="flex flex-col h-full overflow-hidden border-r border-surface-200 dark:border-surface-700 transition-all duration-300"
-       [class]="!isMobile() && selectedEvent() ? 'w-2/5' : 'w-full'">
+  <!-- Event list -->
+  <div class="flex flex-col h-full w-full overflow-hidden">
 
     <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 shrink-0">
       <div class="flex gap-2">
@@ -55,27 +54,21 @@
     </div>
   </div>
 
-  <!-- Detail panel — desktop only -->
-  @if (!isMobile() && selectedEvent()) {
-    <div class="flex flex-col flex-1 overflow-hidden animate-slidein">
-      <ng-container *ngTemplateOutlet="detailContent" />
-    </div>
-  }
-
 </div>
 
-<!-- Detail drawer — mobile only -->
-@if (isMobile()) {
-  <p-drawer [(visible)]="drawerVisible" position="right" [modal]="true" styleClass="w-full sm:w-96" appendTo="body">
-    <ng-template pTemplate="header">
-      <div class="flex items-center gap-2">
-        <i class="pi pi-calendar-clock text-primary-500"></i>
-        <span class="font-semibold truncate">{{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}</span>
-      </div>
-    </ng-template>
-    <ng-container *ngTemplateOutlet="detailContent" />
-  </p-drawer>
-}
+<!-- Detail drawer — modal on mobile, non-modal panel on desktop -->
+<p-drawer [(visible)]="drawerVisible" position="right"
+  [modal]="isMobile()"
+  [styleClass]="isMobile() ? 'w-full' : 'w-[480px] shadow-xl'"
+  appendTo="body">
+  <ng-template pTemplate="header">
+    <div class="flex items-center gap-2">
+      <i class="pi pi-calendar-clock text-primary-500"></i>
+      <span class="font-semibold truncate">{{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}</span>
+    </div>
+  </ng-template>
+  <ng-container *ngTemplateOutlet="detailContent" />
+</p-drawer>
 
 <!-- Shared detail content -->
 <ng-template #detailContent>
