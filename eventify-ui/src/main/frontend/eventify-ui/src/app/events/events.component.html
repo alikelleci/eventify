@@ -1,0 +1,137 @@
+<p-toast />
+
+<div class="flex flex-col h-full">
+
+  <!-- Search bar -->
+  <div class="p-4 border-b border-surface-200 dark:border-surface-700 bg-surface-0 dark:bg-surface-900">
+    <div class="flex gap-2 max-w-2xl">
+      <input
+        pInputText
+        class="flex-1"
+        placeholder="Enter aggregate ID…"
+        [(ngModel)]="aggregateId"
+        (keyup.enter)="search()"
+      />
+      <p-button label="Search" icon="pi pi-search" (onClick)="search()" [loading]="loading()" />
+    </div>
+  </div>
+
+  <!-- Content area -->
+  <div class="flex flex-1 overflow-hidden">
+
+    <!-- Event list -->
+    <div
+      class="flex flex-col overflow-hidden border-r border-surface-200 dark:border-surface-700"
+      [class]="isMobile() ? 'w-full' : (selectedEvent() ? 'w-2/5' : 'w-full')"
+    >
+      @if (loading()) {
+        <div class="flex items-center justify-center flex-1">
+          <p-progressspinner strokeWidth="4" styleClass="w-12 h-12" />
+        </div>
+      } @else if (!hasResults()) {
+        <div class="flex flex-col items-center justify-center flex-1 text-surface-400 gap-2">
+          <i class="pi pi-inbox text-4xl"></i>
+          <span class="text-sm">Search for an aggregate to view its events</span>
+        </div>
+      } @else {
+        <div class="flex-1 overflow-y-auto">
+          @for (event of events(); track event.id) {
+            <div
+              class="flex items-start gap-3 px-4 py-3 cursor-pointer border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
+              [class.bg-primary-50]="selectedEvent()?.id === event.id"
+              [class.dark:bg-primary-900]="selectedEvent()?.id === event.id"
+              [class.border-l-2]="selectedEvent()?.id === event.id"
+              [class.border-l-primary-500]="selectedEvent()?.id === event.id"
+              (click)="selectEvent(event)"
+            >
+              <div class="flex flex-col flex-1 min-w-0">
+                <span class="font-medium text-sm text-surface-900 dark:text-surface-100 truncate">
+                  {{ eventTypeName(event) }}
+                </span>
+                <span class="text-xs text-surface-400 mt-0.5">
+                  {{ event.timestamp | date:'medium' }}
+                </span>
+              </div>
+              <i class="pi pi-chevron-right text-surface-300 text-xs mt-1"></i>
+            </div>
+          }
+
+          @if (nextCursor()) {
+            <div class="flex justify-center p-4">
+              <p-button
+                label="Load more"
+                severity="secondary"
+                [outlined]="true"
+                size="small"
+                [loading]="loadingMore()"
+                (onClick)="loadMore()"
+              />
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Detail panel — desktop only -->
+    @if (!isMobile() && selectedEvent()) {
+      <div class="flex flex-col flex-1 overflow-hidden">
+        <ng-container *ngTemplateOutlet="detailContent" />
+      </div>
+    }
+
+  </div>
+</div>
+
+<!-- Detail drawer — mobile -->
+<p-drawer
+  [(visible)]="drawerVisible"
+  position="bottom"
+  styleClass="h-[85vh] rounded-t-xl"
+  [modal]="true"
+>
+  <ng-template pTemplate="header">
+    <span class="font-semibold text-surface-900 dark:text-surface-100">
+      {{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}
+    </span>
+  </ng-template>
+  <ng-container *ngTemplateOutlet="detailContent" />
+</p-drawer>
+
+<!-- Shared detail content template -->
+<ng-template #detailContent>
+  @if (selectedEvent(); as event) {
+    <div class="flex flex-col h-full overflow-y-auto p-4 gap-4">
+
+      <!-- Header -->
+      <div class="flex items-center gap-3">
+        <p-tag [value]="eventTypeName(event)" severity="info" />
+        <span class="text-xs text-surface-400">{{ event.timestamp | date:'medium' }}</span>
+      </div>
+
+      <!-- Event payload -->
+      <div class="flex flex-col gap-1">
+        <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Event Payload</span>
+        <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto text-surface-800 dark:text-surface-200 leading-relaxed">{{ formatJson(event.payload) }}</pre>
+      </div>
+
+      <!-- State at this event -->
+      <div class="flex flex-col gap-1">
+        <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Aggregate State</span>
+        @if (loadingState()) {
+          <div class="flex items-center gap-2 text-surface-400 text-sm p-2">
+            <p-progressspinner strokeWidth="4" styleClass="w-5 h-5" />
+            <span>Loading state…</span>
+          </div>
+        } @else if (selectedState(); as state) {
+          <div class="flex items-center gap-2 mb-1">
+            <p-tag [value]="'v' + state.version" severity="secondary" />
+          </div>
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto text-surface-800 dark:text-surface-200 leading-relaxed">{{ formatJson(state.payload) }}</pre>
+        } @else {
+          <span class="text-xs text-surface-400 italic">State not available</span>
+        }
+      </div>
+
+    </div>
+  }
+</ng-template>

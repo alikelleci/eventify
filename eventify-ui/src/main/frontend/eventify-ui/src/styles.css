@@ -1,2 +1,9 @@
 @import "tailwindcss";
 @import "primeicons/primeicons.css";
+
+@plugin "tailwindcss-primeui";
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
