@@ -14,6 +14,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
+import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -129,8 +130,11 @@ public class EventifyQueryController {
       }
 
       return ResponseEntity.ok(new EventsPage(events, nextCursor));
+    } catch (InvalidStateStoreException e) {
+      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     } catch (Exception e) {
-      log.debug("Event store temporarily unavailable for aggregate {}", aggregateId, e);
+      log.error("Unexpected error querying events for aggregate {}", aggregateId, e);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
   }
@@ -204,8 +208,11 @@ public class EventifyQueryController {
           .build();
 
       return ResponseEntity.ok(state);
+    } catch (InvalidStateStoreException e) {
+      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     } catch (Exception e) {
-      log.debug("Event store temporarily unavailable for aggregate {}", aggregateId, e);
+      log.error("Unexpected error querying state for aggregate {}", aggregateId, e);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
   }
@@ -291,7 +298,7 @@ public class EventifyQueryController {
     } catch (RestClientResponseException e) {
       // Propagate the remote node's actual status (e.g. 404) instead of masking it as 503
       HttpStatusCode status = e.getStatusCode();
-      log.debug("Remote node {} returned {} for aggregate {}", activeHost, status, aggregateId);
+      log.warn("Remote node {} returned {} for aggregate {}", activeHost, status, aggregateId);
       return ResponseEntity.status(status).build();
     } catch (Exception e) {
       log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
