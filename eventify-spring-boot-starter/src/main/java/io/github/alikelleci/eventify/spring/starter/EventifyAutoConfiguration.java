@@ -2,17 +2,13 @@ package io.github.alikelleci.eventify.spring.starter;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.context.ApplicationContext;
+import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.event.EventListener;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @AutoConfiguration
@@ -20,19 +16,37 @@ import java.util.Map;
 @EnableConfigurationProperties(EventifyProperties.class)
 public class EventifyAutoConfiguration {
 
-  @Autowired
-  private ApplicationContext applicationContext;
-
   @Bean
-  public EventifyBeanPostProcessor eventifyBeanPostProcessor(@Autowired List<Eventify> apps) {
+  public EventifyBeanPostProcessor eventifyBeanPostProcessor(List<Eventify> apps) {
     return new EventifyBeanPostProcessor(apps);
   }
 
-  @EventListener
-  public void onApplicationEvent(ApplicationReadyEvent event) {
-    if (event.getApplicationContext().equals(this.applicationContext)) {
-      Map<String, Eventify> apps = event.getApplicationContext().getBeansOfType(Eventify.class);
-      apps.values().forEach(Eventify::start);
-    }
+  @Bean
+  public SmartLifecycle eventifyLifecycle(List<Eventify> apps) {
+    return new SmartLifecycle() {
+      private volatile boolean running = false;
+
+      @Override
+      public void start() {
+        apps.forEach(Eventify::start);
+        running = true;
+      }
+
+      @Override
+      public void stop() {
+        apps.forEach(Eventify::stop);
+        running = false;
+      }
+
+      @Override
+      public boolean isRunning() {
+        return running;
+      }
+
+      @Override
+      public int getPhase() {
+        return Integer.MAX_VALUE;
+      }
+    };
   }
 }
