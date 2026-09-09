@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.web;
+package io.github.alikelleci.eventify.management;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.net.URI;
 
 @Slf4j
-public class EventifyWebPlugin implements EventifyPlugin {
+public class EventifyManagementPlugin implements EventifyPlugin {
 
   private EventifyManagementServer managementServer;
 

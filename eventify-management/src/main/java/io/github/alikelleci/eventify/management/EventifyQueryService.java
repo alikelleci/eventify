@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.web;
+package io.github.alikelleci.eventify.management;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -185,7 +185,7 @@ public class EventifyQueryService {
     }
 
     if (thisHost.equals(HostInfo.unavailable())) {
-      return null; // single-node: serve locally
+      return null;
     }
 
     KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
@@ -196,7 +196,7 @@ public class EventifyQueryService {
 
     HostInfo activeHost = metadata.activeHost();
     if (activeHost.equals(thisHost)) {
-      return null; // owned by this node: serve locally
+      return null;
     }
 
     if (forwarded) {

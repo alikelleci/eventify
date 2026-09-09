@@ -1,7 +1,7 @@
-package io.github.alikelleci.eventify.web;
+package io.github.alikelleci.eventify.management;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.web.EventifyQueryService.QueryResult;
+import io.github.alikelleci.eventify.management.EventifyQueryService.QueryResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
