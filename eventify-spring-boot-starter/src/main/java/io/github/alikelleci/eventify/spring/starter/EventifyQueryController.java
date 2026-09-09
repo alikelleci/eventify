@@ -138,7 +138,7 @@ public class EventifyQueryController {
 
       String from = aggregateId + "@";
       String to = at != null
-          ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli())
+          ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli()).toString().substring(0, 10) + "ZZZZZZZZZZZZZZZZ"
           : aggregateId + "@~";
 
       // Start from snapshot if available and not doing a point-in-time query before it
