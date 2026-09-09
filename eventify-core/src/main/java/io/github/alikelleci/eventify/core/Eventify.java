@@ -287,6 +287,7 @@ public class Eventify {
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
     private Integer managementPort;
+    private String managementScheme = "http";
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
@@ -337,6 +338,11 @@ public class Eventify {
       return this;
     }
 
+    public EventifyBuilder managementScheme(String scheme) {
+      this.managementScheme = scheme;
+      return this;
+    }
+
     public Eventify build() {
       if (this.stateListener == null) {
         this.stateListener = (newState, oldState) ->
@@ -367,7 +373,7 @@ public class Eventify {
           HandlerUtils.registerHandler(eventify, handler));
 
       if (this.managementPort != null) {
-        EventifyQueryService queryService = new EventifyQueryService(eventify);
+        EventifyQueryService queryService = new EventifyQueryService(eventify, this.managementScheme);
         eventify.managementServer = new EventifyManagementServer(queryService, eventify.getObjectMapper(), this.managementPort);
       }
 

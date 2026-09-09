@@ -60,16 +60,18 @@ public class EventifyQueryService {
   private final HostInfo thisHost;
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
+  private final String scheme;
 
-  public EventifyQueryService(Eventify eventify) {
+  public EventifyQueryService(Eventify eventify, String scheme) {
     this.eventify = eventify;
+    this.scheme = scheme;
     this.objectMapper = eventify.getObjectMapper();
     this.httpClient = HttpClient.newBuilder()
         .connectTimeout(CONNECT_TIMEOUT)
         .build();
 
     String applicationServer = eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
-    URI uri = applicationServer.isBlank() ? null : URI.create("http://" + applicationServer);
+    URI uri = applicationServer.isBlank() ? null : URI.create(scheme + "://" + applicationServer);
     this.thisHost = (uri != null && uri.getHost() != null && uri.getPort() != -1)
         ? new HostInfo(uri.getHost(), uri.getPort())
         : HostInfo.unavailable();
@@ -218,7 +220,7 @@ public class EventifyQueryService {
   private <T> QueryResult<T> forward(String aggregateId, HostInfo target, String path, TypeReference<T> responseType) {
     try {
       String separator = path.contains("?") ? "&" : "?";
-      String url = "http://" + target.host() + ":" + target.port() + path + separator + "forwarded=true";
+      String url = scheme + "://" + target.host() + ":" + target.port() + path + separator + "forwarded=true";
       log.debug("Forwarding request for aggregate {} to {}", aggregateId, target);
 
       HttpRequest request = HttpRequest.newBuilder()
