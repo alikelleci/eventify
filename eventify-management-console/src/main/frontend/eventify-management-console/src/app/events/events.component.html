@@ -60,6 +60,7 @@
 <p-drawer [(visible)]="drawerVisible" position="right"
   [modal]="isMobile()"
   [styleClass]="isMobile() ? 'w-full' : '!w-3/5 shadow-xl'"
+  [blockScroll]="true"
   header="Event Details"
   appendTo="body">
   <ng-container *ngTemplateOutlet="detailContent" />
