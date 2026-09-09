@@ -17,7 +17,7 @@ import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +30,7 @@ import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -62,8 +63,15 @@ public class EventifyQueryController {
   public EventifyQueryController(Eventify eventify) {
     this.eventify = eventify;
 
-    SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-    factory.setConnectTimeout(CONNECT_TIMEOUT);
+    // java.net.http.HttpClient keeps its own internal connection pool and reuses
+    // keep-alive connections to peer nodes automatically — no extra dependency needed
+    // beyond the JDK, so this doesn't risk clashing with whatever HTTP client version
+    // the consuming Spring Boot app itself manages.
+    HttpClient jdkHttpClient = HttpClient.newBuilder()
+        .connectTimeout(CONNECT_TIMEOUT)
+        .build();
+
+    JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(jdkHttpClient);
     factory.setReadTimeout(READ_TIMEOUT);
     this.restClient = RestClient.builder().requestFactory(factory).build();
 
