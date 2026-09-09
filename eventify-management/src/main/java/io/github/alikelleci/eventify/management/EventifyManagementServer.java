@@ -177,7 +177,7 @@ public class EventifyManagementServer {
       if (is == null) {
         try (java.io.InputStream fallback = getClass().getClassLoader().getResourceAsStream(UI_RESOURCES + "index.html")) {
           if (fallback == null) {
-            sendResponse(exchange, 404, "UI not available");
+            sendResponse(exchange, 404, "Management Console not available");
             return;
           }
           serveStream(exchange, fallback, "text/html");
