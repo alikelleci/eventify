@@ -217,6 +217,9 @@ public class Eventify {
   }
 
   public void stop() {
+    if (kafkaStreams == null || !kafkaStreams.state().isRunningOrRebalancing()) {
+      return;
+    }
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofSeconds(60));
     log.info("Eventify shut down complete.");
