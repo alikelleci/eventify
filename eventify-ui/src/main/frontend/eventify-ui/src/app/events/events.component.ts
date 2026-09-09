@@ -1,6 +1,6 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule, NgTemplateOutlet } from '@angular/common';
+import { CommonModule, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY } from 'rxjs';
 
@@ -9,7 +9,6 @@ import { ButtonModule } from 'primeng/button';
 import { DrawerModule } from 'primeng/drawer';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { TagModule } from 'primeng/tag';
-import { ScrollerModule } from 'primeng/scroller';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
@@ -21,9 +20,9 @@ import { AggregateState, EventMessage } from '../models';
   templateUrl: './events.component.html',
   standalone: true,
   imports: [
-    CommonModule, FormsModule, NgTemplateOutlet,
+    CommonModule, NgTemplateOutlet, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
-    ProgressSpinnerModule, TagModule, ScrollerModule, ToastModule,
+    ProgressSpinnerModule, TagModule, ToastModule,
   ],
   providers: [MessageService],
 })
@@ -31,6 +30,8 @@ export class EventsComponent {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
+
+  @ViewChild('drawerContainer', { read: ElementRef }) drawerContainer?: ElementRef;
 
   aggregateId = signal('');
   events = signal<EventMessage[]>([]);
@@ -44,16 +45,17 @@ export class EventsComponent {
   isMobile = signal(window.innerWidth < 1024);
 
   hasResults = computed(() => this.events().length > 0);
-  eventTypeName = (event: EventMessage) => {
-    const t = event.payload?.['@type'] as string | undefined;
-    if (!t) return 'Unknown';
-    const parts = t.split(/[.$]/);
-    return parts[parts.length - 1];
-  };
 
   @HostListener('window:resize')
   onResize() {
     this.isMobile.set(window.innerWidth < 1024);
+  }
+
+  eventTypeName(event: EventMessage): string {
+    const t = (event.payload?.['@type'] ?? event.payload?.['@class']) as string | undefined;
+    if (!t) return 'Unknown';
+    const parts = t.split(/[.$]/);
+    return parts[parts.length - 1];
   }
 
   search() {
@@ -76,7 +78,7 @@ export class EventsComponent {
   selectEvent(event: EventMessage) {
     this.selectedEvent.set(event);
     this.selectedState.set(null);
-    if (this.isMobile()) this.drawerVisible.set(true);
+    this.drawerVisible.set(true);
     this.loadingState.set(true);
     this.svc.getState(this.aggregateId().trim(), event.timestamp)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
