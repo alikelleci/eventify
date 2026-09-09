@@ -4,7 +4,6 @@ import io.github.alikelleci.eventify.core.Eventify;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
@@ -20,12 +19,6 @@ public class EventifyAutoConfiguration {
   @Bean
   public EventifyBeanPostProcessor eventifyBeanPostProcessor(List<Eventify> apps) {
     return new EventifyBeanPostProcessor(apps);
-  }
-
-  @Bean
-  @ConditionalOnClass(name = "org.springframework.web.client.RestClient")
-  public EventifyQueryController eventifyQueryController(Eventify eventify) {
-    return new EventifyQueryController(eventify);
   }
 
   @Bean

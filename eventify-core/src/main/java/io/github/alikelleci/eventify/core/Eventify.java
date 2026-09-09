@@ -2,6 +2,8 @@ package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.core.management.EventifyManagementServer;
+import io.github.alikelleci.eventify.core.management.EventifyQueryService;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandProcessor;
@@ -42,6 +44,7 @@ import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -74,6 +77,7 @@ public class Eventify {
   private final ObjectMapper objectMapper;
 
   private KafkaStreams kafkaStreams;
+  private EventifyManagementServer managementServer;
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
@@ -214,6 +218,14 @@ public class Eventify {
 
     log.info("Eventify is starting...");
     kafkaStreams.start();
+
+    if (managementServer != null) {
+      try {
+        managementServer.start();
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to start Eventify management server", e);
+      }
+    }
   }
 
   public void stop() {
@@ -222,6 +234,9 @@ public class Eventify {
     }
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofSeconds(60));
+    if (managementServer != null) {
+      managementServer.stop();
+    }
     log.info("Eventify shut down complete.");
   }
 
@@ -271,6 +286,7 @@ public class Eventify {
     private StateRestoreListener stateRestoreListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
+    private Integer managementPort;
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
@@ -316,6 +332,11 @@ public class Eventify {
       return this;
     }
 
+    public EventifyBuilder managementPort(int port) {
+      this.managementPort = port;
+      return this;
+    }
+
     public Eventify build() {
       if (this.stateListener == null) {
         this.stateListener = (newState, oldState) ->
@@ -344,6 +365,11 @@ public class Eventify {
 
       this.handlers.forEach(handler ->
           HandlerUtils.registerHandler(eventify, handler));
+
+      if (this.managementPort != null) {
+        EventifyQueryService queryService = new EventifyQueryService(eventify);
+        eventify.managementServer = new EventifyManagementServer(queryService, eventify.getObjectMapper(), this.managementPort);
+      }
 
       return eventify;
     }
