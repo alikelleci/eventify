@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
@@ -25,16 +24,10 @@ public class EventifyAutoConfiguration {
 
   @Bean
   @ConditionalOnClass(name = "org.springframework.web.client.RestClient")
-  public EventifyQueryController eventifyQueryController(@Autowired Eventify eventify) {
+  public EventifyQueryController eventifyQueryController(Eventify eventify) {
     return new EventifyQueryController(eventify);
   }
 
-  @EventListener
-  public void onApplicationEvent(ApplicationReadyEvent event) {
-    if (event.getApplicationContext().equals(this.applicationContext)) {
-      Map<String, Eventify> apps = event.getApplicationContext().getBeansOfType(Eventify.class);
-      apps.values().forEach(Eventify::start);
-    }
   @Bean
   public SmartLifecycle eventifyLifecycle(List<Eventify> apps) {
     return new SmartLifecycle() {
