@@ -23,6 +23,8 @@ import com.sun.net.httpserver.HttpServer;
 public class EventifyManagementServer {
 
   private static final String BASE_PATH = "/_eventify/";
+  private static final String UI_PATH = "/_eventify/ui/";
+  private static final String UI_RESOURCES = "META-INF/resources/_eventify/ui/";
 
   private final EventifyQueryService queryService;
   private final ObjectMapper objectMapper;
@@ -38,6 +40,12 @@ public class EventifyManagementServer {
   public void start() throws IOException {
     server = HttpServer.create(new InetSocketAddress(port), 0);
     server.createContext(BASE_PATH, this::handle);
+    server.createContext(UI_PATH, this::handleUi);
+    server.createContext("/_eventify/ui", exchange -> {
+      exchange.getResponseHeaders().set("Location", "/_eventify/ui/");
+      exchange.sendResponseHeaders(301, -1);
+      exchange.close();
+    });
     server.setExecutor(Executors.newCachedThreadPool());
     server.start();
     log.info("Eventify management server started on port {}", port);
@@ -155,5 +163,55 @@ public class EventifyManagementServer {
 
   private int clampLimit(int limit) {
     return Math.max(1, Math.min(limit, EventifyQueryService.MAX_PAGE_SIZE));
+  }
+
+  private void handleUi(HttpExchange exchange) throws IOException {
+    if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+      sendResponse(exchange, 405, "Method Not Allowed");
+      return;
+    }
+
+    String path = exchange.getRequestURI().getPath();
+    String resource = path.substring(UI_PATH.length());
+    if (resource.isEmpty() || resource.equals("/")) {
+      resource = "/index.html";
+    }
+
+    String classpathPath = UI_RESOURCES + resource.replaceFirst("^/", "");
+    try (java.io.InputStream is = getClass().getClassLoader().getResourceAsStream(classpathPath)) {
+      if (is == null) {
+        // SPA fallback — serve index.html for unknown routes
+        try (java.io.InputStream fallback = getClass().getClassLoader().getResourceAsStream(UI_RESOURCES + "index.html")) {
+          if (fallback == null) {
+            sendResponse(exchange, 404, "UI not available");
+            return;
+          }
+          serveStream(exchange, fallback, "text/html");
+        }
+        return;
+      }
+      serveStream(exchange, is, mimeType(resource));
+    }
+  }
+
+  private void serveStream(HttpExchange exchange, java.io.InputStream is, String contentType) throws IOException {
+    byte[] bytes = is.readAllBytes();
+    exchange.getResponseHeaders().set("Content-Type", contentType);
+    exchange.sendResponseHeaders(200, bytes.length);
+    try (OutputStream os = exchange.getResponseBody()) {
+      os.write(bytes);
+    }
+  }
+
+  private String mimeType(String path) {
+    if (path.endsWith(".html")) return "text/html";
+    if (path.endsWith(".js"))   return "application/javascript";
+    if (path.endsWith(".css"))  return "text/css";
+    if (path.endsWith(".ico"))  return "image/x-icon";
+    if (path.endsWith(".png"))  return "image/png";
+    if (path.endsWith(".svg"))  return "image/svg+xml";
+    if (path.endsWith(".woff2")) return "font/woff2";
+    if (path.endsWith(".woff")) return "font/woff";
+    return "application/octet-stream";
   }
 }
