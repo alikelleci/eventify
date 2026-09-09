@@ -6,5 +6,9 @@
 html, body {
   height: 100%;
   margin: 0;
+  @apply text-surface-900 antialiased;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.011em;
 }
 
