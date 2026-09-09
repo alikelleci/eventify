@@ -7,7 +7,7 @@
        [class]="!isMobile() && selectedEvent() ? 'w-2/5' : 'w-full'">
 
     <!-- Search bar -->
-    <div class="p-4 border-b border-surface-200 dark:border-surface-700 shrink-0">
+    <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700 shrink-0">
       <div class="flex gap-2">
         <input
           pInputText
@@ -63,9 +63,9 @@
     </div>
   </div>
 
-  <!-- Detail panel — desktop only, plain div with slide-in -->
+  <!-- Detail panel — desktop only -->
   @if (!isMobile() && selectedEvent()) {
-    <div class="flex flex-col flex-1 overflow-y-auto border-l border-surface-200 dark:border-surface-700 animate-slidein">
+    <div class="flex flex-col flex-1 overflow-hidden animate-slidein">
       <ng-container *ngTemplateOutlet="detailContent" />
     </div>
   }
@@ -76,7 +76,12 @@
 @if (isMobile()) {
   <p-drawer [(visible)]="drawerVisible" position="right" [modal]="true" styleClass="w-full sm:w-96" appendTo="body">
     <ng-template pTemplate="header">
-      <span class="font-semibold truncate">{{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}</span>
+      <div class="flex items-center gap-2">
+        <i class="pi pi-calendar-clock text-surface-400"></i>
+        <span class="font-semibold text-surface-900 dark:text-surface-100 truncate">
+          {{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}
+        </span>
+      </div>
     </ng-template>
     <ng-container *ngTemplateOutlet="detailContent" />
   </p-drawer>
@@ -85,35 +90,69 @@
 <!-- Shared detail content -->
 <ng-template #detailContent>
   @if (selectedEvent(); as event) {
-    <div class="flex flex-col gap-5 p-4">
+    <div class="flex flex-col h-full overflow-y-auto">
 
-      <div class="flex items-center gap-2 flex-wrap">
-        <p-tag [value]="eventTypeName(event)" severity="info" />
-        <span class="text-xs text-surface-400">{{ event.timestamp | date:'medium' }}</span>
+      <!-- Detail header -->
+      <div class="px-5 py-4 border-b border-surface-200 dark:border-surface-700 shrink-0">
+        <div class="flex items-center gap-2 mb-1">
+          <i class="pi pi-calendar-clock text-surface-400 text-sm"></i>
+          <span class="font-semibold text-surface-900 dark:text-surface-100">{{ eventTypeName(event) }}</span>
+          <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="text-xs ml-auto" />
+        </div>
+        <span class="text-xs text-surface-400">{{ event.timestamp | date:'EEEE, MMMM d, y · HH:mm:ss.SSS' }}</span>
       </div>
 
-      <div class="flex flex-col gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Event Payload</span>
-        <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto leading-relaxed">{{ formatJson(event.payload) }}</pre>
-      </div>
+      <div class="flex flex-col gap-0 flex-1">
 
-      <div class="flex flex-col gap-2">
-        <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Aggregate State</span>
-        @if (loadingState()) {
-          <div class="flex flex-col gap-2">
-            <p-skeleton height="1rem" width="30%" />
-            <p-skeleton height="8rem" />
+        <!-- Event section -->
+        <div class="px-5 py-4 border-b border-surface-200 dark:border-surface-700">
+          <p class="text-xs font-semibold uppercase tracking-widest text-surface-400 mb-3">Event</p>
+
+          <!-- Meta row -->
+          <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs mb-4">
+            <span class="text-surface-400 font-medium">ID</span>
+            <span class="text-surface-600 dark:text-surface-300 font-mono truncate">{{ event.id }}</span>
+            <span class="text-surface-400 font-medium">Aggregate</span>
+            <span class="text-surface-600 dark:text-surface-300 font-mono">{{ event.aggregateId }}</span>
+            @for (entry of metadataEntries(event.metadata); track entry.key) {
+              <span class="text-surface-400 font-medium">{{ entry.key }}</span>
+              <span class="text-surface-600 dark:text-surface-300 truncate">{{ entry.value }}</span>
+            }
           </div>
-        } @else if (selectedState(); as state) {
-          <div class="mb-1">
-            <p-tag [value]="'v' + state.version" severity="secondary" />
-          </div>
-          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto leading-relaxed">{{ formatJson(state.payload) }}</pre>
-        } @else {
-          <span class="text-xs text-surface-400 italic">State not available</span>
-        }
-      </div>
 
+          <!-- Payload -->
+          <p class="text-xs font-medium text-surface-400 mb-1.5">Payload</p>
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-3 py-2.5 text-xs overflow-x-auto leading-relaxed text-surface-800 dark:text-surface-200">{{ formatJson(event.payload) }}</pre>
+        </div>
+
+        <!-- State section -->
+        <div class="px-5 py-4">
+          <p class="text-xs font-semibold uppercase tracking-widest text-surface-400 mb-3">Aggregate State</p>
+
+          @if (loadingState()) {
+            <div class="flex flex-col gap-2">
+              <p-skeleton width="25%" height="0.75rem" />
+              <p-skeleton width="40%" height="0.75rem" />
+              <p-skeleton height="6rem" styleClass="mt-2" />
+            </div>
+          } @else if (selectedState(); as state) {
+            <div class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-xs mb-4">
+              <span class="text-surface-400 font-medium">Version</span>
+              <span class="text-surface-600 dark:text-surface-300">{{ state.version }}</span>
+              <span class="text-surface-400 font-medium">Timestamp</span>
+              <span class="text-surface-600 dark:text-surface-300">{{ state.timestamp | date:'medium' }}</span>
+            </div>
+            <p class="text-xs font-medium text-surface-400 mb-1.5">Payload</p>
+            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-3 py-2.5 text-xs overflow-x-auto leading-relaxed text-surface-800 dark:text-surface-200">{{ formatJson(state.payload) }}</pre>
+          } @else {
+            <div class="flex items-center gap-2 text-surface-400 text-xs">
+              <i class="pi pi-info-circle"></i>
+              <span>State not available for this event</span>
+            </div>
+          }
+        </div>
+
+      </div>
     </div>
   }
 </ng-template>

@@ -4,7 +4,7 @@ export interface EventMessage {
   type: string;
   aggregateId: string;
   eventId: string;
-  version: number;
+  revision: number;
   metadata: Record<string, string>;
   payload: Record<string, unknown> & { '@type'?: string; '@class'?: string };
 }

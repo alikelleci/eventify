@@ -112,6 +112,12 @@ export class EventsComponent implements AfterViewInit, OnDestroy {
     return JSON.stringify(obj, null, 2);
   }
 
+  metadataEntries(metadata: Record<string, string>): { key: string; value: string }[] {
+    return Object.entries(metadata ?? {})
+      .filter(([k]) => !k.startsWith('$'))
+      .map(([key, value]) => ({ key, value }));
+  }
+
   private loadPage(id: string, cursor: string | null, append: boolean) {
     if (append) this.loadingMore.set(true);
     else this.loading.set(true);
