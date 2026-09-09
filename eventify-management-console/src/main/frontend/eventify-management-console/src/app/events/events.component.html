@@ -59,14 +59,9 @@
 <!-- Detail drawer — modal on mobile, non-modal panel on desktop -->
 <p-drawer [(visible)]="drawerVisible" position="right"
   [modal]="isMobile()"
-  [styleClass]="isMobile() ? 'w-full' : 'w-[480px] shadow-xl'"
+  [styleClass]="isMobile() ? 'w-full' : '!w-2/5 shadow-xl'"
+  header="Event Details"
   appendTo="body">
-  <ng-template pTemplate="header">
-    <div class="flex items-center gap-2">
-      <i class="pi pi-calendar-clock text-primary-500"></i>
-      <span class="font-semibold truncate">{{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}</span>
-    </div>
-  </ng-template>
   <ng-container *ngTemplateOutlet="detailContent" />
 </p-drawer>
 
