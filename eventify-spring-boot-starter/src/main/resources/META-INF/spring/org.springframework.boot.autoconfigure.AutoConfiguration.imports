@@ -1,2 +1,2 @@
 io.github.alikelleci.eventify.spring.starter.EventifyAutoConfiguration
-io.github.alikelleci.eventify.spring.starter.EventifyWebAutoConfiguration
+io.github.alikelleci.eventify.spring.starter.EventifyManagementAutoConfiguration
