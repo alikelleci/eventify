@@ -15,14 +15,18 @@ import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -41,6 +45,7 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 public class EventifyQueryController {
 
   private static final int DEFAULT_PAGE_SIZE = 50;
+  private static final int MAX_PAGE_SIZE = 500;
 
   record EventsPage(List<Event> events, String nextCursor) {}
 
@@ -79,14 +84,18 @@ public class EventifyQueryController {
                                               @RequestParam(name = "cursor", required = false) String cursor,
                                               @RequestParam(name = "limit", defaultValue = "" + DEFAULT_PAGE_SIZE) int limit,
                                               @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
-    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/events");
+    limit = clampLimit(limit);
+
+    MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
+    if (cursor != null) {
+      queryParams.add("cursor", cursor);
+    }
+    queryParams.add("limit", String.valueOf(limit));
+
+    ResponseEntity<EventsPage> routingResult = checkRouting(
+        aggregateId, forwarded, "/_eventify/{aggregateId}/events", queryParams, EventsPage.class);
     if (routingResult != null) {
-      if (routingResult.getStatusCode().is2xxSuccessful()) {
-        @SuppressWarnings("unchecked")
-        EventsPage body = (EventsPage) routingResult.getBody();
-        return ResponseEntity.ok(body);
-      }
-      return ResponseEntity.status(routingResult.getStatusCode()).build();
+      return routingResult;
     }
 
     try {
@@ -119,15 +128,18 @@ public class EventifyQueryController {
   }
 
   @GetMapping("/{aggregateId}/state")
-  public ResponseEntity<Object> getState(@PathVariable("aggregateId") String aggregateId,
-                                         @RequestParam(name = "at", required = false) Instant at,
-                                         @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
-    ResponseEntity<?> routingResult = checkRouting(aggregateId, forwarded, "/_eventify/{aggregateId}/state");
+  public ResponseEntity<AggregateState> getState(@PathVariable("aggregateId") String aggregateId,
+                                                 @RequestParam(name = "at", required = false) Instant at,
+                                                 @RequestParam(name = "forwarded", defaultValue = "false") boolean forwarded) {
+    MultiValueMap<String, String> queryParams = new LinkedMultiValueMap<>();
+    if (at != null) {
+      queryParams.add("at", at.toString());
+    }
+
+    ResponseEntity<AggregateState> routingResult = checkRouting(
+        aggregateId, forwarded, "/_eventify/{aggregateId}/state", queryParams, AggregateState.class);
     if (routingResult != null) {
-      if (routingResult.getStatusCode().is2xxSuccessful()) {
-        return ResponseEntity.ok(routingResult.getBody());
-      }
-      return ResponseEntity.status(routingResult.getStatusCode()).build();
+      return routingResult;
     }
 
     try {
@@ -137,8 +149,6 @@ public class EventifyQueryController {
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
       String from = aggregateId + "@";
-      // Upper bound: timestamp prefix + max base32 suffix covers all ULIDs at that millisecond
-      // (avoids coin-flip bug where a fresh getMonotonicUlid() could land below stored ULIDs at the same ms, excluding them)
       String to = at != null
           ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli()).toString().substring(0, 10) + "ZZZZZZZZZZZZZZZZ"
           : aggregateId + "@~";
@@ -184,7 +194,23 @@ public class EventifyQueryController {
     }
   }
 
-  private ResponseEntity<?> checkRouting(String aggregateId, boolean forwarded, String path) {
+  /**
+   * Clamps the requested page size to a sane range so that:
+   *  - limit <= 0 can't drive the pagination logic into an IndexOutOfBoundsException
+   *  - an unbounded/huge limit can't force a very large scan/allocation
+   */
+  private int clampLimit(int limit) {
+    return Math.max(1, Math.min(limit, MAX_PAGE_SIZE));
+  }
+
+  /**
+   * Returns null when the request should be served locally (single-node, or this node
+   * owns the aggregate's partition). Otherwise returns a fully-formed ResponseEntity —
+   * either the successfully forwarded, correctly-typed response, or an error status
+   * that should be returned to the caller as-is.
+   */
+  private <T> ResponseEntity<T> checkRouting(String aggregateId, boolean forwarded, String path,
+                                             MultiValueMap<String, String> queryParams, Class<T> responseType) {
     KafkaStreams streams = eventify.getKafkaStreams();
 
     if (streams.state() != KafkaStreams.State.RUNNING) {
@@ -219,11 +245,17 @@ public class EventifyQueryController {
           .host(activeHost.host())
           .port(activeHost.port())
           .path(path)
+          .queryParams(queryParams)
           .queryParam("forwarded", true)
           .buildAndExpand(aggregateId)
           .toUriString();
-      Object result = restClient.get().uri(url).retrieve().body(Object.class);
+      T result = restClient.get().uri(url).retrieve().body(responseType);
       return ResponseEntity.ok(result);
+    } catch (RestClientResponseException e) {
+      // Propagate the remote node's actual status (e.g. 404) instead of masking it as 503
+      HttpStatusCode status = e.getStatusCode();
+      log.debug("Remote node {} returned {} for aggregate {}", activeHost, status, aggregateId);
+      return ResponseEntity.status(status).build();
     } catch (Exception e) {
       log.warn("Failed to forward aggregate {} to {}", aggregateId, activeHost, e);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
