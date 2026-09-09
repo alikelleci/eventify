@@ -287,11 +287,6 @@ public class Eventify {
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
 
-    public EventifyBuilder registerHandler(Object handler) {
-      handlers.add(handler);
-      return this;
-    }
-
     public EventifyBuilder registerPlugin(EventifyPlugin plugin) {
       plugins.add(plugin);
       return this;
