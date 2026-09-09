@@ -21,9 +21,9 @@ import com.sun.net.httpserver.HttpServer;
 @Slf4j
 public class EventifyManagementServer {
 
-  private static final String BASE_PATH = "/_eventify/";
-  private static final String UI_PATH = "/_eventify/console/";
-  private static final String UI_RESOURCES = "META-INF/resources/_eventify/console/";
+  private static final String API_PATH = "/api/";
+  private static final String CONSOLE_PATH = "/console/";
+  private static final String CONSOLE_RESOURCES = "META-INF/resources/console/";
 
   private final EventifyQueryService queryService;
   private final ObjectMapper objectMapper;
@@ -38,10 +38,10 @@ public class EventifyManagementServer {
 
   public void start() throws IOException {
     server = HttpServer.create(new InetSocketAddress(port), 0);
-    server.createContext(BASE_PATH, this::handle);
-    server.createContext(UI_PATH, this::handleUi);
-    server.createContext("/_eventify/console", exchange -> {
-      exchange.getResponseHeaders().set("Location", "/_eventify/console/");
+    server.createContext(API_PATH, this::handle);
+    server.createContext(CONSOLE_PATH, this::handleUi);
+    server.createContext("/console", exchange -> {
+      exchange.getResponseHeaders().set("Location", "/console/");
       exchange.sendResponseHeaders(301, -1);
       exchange.close();
     });
@@ -69,13 +69,13 @@ public class EventifyManagementServer {
       Map<String, String> queryParams = parseQueryParams(uri.getQuery());
 
       String[] segments = path.split("/");
-      if (segments.length != 4) {
+      if (segments.length != 5 || !"aggregates".equals(segments[2])) {
         sendResponse(exchange, 404, "Not Found");
         return;
       }
 
-      String aggregateId = URLDecoder.decode(segments[2], StandardCharsets.UTF_8);
-      String endpoint = segments[3];
+      String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
+      String endpoint = segments[4];
       boolean forwarded = Boolean.parseBoolean(queryParams.get("forwarded"));
 
       switch (endpoint) {
@@ -167,15 +167,15 @@ public class EventifyManagementServer {
     }
 
     String path = exchange.getRequestURI().getPath();
-    String resource = path.substring(UI_PATH.length());
+    String resource = path.substring(CONSOLE_PATH.length());
     if (resource.isEmpty() || resource.equals("/")) {
       resource = "/index.html";
     }
 
-    String classpathPath = UI_RESOURCES + resource.replaceFirst("^/", "");
+    String classpathPath = CONSOLE_RESOURCES + resource.replaceFirst("^/", "");
     try (java.io.InputStream is = getClass().getClassLoader().getResourceAsStream(classpathPath)) {
       if (is == null) {
-        try (java.io.InputStream fallback = getClass().getClassLoader().getResourceAsStream(UI_RESOURCES + "index.html")) {
+        try (java.io.InputStream fallback = getClass().getClassLoader().getResourceAsStream(CONSOLE_RESOURCES + "index.html")) {
           if (fallback == null) {
             sendResponse(exchange, 404, "Management Console not available");
             return;

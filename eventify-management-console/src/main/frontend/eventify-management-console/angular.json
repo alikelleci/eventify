@@ -44,7 +44,7 @@
           "options": {
             "browser": "src/main.ts",
             "outputPath": "dist/eventify-management-console",
-            "baseHref": "/_eventify/console/",
+            "baseHref": "/console/",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [

@@ -68,7 +68,7 @@
                             <goal>copy-resources</goal>
                         </goals>
                         <configuration>
-                            <outputDirectory>${project.build.outputDirectory}/META-INF/resources/_eventify/console</outputDirectory>
+                            <outputDirectory>${project.build.outputDirectory}/META-INF/resources/console</outputDirectory>
                             <resources>
                                 <resource>
                                     <directory>src/main/frontend/eventify-management-console/dist/eventify-management-console/browser</directory>
