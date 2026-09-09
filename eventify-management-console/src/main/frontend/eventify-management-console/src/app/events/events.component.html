@@ -30,13 +30,14 @@
         @for (event of events(); track event.id) {
           <div
             class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
-            [class.bg-primary-50]="selectedEvent()?.id === event.id"
-            [class.border-l-2]="selectedEvent()?.id === event.id"
-            [class.border-l-primary-500]="selectedEvent()?.id === event.id"
+            [ngClass]="selectedEvent()?.id === event.id ? 'bg-primary-50 dark:bg-primary-950 border-l-2 border-l-primary-500' : ''"
             (click)="selectEvent(event)"
           >
             <div class="flex flex-col flex-1 min-w-0">
-              <span class="font-medium text-sm truncate">{{ eventTypeName(event) }}</span>
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-sm truncate">{{ eventTypeName(event) }}</span>
+                <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" />
+              </div>
               <span class="text-xs text-surface-400 mt-0.5">{{ event.timestamp | date:'MMM d, y · HH:mm:ss' }}</span>
             </div>
             <i class="pi pi-chevron-right text-surface-300 text-xs shrink-0"></i>
@@ -49,6 +50,13 @@
               <p-skeleton width="60%" height="0.75rem" />
             </div>
           }
+        }
+        @if (!loadingMore() && !nextCursor()) {
+          <div class="flex items-center justify-center gap-2 px-4 py-4 text-xs text-surface-400">
+            <span class="h-px w-8 bg-surface-200 dark:bg-surface-700"></span>
+            <span>All events loaded</span>
+            <span class="h-px w-8 bg-surface-200 dark:bg-surface-700"></span>
+          </div>
         }
       }
     </div>
