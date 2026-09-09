@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -11,6 +11,7 @@ import { SkeletonModule } from 'primeng/skeleton';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { TabsModule } from 'primeng/tabs';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
@@ -23,7 +24,7 @@ import { AggregateState, EventMessage } from '../models';
   imports: [
     CommonModule, NgTemplateOutlet, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
-    SkeletonModule, TagModule, ToastModule, TabsModule,
+    SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule,
   ],
   providers: [MessageService],
 })
@@ -31,6 +32,18 @@ export class EventsComponent {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
+  private readonly zone = inject(NgZone);
+
+  copiedKey = signal<string | null>(null);
+
+  copy(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.copiedKey.set(key);
+      this.zone.runOutsideAngular(() =>
+        setTimeout(() => this.zone.run(() => this.copiedKey.set(null)), 1500)
+      );
+    });
+  }
 
   @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
 
