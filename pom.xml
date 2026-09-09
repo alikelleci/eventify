@@ -14,7 +14,7 @@
     <url>https://github.com/alikelleci/eventify</url>
 
     <modules>
-        <module>eventify-management-ui</module>
+        <module>eventify-management-console</module>
         <module>eventify-core</module>
         <module>eventify-management</module>
         <module>eventify-spring-boot-starter</module>

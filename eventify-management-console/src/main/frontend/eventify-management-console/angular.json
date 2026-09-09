@@ -6,7 +6,7 @@
   },
   "newProjectRoot": "projects",
   "projects": {
-    "eventify-management-ui": {
+    "eventify-management-console": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -43,8 +43,8 @@
           "builder": "@angular/build:application",
           "options": {
             "browser": "src/main.ts",
-            "outputPath": "dist/eventify-management-ui",
-            "baseHref": "/_eventify/ui/",
+            "outputPath": "dist/eventify-management-console",
+            "baseHref": "/_eventify/console/",
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
@@ -85,10 +85,10 @@
           "builder": "@angular/build:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "eventify-management-ui:build:production"
+              "buildTarget": "eventify-management-console:build:production"
             },
             "development": {
-              "buildTarget": "eventify-management-ui:build:development"
+              "buildTarget": "eventify-management-console:build:development"
             }
           },
           "defaultConfiguration": "development"

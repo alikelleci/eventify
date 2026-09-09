@@ -22,8 +22,8 @@ import com.sun.net.httpserver.HttpServer;
 public class EventifyManagementServer {
 
   private static final String BASE_PATH = "/_eventify/";
-  private static final String UI_PATH = "/_eventify/ui/";
-  private static final String UI_RESOURCES = "META-INF/resources/_eventify/ui/";
+  private static final String UI_PATH = "/_eventify/console/";
+  private static final String UI_RESOURCES = "META-INF/resources/_eventify/console/";
 
   private final EventifyQueryService queryService;
   private final ObjectMapper objectMapper;
@@ -40,8 +40,8 @@ public class EventifyManagementServer {
     server = HttpServer.create(new InetSocketAddress(port), 0);
     server.createContext(BASE_PATH, this::handle);
     server.createContext(UI_PATH, this::handleUi);
-    server.createContext("/_eventify/ui", exchange -> {
-      exchange.getResponseHeaders().set("Location", "/_eventify/ui/");
+    server.createContext("/_eventify/console", exchange -> {
+      exchange.getResponseHeaders().set("Location", "/_eventify/console/");
       exchange.sendResponseHeaders(301, -1);
       exchange.close();
     });

@@ -1,5 +1,5 @@
 {
-  "name": "eventify-management-ui",
+  "name": "eventify-management-console",
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
