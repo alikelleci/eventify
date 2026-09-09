@@ -70,7 +70,7 @@
   @if (selectedEvent(); as event) {
 
     <!-- Title -->
-    <div class="mb-6">
+    <div class="pb-4">
       <div class="flex items-center gap-2">
         <span class="font-semibold text-surface-900 dark:text-surface-100">{{ eventTypeName(event) }}</span>
         <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" />
@@ -78,9 +78,8 @@
       <div class="text-xs text-surface-400 mt-0.5">{{ event.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</div>
     </div>
 
-    <!-- IDs -->
-    <div class="divide-y divide-surface-100 dark:divide-surface-800 border-t border-surface-100 dark:border-surface-800 mb-6">
-      <div class="py-3 flex items-center justify-between">
+    <div class="border-t border-surface-100 dark:border-surface-800 py-4">
+      <div class="flex items-center justify-between">
         <div>
           <div class="text-xs font-medium text-surface-500 uppercase tracking-wider mb-1">Event ID</div>
           <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ event.id }}</div>
@@ -91,7 +90,10 @@
           tooltipPosition="top"
           (onClick)="copy(event.id, 'event-id')" />
       </div>
-      <div class="py-3 flex items-center justify-between">
+    </div>
+
+    <div class="border-t border-surface-100 dark:border-surface-800 py-4">
+      <div class="flex items-center justify-between">
         <div>
           <div class="text-xs font-medium text-surface-500 uppercase tracking-wider mb-1">Aggregate ID</div>
           <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ event.aggregateId }}</div>
@@ -104,20 +106,23 @@
       </div>
     </div>
 
+    <div class="border-t border-surface-100 dark:border-surface-800 pt-4">
+
     <p-tabs [(value)]="activeTab" styleClass="mt-2">
       <p-tablist styleClass="!border-t-0">
         <p-tab value="event">Event</p-tab>
         <p-tab value="state">
           <span class="flex items-center gap-1.5">State
             @if (selectedState()) {
-              <span class="text-[10px] font-semibold bg-surface-200 dark:bg-surface-700 text-surface-600 dark:text-surface-300 rounded px-1.5 py-0.5 leading-none">v{{ selectedState()!.version }}</span>
+              <p-tag [value]="'v' + selectedState()!.version" severity="secondary" />
             }
           </span>
         </p-tab>
       </p-tablist>
     </p-tabs>
+    </div>
 
-    <div class="py-4">
+    <div class="border-t border-surface-100 dark:border-surface-800 pt-4">
 
       <!-- Event tab: payload + metadata -->
       @if (activeTab() === 'event') {
