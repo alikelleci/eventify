@@ -7,3 +7,12 @@ html, body {
   height: 100%;
   margin: 0;
 }
+
+@keyframes slidein {
+  from { opacity: 0; transform: translateX(1rem); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.animate-slidein {
+  animation: slidein 0.2s ease-out;
+}

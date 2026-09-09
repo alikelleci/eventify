@@ -4,7 +4,7 @@
 
   <!-- Left panel: search + event list -->
   <div class="flex flex-col h-full overflow-hidden border-r border-surface-200 dark:border-surface-700 transition-all duration-300"
-       [style.width]="!isMobile() && selectedEvent() ? '40%' : '100%'">
+       [class]="!isMobile() && selectedEvent() ? 'w-2/5' : 'w-full'">
 
     <!-- Search bar -->
     <div class="p-4 border-b border-surface-200 dark:border-surface-700 shrink-0">
@@ -23,9 +23,12 @@
     <!-- Event list -->
     <div class="flex-1 overflow-y-auto">
       @if (loading()) {
-        <div class="flex items-center justify-center h-full">
-          <p-progressspinner strokeWidth="4" styleClass="w-10 h-10" />
-        </div>
+        @for (i of skeletonRows; track i) {
+          <div class="flex flex-col gap-2 px-4 py-3 border-b border-surface-100 dark:border-surface-800">
+            <p-skeleton width="40%" height="0.875rem" />
+            <p-skeleton width="60%" height="0.75rem" />
+          </div>
+        }
       } @else if (!hasResults()) {
         <div class="flex flex-col items-center justify-center h-full gap-2 text-surface-400">
           <i class="pi pi-inbox text-4xl"></i>
@@ -47,72 +50,70 @@
             <i class="pi pi-chevron-right text-surface-300 text-xs shrink-0"></i>
           </div>
         }
-
-        @if (nextCursor()) {
-          <div class="flex justify-center p-4">
-            <p-button
-              label="Load more"
-              severity="secondary"
-              [outlined]="true"
-              size="small"
-              [loading]="loadingMore()"
-              (onClick)="loadMore()"
-            />
-          </div>
+        @if (loadingMore()) {
+          @for (i of skeletonRows; track i) {
+            <div class="flex flex-col gap-2 px-4 py-3 border-b border-surface-100 dark:border-surface-800">
+              <p-skeleton width="40%" height="0.875rem" />
+              <p-skeleton width="60%" height="0.75rem" />
+            </div>
+          }
         }
+        <div #sentinel class="h-1"></div>
       }
     </div>
   </div>
 
-  <!-- Detail drawer -->
-  <p-drawer
-    [(visible)]="drawerVisible"
-    position="right"
-    [modal]="isMobile()"
-    [dismissible]="isMobile()"
-    [showCloseIcon]="isMobile()"
-    [styleClass]="isMobile() ? 'w-full sm:w-96' : 'w-3/5 shadow-none border-none'"
-    [style]="isMobile() ? {} : { position: 'relative', transform: 'none' }"
-    [appendTo]="isMobile() ? 'body' : drawerContainer"
-  >
-    <ng-template pTemplate="header">
-      <span class="font-semibold truncate">
-        {{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}
-      </span>
-    </ng-template>
-
-    @if (selectedEvent(); as event) {
-      <div class="flex flex-col gap-4 p-1">
-
-        <div class="flex items-center gap-2 flex-wrap">
-          <p-tag [value]="eventTypeName(event)" severity="info" />
-          <span class="text-xs text-surface-400">{{ event.timestamp | date:'medium' }}</span>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Event Payload</span>
-          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto leading-relaxed">{{ formatJson(event.payload) }}</pre>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Aggregate State</span>
-          @if (loadingState()) {
-            <div class="flex items-center gap-2 text-surface-400 text-sm p-2">
-              <p-progressspinner strokeWidth="4" styleClass="w-5 h-5" />
-              <span>Loading state…</span>
-            </div>
-          } @else if (selectedState(); as state) {
-            <div class="mb-1">
-              <p-tag [value]="'v' + state.version" severity="secondary" />
-            </div>
-            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto leading-relaxed">{{ formatJson(state.payload) }}</pre>
-          } @else {
-            <span class="text-xs text-surface-400 italic">State not available</span>
-          }
-        </div>
-
-      </div>
-    }
-  </p-drawer>
+  <!-- Detail panel — desktop only, plain div with slide-in -->
+  @if (!isMobile() && selectedEvent()) {
+    <div class="flex flex-col flex-1 overflow-y-auto border-l border-surface-200 dark:border-surface-700 animate-slidein">
+      <ng-container *ngTemplateOutlet="detailContent" />
+    </div>
+  }
 
 </div>
+
+<!-- Detail drawer — mobile only -->
+@if (isMobile()) {
+  <p-drawer [(visible)]="drawerVisible" position="right" [modal]="true" styleClass="w-full sm:w-96" appendTo="body">
+    <ng-template pTemplate="header">
+      <span class="font-semibold truncate">{{ selectedEvent() ? eventTypeName(selectedEvent()!) : '' }}</span>
+    </ng-template>
+    <ng-container *ngTemplateOutlet="detailContent" />
+  </p-drawer>
+}
+
+<!-- Shared detail content -->
+<ng-template #detailContent>
+  @if (selectedEvent(); as event) {
+    <div class="flex flex-col gap-5 p-4">
+
+      <div class="flex items-center gap-2 flex-wrap">
+        <p-tag [value]="eventTypeName(event)" severity="info" />
+        <span class="text-xs text-surface-400">{{ event.timestamp | date:'medium' }}</span>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Event Payload</span>
+        <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto leading-relaxed">{{ formatJson(event.payload) }}</pre>
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <span class="text-xs font-semibold uppercase tracking-wide text-surface-400">Aggregate State</span>
+        @if (loadingState()) {
+          <div class="flex flex-col gap-2">
+            <p-skeleton height="1rem" width="30%" />
+            <p-skeleton height="8rem" />
+          </div>
+        } @else if (selectedState(); as state) {
+          <div class="mb-1">
+            <p-tag [value]="'v' + state.version" severity="secondary" />
+          </div>
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg p-3 text-xs overflow-x-auto leading-relaxed">{{ formatJson(state.payload) }}</pre>
+        } @else {
+          <span class="text-xs text-surface-400 italic">State not available</span>
+        }
+      </div>
+
+    </div>
+  }
+</ng-template>

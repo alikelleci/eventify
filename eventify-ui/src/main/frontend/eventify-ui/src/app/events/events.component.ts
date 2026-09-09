@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -7,7 +7,7 @@ import { catchError, EMPTY } from 'rxjs';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { DrawerModule } from 'primeng/drawer';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { SkeletonModule } from 'primeng/skeleton';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
@@ -22,16 +22,19 @@ import { AggregateState, EventMessage } from '../models';
   imports: [
     CommonModule, NgTemplateOutlet, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
-    ProgressSpinnerModule, TagModule, ToastModule,
+    SkeletonModule, TagModule, ToastModule,
   ],
   providers: [MessageService],
 })
-export class EventsComponent {
+export class EventsComponent implements AfterViewInit, OnDestroy {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
 
-  @ViewChild('drawerContainer', { read: ElementRef }) drawerContainer?: ElementRef;
+  @ViewChild('sentinel') sentinel!: ElementRef;
+  private observer?: IntersectionObserver;
+
+  readonly skeletonRows = Array(8);
 
   aggregateId = signal('');
   events = signal<EventMessage[]>([]);
@@ -49,6 +52,20 @@ export class EventsComponent {
   @HostListener('window:resize')
   onResize() {
     this.isMobile.set(window.innerWidth < 1024);
+    if (!this.isMobile()) this.drawerVisible.set(false);
+  }
+
+  ngAfterViewInit() {
+    this.observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && this.nextCursor() && !this.loadingMore()) {
+        this.loadMore();
+      }
+    }, { threshold: 0.1 });
+    this.observer.observe(this.sentinel.nativeElement);
+  }
+
+  ngOnDestroy() {
+    this.observer?.disconnect();
   }
 
   eventTypeName(event: EventMessage): string {
@@ -78,7 +95,7 @@ export class EventsComponent {
   selectEvent(event: EventMessage) {
     this.selectedEvent.set(event);
     this.selectedState.set(null);
-    this.drawerVisible.set(true);
+    if (this.isMobile()) this.drawerVisible.set(true);
     this.loadingState.set(true);
     this.svc.getState(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
