@@ -137,6 +137,8 @@ public class EventifyQueryController {
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
       String from = aggregateId + "@";
+      // Upper bound: timestamp prefix + max base32 suffix covers all ULIDs at that millisecond
+      // (avoids coin-flip bug where a fresh getMonotonicUlid() could land below stored ULIDs at the same ms, excluding them)
       String to = at != null
           ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli()).toString().substring(0, 10) + "ZZZZZZZZZZZZZZZZ"
           : aggregateId + "@~";
