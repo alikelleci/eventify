@@ -2,8 +2,7 @@ package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.management.EventifyManagementServer;
-import io.github.alikelleci.eventify.core.management.EventifyQueryService;
+import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandProcessor;
@@ -44,8 +43,6 @@ import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 
-import java.io.IOException;
-import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -76,20 +73,30 @@ public class Eventify {
   private final StateRestoreListener stateRestoreListener;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
+  private final List<EventifyPlugin> plugins = new ArrayList<>();
 
   private KafkaStreams kafkaStreams;
-  private EventifyManagementServer managementServer;
 
   protected Eventify(Properties streamsConfig,
                      StateListener stateListener,
                      StateRestoreListener stateRestoreListener,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
-                     ObjectMapper objectMapper) {
+                     ObjectMapper objectMapper,
+                     List<EventifyPlugin> plugins) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.stateRestoreListener = stateRestoreListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
+    this.plugins.addAll(plugins);
+  }
+
+  public void registerHandler(Object handler) {
+    HandlerUtils.registerHandler(this, handler);
+  }
+
+  public void registerPlugin(EventifyPlugin plugin) {
+    this.plugins.add(plugin);
   }
 
   public static EventifyBuilder builder() {
@@ -219,14 +226,7 @@ public class Eventify {
 
     log.info("Eventify is starting...");
     kafkaStreams.start();
-
-    if (managementServer != null) {
-      try {
-        managementServer.start();
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to start Eventify management server", e);
-      }
-    }
+    plugins.forEach(plugin -> plugin.onStart(this));
   }
 
   public void stop() {
@@ -235,9 +235,7 @@ public class Eventify {
     }
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofSeconds(60));
-    if (managementServer != null) {
-      managementServer.stop();
-    }
+    plugins.forEach(plugin -> plugin.onStop(this));
     log.info("Eventify shut down complete.");
   }
 
@@ -281,6 +279,7 @@ public class Eventify {
 
   public static class EventifyBuilder {
     private final List<Object> handlers = new ArrayList<>();
+    private final List<EventifyPlugin> plugins = new ArrayList<>();
 
     private Properties streamsConfig;
     private StateListener stateListener;
@@ -290,7 +289,11 @@ public class Eventify {
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
+      return this;
+    }
 
+    public EventifyBuilder registerPlugin(EventifyPlugin plugin) {
+      plugins.add(plugin);
       return this;
     }
 
@@ -356,17 +359,10 @@ public class Eventify {
           this.stateListener,
           this.stateRestoreListener,
           this.uncaughtExceptionHandler,
-          this.objectMapper);
+          this.objectMapper,
+          this.plugins);
 
-      this.handlers.forEach(handler ->
-          HandlerUtils.registerHandler(eventify, handler));
-
-      String applicationServer = this.streamsConfig.getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
-      if (!applicationServer.isBlank()) {
-        int port = URI.create("http://" + applicationServer).getPort();
-        EventifyQueryService queryService = new EventifyQueryService(eventify);
-        eventify.managementServer = new EventifyManagementServer(queryService, eventify.getObjectMapper(), port);
-      }
+      this.handlers.forEach(eventify::registerHandler);
 
       return eventify;
     }

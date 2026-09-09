@@ -35,12 +35,6 @@
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>io.github.alikelleci</groupId>
-            <artifactId>eventify-ui</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
         <!--Kafka-->
         <dependency>
             <groupId>org.apache.kafka</groupId>

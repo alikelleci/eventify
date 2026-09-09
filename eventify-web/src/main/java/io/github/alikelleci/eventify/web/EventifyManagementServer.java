@@ -1,7 +1,7 @@
-package io.github.alikelleci.eventify.core.management;
+package io.github.alikelleci.eventify.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.management.EventifyQueryService.QueryResult;
+import io.github.alikelleci.eventify.web.EventifyQueryService.QueryResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -68,9 +68,7 @@ public class EventifyManagementServer {
       String path = uri.getPath();
       Map<String, String> queryParams = parseQueryParams(uri.getQuery());
 
-      // path: /_eventify/{aggregateId}/events or /_eventify/{aggregateId}/state
       String[] segments = path.split("/");
-      // segments: ["", "_eventify", "{aggregateId}", "events|state"]
       if (segments.length != 4) {
         sendResponse(exchange, 404, "Not Found");
         return;
@@ -177,7 +175,6 @@ public class EventifyManagementServer {
     String classpathPath = UI_RESOURCES + resource.replaceFirst("^/", "");
     try (java.io.InputStream is = getClass().getClassLoader().getResourceAsStream(classpathPath)) {
       if (is == null) {
-        // SPA fallback — serve index.html for unknown routes
         try (java.io.InputStream fallback = getClass().getClassLoader().getResourceAsStream(UI_RESOURCES + "index.html")) {
           if (fallback == null) {
             sendResponse(exchange, 404, "UI not available");

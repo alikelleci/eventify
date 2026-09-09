@@ -11,13 +11,11 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>eventify-spring-boot-starter</artifactId>
-
-    <name>eventify-spring-boot-starter</name>
-    <description>Spring Boot starter for Eventify</description>
+    <artifactId>eventify-web</artifactId>
+    <name>eventify-web</name>
+    <description>Management web server and UI plugin for Eventify</description>
 
     <properties>
-        <spring-boot.version>4.1.1</spring-boot.version>
         <lombok.version>1.18.46</lombok.version>
     </properties>
 
@@ -29,21 +27,8 @@
         </dependency>
         <dependency>
             <groupId>io.github.alikelleci</groupId>
-            <artifactId>eventify-web</artifactId>
+            <artifactId>eventify-ui</artifactId>
             <version>${project.version}</version>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter</artifactId>
-            <version>${spring-boot.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <version>${spring-boot.version}</version>
-            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>

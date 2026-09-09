@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.management;
+package io.github.alikelleci.eventify.web;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
