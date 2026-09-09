@@ -53,6 +53,7 @@ public class EventifyQueryService {
     record Ok<T>(T value) implements QueryResult<T> {}
     record NotFound<T>() implements QueryResult<T> {}
     record Unavailable<T>(String reason) implements QueryResult<T> {}
+    record RemoteError<T>(int statusCode) implements QueryResult<T> {}
   }
 
   private final Eventify eventify;
@@ -165,13 +166,12 @@ public class EventifyQueryService {
         return new QueryResult.NotFound<>();
       }
 
-      final long finalVersion = version;
       state = AggregateState.builder()
           .timestamp(state.getTimestamp())
           .payload(state.getPayload())
           .metadata(state.getMetadata())
           .eventId(state.getEventId())
-          .version(finalVersion)
+          .version(version)
           .build();
 
       return new QueryResult.Ok<>(state);
@@ -229,13 +229,14 @@ public class EventifyQueryService {
 
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
-      if (response.statusCode() == 200) {
+      int status = response.statusCode();
+      if (status == 200) {
         return new QueryResult.Ok<>(objectMapper.readValue(response.body(), responseType));
-      } else if (response.statusCode() == 404) {
+      } else if (status == 404) {
         return new QueryResult.NotFound<>();
       } else {
-        log.warn("Remote node {} returned {} for aggregate {}", target, response.statusCode(), aggregateId);
-        return new QueryResult.Unavailable<>("Remote node returned " + response.statusCode());
+        log.warn("Remote node {} returned {} for aggregate {}", target, status, aggregateId);
+        return new QueryResult.RemoteError<>(status);
       }
     } catch (IOException | InterruptedException e) {
       log.warn("Failed to forward request for aggregate {} to {}", aggregateId, target, e);

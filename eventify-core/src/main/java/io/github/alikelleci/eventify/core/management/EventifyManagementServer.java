@@ -107,6 +107,8 @@ public class EventifyManagementServer {
       sendJson(exchange, 200, ok.value());
     } else if (result instanceof QueryResult.NotFound<?>) {
       sendResponse(exchange, 404, "Not Found");
+    } else if (result instanceof QueryResult.RemoteError<?> r) {
+      sendResponse(exchange, r.statusCode(), "Remote error");
     } else if (result instanceof QueryResult.Unavailable<?> u) {
       sendResponse(exchange, 503, u.reason());
     }
