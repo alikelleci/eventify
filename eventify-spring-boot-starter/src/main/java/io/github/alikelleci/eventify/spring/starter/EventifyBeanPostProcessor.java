@@ -3,7 +3,6 @@ package io.github.alikelleci.eventify.spring.starter;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.common.annotations.HandleMessage;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
-import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 
 import java.util.Arrays;
@@ -31,7 +30,7 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
   @Override
   public Object postProcessAfterInitialization(final Object bean, final String beanName) {
     if (isHandler(bean)) {
-      apps.forEach(eventify -> HandlerUtils.registerHandler(eventify, bean));
+      apps.forEach(eventify -> eventify.registerHandler(bean));
     }
     return bean;
   }

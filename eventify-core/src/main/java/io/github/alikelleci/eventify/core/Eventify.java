@@ -87,6 +87,10 @@ public class Eventify {
     this.objectMapper = objectMapper;
   }
 
+  public void registerHandler(Object handler) {
+    HandlerUtils.registerHandler(this, handler);
+  }
+
   public static EventifyBuilder builder() {
     return new EventifyBuilder();
   }
@@ -274,7 +278,6 @@ public class Eventify {
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
-
       return this;
     }
 
@@ -342,8 +345,7 @@ public class Eventify {
           this.uncaughtExceptionHandler,
           this.objectMapper);
 
-      this.handlers.forEach(handler ->
-          HandlerUtils.registerHandler(eventify, handler));
+      this.handlers.forEach(eventify::registerHandler);
 
       return eventify;
     }
