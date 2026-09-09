@@ -59,7 +59,7 @@
 <!-- Detail drawer — modal on mobile, non-modal panel on desktop -->
 <p-drawer [(visible)]="drawerVisible" position="right"
   [modal]="isMobile()"
-  [styleClass]="isMobile() ? 'w-full' : '!w-2/5 shadow-xl'"
+  [styleClass]="isMobile() ? 'w-full' : '!w-3/5 shadow-xl'"
   header="Event Details"
   appendTo="body">
   <ng-container *ngTemplateOutlet="detailContent" />
