@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, AfterViewInit, OnDestroy } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,6 +10,7 @@ import { DrawerModule } from 'primeng/drawer';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
+import { TabsModule } from 'primeng/tabs';
 import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
@@ -22,17 +23,16 @@ import { AggregateState, EventMessage } from '../models';
   imports: [
     CommonModule, NgTemplateOutlet, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
-    SkeletonModule, TagModule, ToastModule,
+    SkeletonModule, TagModule, ToastModule, TabsModule,
   ],
   providers: [MessageService],
 })
-export class EventsComponent implements AfterViewInit, OnDestroy {
+export class EventsComponent {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
 
-  @ViewChild('sentinel') sentinel!: ElementRef;
-  private observer?: IntersectionObserver;
+  @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
 
   readonly skeletonRows = Array(8);
 
@@ -46,6 +46,7 @@ export class EventsComponent implements AfterViewInit, OnDestroy {
   loadingState = signal(false);
   drawerVisible = signal(false);
   isMobile = signal(window.innerWidth < 1024);
+  activeTab = signal('event');
 
   hasResults = computed(() => this.events().length > 0);
 
@@ -55,24 +56,23 @@ export class EventsComponent implements AfterViewInit, OnDestroy {
     if (!this.isMobile()) this.drawerVisible.set(false);
   }
 
-  ngAfterViewInit() {
-    this.observer = new IntersectionObserver(entries => {
-      if (entries[0].isIntersecting && this.nextCursor() && !this.loadingMore()) {
-        this.loadMore();
-      }
-    }, { threshold: 0.1 });
-    this.observer.observe(this.sentinel.nativeElement);
-  }
-
-  ngOnDestroy() {
-    this.observer?.disconnect();
+  onListScroll(el: HTMLDivElement) {
+    if (!this.nextCursor() || this.loadingMore()) return;
+    const threshold = 100;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - threshold) {
+      this.loadMore();
+    }
   }
 
   eventTypeName(event: EventMessage): string {
     const t = (event.payload?.['@type'] ?? event.payload?.['@class']) as string | undefined;
-    if (!t) return 'Unknown';
+    if (!t) return event.type ?? 'Unknown';
     const parts = t.split(/[.$]/);
     return parts[parts.length - 1];
+  }
+
+  allMetadataEntries(metadata: Record<string, string>): { key: string; value: string }[] {
+    return Object.entries(metadata ?? {}).map(([key, value]) => ({ key, value }));
   }
 
   search() {
@@ -95,6 +95,7 @@ export class EventsComponent implements AfterViewInit, OnDestroy {
   selectEvent(event: EventMessage) {
     this.selectedEvent.set(event);
     this.selectedState.set(null);
+    this.activeTab.set('event');
     if (this.isMobile()) this.drawerVisible.set(true);
     this.loadingState.set(true);
     this.svc.getState(this.aggregateId().trim(), event.id)
@@ -109,13 +110,10 @@ export class EventsComponent implements AfterViewInit, OnDestroy {
   }
 
   formatJson(obj: unknown): string {
-    return JSON.stringify(obj, null, 2);
-  }
-
-  metadataEntries(metadata: Record<string, string>): { key: string; value: string }[] {
-    return Object.entries(metadata ?? {})
-      .filter(([k]) => !k.startsWith('$'))
-      .map(([key, value]) => ({ key, value }));
+    const cleaned = { ...obj as Record<string, unknown> };
+    delete cleaned['@class'];
+    delete cleaned['@type'];
+    return JSON.stringify(cleaned, null, 2);
   }
 
   private loadPage(id: string, cursor: string | null, append: boolean) {
