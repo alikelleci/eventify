@@ -150,7 +150,16 @@
                 @for (entry of allMetadataEntries(event.metadata); track entry.key) {
                   <tr class="border-b border-surface-100 dark:border-surface-800 last:border-0 hover:bg-surface-50 dark:hover:bg-surface-800">
                     <td class="px-4 py-2.5 font-mono text-primary-600 dark:text-primary-400 break-all">{{ entry.key }}</td>
-                    <td class="px-4 py-2.5 text-surface-900 dark:text-surface-100 break-all">{{ entry.value }}</td>
+                    <td class="px-4 py-2.5 text-surface-900 dark:text-surface-100 break-all">
+                      <div class="flex items-center justify-between gap-2">
+                        <span class="break-all">{{ entry.value }}</span>
+                        <p-button [text]="true" [rounded]="true" severity="secondary"
+                          [icon]="copiedKey() === entry.key ? 'pi pi-check' : 'pi pi-copy'"
+                          [pTooltip]="copiedKey() === entry.key ? 'Copied!' : 'Copy'"
+                          tooltipPosition="top"
+                          (onClick)="copy(entry.value, entry.key)" />
+                      </div>
+                    </td>
                   </tr>
                 }
               </tbody>
