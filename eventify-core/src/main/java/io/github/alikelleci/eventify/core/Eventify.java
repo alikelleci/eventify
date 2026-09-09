@@ -45,6 +45,7 @@ import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
 
 import java.io.IOException;
+import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -286,8 +287,6 @@ public class Eventify {
     private StateRestoreListener stateRestoreListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
-    private Integer managementPort;
-    private String managementScheme = "http";
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
@@ -333,16 +332,6 @@ public class Eventify {
       return this;
     }
 
-    public EventifyBuilder managementPort(int port) {
-      this.managementPort = port;
-      return this;
-    }
-
-    public EventifyBuilder managementScheme(String scheme) {
-      this.managementScheme = scheme;
-      return this;
-    }
-
     public Eventify build() {
       if (this.stateListener == null) {
         this.stateListener = (newState, oldState) ->
@@ -372,9 +361,11 @@ public class Eventify {
       this.handlers.forEach(handler ->
           HandlerUtils.registerHandler(eventify, handler));
 
-      if (this.managementPort != null) {
-        EventifyQueryService queryService = new EventifyQueryService(eventify, this.managementScheme);
-        eventify.managementServer = new EventifyManagementServer(queryService, eventify.getObjectMapper(), this.managementPort);
+      String applicationServer = this.streamsConfig.getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
+      if (!applicationServer.isBlank()) {
+        int port = URI.create("http://" + applicationServer).getPort();
+        EventifyQueryService queryService = new EventifyQueryService(eventify);
+        eventify.managementServer = new EventifyManagementServer(queryService, eventify.getObjectMapper(), port);
       }
 
       return eventify;
