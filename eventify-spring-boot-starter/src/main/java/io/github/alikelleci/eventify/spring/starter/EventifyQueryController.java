@@ -176,6 +176,14 @@ public class EventifyQueryController {
       }
 
       if (state == null) {
+        // Guard against a false 404: if the streams instance stopped RUNNING or this node
+        // lost ownership of the aggregate's partition while we were scanning (e.g. a
+        // rebalance kicked in mid-query), we can't trust an empty result as "doesn't exist".
+        if (!isLocallyAuthoritative(aggregateId)) {
+          log.debug("Ownership/availability changed while querying aggregate {}; " +
+              "returning 503 instead of a possibly-false 404", aggregateId);
+          return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
+        }
         return ResponseEntity.status(NOT_FOUND).build();
       }
 
@@ -192,6 +200,27 @@ public class EventifyQueryController {
       log.debug("Event store temporarily unavailable for aggregate {}", aggregateId, e);
       return ResponseEntity.status(SERVICE_UNAVAILABLE).build();
     }
+  }
+
+  /**
+   * Re-checks, right before committing to a "not found" response, that this node is still
+   * the RUNNING, authoritative owner of the aggregate's partition. A rebalance can move
+   * ownership away (or restart restoration) in the brief window between the routing check
+   * at the top of the request and the range scan completing; in that window an empty
+   * result doesn't mean the aggregate is absent, it means we can no longer trust our read.
+   */
+  private boolean isLocallyAuthoritative(String aggregateId) {
+    KafkaStreams streams = eventify.getKafkaStreams();
+    if (streams.state() != KafkaStreams.State.RUNNING) {
+      return false;
+    }
+
+    if (thisHost.equals(HostInfo.unavailable())) {
+      return true; // single-node mode: no partition handoff possible
+    }
+
+    KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
+    return metadata != null && thisHost.equals(metadata.activeHost());
   }
 
   /**
