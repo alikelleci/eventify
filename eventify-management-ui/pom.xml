@@ -11,8 +11,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>eventify-ui</artifactId>
-    <name>eventify-ui</name>
+    <artifactId>eventify-management-ui</artifactId>
+    <name>eventify-management-ui</name>
     <description>Management UI for Eventify</description>
 
     <build>
@@ -22,7 +22,7 @@
                 <artifactId>frontend-maven-plugin</artifactId>
                 <version>1.15.1</version>
                 <configuration>
-                    <workingDirectory>src/main/frontend/eventify-ui</workingDirectory>
+                    <workingDirectory>src/main/frontend/eventify-management-ui</workingDirectory>
                     <installDirectory>target</installDirectory>
                 </configuration>
                 <executions>
@@ -71,7 +71,7 @@
                             <outputDirectory>${project.build.outputDirectory}/META-INF/resources/_eventify/ui</outputDirectory>
                             <resources>
                                 <resource>
-                                    <directory>src/main/frontend/eventify-ui/dist/eventify-ui/browser</directory>
+                                    <directory>src/main/frontend/eventify-management-ui/dist/eventify-management-ui/browser</directory>
                                     <filtering>false</filtering>
                                 </resource>
                             </resources>
