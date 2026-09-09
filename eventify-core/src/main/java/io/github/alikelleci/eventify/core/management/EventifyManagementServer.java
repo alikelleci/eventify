@@ -10,7 +10,6 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -103,10 +102,8 @@ public class EventifyManagementServer {
 
   private void handleGetState(HttpExchange exchange, String aggregateId,
                               Map<String, String> queryParams, boolean forwarded) throws IOException {
-    String atParam = queryParams.get("at");
-    Instant at = atParam != null ? Instant.parse(atParam) : null;
-
-    QueryResult<?> result = queryService.getState(aggregateId, at, forwarded);
+    String eventId = queryParams.get("eventId");
+    QueryResult<?> result = queryService.getState(aggregateId, eventId, forwarded);
     sendQueryResult(exchange, result);
   }
 

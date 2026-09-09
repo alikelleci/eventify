@@ -80,7 +80,7 @@ export class EventsComponent {
     this.selectedState.set(null);
     this.drawerVisible.set(true);
     this.loadingState.set(true);
-    this.svc.getState(this.aggregateId().trim(), event.timestamp)
+    this.svc.getState(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
         this.loadingState.set(false);
         return EMPTY;

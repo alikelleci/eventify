@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.core.management;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
@@ -26,7 +25,6 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -39,10 +37,6 @@ public class EventifyQueryService {
 
   private static final String EVENT_STORE = "event-store";
   private static final String SNAPSHOT_STORE = "snapshot-store";
-
-  // Highest possible ULID random suffix in Crockford base32 (16 chars, 80 bits),
-  // used to form an inclusive upper bound for all ULIDs within a given millisecond.
-  private static final String ULID_MAX_RANDOM = "ZZZZZZZZZZZZZZZZ";
 
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
   private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
@@ -118,9 +112,9 @@ public class EventifyQueryService {
     }
   }
 
-  public QueryResult<AggregateState> getState(String aggregateId, Instant at, boolean forwarded) {
+  public QueryResult<AggregateState> getState(String aggregateId, String eventId, boolean forwarded) {
     QueryResult<AggregateState> routing = checkRouting(aggregateId, forwarded,
-        "/_eventify/" + aggregateId + "/state" + buildStateQuery(at),
+        "/_eventify/" + aggregateId + "/state" + buildStateQuery(eventId),
         new TypeReference<AggregateState>() {});
     if (routing != null) {
       return routing;
@@ -133,12 +127,10 @@ public class EventifyQueryService {
           .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
 
       String from = aggregateId + "@";
-      String to = at != null
-          ? aggregateId + "@" + UlidCreator.getMonotonicUlid(at.toEpochMilli()).toString().substring(0, 10) + ULID_MAX_RANDOM
-          : aggregateId + "@~";
+      String to = eventId != null ? eventId : aggregateId + "@~";
 
       AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
-          .filter(snap -> at == null || snap.getEventId().compareTo(to) < 0)
+          .filter(snap -> eventId == null || snap.getEventId().compareTo(to) < 0)
           .orElse(null);
 
       if (state != null) {
@@ -262,7 +254,7 @@ public class EventifyQueryService {
     return sb.toString();
   }
 
-  private String buildStateQuery(Instant at) {
-    return at != null ? "?at=" + at : "";
+  private String buildStateQuery(String eventId) {
+    return eventId != null ? "?eventId=" + URLEncoder.encode(eventId, java.nio.charset.StandardCharsets.UTF_8) : "";
   }
 }

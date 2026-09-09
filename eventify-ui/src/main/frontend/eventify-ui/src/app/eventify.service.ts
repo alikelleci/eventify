@@ -13,9 +13,9 @@ export class EventifyService {
     return this.http.get<EventsPage>(`/_eventify/${encodeURIComponent(aggregateId)}/events`, { params });
   }
 
-  getState(aggregateId: string, at?: string): Observable<AggregateState> {
+  getState(aggregateId: string, eventId?: string): Observable<AggregateState> {
     let params = new HttpParams();
-    if (at) params = params.set('at', at);
+    if (eventId) params = params.set('eventId', eventId);
     return this.http.get<AggregateState>(`/_eventify/${encodeURIComponent(aggregateId)}/state`, { params });
   }
 }
