@@ -11,7 +11,6 @@ const MOCK_EVENTS: EventsPage = {
       timestamp: new Date(Date.now() - 60_000).toISOString(),
       type: 'FirstNameChanged',
       aggregateId: AGGREGATE_ID,
-      eventId: `${AGGREGATE_ID}@0000000000003`,
       revision: 1,
       metadata: { '$correlationId': 'corr-003', '$replyTo': 'my-app.replies' },
       payload: { '@type': 'com.example.CustomerEvent$FirstNameChanged', id: AGGREGATE_ID, firstName: 'Jane' },
@@ -21,7 +20,6 @@ const MOCK_EVENTS: EventsPage = {
       timestamp: new Date(Date.now() - 120_000).toISOString(),
       type: 'CustomerUpdated',
       aggregateId: AGGREGATE_ID,
-      eventId: `${AGGREGATE_ID}@0000000000002`,
       revision: 1,
       metadata: { '$correlationId': 'corr-002', '$replyTo': 'my-app.replies' },
       payload: { '@type': 'com.example.CustomerEvent$CustomerUpdated', id: AGGREGATE_ID, firstName: 'John', lastName: 'Smith' },
@@ -31,7 +29,6 @@ const MOCK_EVENTS: EventsPage = {
       timestamp: new Date(Date.now() - 300_000).toISOString(),
       type: 'CustomerCreated',
       aggregateId: AGGREGATE_ID,
-      eventId: `${AGGREGATE_ID}@0000000000001`,
       revision: 1,
       metadata: { '$correlationId': 'corr-001', '$replyTo': 'my-app.replies' },
       payload: {

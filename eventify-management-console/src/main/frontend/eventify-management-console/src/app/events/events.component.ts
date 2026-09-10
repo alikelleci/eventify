@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone, OnInit, Input } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -35,7 +35,7 @@ const MAX_RECENT = 8;
   ],
   providers: [MessageService],
 })
-export class EventsComponent implements OnInit {
+export class EventsComponent {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
@@ -48,8 +48,6 @@ export class EventsComponent implements OnInit {
       this.doSearch(value);
     }
   }
-
-  ngOnInit() {}
 
   copiedKey = signal<string | null>(null);
 
