@@ -58,7 +58,9 @@
             <div class="flex flex-col flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <span class="font-medium text-sm truncate">{{ eventTypeName(event) }}</span>
-                <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" />
+                @if (event.revision > 1) {
+                  <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" />
+                }
               </div>
               <span class="text-xs text-surface-400 mt-0.5">{{ event.timestamp | date:'MMM d, y · HH:mm:ss' }}</span>
             </div>
@@ -134,7 +136,9 @@
     <div class="pb-5 border-b border-surface-100 dark:border-surface-800">
       <div class="flex items-center gap-2">
         <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ eventTypeName(detail.event) }}</span>
-        <p-tag [value]="'rev ' + detail.event.revision" severity="secondary" styleClass="shrink-0" />
+        @if (detail.event.revision > 1) {
+          <p-tag [value]="'rev ' + detail.event.revision" severity="secondary" styleClass="shrink-0" />
+        }
       </div>
       <div class="text-xs text-surface-400 mt-0.5">{{ detail.event.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</div>
     </div>
