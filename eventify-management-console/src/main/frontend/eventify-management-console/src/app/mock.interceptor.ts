@@ -142,7 +142,6 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.url.includes('/api/aggregates') && req.url.includes('/events')) {
-    // /api/aggregates/{id}/events/{eventId}
     const eventDetailMatch = req.url.match(/\/api\/aggregates\/[^/]+\/events\/(.+)/);
     if (eventDetailMatch) {
       const eventId = decodeURIComponent(eventDetailMatch[1]);
@@ -155,11 +154,6 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
       return of(new HttpResponse({ status: 200, body: detail })).pipe(delay(300));
     }
     return of(new HttpResponse({ status: 200, body: MOCK_EVENTS })).pipe(delay(400));
-  }
-  if (req.url.includes('/api/aggregates') && req.url.includes('/state')) {
-    const eventId = req.params.get('eventId') ?? '';
-    const state = MOCK_STATE_BY_EVENT[eventId] ?? MOCK_STATE_BY_EVENT[`${AGGREGATE_ID}@0000000000003`];
-    return of(new HttpResponse({ status: 200, body: state })).pipe(delay(300));
   }
   return next(req);
 };

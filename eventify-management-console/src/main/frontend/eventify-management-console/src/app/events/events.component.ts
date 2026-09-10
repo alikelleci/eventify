@@ -16,7 +16,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
-import { AggregateState, EventDetail, EventMessage } from '../models';
+import { EventDetail, EventMessage } from '../models';
 import { JsonHighlightPipe } from '../shared/json-highlight.pipe';
 import { JsonDiffPipe } from '../shared/json-diff.pipe';
 
@@ -81,6 +81,7 @@ export class EventsComponent implements OnInit {
   recentSearches = signal<string[]>(this.loadRecent());
   showRecent = signal(false);
   hasResults = computed(() => this.events().length > 0);
+  @HostListener('window:resize')
   onResize() {
     this.isMobile.set(window.innerWidth < 1024);
   }
