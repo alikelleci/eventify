@@ -57,16 +57,16 @@ export class EventsComponent implements OnInit {
 
   ngOnInit() {
     if (this.initialEventId) {
-      this.loadingDetail.set(true);
+      this.setLoadingDetail(true);
       this.svc.getEventDetail(this.aggregateId(), this.initialEventId)
         .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
-          this.loadingDetail.set(false);
+          this.setLoadingDetail(false);
           return EMPTY;
         }))
         .subscribe(detail => {
           this.selectedEvent.set(detail.event);
           this.eventDetail.set(detail);
-          this.loadingDetail.set(false);
+          this.setLoadingDetail(false);
         });
     }
   }
@@ -96,6 +96,30 @@ export class EventsComponent implements OnInit {
   selectedEvent = signal<EventMessage | null>(null);
   eventDetail = signal<EventDetail | null>(null);
   loadingDetail = signal(false);
+
+  private readonly MIN_SKELETON_MS = 500;
+
+  private minElapsed = { loading: false, loadingMore: false, loadingDetail: false };
+  private dataReady = { loading: false, loadingMore: false, loadingDetail: false };
+
+  private setLoadingState(key: 'loading' | 'loadingMore' | 'loadingDetail', value: boolean) {
+    if (value) {
+      this.minElapsed[key] = false;
+      this.dataReady[key] = false;
+      this[key].set(true);
+      setTimeout(() => {
+        this.minElapsed[key] = true;
+        if (this.dataReady[key]) this[key].set(false);
+      }, this.MIN_SKELETON_MS);
+    } else {
+      this.dataReady[key] = true;
+      if (this.minElapsed[key]) this[key].set(false);
+    }
+  }
+
+  private setLoading(value: boolean) { this.setLoadingState('loading', value); }
+  private setLoadingMore(value: boolean) { this.setLoadingState('loadingMore', value); }
+  private setLoadingDetail(value: boolean) { this.setLoadingState('loadingDetail', value); }
   drawerVisible = signal(false);
   isMobile = signal(window.innerWidth < 1024);
   activeTab = signal('event');
@@ -194,15 +218,15 @@ export class EventsComponent implements OnInit {
     this.showDiff.set(false);
     if (this.isMobile()) this.drawerVisible.set(true);
     this.router.navigate([], { queryParams: { id: this.aggregateId(), eventId: event.id }, replaceUrl: true });
-    this.loadingDetail.set(true);
+    this.setLoadingDetail(true);
     this.detailSub = this.svc.getEventDetail(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
-        this.loadingDetail.set(false);
+        this.setLoadingDetail(false);
         return EMPTY;
       }))
       .subscribe(detail => {
         this.eventDetail.set(detail);
-        this.loadingDetail.set(false);
+        this.setLoadingDetail(false);
       });
   }
 
@@ -241,13 +265,12 @@ export class EventsComponent implements OnInit {
   }
 
   private loadPage(id: string, cursor: string | null, append: boolean) {
-    if (append) this.loadingMore.set(true);
-    else this.loading.set(true);
+    if (append) this.setLoadingMore(true);
+    else this.setLoading(true);
 
     this.svc.getEvents(id, cursor)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(err => {
-        this.loading.set(false);
-        this.loadingMore.set(false);
+        if (append) this.setLoadingMore(false); else this.setLoading(false);
         const msg = err.status === 404 ? 'Aggregate not found.' : 'Failed to load events.';
         this.messageService.add({ severity: 'error', summary: 'Error', detail: msg });
         return EMPTY;
@@ -256,8 +279,7 @@ export class EventsComponent implements OnInit {
         if (!append) this.saveRecent(id);
         this.events.update(prev => append ? [...prev, ...page.events] : page.events);
         this.nextCursor.set(page.nextCursor);
-        this.loading.set(false);
-        this.loadingMore.set(false);
+        if (append) this.setLoadingMore(false); else this.setLoading(false);
       });
   }
 }
