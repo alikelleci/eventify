@@ -145,13 +145,6 @@ export class EventsComponent {
     }
   }
 
-  eventTypeName(event: EventMessage): string {
-    const t = event.payload?.['@class'] as string | undefined;
-    if (!t) return event.type ?? 'Unknown';
-    const parts = t.split(/[.$]/);
-    return parts[parts.length - 1];
-  }
-
   allMetadataEntries(metadata: Record<string, string>): { key: string; value: string }[] {
     return Object.entries(metadata ?? {}).map(([key, value]) => ({ key, value }));
   }
