@@ -235,12 +235,13 @@
           <div class="relative group">
             <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono"
                  [innerHTML]="showDiff() ? (cleanPayload(detail.state.payload) | jsonDiff:cleanPayload(detail.previousState!.payload)) : (formatJson(detail.state.payload) | jsonHighlight)"></pre>
-            <div class="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div class="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               @if (detail.previousState) {
                 <p-button [text]="true" [rounded]="true" [severity]="showDiff() ? 'primary' : 'secondary'"
                   icon="pi pi-arrow-right-arrow-left"
-                  [pTooltip]="showDiff() ? 'Hide diff' : 'Show diff'"
-                  tooltipPosition="top"
+                  size="small"
+                  styleClass="!w-[6.5rem]"
+                  [label]="showDiff() ? 'Hide diff' : 'Show diff'"
                   (onClick)="showDiff.set(!showDiff())" />
               }
               <p-button [text]="true" [rounded]="true" severity="secondary"
