@@ -135,17 +135,17 @@
 
       <!-- Event tab: payload + metadata -->
       @if (activeTab() === 'event') {
-        <div class="flex items-center justify-between mb-3">
-          <div class="text-xs font-medium text-surface-500 uppercase tracking-widest">Payload</div>
+        <div class="relative group mb-4">
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed text-surface-900 dark:text-surface-100 overflow-auto max-h-72">{{ formatJson(event.payload) }}</pre>
           <p-button [text]="true" [rounded]="true" severity="secondary"
+            class="!absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
             [icon]="copiedKey() === 'event-payload' ? 'pi pi-check' : 'pi pi-copy'"
             [pTooltip]="copiedKey() === 'event-payload' ? 'Copied!' : 'Copy'"
             tooltipPosition="top"
             (onClick)="copy(formatJson(event.payload), 'event-payload')" />
         </div>
-        <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed text-surface-900 dark:text-surface-100 overflow-auto max-h-72">{{ formatJson(event.payload) }}</pre>
         @if (allMetadataEntries(event.metadata).length > 0) {
-          <div class="text-xs font-medium text-surface-500 uppercase tracking-widest mb-3 mt-5">Metadata</div>
+          <div class="text-xs font-medium text-surface-500 uppercase tracking-widest mb-3 mt-4">Metadata</div>
           <div class="rounded-lg border border-surface-100 dark:border-surface-800 overflow-hidden">
             <table class="w-full text-xs">
               <thead>
@@ -181,15 +181,15 @@
         @if (loadingState()) {
           <p-skeleton height="8rem" />
         } @else if (selectedState(); as state) {
-          <div class="flex items-center justify-between mb-3">
-            <div class="text-xs font-medium text-surface-500 uppercase tracking-widest">Payload</div>
+          <div class="relative group">
+            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed text-surface-900 dark:text-surface-100 overflow-auto max-h-72">{{ formatJson(state.payload) }}</pre>
             <p-button [text]="true" [rounded]="true" severity="secondary"
+              class="!absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
               [icon]="copiedKey() === 'state-payload' ? 'pi pi-check' : 'pi pi-copy'"
               [pTooltip]="copiedKey() === 'state-payload' ? 'Copied!' : 'Copy'"
               tooltipPosition="top"
               (onClick)="copy(formatJson(state.payload), 'state-payload')" />
           </div>
-          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed text-surface-900 dark:text-surface-100 overflow-auto max-h-72">{{ formatJson(state.payload) }}</pre>
         } @else {
           <div class="flex flex-col items-center justify-center h-32 gap-2 text-surface-400">
             <i class="pi pi-info-circle text-4xl"></i>
