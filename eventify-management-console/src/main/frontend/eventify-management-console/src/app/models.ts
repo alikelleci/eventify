@@ -2,7 +2,7 @@ export interface EventMessage {
   id: string;
   timestamp: string;
   type: string;
-  payload: Record<string, unknown> & { '@type'?: string; '@class'?: string };
+  payload: Record<string, unknown> & { '@class'?: string };
   metadata: Record<string, string>;
   aggregateId: string;
   revision: number;
@@ -17,7 +17,7 @@ export interface AggregateState {
   id: string;
   timestamp: string;
   type: string;
-  payload: Record<string, unknown> & { '@type'?: string };
+  payload: Record<string, unknown> & { '@class'?: string };
   metadata: Record<string, string>;
   aggregateId: string;
   eventId: string;

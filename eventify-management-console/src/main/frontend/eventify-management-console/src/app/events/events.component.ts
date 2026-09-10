@@ -147,7 +147,7 @@ export class EventsComponent {
   }
 
   eventTypeName(event: EventMessage): string {
-    const t = (event.payload?.['@class'] ?? event.payload?.['@type']) as string | undefined;
+    const t = event.payload?.['@class'] as string | undefined;
     if (!t) return event.type ?? 'Unknown';
     const parts = t.split(/[.$]/);
     return parts[parts.length - 1];
@@ -194,7 +194,6 @@ export class EventsComponent {
   cleanPayload(obj: Record<string, unknown>): Record<string, unknown> {
     const cleaned = { ...obj };
     delete cleaned['@class'];
-    delete cleaned['@type'];
     return cleaned;
   }
 
