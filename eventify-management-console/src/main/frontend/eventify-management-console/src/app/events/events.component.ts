@@ -147,7 +147,7 @@ export class EventsComponent {
   }
 
   eventTypeName(event: EventMessage): string {
-    const t = (event.payload?.['@type'] ?? event.payload?.['@class']) as string | undefined;
+    const t = (event.payload?.['@class'] ?? event.payload?.['@type']) as string | undefined;
     if (!t) return event.type ?? 'Unknown';
     const parts = t.split(/[.$]/);
     return parts[parts.length - 1];
