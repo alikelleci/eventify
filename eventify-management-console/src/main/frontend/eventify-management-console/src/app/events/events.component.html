@@ -5,7 +5,7 @@
   <!-- Event list -->
   <div class="flex flex-col h-full shrink-0 w-full lg:w-[480px] border-r border-surface-100 dark:border-surface-800 overflow-hidden">
 
-    <div class="px-4 py-3 border-b border-surface-100 dark:border-surface-800 shrink-0">
+    <div class="px-4 py-5 border-b border-surface-100 dark:border-surface-800 shrink-0">
       <div class="flex gap-2">
         <input pInputText variant="filled" class="flex-1 min-w-0 p-inputtext-lg" placeholder="Enter aggregate ID…"
                [(ngModel)]="aggregateId" (keyup.enter)="search()" />
@@ -96,7 +96,7 @@
   @if (selectedEvent(); as event) {
 
     <!-- Title -->
-    <div class="pb-4">
+    <div class="pb-5 border-b border-surface-100 dark:border-surface-800">
       <div class="flex items-center gap-2">
         <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ eventTypeName(event) }}</span>
         <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" />
