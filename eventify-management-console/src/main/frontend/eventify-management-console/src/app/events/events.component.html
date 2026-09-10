@@ -7,7 +7,7 @@
 
     <div class="px-4 py-3 border-b border-surface-100 dark:border-surface-800 shrink-0">
       <div class="flex gap-2">
-        <input pInputText class="flex-1 min-w-0 p-inputtext-lg" placeholder="Enter aggregate ID…"
+        <input pInputText variant="filled" class="flex-1 min-w-0 p-inputtext-lg" placeholder="Enter aggregate ID…"
                [(ngModel)]="aggregateId" (keyup.enter)="search()" />
         <p-button icon="pi pi-search" (onClick)="search()" [loading]="loading()" size="large" />
       </div>
