@@ -13,7 +13,6 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { TabsModule } from 'primeng/tabs';
 import { TooltipModule } from 'primeng/tooltip';
-import { ToggleButtonModule } from 'primeng/togglebutton';
 import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
@@ -31,7 +30,7 @@ const MAX_RECENT = 8;
   imports: [
     CommonModule, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
-    SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule, ToggleButtonModule,
+    SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule,
     JsonHighlightPipe, JsonDiffPipe,
   ],
   providers: [MessageService],
