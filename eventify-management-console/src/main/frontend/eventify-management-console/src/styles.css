@@ -14,10 +14,24 @@ html, body {
 }
 
 /* jsondiffpatch overrides */
-.jsondiffpatch-delta {
+.jsondiffpatch-delta,
+.jsondiffpatch-delta ul {
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
   font-size: 0.75rem;
   width: 100%;
+  padding-left: 0;
+}
+ul.jsondiffpatch-delta,
+.jsondiffpatch-delta ul {
+  padding-left: 1rem;
+}
+.jsondiffpatch-property-name {
+  color: rgb(51 65 85);
+}
+@media (prefers-color-scheme: dark) {
+  .jsondiffpatch-property-name {
+    color: rgb(203 213 225);
+  }
 }
 .jsondiffpatch-added .jsondiffpatch-property-name,
 .jsondiffpatch-added .jsondiffpatch-value pre,
