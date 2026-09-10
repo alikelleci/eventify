@@ -187,6 +187,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
         Event event = iterator.next().value;
+        if (event.getId().equals(to)) {
+          break; // keep the snapshot event itself
+        }
         eventStore.delete(event.getId());
         counter.incrementAndGet();
       }
