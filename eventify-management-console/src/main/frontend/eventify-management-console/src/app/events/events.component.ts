@@ -16,6 +16,7 @@ import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
 import { AggregateState, EventMessage } from '../models';
+import { JsonHighlightPipe } from '../shared/json-highlight.pipe';
 
 @Component({
   selector: 'app-events',
@@ -25,6 +26,7 @@ import { AggregateState, EventMessage } from '../models';
     CommonModule, NgTemplateOutlet, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
     SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule,
+    JsonHighlightPipe,
   ],
   providers: [MessageService],
 })

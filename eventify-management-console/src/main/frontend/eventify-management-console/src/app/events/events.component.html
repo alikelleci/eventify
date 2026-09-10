@@ -153,7 +153,7 @@
       <!-- Event tab: payload + metadata -->
       @if (activeTab() === 'event') {
         <div class="relative group mb-6">
-          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed text-surface-900 dark:text-surface-100 overflow-auto max-h-72">{{ formatJson(event.payload) }}</pre>
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72" [innerHTML]="formatJson(event.payload) | jsonHighlight"></pre>
           <p-button [text]="true" [rounded]="true" severity="secondary"
             class="!absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
             [icon]="copiedKey() === 'event-payload' ? 'pi pi-check' : 'pi pi-copy'"
@@ -199,7 +199,7 @@
           <p-skeleton height="8rem" />
         } @else if (aggregateState(); as state) {
           <div class="relative group">
-            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed text-surface-900 dark:text-surface-100 overflow-auto max-h-72">{{ formatJson(state.payload) }}</pre>
+            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72" [innerHTML]="formatJson(state.payload) | jsonHighlight"></pre>
             <p-button [text]="true" [rounded]="true" severity="secondary"
               class="!absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
               [icon]="copiedKey() === 'state-payload' ? 'pi pi-check' : 'pi pi-copy'"
