@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone, Input } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone, Input, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -35,17 +35,39 @@ const MAX_RECENT = 8;
   ],
   providers: [MessageService],
 })
-export class EventsComponent {
+export class EventsComponent implements OnInit {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
   private readonly zone = inject(NgZone);
   private readonly router = inject(Router);
 
+  private initialEventId: string | null = null;
+
   @Input() set id(value: string) {
     if (value) {
       this.aggregateId.set(value);
       this.doSearch(value);
+    }
+  }
+
+  @Input() set eventId(value: string) {
+    if (value) this.initialEventId = value;
+  }
+
+  ngOnInit() {
+    if (this.initialEventId) {
+      this.loadingDetail.set(true);
+      this.svc.getEventDetail(this.aggregateId(), this.initialEventId)
+        .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
+          this.loadingDetail.set(false);
+          return EMPTY;
+        }))
+        .subscribe(detail => {
+          this.selectedEvent.set(detail.event);
+          this.eventDetail.set(detail);
+          this.loadingDetail.set(false);
+        });
     }
   }
 
@@ -171,6 +193,7 @@ export class EventsComponent {
     this.activeTab.set('event');
     this.showDiff.set(false);
     if (this.isMobile()) this.drawerVisible.set(true);
+    this.router.navigate([], { queryParams: { id: this.aggregateId(), eventId: event.id }, replaceUrl: true });
     this.loadingDetail.set(true);
     this.detailSub = this.svc.getEventDetail(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
