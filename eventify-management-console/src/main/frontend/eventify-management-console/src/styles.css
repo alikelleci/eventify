@@ -14,15 +14,16 @@ html, body {
 }
 
 /* jsondiffpatch overrides */
-.jsondiffpatch-delta,
-.jsondiffpatch-delta ul {
+.jsondiffpatch-delta {
   font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
   font-size: 0.75rem;
   width: 100%;
   padding-left: 0;
 }
-ul.jsondiffpatch-delta,
 .jsondiffpatch-delta ul {
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+  font-size: 0.75rem;
+  width: 100%;
   padding-left: 1rem;
 }
 .jsondiffpatch-property-name {

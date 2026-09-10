@@ -70,6 +70,8 @@ public class EventifyManagementServer {
 
       String[] segments = path.split("/");
 
+      boolean forwarded = Boolean.parseBoolean(queryParams.get("forwarded"));
+
       // /api/aggregates/{id}/events/{eventId}
       if (segments.length == 6 && "aggregates".equals(segments[2]) && "events".equals(segments[4])) {
         String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
@@ -86,7 +88,6 @@ public class EventifyManagementServer {
 
       String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
       String endpoint = segments[4];
-      boolean forwarded = Boolean.parseBoolean(queryParams.get("forwarded"));
 
       switch (endpoint) {
         case "events" -> handleGetEvents(exchange, aggregateId, queryParams, forwarded);

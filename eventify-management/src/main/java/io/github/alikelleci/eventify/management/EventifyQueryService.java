@@ -152,14 +152,12 @@ public class EventifyQueryService {
           EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (handler != null) {
             if (event.getId().equals(eventId)) {
-              // apply the target event — previousState is already set
+              previousState = state;
               state = handler.apply(state, event);
-              version++;
             } else {
-              previousState = handler.apply(previousState, event);
-              state = previousState;
-              version++;
+              state = handler.apply(state, event);
             }
+            version++;
           }
         }
       }
