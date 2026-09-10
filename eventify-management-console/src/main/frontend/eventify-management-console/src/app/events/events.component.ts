@@ -191,12 +191,20 @@ export class EventsComponent {
       });
   }
 
+  cleanPayload(obj: Record<string, unknown>): Record<string, unknown> {
+    const cleaned = { ...obj };
+    delete cleaned['@class'];
+    delete cleaned['@type'];
+    return cleaned;
+  }
+
   formatJson(obj: unknown): string {
     const cleaned = { ...obj as Record<string, unknown> };
     delete cleaned['@class'];
     delete cleaned['@type'];
     return JSON.stringify(cleaned, null, 2);
   }
+
 
   private doSearch(id: string) {
     this.events.set([]);

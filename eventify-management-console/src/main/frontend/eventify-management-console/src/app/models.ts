@@ -2,10 +2,10 @@ export interface EventMessage {
   id: string;
   timestamp: string;
   type: string;
+  payload: Record<string, unknown> & { '@type'?: string; '@class'?: string };
+  metadata: Record<string, string>;
   aggregateId: string;
   revision: number;
-  metadata: Record<string, string>;
-  payload: Record<string, unknown> & { '@type'?: string; '@class'?: string };
 }
 
 export interface EventsPage {
@@ -14,11 +14,14 @@ export interface EventsPage {
 }
 
 export interface AggregateState {
-  eventId: string;
+  id: string;
   timestamp: string;
-  version: number;
-  metadata: Record<string, string>;
+  type: string;
   payload: Record<string, unknown> & { '@type'?: string };
+  metadata: Record<string, string>;
+  aggregateId: string;
+  eventId: string;
+  version: number;
 }
 
 export interface EventDetail {

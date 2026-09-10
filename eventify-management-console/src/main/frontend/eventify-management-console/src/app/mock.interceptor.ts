@@ -76,10 +76,9 @@ const MOCK_EVENTS: EventsPage = {
 
 const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
   [`${AGGREGATE_ID}@0000000000001`]: {
-    eventId: `${AGGREGATE_ID}@0000000000001`,
+    id: `${AGGREGATE_ID}@0000000000001`,
     timestamp: new Date(Date.now() - 300_000).toISOString(),
-    version: 1,
-    metadata: { '$correlationId': 'corr-001' },
+    type: 'Customer',
     payload: {
       '@type': 'com.example.Customer',
       id: AGGREGATE_ID,
@@ -94,12 +93,15 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
       referralCode: 'FRIEND2024',
       tags: ['new-customer', 'web-registration', 'referral'],
     },
+    metadata: { '$correlationId': 'corr-001' },
+    aggregateId: AGGREGATE_ID,
+    eventId: `${AGGREGATE_ID}@0000000000001`,
+    version: 1,
   },
   [`${AGGREGATE_ID}@0000000000002`]: {
-    eventId: `${AGGREGATE_ID}@0000000000002`,
+    id: `${AGGREGATE_ID}@0000000000002`,
     timestamp: new Date(Date.now() - 120_000).toISOString(),
-    version: 2,
-    metadata: { '$correlationId': 'corr-002' },
+    type: 'Customer',
     payload: {
       '@type': 'com.example.Customer',
       id: AGGREGATE_ID,
@@ -114,12 +116,15 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
       referralCode: 'FRIEND2024',
       tags: ['new-customer', 'web-registration', 'referral'],
     },
+    metadata: { '$correlationId': 'corr-002' },
+    aggregateId: AGGREGATE_ID,
+    eventId: `${AGGREGATE_ID}@0000000000002`,
+    version: 2,
   },
   [`${AGGREGATE_ID}@0000000000003`]: {
-    eventId: `${AGGREGATE_ID}@0000000000003`,
+    id: `${AGGREGATE_ID}@0000000000003`,
     timestamp: new Date(Date.now() - 60_000).toISOString(),
-    version: 3,
-    metadata: { '$correlationId': 'corr-003' },
+    type: 'Customer',
     payload: {
       '@type': 'com.example.Customer',
       id: AGGREGATE_ID,
@@ -134,6 +139,10 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
       referralCode: 'FRIEND2024',
       tags: ['new-customer', 'web-registration', 'referral', 'updated'],
     },
+    metadata: { '$correlationId': 'corr-003' },
+    aggregateId: AGGREGATE_ID,
+    eventId: `${AGGREGATE_ID}@0000000000003`,
+    version: 3,
   },
 };
 
