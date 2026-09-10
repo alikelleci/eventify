@@ -236,7 +236,7 @@
             <div class="absolute top-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
               @if (detail.previousState) {
                 <p-button [text]="true" [rounded]="true" [severity]="showDiff() ? 'primary' : 'secondary'"
-                  icon="pi pi-code"
+                  icon="pi pi-arrow-right-arrow-left"
                   [pTooltip]="showDiff() ? 'Hide diff' : 'Show diff'"
                   tooltipPosition="top"
                   (onClick)="showDiff.set(!showDiff())" />
