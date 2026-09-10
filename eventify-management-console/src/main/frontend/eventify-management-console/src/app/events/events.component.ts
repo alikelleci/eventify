@@ -55,7 +55,7 @@ export class EventsComponent {
   loading = signal(false);
   loadingMore = signal(false);
   selectedEvent = signal<EventMessage | null>(null);
-  selectedState = signal<AggregateState | null>(null);
+  aggregateState = signal<AggregateState | null>(null);
   loadingState = signal(false);
   drawerVisible = signal(false);
   isMobile = signal(window.innerWidth < 1024);
@@ -93,7 +93,7 @@ export class EventsComponent {
     this.events.set([]);
     this.nextCursor.set(null);
     this.selectedEvent.set(null);
-    this.selectedState.set(null);
+    this.aggregateState.set(null);
     this.drawerVisible.set(false);
     this.loadPage(id, null, false);
   }
@@ -106,7 +106,7 @@ export class EventsComponent {
 
   selectEvent(event: EventMessage) {
     this.selectedEvent.set(event);
-    this.selectedState.set(null);
+    this.aggregateState.set(null);
     this.activeTab.set('event');
     this.drawerVisible.set(true);
     this.loadingState.set(true);
@@ -116,7 +116,7 @@ export class EventsComponent {
         return EMPTY;
       }))
       .subscribe(state => {
-        this.selectedState.set(state);
+        this.aggregateState.set(state);
         this.loadingState.set(false);
       });
   }

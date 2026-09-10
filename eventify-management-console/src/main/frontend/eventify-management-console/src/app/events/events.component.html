@@ -122,8 +122,8 @@
         <p-tab value="event">Event</p-tab>
         <p-tab value="state">
           <span class="flex items-center gap-1.5">State
-            @if (selectedState()) {
-              <p-tag [value]="'v' + selectedState()!.version" severity="secondary" />
+            @if (aggregateState()) {
+              <p-tag [value]="'v' + aggregateState()!.version" severity="secondary" />
             }
           </span>
         </p-tab>
@@ -180,7 +180,7 @@
       @if (activeTab() === 'state') {
         @if (loadingState()) {
           <p-skeleton height="8rem" />
-        } @else if (selectedState(); as state) {
+        } @else if (aggregateState(); as state) {
           <div class="relative group">
             <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed text-surface-900 dark:text-surface-100 overflow-auto max-h-72">{{ formatJson(state.payload) }}</pre>
             <p-button [text]="true" [rounded]="true" severity="secondary"
