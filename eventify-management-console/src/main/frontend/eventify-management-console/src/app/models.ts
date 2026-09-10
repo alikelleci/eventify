@@ -26,6 +26,6 @@ export interface AggregateState {
 
 export interface EventDetail {
   event: EventMessage;
-  state: AggregateState;
+  state: AggregateState | null;
   previousState: AggregateState | null;
 }

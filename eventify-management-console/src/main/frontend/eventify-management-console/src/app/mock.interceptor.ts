@@ -7,8 +7,26 @@ const AGGREGATE_ID = 'customer-1';
 const MOCK_EVENTS: EventsPage = {
   events: [
     {
+      id: `${AGGREGATE_ID}@0000000000005`,
+      timestamp: new Date(Date.now() - 10_000).toISOString(),
+      type: 'CustomerCreated',
+      payload: { '@class': 'com.example.CustomerEvent$CustomerCreated', id: AGGREGATE_ID, firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
+      metadata: { '$correlationId': 'corr-005', '$replyTo': 'my-app.replies' },
+      aggregateId: AGGREGATE_ID,
+      revision: 1,
+    },
+    {
+      id: `${AGGREGATE_ID}@0000000000004`,
+      timestamp: new Date(Date.now() - 30_000).toISOString(),
+      type: 'CustomerDeleted',
+      payload: { '@class': 'com.example.CustomerEvent$CustomerDeleted', id: AGGREGATE_ID },
+      metadata: { '$correlationId': 'corr-004', '$replyTo': 'my-app.replies' },
+      aggregateId: AGGREGATE_ID,
+      revision: 1,
+    },
+    {
       id: `${AGGREGATE_ID}@0000000000003`,
-      timestamp: new Date(Date.now() - 60_000).toISOString(),
+      timestamp: new Date(Date.now() - 120_000).toISOString(),
       type: 'FirstNameChanged',
       payload: { '@class': 'com.example.CustomerEvent$FirstNameChanged', id: AGGREGATE_ID, firstName: 'Jane' },
       metadata: { '$correlationId': 'corr-003', '$replyTo': 'my-app.replies' },
@@ -17,9 +35,9 @@ const MOCK_EVENTS: EventsPage = {
     },
     {
       id: `${AGGREGATE_ID}@0000000000002`,
-      timestamp: new Date(Date.now() - 120_000).toISOString(),
-      type: 'CustomerUpdated',
-      payload: { '@class': 'com.example.CustomerEvent$CustomerUpdated', id: AGGREGATE_ID, firstName: 'John', lastName: 'Smith' },
+      timestamp: new Date(Date.now() - 180_000).toISOString(),
+      type: 'LastNameChanged',
+      payload: { '@class': 'com.example.CustomerEvent$LastNameChanged', id: AGGREGATE_ID, lastName: 'Smith' },
       metadata: { '$correlationId': 'corr-002', '$replyTo': 'my-app.replies' },
       aggregateId: AGGREGATE_ID,
       revision: 1,
@@ -74,75 +92,67 @@ const MOCK_EVENTS: EventsPage = {
   nextCursor: null,
 };
 
-const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
+const CUSTOMER_BASE = {
+  '@class': 'com.example.Customer',
+  id: AGGREGATE_ID,
+  firstName: 'John',
+  lastName: 'Doe',
+  email: 'john.doe@example.com',
+  phoneNumber: '+31612345678',
+  dateOfBirth: '1985-03-22',
+  address: { street: 'Keizersgracht 123', city: 'Amsterdam', postalCode: '1015 CJ', country: 'NL' },
+  preferences: { language: 'nl', currency: 'EUR', newsletterOptIn: true, smsOptIn: false, theme: 'dark' },
+  registrationSource: 'WEB',
+  referralCode: 'FRIEND2024',
+  tags: ['new-customer', 'web-registration', 'referral'],
+};
+
+const MOCK_STATE_BY_EVENT: Record<string, AggregateState | null> = {
+  // v1: CustomerCreated → base state
   [`${AGGREGATE_ID}@0000000000001`]: {
     id: `${AGGREGATE_ID}@0000000000001`,
     timestamp: new Date(Date.now() - 300_000).toISOString(),
     type: 'Customer',
-    payload: {
-      '@class': 'com.example.Customer',
-      id: AGGREGATE_ID,
-      firstName: 'John',
-      lastName: 'Doe',
-      email: 'john.doe@example.com',
-      phoneNumber: '+31612345678',
-      dateOfBirth: '1985-03-22',
-      address: { street: 'Keizersgracht 123', city: 'Amsterdam', postalCode: '1015 CJ', country: 'NL' },
-      preferences: { language: 'nl', currency: 'EUR', newsletterOptIn: true, smsOptIn: false, theme: 'dark' },
-      registrationSource: 'WEB',
-      referralCode: 'FRIEND2024',
-      tags: ['new-customer', 'web-registration', 'referral'],
-    },
+    payload: { ...CUSTOMER_BASE },
     metadata: { '$correlationId': 'corr-001' },
     aggregateId: AGGREGATE_ID,
     eventId: `${AGGREGATE_ID}@0000000000001`,
     version: 1,
   },
+  // v2: LastNameChanged → lastName: Smith
   [`${AGGREGATE_ID}@0000000000002`]: {
     id: `${AGGREGATE_ID}@0000000000002`,
-    timestamp: new Date(Date.now() - 120_000).toISOString(),
+    timestamp: new Date(Date.now() - 180_000).toISOString(),
     type: 'Customer',
-    payload: {
-      '@class': 'com.example.Customer',
-      id: AGGREGATE_ID,
-      firstName: 'John',
-      lastName: 'Smith',
-      email: 'john.doe@example.com',
-      phoneNumber: '+31612345678',
-      dateOfBirth: '1985-03-22',
-      address: { street: 'Keizersgracht 123', city: 'Amsterdam', postalCode: '1015 CJ', country: 'NL' },
-      preferences: { language: 'nl', currency: 'EUR', newsletterOptIn: true, smsOptIn: false, theme: 'dark' },
-      registrationSource: 'WEB',
-      referralCode: 'FRIEND2024',
-      tags: ['new-customer', 'web-registration', 'referral'],
-    },
+    payload: { ...CUSTOMER_BASE, lastName: 'Smith' },
     metadata: { '$correlationId': 'corr-002' },
     aggregateId: AGGREGATE_ID,
     eventId: `${AGGREGATE_ID}@0000000000002`,
     version: 2,
   },
+  // v3: FirstNameChanged → firstName: Jane
   [`${AGGREGATE_ID}@0000000000003`]: {
     id: `${AGGREGATE_ID}@0000000000003`,
-    timestamp: new Date(Date.now() - 60_000).toISOString(),
+    timestamp: new Date(Date.now() - 120_000).toISOString(),
     type: 'Customer',
-    payload: {
-      '@class': 'com.example.Customer',
-      id: AGGREGATE_ID,
-      firstName: 'Jane',
-      lastName: 'Smith',
-      email: 'jane.doe@example.com',
-      phoneNumber: '+31612345678',
-      dateOfBirth: '1985-03-22',
-      address: { street: 'Prinsengracht 456', city: 'Amsterdam', postalCode: '1016 HV', country: 'NL' },
-      preferences: { language: 'en', currency: 'EUR', newsletterOptIn: false, smsOptIn: true, theme: 'light' },
-      registrationSource: 'WEB',
-      referralCode: 'FRIEND2024',
-      tags: ['new-customer', 'web-registration', 'referral', 'updated'],
-    },
+    payload: { ...CUSTOMER_BASE, firstName: 'Jane', lastName: 'Smith' },
     metadata: { '$correlationId': 'corr-003' },
     aggregateId: AGGREGATE_ID,
     eventId: `${AGGREGATE_ID}@0000000000003`,
     version: 3,
+  },
+  // v4: CustomerDeleted → null
+  [`${AGGREGATE_ID}@0000000000004`]: null,
+  // v5: CustomerCreated → fresh base state
+  [`${AGGREGATE_ID}@0000000000005`]: {
+    id: `${AGGREGATE_ID}@0000000000005`,
+    timestamp: new Date(Date.now() - 10_000).toISOString(),
+    type: 'Customer',
+    payload: { ...CUSTOMER_BASE },
+    metadata: { '$correlationId': 'corr-005' },
+    aggregateId: AGGREGATE_ID,
+    eventId: `${AGGREGATE_ID}@0000000000005`,
+    version: 5,
   },
 };
 
@@ -155,8 +165,8 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
       const idx = eventsList.findIndex(e => e.id === eventId);
       if (idx === -1) return of(new HttpResponse({ status: 404, body: 'Not Found' }));
       const event = eventsList[idx];
-      const state = MOCK_STATE_BY_EVENT[eventId];
-      const previousState = idx < eventsList.length - 1 ? MOCK_STATE_BY_EVENT[eventsList[idx + 1].id] : null;
+      const state = MOCK_STATE_BY_EVENT[eventId] ?? null;
+      const previousState = idx < eventsList.length - 1 ? (MOCK_STATE_BY_EVENT[eventsList[idx + 1].id] ?? null) : null;
       const detail: EventDetail = { event, state, previousState };
       return of(new HttpResponse({ status: 200, body: detail })).pipe(delay(300));
     }

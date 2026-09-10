@@ -173,7 +173,9 @@
           <p-tab value="event">Event</p-tab>
           <p-tab value="state">
             <span class="flex items-center gap-1.5">State
-              <p-tag [value]="'v' + detail.state.version" severity="secondary" />
+              @if (detail.state) {
+                <p-tag [value]="'v' + detail.state.version" severity="secondary" />
+              }
             </span>
           </p-tab>
         </p-tablist>
@@ -227,23 +229,26 @@
 
       <!-- State tab -->
       @if (activeTab() === 'state') {
-        <div class="relative group">
-          @if (showDiff()) {
-            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono"
-                 [innerHTML]="cleanPayload(detail.state.payload) | jsonDiff:cleanPayload(detail.previousState!.payload)"></pre>
-          } @else {
+        @if (showDiff()) {
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono"
+               [innerHTML]="cleanPayload(detail.state?.payload ?? {}) | jsonDiff:cleanPayload(detail.previousState!.payload)"></pre>
+        } @else if (detail.state) {
+          <div class="relative group">
             <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72" [innerHTML]="formatJson(detail.state.payload) | jsonHighlight"></pre>
-          }
-          @if (!showDiff()) {
             <p-button [text]="true" [rounded]="true" severity="secondary"
               class="!absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
               [icon]="copiedKey() === 'state-payload' ? 'pi pi-check' : 'pi pi-copy'"
               [pTooltip]="copiedKey() === 'state-payload' ? 'Copied!' : 'Copy'"
               tooltipPosition="top"
               (onClick)="copy(formatJson(detail.state.payload), 'state-payload')" />
-          }
-        </div>
-        @if (detail.previousState) {
+          </div>
+        } @else {
+          <div class="flex flex-col items-center justify-center gap-2 py-8 text-surface-400">
+            <i class="pi pi-trash text-2xl opacity-40"></i>
+            <span class="text-sm">Aggregate was deleted</span>
+          </div>
+        }
+        @if (detail.previousState && detail.state) {
           <div class="flex justify-end mt-2">
             <p-togglebutton [(ngModel)]="showDiff" onLabel="Hide diff" offLabel="Show diff" size="small" />
           </div>
