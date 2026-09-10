@@ -108,7 +108,7 @@ export class EventsComponent {
     this.selectedEvent.set(event);
     this.aggregateState.set(null);
     this.activeTab.set('event');
-    this.drawerVisible.set(true);
+    if (this.isMobile()) this.drawerVisible.set(true);
     this.loadingState.set(true);
     this.svc.getState(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {

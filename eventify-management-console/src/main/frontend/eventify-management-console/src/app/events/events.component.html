@@ -3,7 +3,7 @@
 <div class="flex h-full overflow-hidden">
 
   <!-- Event list -->
-  <div class="flex flex-col h-full w-full overflow-hidden">
+  <div class="flex flex-col h-full shrink-0 w-full lg:w-80 xl:w-96 border-r border-surface-100 dark:border-surface-800 overflow-hidden">
 
     <div class="px-4 py-3 border-b border-surface-100 dark:border-surface-800 shrink-0">
       <div class="flex gap-2">
@@ -51,7 +51,6 @@
             </div>
           }
         }
-
         @if (!loadingMore() && !nextCursor()) {
           <div class="flex items-center justify-center gap-2 px-4 py-3 text-xs text-surface-400">
             <i class="pi pi-check-circle"></i>
@@ -62,17 +61,35 @@
     </div>
   </div>
 
+  <!-- Detail panel — inline on desktop, drawer on mobile -->
+  @if (!isMobile()) {
+    <div class="flex-1 overflow-y-auto">
+      @if (selectedEvent()) {
+        <div class="px-6 py-5">
+          <ng-container *ngTemplateOutlet="detailContent" />
+        </div>
+      } @else {
+        <div class="flex flex-col items-center justify-center h-full gap-2 text-surface-400">
+          <i class="pi pi-mouse-pointer text-4xl"></i>
+          <span class="text-sm">Select an event to view details</span>
+        </div>
+      }
+    </div>
+  }
+
 </div>
 
-<!-- Detail drawer — modal on mobile, non-modal panel on desktop -->
-<p-drawer [(visible)]="drawerVisible" position="right"
-  [modal]="isMobile()"
-  [styleClass]="isMobile() ? 'w-full' : '!w-3/5 shadow-xl'"
-  [blockScroll]="true"
-  header="Event Details"
-  appendTo="body">
-  <ng-container *ngTemplateOutlet="detailContent" />
-</p-drawer>
+<!-- Drawer — mobile only -->
+@if (isMobile()) {
+  <p-drawer [(visible)]="drawerVisible" position="right"
+    [modal]="true"
+    styleClass="w-full"
+    [blockScroll]="true"
+    header="Event Details"
+    appendTo="body">
+    <ng-container *ngTemplateOutlet="detailContent" />
+  </p-drawer>
+}
 
 <!-- Shared detail content -->
 <ng-template #detailContent>
@@ -201,3 +218,4 @@
     </div>
 
   }
+</ng-template>
