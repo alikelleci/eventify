@@ -64,6 +64,8 @@ export class EventsComponent {
 
   readonly skeletonRows = Array(8);
 
+  private detailSub?: Subscription;
+
   aggregateId = signal('');
   events = signal<EventMessage[]>([]);
   nextCursor = signal<string | null>(null);
@@ -166,8 +168,6 @@ export class EventsComponent {
     if (!id || !this.nextCursor()) return;
     this.loadPage(id, this.nextCursor(), true);
   }
-
-  private detailSub?: Subscription;
 
   selectEvent(event: EventMessage) {
     this.detailSub?.unsubscribe();
