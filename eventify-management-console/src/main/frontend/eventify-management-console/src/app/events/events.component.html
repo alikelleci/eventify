@@ -42,7 +42,7 @@
         }
       } @else if (!hasResults()) {
         <div class="flex flex-col items-center justify-center h-full gap-3 text-surface-400">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="11" cy="11" r="7"/>
             <line x1="16.5" y1="16.5" x2="21" y2="21"/>
           </svg>
@@ -143,8 +143,8 @@
       <div class="text-xs text-surface-400 mt-0.5">{{ detail.event.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</div>
     </div>
 
-    <div class="py-4">
-      <div class="flex items-center justify-between">
+    <div class="py-4 flex flex-col gap-3">
+      <div class="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-lg px-3 py-2.5">
         <div>
           <div class="text-xs font-medium text-surface-500 uppercase tracking-widest mb-1">Event ID</div>
           <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ detail.event.id }}</div>
@@ -155,10 +155,7 @@
           tooltipPosition="top"
           (onClick)="copy(detail.event.id, 'event-id')" />
       </div>
-    </div>
-
-    <div class="border-t border-surface-100 dark:border-surface-800 py-4">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-lg px-3 py-2.5">
         <div>
           <div class="text-xs font-medium text-surface-500 uppercase tracking-widest mb-1">Aggregate ID</div>
           <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ detail.event.aggregateId }}</div>
@@ -186,7 +183,7 @@
       </p-tabs>
     </div>
 
-    <div class="border-t border-surface-100 dark:border-surface-800 pt-4">
+    <div class="pt-4">
 
       <!-- Event tab: payload + metadata -->
       @if (activeTab() === 'event') {
@@ -211,12 +208,13 @@
               </thead>
               <tbody>
                 @for (entry of allMetadataEntries(detail.event.metadata); track entry.key) {
-                  <tr class="border-b border-surface-100 dark:border-surface-800 last:border-0 hover:bg-surface-50 dark:hover:bg-surface-800">
+                  <tr class="group border-b border-surface-100 dark:border-surface-800 last:border-0 hover:bg-surface-50 dark:hover:bg-surface-800">
                     <td class="px-4 py-2.5 font-mono text-primary-600 dark:text-primary-400 break-all">{{ entry.key }}</td>
                     <td class="px-4 py-2.5 text-surface-900 dark:text-surface-100 break-all">
                       <div class="flex items-center justify-between gap-2">
                         <span class="break-all">{{ entry.value }}</span>
                         <p-button [text]="true" [rounded]="true" severity="secondary"
+                          class="opacity-0 group-hover:opacity-100 transition-opacity"
                           [icon]="copiedKey() === entry.key ? 'pi pi-check' : 'pi pi-copy'"
                           [pTooltip]="copiedKey() === entry.key ? 'Copied!' : 'Copy'"
                           tooltipPosition="top"
@@ -253,9 +251,9 @@
             </div>
           </div>
         } @else {
-          <div class="flex flex-col items-center justify-center gap-2 py-8 text-surface-400">
-            <i class="pi pi-trash text-2xl opacity-40"></i>
-            <span class="text-sm">Aggregate was deleted</span>
+          <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+            <i class="pi pi-trash text-red-500 dark:text-red-400 text-base shrink-0"></i>
+            <span class="text-sm font-medium text-red-700 dark:text-red-300">Aggregate was deleted</span>
           </div>
         }
       }
