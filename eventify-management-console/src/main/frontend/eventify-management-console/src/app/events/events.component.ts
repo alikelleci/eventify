@@ -1,7 +1,8 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone, OnInit, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, NgTemplateOutlet, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { catchError, EMPTY } from 'rxjs';
 
 import { InputTextModule } from 'primeng/inputtext';
@@ -33,11 +34,21 @@ const MAX_RECENT = 8;
   ],
   providers: [MessageService],
 })
-export class EventsComponent {
+export class EventsComponent implements OnInit {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
   private readonly zone = inject(NgZone);
+  private readonly router = inject(Router);
+
+  @Input() set id(value: string) {
+    if (value) {
+      this.aggregateId.set(value);
+      this.doSearch(value);
+    }
+  }
+
+  ngOnInit() {}
 
   copiedKey = signal<string | null>(null);
 
@@ -68,7 +79,6 @@ export class EventsComponent {
   activeTab = signal('event');
   recentSearches = signal<string[]>(this.loadRecent());
   showRecent = signal(false);
-
   hasResults = computed(() => this.events().length > 0);
 
   @HostListener('window:resize')
@@ -82,6 +92,21 @@ export class EventsComponent {
     if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
       e.preventDefault();
       this.searchInput?.nativeElement.focus();
+      return;
+    }
+    const list = this.events();
+    if (!list.length) return;
+    const current = this.selectedEvent();
+    const idx = current ? list.findIndex(e => e.id === current.id) : -1;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.selectEvent(list[Math.min(idx + 1, list.length - 1)]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.selectEvent(list[Math.max(idx - 1, 0)]);
+    } else if (e.key === 'Escape') {
+      this.selectedEvent.set(null);
+      this.drawerVisible.set(false);
     }
   }
 
@@ -98,6 +123,7 @@ export class EventsComponent {
   selectRecent(id: string) {
     this.aggregateId.set(id);
     this.showRecent.set(false);
+    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
     this.doSearch(id);
   }
 
@@ -133,6 +159,7 @@ export class EventsComponent {
     const id = this.aggregateId().trim();
     if (!id) return;
     this.showRecent.set(false);
+    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
     this.doSearch(id);
   }
 
