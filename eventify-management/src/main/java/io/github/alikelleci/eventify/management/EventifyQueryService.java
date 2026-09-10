@@ -159,11 +159,7 @@ public class EventifyQueryService {
         }
       }
 
-      if (state == null) {
-        return new QueryResult.NotFound<>();
-      }
-
-      AggregateState currentState = AggregateState.builder()
+      AggregateState currentState = state == null ? null : AggregateState.builder()
           .timestamp(state.getTimestamp())
           .payload(state.getPayload())
           .metadata(state.getMetadata())
