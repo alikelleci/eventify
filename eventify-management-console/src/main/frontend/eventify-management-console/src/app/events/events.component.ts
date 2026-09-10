@@ -1,9 +1,9 @@
 import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone, Input } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { CommonModule, NgTemplateOutlet, DatePipe } from '@angular/common';
+import { CommonModule, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, Subscription } from 'rxjs';
 
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
@@ -28,7 +28,7 @@ const MAX_RECENT = 8;
   templateUrl: './events.component.html',
   standalone: true,
   imports: [
-    CommonModule, NgTemplateOutlet, FormsModule, DatePipe,
+    CommonModule, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
     SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule,
     JsonHighlightPipe, JsonDiffPipe,
@@ -167,13 +167,16 @@ export class EventsComponent {
     this.loadPage(id, this.nextCursor(), true);
   }
 
+  private detailSub?: Subscription;
+
   selectEvent(event: EventMessage) {
+    this.detailSub?.unsubscribe();
     this.selectedEvent.set(event);
     this.eventDetail.set(null);
     this.activeTab.set('event');
     if (this.isMobile()) this.drawerVisible.set(true);
     this.loadingDetail.set(true);
-    this.svc.getEventDetail(this.aggregateId().trim(), event.id)
+    this.detailSub = this.svc.getEventDetail(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
         this.loadingDetail.set(false);
         return EMPTY;
