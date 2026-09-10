@@ -89,11 +89,19 @@ public class EventifyQueryService {
 
       String from = aggregateId + "@";
       String to = cursor != null ? aggregateId + "@" + cursor : aggregateId + "@~";
+      String cursorKey = cursor != null ? to : null;
 
       List<Event> events = new ArrayList<>();
       try (KeyValueIterator<String, Event> it = store.reverseRange(from, to)) {
         while (it.hasNext() && events.size() <= limit) {
-          events.add(it.next().value);
+          Event event = it.next().value;
+          // "to" is an inclusive upper bound, but the cursor marks an event that was
+          // already shown (and excluded) on the previous page. Skip it here so it
+          // isn't duplicated as the first item of this page.
+          if (cursorKey != null && event.getId().equals(cursorKey)) {
+            continue;
+          }
+          events.add(event);
         }
       }
 
