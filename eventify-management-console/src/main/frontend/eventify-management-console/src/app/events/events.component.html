@@ -30,7 +30,7 @@
         @for (event of events(); track event.id) {
           <div
             class="flex items-center gap-3 px-4 py-3 cursor-pointer border-b border-surface-100 dark:border-surface-800 hover:bg-surface-50 dark:hover:bg-surface-800 transition-colors"
-            [ngClass]="selectedEvent()?.id === event.id ? 'bg-primary-50 dark:bg-primary-950 border-l-2 border-l-primary-500' : ''"
+            [ngClass]="selectedEvent()?.id === event.id ? 'bg-primary-50 dark:bg-primary-950 border-l-4 border-l-primary-500' : ''"
             (click)="selectEvent(event)"
           >
             <div class="flex flex-col flex-1 min-w-0">
