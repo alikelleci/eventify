@@ -28,11 +28,6 @@ ul.jsondiffpatch-delta,
 .jsondiffpatch-property-name {
   color: rgb(51 65 85);
 }
-@media (prefers-color-scheme: dark) {
-  .jsondiffpatch-property-name {
-    color: rgb(203 213 225);
-  }
-}
 .jsondiffpatch-added .jsondiffpatch-property-name,
 .jsondiffpatch-added .jsondiffpatch-value pre,
 .jsondiffpatch-modified .jsondiffpatch-right-value pre,
@@ -52,6 +47,9 @@ ul.jsondiffpatch-delta,
   color: #94a3b8;
 }
 @media (prefers-color-scheme: dark) {
+  .jsondiffpatch-property-name {
+    color: rgb(203 213 225);
+  }
   .jsondiffpatch-added .jsondiffpatch-property-name,
   .jsondiffpatch-added .jsondiffpatch-value pre,
   .jsondiffpatch-modified .jsondiffpatch-right-value pre,

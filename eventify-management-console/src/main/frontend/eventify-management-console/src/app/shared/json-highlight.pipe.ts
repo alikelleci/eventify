@@ -1,7 +1,7 @@
 import { Pipe, PipeTransform } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
-@Pipe({ name: 'jsonHighlight', standalone: true })
+@Pipe({ name: 'jsonHighlight', standalone: true, pure: true })
 export class JsonHighlightPipe implements PipeTransform {
   constructor(private sanitizer: DomSanitizer) {}
 
