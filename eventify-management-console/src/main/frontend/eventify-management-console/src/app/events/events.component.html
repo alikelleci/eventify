@@ -163,6 +163,9 @@
             }
           </span>
         </p-tab>
+        @if (previousState() || loadingPreviousState()) {
+          <p-tab value="diff">Diff</p-tab>
+        }
       </p-tablist>
     </p-tabs>
     </div>
@@ -230,6 +233,21 @@
           <div class="flex flex-col items-center justify-center h-32 gap-2 text-surface-400">
             <i class="pi pi-info-circle text-4xl"></i>
             <span class="text-sm">State not available for this event</span>
+          </div>
+        }
+      }
+
+      <!-- Diff tab -->
+      @if (activeTab() === 'diff') {
+        @if (loadingState() || loadingPreviousState()) {
+          <p-skeleton height="8rem" />
+        } @else if (aggregateState() && previousState()) {
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono"
+               [innerHTML]="aggregateState()!.payload | jsonDiff:previousState()!.payload"></pre>
+        } @else {
+          <div class="flex flex-col items-center justify-center h-32 gap-2 text-surface-400">
+            <i class="pi pi-info-circle text-4xl"></i>
+            <span class="text-sm">Diff not available</span>
           </div>
         }
       }

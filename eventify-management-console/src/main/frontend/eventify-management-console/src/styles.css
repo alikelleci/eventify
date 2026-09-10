@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "primeicons/primeicons.css";
+@import "jsondiffpatch/formatters/styles/html.css";
 
 @plugin "tailwindcss-primeui";
 
@@ -10,5 +11,49 @@ html, body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 15px;
   letter-spacing: -0.011em;
+}
+
+/* jsondiffpatch overrides */
+.jsondiffpatch-delta {
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+  font-size: 0.75rem;
+  width: 100%;
+}
+.jsondiffpatch-added .jsondiffpatch-property-name,
+.jsondiffpatch-added .jsondiffpatch-value pre,
+.jsondiffpatch-modified .jsondiffpatch-right-value pre,
+.jsondiffpatch-textdiff-added {
+  background: #d1fae5;
+  color: #065f46;
+}
+.jsondiffpatch-deleted .jsondiffpatch-property-name,
+.jsondiffpatch-deleted pre,
+.jsondiffpatch-modified .jsondiffpatch-left-value pre,
+.jsondiffpatch-textdiff-deleted {
+  background: #fee2e2;
+  color: #991b1b;
+  text-decoration: none;
+}
+.jsondiffpatch-unchanged {
+  color: #94a3b8;
+}
+@media (prefers-color-scheme: dark) {
+  .jsondiffpatch-added .jsondiffpatch-property-name,
+  .jsondiffpatch-added .jsondiffpatch-value pre,
+  .jsondiffpatch-modified .jsondiffpatch-right-value pre,
+  .jsondiffpatch-textdiff-added {
+    background: #064e3b;
+    color: #6ee7b7;
+  }
+  .jsondiffpatch-deleted .jsondiffpatch-property-name,
+  .jsondiffpatch-deleted pre,
+  .jsondiffpatch-modified .jsondiffpatch-left-value pre,
+  .jsondiffpatch-textdiff-deleted {
+    background: #450a0a;
+    color: #fca5a5;
+  }
+  .jsondiffpatch-unchanged {
+    color: #475569;
+  }
 }
 

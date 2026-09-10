@@ -18,6 +18,7 @@ import { MessageService } from 'primeng/api';
 import { EventifyService } from '../eventify.service';
 import { AggregateState, EventMessage } from '../models';
 import { JsonHighlightPipe } from '../shared/json-highlight.pipe';
+import { JsonDiffPipe } from '../shared/json-diff.pipe';
 
 const RECENT_KEY = 'eventify.recentSearches';
 const MAX_RECENT = 8;
@@ -30,7 +31,7 @@ const MAX_RECENT = 8;
     CommonModule, NgTemplateOutlet, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
     SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule,
-    JsonHighlightPipe,
+    JsonHighlightPipe, JsonDiffPipe,
   ],
   providers: [MessageService],
 })
@@ -79,6 +80,8 @@ export class EventsComponent implements OnInit {
   activeTab = signal('event');
   recentSearches = signal<string[]>(this.loadRecent());
   showRecent = signal(false);
+  previousState = signal<AggregateState | null>(null);
+  loadingPreviousState = signal(false);
   hasResults = computed(() => this.events().length > 0);
 
   @HostListener('window:resize')
@@ -172,8 +175,10 @@ export class EventsComponent implements OnInit {
   selectEvent(event: EventMessage) {
     this.selectedEvent.set(event);
     this.aggregateState.set(null);
+    this.previousState.set(null);
     this.activeTab.set('event');
     if (this.isMobile()) this.drawerVisible.set(true);
+
     this.loadingState.set(true);
     this.svc.getState(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
@@ -184,6 +189,21 @@ export class EventsComponent implements OnInit {
         this.aggregateState.set(state);
         this.loadingState.set(false);
       });
+
+    const events = this.events();
+    const idx = events.findIndex(e => e.id === event.id);
+    if (idx < events.length - 1) {
+      this.loadingPreviousState.set(true);
+      this.svc.getState(this.aggregateId().trim(), events[idx + 1].id)
+        .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
+          this.loadingPreviousState.set(false);
+          return EMPTY;
+        }))
+        .subscribe(state => {
+          this.previousState.set(state);
+          this.loadingPreviousState.set(false);
+        });
+    }
   }
 
   formatJson(obj: unknown): string {

@@ -77,35 +77,66 @@ const MOCK_EVENTS: EventsPage = {
   nextCursor: null,
 };
 
-const MOCK_STATE: AggregateState = {
-  eventId: `${AGGREGATE_ID}@0000000000003`,
-  timestamp: new Date(Date.now() - 60_000).toISOString(),
-  version: 3,
-  metadata: { '$correlationId': 'corr-003' },
-  payload: {
-    '@type': 'com.example.Customer',
-    id: AGGREGATE_ID,
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'john.doe@example.com',
-    phoneNumber: '+31612345678',
-    dateOfBirth: '1985-03-22',
-    address: {
-      street: 'Keizersgracht 123',
-      city: 'Amsterdam',
-      postalCode: '1015 CJ',
-      country: 'NL',
+const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
+  [`${AGGREGATE_ID}@0000000000001`]: {
+    eventId: `${AGGREGATE_ID}@0000000000001`,
+    timestamp: new Date(Date.now() - 300_000).toISOString(),
+    version: 1,
+    metadata: { '$correlationId': 'corr-001' },
+    payload: {
+      '@type': 'com.example.Customer',
+      id: AGGREGATE_ID,
+      firstName: 'John',
+      lastName: 'Doe',
+      email: 'john.doe@example.com',
+      phoneNumber: '+31612345678',
+      dateOfBirth: '1985-03-22',
+      address: { street: 'Keizersgracht 123', city: 'Amsterdam', postalCode: '1015 CJ', country: 'NL' },
+      preferences: { language: 'nl', currency: 'EUR', newsletterOptIn: true, smsOptIn: false, theme: 'dark' },
+      registrationSource: 'WEB',
+      referralCode: 'FRIEND2024',
+      tags: ['new-customer', 'web-registration', 'referral'],
     },
-    preferences: {
-      language: 'nl',
-      currency: 'EUR',
-      newsletterOptIn: true,
-      smsOptIn: false,
-      theme: 'dark',
+  },
+  [`${AGGREGATE_ID}@0000000000002`]: {
+    eventId: `${AGGREGATE_ID}@0000000000002`,
+    timestamp: new Date(Date.now() - 120_000).toISOString(),
+    version: 2,
+    metadata: { '$correlationId': 'corr-002' },
+    payload: {
+      '@type': 'com.example.Customer',
+      id: AGGREGATE_ID,
+      firstName: 'John',
+      lastName: 'Smith',
+      email: 'john.doe@example.com',
+      phoneNumber: '+31612345678',
+      dateOfBirth: '1985-03-22',
+      address: { street: 'Keizersgracht 123', city: 'Amsterdam', postalCode: '1015 CJ', country: 'NL' },
+      preferences: { language: 'nl', currency: 'EUR', newsletterOptIn: true, smsOptIn: false, theme: 'dark' },
+      registrationSource: 'WEB',
+      referralCode: 'FRIEND2024',
+      tags: ['new-customer', 'web-registration', 'referral'],
     },
-    registrationSource: 'WEB',
-    referralCode: 'FRIEND2024',
-    tags: ['new-customer', 'web-registration', 'referral'],
+  },
+  [`${AGGREGATE_ID}@0000000000003`]: {
+    eventId: `${AGGREGATE_ID}@0000000000003`,
+    timestamp: new Date(Date.now() - 60_000).toISOString(),
+    version: 3,
+    metadata: { '$correlationId': 'corr-003' },
+    payload: {
+      '@type': 'com.example.Customer',
+      id: AGGREGATE_ID,
+      firstName: 'Jane',
+      lastName: 'Smith',
+      email: 'jane.doe@example.com',
+      phoneNumber: '+31612345678',
+      dateOfBirth: '1985-03-22',
+      address: { street: 'Prinsengracht 456', city: 'Amsterdam', postalCode: '1016 HV', country: 'NL' },
+      preferences: { language: 'en', currency: 'EUR', newsletterOptIn: false, smsOptIn: true, theme: 'light' },
+      registrationSource: 'WEB',
+      referralCode: 'FRIEND2024',
+      tags: ['new-customer', 'web-registration', 'referral', 'updated'],
+    },
   },
 };
 
@@ -114,7 +145,9 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     return of(new HttpResponse({ status: 200, body: MOCK_EVENTS })).pipe(delay(400));
   }
   if (req.url.includes('/api/aggregates') && req.url.includes('/state')) {
-    return of(new HttpResponse({ status: 200, body: MOCK_STATE })).pipe(delay(300));
+    const eventId = req.params.get('eventId') ?? '';
+    const state = MOCK_STATE_BY_EVENT[eventId] ?? MOCK_STATE_BY_EVENT[`${AGGREGATE_ID}@0000000000003`];
+    return of(new HttpResponse({ status: 200, body: state })).pipe(delay(300));
   }
   return next(req);
 };
