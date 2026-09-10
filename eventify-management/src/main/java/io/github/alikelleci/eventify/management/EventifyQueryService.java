@@ -135,6 +135,9 @@ public class EventifyQueryService {
       String from = aggregateId + "@";
       String to = eventId;
 
+      // Strictly-before check: a snapshot taken AT the target event must not be used
+      // directly, otherwise the loop below never runs and previousState collapses
+      // into the same object as currentState.
       AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
           .filter(snap -> snap.getEventId().compareTo(to) < 0)
           .orElse(null);
@@ -144,12 +147,21 @@ public class EventifyQueryService {
       }
 
       long version = state != null ? state.getVersion() : 0;
+
+      // previousState/previousVersion are tracked together so that the version
+      // reported on previousState is the number of events actually applied to
+      // reach it, not a stale/inherited value from whatever object "state" was
+      // pointing at.
       AggregateState previousState = state;
+      long previousVersion = version;
 
       try (KeyValueIterator<String, Event> it = eventStore.range(from, to)) {
         while (it.hasNext()) {
           Event event = it.next().value;
-          if (event.getId().equals(eventId)) previousState = state;
+          if (event.getId().equals(eventId)) {
+            previousState = state;
+            previousVersion = version;
+          }
           EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (handler != null) {
             state = handler.apply(state, event);
@@ -166,7 +178,15 @@ public class EventifyQueryService {
           .version(version)
           .build();
 
-      return new QueryResult.Ok<>(new EventDetail(targetEvent, currentState, previousState));
+      AggregateState previousStateResult = previousState == null ? null : AggregateState.builder()
+          .timestamp(previousState.getTimestamp())
+          .payload(previousState.getPayload())
+          .metadata(previousState.getMetadata())
+          .eventId(previousState.getEventId())
+          .version(previousVersion)
+          .build();
+
+      return new QueryResult.Ok<>(new EventDetail(targetEvent, currentState, previousStateResult));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return new QueryResult.Unavailable<>("Event store not ready");
