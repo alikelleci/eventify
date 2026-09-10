@@ -129,6 +129,10 @@ public class EventifyQueryService {
 
       Event targetEvent = eventStore.get(eventId);
       if (targetEvent == null) {
+        if (!isLocallyAuthoritative(aggregateId)) {
+          log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
+          return new QueryResult.Unavailable<>("Ownership changed during query");
+        }
         return new QueryResult.NotFound<>();
       }
 
