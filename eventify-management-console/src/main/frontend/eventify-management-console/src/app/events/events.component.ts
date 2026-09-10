@@ -42,30 +42,11 @@ export class EventsComponent {
   private readonly zone = inject(NgZone);
   private readonly router = inject(Router);
 
-  private pendingEventId: string | null = null;
-  private detailSub?: Subscription;
-  private searchScheduled = false;
-
-  // Path param: /:aggregateId
-  @Input() set aggregateId(value: string) {
-    if (value && value !== this._aggregateId()) {
-      this._aggregateId.set(value);
-      this.scheduleSearch(value);
+  @Input() set id(value: string) {
+    if (value) {
+      this.aggregateId.set(value);
+      this.doSearch(value);
     }
-  }
-
-  // Path param: /:aggregateId/:eventId
-  @Input() set eventId(value: string) {
-    if (value) this.pendingEventId = value;
-  }
-
-  private scheduleSearch(id: string) {
-    if (this.searchScheduled) return;
-    this.searchScheduled = true;
-    Promise.resolve().then(() => {
-      this.searchScheduled = false;
-      this.doSearch(id, true);
-    });
   }
 
   copiedKey = signal<string | null>(null);
@@ -83,7 +64,9 @@ export class EventsComponent {
 
   readonly skeletonRows = Array(8);
 
-  _aggregateId = signal('');
+  private detailSub?: Subscription;
+
+  aggregateId = signal('');
   events = signal<EventMessage[]>([]);
   nextCursor = signal<string | null>(null);
   loading = signal(false);
@@ -124,7 +107,6 @@ export class EventsComponent {
     } else if (e.key === 'Escape') {
       this.selectedEvent.set(null);
       this.drawerVisible.set(false);
-      this.router.navigate([this._aggregateId()], { replaceUrl: true });
     }
   }
 
@@ -139,10 +121,10 @@ export class EventsComponent {
   }
 
   selectRecent(id: string) {
-    this._aggregateId.set(id);
+    this.aggregateId.set(id);
     this.showRecent.set(false);
-    this.router.navigate([id], { replaceUrl: true });
-    this.doSearch(id, false);
+    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
+    this.doSearch(id);
   }
 
   removeRecent(id: string, e: MouseEvent) {
@@ -174,16 +156,16 @@ export class EventsComponent {
   }
 
   search() {
-    const id = this._aggregateId().trim();
+    const id = this.aggregateId().trim();
     if (!id) return;
-    this._aggregateId.set(id);
+    this.aggregateId.set(id);
     this.showRecent.set(false);
-    this.router.navigate([id], { replaceUrl: true });
-    this.doSearch(id, false);
+    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
+    this.doSearch(id);
   }
 
   loadMore() {
-    const id = this._aggregateId().trim();
+    const id = this.aggregateId().trim();
     if (!id || !this.nextCursor()) return;
     this.loadPage(id, this.nextCursor(), true);
   }
@@ -194,9 +176,8 @@ export class EventsComponent {
     this.eventDetail.set(null);
     this.activeTab.set('event');
     if (this.isMobile()) this.drawerVisible.set(true);
-    this.router.navigate([this._aggregateId().trim(), event.id], { replaceUrl: true });
     this.loadingDetail.set(true);
-    this.detailSub = this.svc.getEventDetail(this._aggregateId().trim(), event.id)
+    this.detailSub = this.svc.getEventDetail(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
         this.loadingDetail.set(false);
         return EMPTY;
@@ -214,13 +195,12 @@ export class EventsComponent {
     return JSON.stringify(cleaned, null, 2);
   }
 
-  private doSearch(id: string, preserveEventId = false) {
+  private doSearch(id: string) {
     this.events.set([]);
     this.nextCursor.set(null);
     this.selectedEvent.set(null);
     this.eventDetail.set(null);
     this.drawerVisible.set(false);
-    if (!preserveEventId) this.pendingEventId = null;
     this.loadPage(id, null, false);
   }
 
@@ -257,11 +237,6 @@ export class EventsComponent {
         this.nextCursor.set(page.nextCursor);
         this.loading.set(false);
         this.loadingMore.set(false);
-        if (!append && this.pendingEventId) {
-          const match = page.events.find(e => e.id === this.pendingEventId);
-          this.pendingEventId = null;
-          if (match) this.selectEvent(match);
-        }
       });
   }
 }

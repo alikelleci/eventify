@@ -8,7 +8,7 @@
     <div class="px-4 py-5 border-b border-surface-100 dark:border-surface-800 shrink-0">
       <div class="relative flex gap-2">
         <input #searchInput pInputText variant="filled" class="flex-1 min-w-0 p-inputtext-lg" placeholder="Search aggregate ID… ( / )"
-               [(ngModel)]="_aggregateId" (keyup.enter)="search()"
+               [(ngModel)]="aggregateId" (keyup.enter)="search()"
                (focus)="onSearchFocus()" (blur)="onSearchBlur()" />
         <p-button icon="pi pi-search" (onClick)="search()" [loading]="loading()" size="large" />
         @if (showRecent() && recentSearches().length > 0) {
@@ -41,8 +41,11 @@
           </div>
         }
       } @else if (!hasResults()) {
-        <div class="flex flex-col items-center justify-center h-full gap-2 text-surface-400">
-          <i class="pi pi-inbox text-4xl"></i>
+        <div class="flex flex-col items-center justify-center h-full gap-3 text-surface-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+            <circle cx="11" cy="11" r="7"/>
+            <line x1="16.5" y1="16.5" x2="21" y2="21"/>
+          </svg>
           <span class="text-sm">Search for an aggregate to view its events</span>
         </div>
       } @else {
@@ -88,8 +91,13 @@
           <ng-container *ngTemplateOutlet="detailContent" />
         </div>
       } @else {
-        <div class="flex flex-col items-center justify-center h-full gap-2 text-surface-400">
-          <i class="pi pi-mouse-pointer text-4xl"></i>
+        <div class="flex flex-col items-center justify-center h-full gap-3 text-surface-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <line x1="9" y1="12" x2="15" y2="12"/>
+            <line x1="9" y1="16" x2="13" y2="16"/>
+          </svg>
           <span class="text-sm">Select an event to view details</span>
         </div>
       }
