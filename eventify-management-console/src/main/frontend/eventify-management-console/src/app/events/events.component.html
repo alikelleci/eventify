@@ -185,7 +185,7 @@
 
     <div class="pt-4">
 
-      <!-- Event tab: payload + metadata -->
+      <!-- Event tab: payload -->
       @if (activeTab() === 'event') {
         <div class="relative group mb-6">
           <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono" [innerHTML]="formatJson(detail.event.payload) | jsonHighlight"></pre>
@@ -196,8 +196,39 @@
             tooltipPosition="top"
             (onClick)="copy(formatJson(detail.event.payload), 'event-payload')" />
         </div>
-        @if (allMetadataEntries(detail.event.metadata).length > 0) {
-          <div class="text-xs font-medium text-surface-500 uppercase tracking-widest mb-3">Metadata</div>
+      }
+
+      <!-- State tab -->
+      @if (activeTab() === 'state') {
+        @if (detail.state) {
+          <div class="relative group">
+            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono"
+                 [innerHTML]="showDiff() ? (cleanPayload(detail.state.payload) | jsonDiff:cleanPayload(detail.previousState!.payload)) : (formatJson(detail.state.payload) | jsonHighlight)"></pre>
+            <div class="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              @if (detail.previousState) {
+                <p-button [text]="true" [rounded]="true" [severity]="showDiff() ? 'primary' : 'secondary'"
+                  icon="pi pi-arrow-right-arrow-left"
+                  size="small"
+                  styleClass="!w-[6.5rem]"
+                  [label]="showDiff() ? 'Hide diff' : 'Show diff'"
+                  (onClick)="showDiff.set(!showDiff())" />
+              }
+              <p-button [text]="true" [rounded]="true" severity="secondary"
+                [icon]="copiedKey() === 'state-payload' ? 'pi pi-check' : 'pi pi-copy'"
+                [pTooltip]="copiedKey() === 'state-payload' ? 'Copied!' : 'Copy'"
+                tooltipPosition="top"
+                (onClick)="copy(formatJson(detail.state.payload), 'state-payload')" />
+            </div>
+          </div>
+        } @else {
+          <pre class="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-400 dark:text-red-500 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono">// Aggregate was deleted</pre>
+        }
+      }
+
+      <!-- Metadata — always visible -->
+      @if (allMetadataEntries(detail.event.metadata).length > 0) {
+        <div class="mt-6">
+          <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-3">Metadata</div>
           <div class="rounded-lg border border-surface-100 dark:border-surface-800 overflow-hidden">
             <table class="w-full text-xs">
               <thead>
@@ -226,34 +257,7 @@
               </tbody>
             </table>
           </div>
-        }
-      }
-
-      <!-- State tab -->
-      @if (activeTab() === 'state') {
-        @if (detail.state) {
-          <div class="relative group">
-            <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono"
-                 [innerHTML]="showDiff() ? (cleanPayload(detail.state.payload) | jsonDiff:cleanPayload(detail.previousState!.payload)) : (formatJson(detail.state.payload) | jsonHighlight)"></pre>
-            <div class="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              @if (detail.previousState) {
-                <p-button [text]="true" [rounded]="true" [severity]="showDiff() ? 'primary' : 'secondary'"
-                  icon="pi pi-arrow-right-arrow-left"
-                  size="small"
-                  styleClass="!w-[6.5rem]"
-                  [label]="showDiff() ? 'Hide diff' : 'Show diff'"
-                  (onClick)="showDiff.set(!showDiff())" />
-              }
-              <p-button [text]="true" [rounded]="true" severity="secondary"
-                [icon]="copiedKey() === 'state-payload' ? 'pi pi-check' : 'pi pi-copy'"
-                [pTooltip]="copiedKey() === 'state-payload' ? 'Copied!' : 'Copy'"
-                tooltipPosition="top"
-                (onClick)="copy(formatJson(detail.state.payload), 'state-payload')" />
-            </div>
-          </div>
-        } @else {
-          <pre class="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-400 dark:text-red-500 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono">// Aggregate was deleted</pre>
-        }
+        </div>
       }
 
     </div>
