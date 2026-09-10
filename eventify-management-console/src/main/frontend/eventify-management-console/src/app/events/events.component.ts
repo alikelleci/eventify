@@ -155,6 +155,7 @@ export class EventsComponent {
   search() {
     const id = this.aggregateId().trim();
     if (!id) return;
+    this.aggregateId.set(id);
     this.showRecent.set(false);
     this.router.navigate([], { queryParams: { id }, replaceUrl: true });
     this.doSearch(id);

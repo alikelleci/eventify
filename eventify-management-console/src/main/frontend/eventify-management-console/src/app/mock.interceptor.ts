@@ -142,10 +142,11 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     const eventDetailMatch = req.url.match(/\/api\/aggregates\/[^/]+\/events\/(.+)/);
     if (eventDetailMatch) {
       const eventId = decodeURIComponent(eventDetailMatch[1]);
-      const state = MOCK_STATE_BY_EVENT[eventId];
       const eventsList = MOCK_EVENTS.events;
       const idx = eventsList.findIndex(e => e.id === eventId);
+      if (idx === -1) return of(new HttpResponse({ status: 404, body: 'Not Found' }));
       const event = eventsList[idx];
+      const state = MOCK_STATE_BY_EVENT[eventId];
       const previousState = idx < eventsList.length - 1 ? MOCK_STATE_BY_EVENT[eventsList[idx + 1].id] : null;
       const detail: EventDetail = { event, state, previousState };
       return of(new HttpResponse({ status: 200, body: detail })).pipe(delay(300));
