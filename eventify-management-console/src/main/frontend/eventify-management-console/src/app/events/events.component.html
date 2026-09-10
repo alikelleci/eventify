@@ -51,11 +51,11 @@
             </div>
           }
         }
+
         @if (!loadingMore() && !nextCursor()) {
-          <div class="flex items-center justify-center gap-2 px-4 py-4 text-xs text-surface-400">
-            <span class="h-px w-8 bg-surface-200 dark:bg-surface-700"></span>
+          <div class="flex items-center justify-center gap-2 px-4 py-3 text-xs text-surface-400">
+            <i class="pi pi-check-circle"></i>
             <span>All events loaded</span>
-            <span class="h-px w-8 bg-surface-200 dark:bg-surface-700"></span>
           </div>
         }
       }
