@@ -191,7 +191,7 @@
       <!-- Event tab: payload + metadata -->
       @if (activeTab() === 'event') {
         <div class="relative group mb-6">
-          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72" [innerHTML]="formatJson(detail.event.payload) | jsonHighlight"></pre>
+          <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono" [innerHTML]="formatJson(detail.event.payload) | jsonHighlight"></pre>
           <p-button [text]="true" [rounded]="true" severity="secondary"
             class="!absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
             [icon]="copiedKey() === 'event-payload' ? 'pi pi-check' : 'pi pi-copy'"
