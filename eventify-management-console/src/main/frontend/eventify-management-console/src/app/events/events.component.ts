@@ -18,6 +18,9 @@ import { EventifyService } from '../eventify.service';
 import { AggregateState, EventMessage } from '../models';
 import { JsonHighlightPipe } from '../shared/json-highlight.pipe';
 
+const RECENT_KEY = 'eventify.recentSearches';
+const MAX_RECENT = 8;
+
 @Component({
   selector: 'app-events',
   templateUrl: './events.component.html',
@@ -47,6 +50,7 @@ export class EventsComponent {
     });
   }
 
+  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
   @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
 
   readonly skeletonRows = Array(8);
@@ -62,12 +66,48 @@ export class EventsComponent {
   drawerVisible = signal(false);
   isMobile = signal(window.innerWidth < 1024);
   activeTab = signal('event');
+  recentSearches = signal<string[]>(this.loadRecent());
+  showRecent = signal(false);
 
   hasResults = computed(() => this.events().length > 0);
 
   @HostListener('window:resize')
   onResize() {
     this.isMobile.set(window.innerWidth < 1024);
+  }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeydown(e: KeyboardEvent) {
+    const tag = (e.target as HTMLElement).tagName;
+    if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      e.preventDefault();
+      this.searchInput?.nativeElement.focus();
+    }
+  }
+
+  onSearchFocus() {
+    if (this.recentSearches().length > 0) this.showRecent.set(true);
+  }
+
+  onSearchBlur() {
+    this.zone.runOutsideAngular(() =>
+      setTimeout(() => this.zone.run(() => this.showRecent.set(false)), 150)
+    );
+  }
+
+  selectRecent(id: string) {
+    this.aggregateId.set(id);
+    this.showRecent.set(false);
+    this.doSearch(id);
+  }
+
+  removeRecent(id: string, e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const updated = this.recentSearches().filter(r => r !== id);
+    this.recentSearches.set(updated);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+    if (updated.length === 0) this.showRecent.set(false);
   }
 
   onListScroll(el: HTMLDivElement) {
@@ -92,12 +132,8 @@ export class EventsComponent {
   search() {
     const id = this.aggregateId().trim();
     if (!id) return;
-    this.events.set([]);
-    this.nextCursor.set(null);
-    this.selectedEvent.set(null);
-    this.aggregateState.set(null);
-    this.drawerVisible.set(false);
-    this.loadPage(id, null, false);
+    this.showRecent.set(false);
+    this.doSearch(id);
   }
 
   loadMore() {
@@ -130,6 +166,30 @@ export class EventsComponent {
     return JSON.stringify(cleaned, null, 2);
   }
 
+  private doSearch(id: string) {
+    this.events.set([]);
+    this.nextCursor.set(null);
+    this.selectedEvent.set(null);
+    this.aggregateState.set(null);
+    this.drawerVisible.set(false);
+    this.loadPage(id, null, false);
+  }
+
+  private saveRecent(id: string) {
+    const current = this.recentSearches().filter(r => r !== id);
+    const updated = [id, ...current].slice(0, MAX_RECENT);
+    this.recentSearches.set(updated);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+  }
+
+  private loadRecent(): string[] {
+    try {
+      return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+    } catch {
+      return [];
+    }
+  }
+
   private loadPage(id: string, cursor: string | null, append: boolean) {
     if (append) this.loadingMore.set(true);
     else this.loading.set(true);
@@ -143,6 +203,7 @@ export class EventsComponent {
         return EMPTY;
       }))
       .subscribe(page => {
+        if (!append) this.saveRecent(id);
         this.events.update(prev => append ? [...prev, ...page.events] : page.events);
         this.nextCursor.set(page.nextCursor);
         this.loading.set(false);
