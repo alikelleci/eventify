@@ -199,12 +199,8 @@ export class EventsComponent {
   }
 
   formatJson(obj: unknown): string {
-    const cleaned = { ...obj as Record<string, unknown> };
-    delete cleaned['@class'];
-    delete cleaned['@type'];
-    return JSON.stringify(cleaned, null, 2);
+    return JSON.stringify(this.cleanPayload(obj as Record<string, unknown>), null, 2);
   }
-
 
   private doSearch(id: string) {
     this.events.set([]);
