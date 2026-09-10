@@ -147,7 +147,7 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
       const idx = eventsList.findIndex(e => e.id === eventId);
       const event = eventsList[idx];
       const previousState = idx < eventsList.length - 1 ? MOCK_STATE_BY_EVENT[eventsList[idx + 1].id] : null;
-      const detail: EventDetail = { event, state, previousState: previousState ?? null };
+      const detail: EventDetail = { event, state, previousState };
       return of(new HttpResponse({ status: 200, body: detail })).pipe(delay(300));
     }
     return of(new HttpResponse({ status: 200, body: MOCK_EVENTS })).pipe(delay(400));

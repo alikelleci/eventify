@@ -61,7 +61,6 @@ export class EventsComponent {
   }
 
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
-  @ViewChild('listContainer') listContainer!: ElementRef<HTMLDivElement>;
 
   readonly skeletonRows = Array(8);
 

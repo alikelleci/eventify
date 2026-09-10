@@ -77,7 +77,7 @@ public class EventifyQueryService {
 
   public QueryResult<EventsPage> getEvents(String aggregateId, String cursor, int limit, boolean forwarded) {
     QueryResult<EventsPage> routing = checkRouting(aggregateId, forwarded,
-        "/api/aggregates/" + aggregateId + "/events" + buildEventsQuery(cursor, limit),
+        "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8) + "/events" + buildEventsQuery(cursor, limit),
         new TypeReference<EventsPage>() {});
     if (routing != null) {
       return routing;
@@ -186,7 +186,7 @@ public class EventifyQueryService {
 
   public QueryResult<AggregateState> getState(String aggregateId, String eventId, boolean forwarded) {
     QueryResult<AggregateState> routing = checkRouting(aggregateId, forwarded,
-        "/api/aggregates/" + aggregateId + "/state" + buildStateQuery(eventId),
+        "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8) + "/state" + buildStateQuery(eventId),
         new TypeReference<AggregateState>() {});
     if (routing != null) {
       return routing;

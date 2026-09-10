@@ -21,9 +21,6 @@ html, body {
   padding-left: 0;
 }
 .jsondiffpatch-delta ul {
-  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
-  font-size: 0.75rem;
-  width: 100%;
   padding-left: 1rem;
 }
 .jsondiffpatch-property-name {
