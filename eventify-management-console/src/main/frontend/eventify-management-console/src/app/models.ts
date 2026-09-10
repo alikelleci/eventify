@@ -21,3 +21,9 @@ export interface AggregateState {
   metadata: Record<string, string>;
   payload: Record<string, unknown> & { '@type'?: string };
 }
+
+export interface EventDetail {
+  event: EventMessage;
+  state: AggregateState;
+  previousState: AggregateState | null;
+}

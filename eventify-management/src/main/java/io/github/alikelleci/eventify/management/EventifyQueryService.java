@@ -42,6 +42,7 @@ public class EventifyQueryService {
   private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
   public record EventsPage(List<Event> events, String nextCursor) {}
+  public record EventDetail(Event event, AggregateState state, AggregateState previousState) {}
 
   public sealed interface QueryResult<T> {
     record Ok<T>(T value) implements QueryResult<T> {}
@@ -108,6 +109,79 @@ public class EventifyQueryService {
       return new QueryResult.Unavailable<>("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying events for aggregate {}", aggregateId, e);
+      return new QueryResult.Unavailable<>("Unexpected error");
+    }
+  }
+
+  public QueryResult<EventDetail> getEventDetail(String aggregateId, String eventId, boolean forwarded) {
+    QueryResult<EventDetail> routing = checkRouting(aggregateId, forwarded,
+        "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8) + "/events/" + URLEncoder.encode(eventId, java.nio.charset.StandardCharsets.UTF_8),
+        new TypeReference<EventDetail>() {});
+    if (routing != null) {
+      return routing;
+    }
+
+    try {
+      ReadOnlyKeyValueStore<String, AggregateState> snapshotStore = eventify.getKafkaStreams()
+          .store(StoreQueryParameters.fromNameAndType(SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()));
+      ReadOnlyKeyValueStore<String, Event> eventStore = eventify.getKafkaStreams()
+          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
+
+      Event targetEvent = eventStore.get(eventId);
+      if (targetEvent == null) {
+        return new QueryResult.NotFound<>();
+      }
+
+      String from = aggregateId + "@";
+      String to = eventId;
+
+      AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
+          .filter(snap -> snap.getEventId().compareTo(to) < 0)
+          .orElse(null);
+
+      if (state != null) {
+        from = state.getEventId() + "\0";
+      }
+
+      long version = state != null ? state.getVersion() : 0;
+      AggregateState previousState = state;
+
+      try (KeyValueIterator<String, Event> it = eventStore.range(from, to)) {
+        while (it.hasNext()) {
+          Event event = it.next().value;
+          EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+          if (handler != null) {
+            if (event.getId().equals(eventId)) {
+              // apply the target event — previousState is already set
+              state = handler.apply(state, event);
+              version++;
+            } else {
+              previousState = handler.apply(previousState, event);
+              state = previousState;
+              version++;
+            }
+          }
+        }
+      }
+
+      if (state == null) {
+        return new QueryResult.NotFound<>();
+      }
+
+      AggregateState currentState = AggregateState.builder()
+          .timestamp(state.getTimestamp())
+          .payload(state.getPayload())
+          .metadata(state.getMetadata())
+          .eventId(state.getEventId())
+          .version(version)
+          .build();
+
+      return new QueryResult.Ok<>(new EventDetail(targetEvent, currentState, previousState));
+    } catch (InvalidStateStoreException e) {
+      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      return new QueryResult.Unavailable<>("Event store not ready");
+    } catch (Exception e) {
+      log.error("Unexpected error querying event detail for aggregate {}", aggregateId, e);
       return new QueryResult.Unavailable<>("Unexpected error");
     }
   }

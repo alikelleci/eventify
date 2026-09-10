@@ -69,6 +69,16 @@ public class EventifyManagementServer {
       Map<String, String> queryParams = parseQueryParams(uri.getQuery());
 
       String[] segments = path.split("/");
+
+      // /api/aggregates/{id}/events/{eventId}
+      if (segments.length == 6 && "aggregates".equals(segments[2]) && "events".equals(segments[4])) {
+        String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
+        String eventId = URLDecoder.decode(segments[5], StandardCharsets.UTF_8);
+        QueryResult<EventifyQueryService.EventDetail> result = queryService.getEventDetail(aggregateId, eventId, forwarded);
+        sendQueryResult(exchange, result);
+        return;
+      }
+
       if (segments.length != 5 || !"aggregates".equals(segments[2])) {
         sendResponse(exchange, 404, "Not Found");
         return;

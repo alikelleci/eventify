@@ -16,7 +16,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
-import { AggregateState, EventMessage } from '../models';
+import { AggregateState, EventDetail, EventMessage } from '../models';
 import { JsonHighlightPipe } from '../shared/json-highlight.pipe';
 import { JsonDiffPipe } from '../shared/json-diff.pipe';
 
@@ -73,18 +73,14 @@ export class EventsComponent implements OnInit {
   loading = signal(false);
   loadingMore = signal(false);
   selectedEvent = signal<EventMessage | null>(null);
-  aggregateState = signal<AggregateState | null>(null);
-  loadingState = signal(false);
+  eventDetail = signal<EventDetail | null>(null);
+  loadingDetail = signal(false);
   drawerVisible = signal(false);
   isMobile = signal(window.innerWidth < 1024);
   activeTab = signal('event');
   recentSearches = signal<string[]>(this.loadRecent());
   showRecent = signal(false);
-  previousState = signal<AggregateState | null>(null);
-  loadingPreviousState = signal(false);
   hasResults = computed(() => this.events().length > 0);
-
-  @HostListener('window:resize')
   onResize() {
     this.isMobile.set(window.innerWidth < 1024);
   }
@@ -174,36 +170,19 @@ export class EventsComponent implements OnInit {
 
   selectEvent(event: EventMessage) {
     this.selectedEvent.set(event);
-    this.aggregateState.set(null);
-    this.previousState.set(null);
+    this.eventDetail.set(null);
     this.activeTab.set('event');
     if (this.isMobile()) this.drawerVisible.set(true);
-
-    this.loadingState.set(true);
-    this.svc.getState(this.aggregateId().trim(), event.id)
+    this.loadingDetail.set(true);
+    this.svc.getEventDetail(this.aggregateId().trim(), event.id)
       .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
-        this.loadingState.set(false);
+        this.loadingDetail.set(false);
         return EMPTY;
       }))
-      .subscribe(state => {
-        this.aggregateState.set(state);
-        this.loadingState.set(false);
+      .subscribe(detail => {
+        this.eventDetail.set(detail);
+        this.loadingDetail.set(false);
       });
-
-    const events = this.events();
-    const idx = events.findIndex(e => e.id === event.id);
-    if (idx < events.length - 1) {
-      this.loadingPreviousState.set(true);
-      this.svc.getState(this.aggregateId().trim(), events[idx + 1].id)
-        .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
-          this.loadingPreviousState.set(false);
-          return EMPTY;
-        }))
-        .subscribe(state => {
-          this.previousState.set(state);
-          this.loadingPreviousState.set(false);
-        });
-    }
   }
 
   formatJson(obj: unknown): string {
@@ -217,7 +196,7 @@ export class EventsComponent implements OnInit {
     this.events.set([]);
     this.nextCursor.set(null);
     this.selectedEvent.set(null);
-    this.aggregateState.set(null);
+    this.eventDetail.set(null);
     this.drawerVisible.set(false);
     this.loadPage(id, null, false);
   }

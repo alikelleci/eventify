@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { AggregateState, EventsPage } from './models';
+import { EventDetail, EventsPage } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class EventifyService {
@@ -13,9 +13,7 @@ export class EventifyService {
     return this.http.get<EventsPage>(`/api/aggregates/${encodeURIComponent(aggregateId)}/events`, { params });
   }
 
-  getState(aggregateId: string, eventId?: string): Observable<AggregateState> {
-    let params = new HttpParams();
-    if (eventId) params = params.set('eventId', eventId);
-    return this.http.get<AggregateState>(`/api/aggregates/${encodeURIComponent(aggregateId)}/state`, { params });
+  getEventDetail(aggregateId: string, eventId: string): Observable<EventDetail> {
+    return this.http.get<EventDetail>(`/api/aggregates/${encodeURIComponent(aggregateId)}/events/${encodeURIComponent(eventId)}`);
   }
 }

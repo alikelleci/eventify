@@ -1,6 +1,6 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { of, delay } from 'rxjs';
-import { EventsPage, AggregateState } from './models';
+import { EventsPage, EventDetail, AggregateState } from './models';
 
 const AGGREGATE_ID = 'customer-1';
 
@@ -142,6 +142,18 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState> = {
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.url.includes('/api/aggregates') && req.url.includes('/events')) {
+    // /api/aggregates/{id}/events/{eventId}
+    const eventDetailMatch = req.url.match(/\/api\/aggregates\/[^/]+\/events\/(.+)/);
+    if (eventDetailMatch) {
+      const eventId = decodeURIComponent(eventDetailMatch[1]);
+      const state = MOCK_STATE_BY_EVENT[eventId];
+      const eventsList = MOCK_EVENTS.events;
+      const idx = eventsList.findIndex(e => e.id === eventId);
+      const event = eventsList[idx];
+      const previousState = idx < eventsList.length - 1 ? MOCK_STATE_BY_EVENT[eventsList[idx + 1].id] : null;
+      const detail: EventDetail = { event, state, previousState: previousState ?? null };
+      return of(new HttpResponse({ status: 200, body: detail })).pipe(delay(300));
+    }
     return of(new HttpResponse({ status: 200, body: MOCK_EVENTS })).pipe(delay(400));
   }
   if (req.url.includes('/api/aggregates') && req.url.includes('/state')) {
