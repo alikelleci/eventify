@@ -32,9 +32,6 @@ import java.util.Optional;
 @Slf4j
 public class EventifyQueryService {
 
-  public static final int DEFAULT_PAGE_SIZE = 50;
-  public static final int MAX_PAGE_SIZE = 500;
-
   private static final String EVENT_STORE = "event-store";
   private static final String SNAPSHOT_STORE = "snapshot-store";
 

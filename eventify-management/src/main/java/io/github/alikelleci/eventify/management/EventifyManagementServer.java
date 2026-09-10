@@ -21,6 +21,9 @@ import com.sun.net.httpserver.HttpServer;
 @Slf4j
 public class EventifyManagementServer {
 
+  public static final int DEFAULT_PAGE_SIZE = 50;
+  public static final int MAX_PAGE_SIZE = 500;
+
   private static final String API_PATH = "/api/";
   private static final String CONSOLE_PATH = "/console/";
   private static final String CONSOLE_RESOURCES = "META-INF/resources/console/";
@@ -103,7 +106,7 @@ public class EventifyManagementServer {
   private void handleGetEvents(HttpExchange exchange, String aggregateId,
                                Map<String, String> queryParams, boolean forwarded) throws IOException {
     String cursor = queryParams.get("cursor");
-    int limit = clampLimit(parseIntOrDefault(queryParams.get("limit"), EventifyQueryService.DEFAULT_PAGE_SIZE));
+    int limit = clampLimit(parseIntOrDefault(queryParams.get("limit"), DEFAULT_PAGE_SIZE));
 
     QueryResult<EventifyQueryService.EventsPage> result = queryService.getEvents(aggregateId, cursor, limit, forwarded);
     sendQueryResult(exchange, result);
@@ -168,7 +171,7 @@ public class EventifyManagementServer {
   }
 
   private int clampLimit(int limit) {
-    return Math.max(1, Math.min(limit, EventifyQueryService.MAX_PAGE_SIZE));
+    return Math.max(1, Math.min(limit, MAX_PAGE_SIZE));
   }
 
   private void handleUi(HttpExchange exchange) throws IOException {
