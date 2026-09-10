@@ -136,7 +136,7 @@ public class EventifyQueryService {
       String to = eventId;
 
       AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
-          .filter(snap -> snap.getEventId().compareTo(to) <= 0)
+          .filter(snap -> snap.getEventId().compareTo(to) < 0)
           .orElse(null);
 
       if (state != null) {
@@ -149,8 +149,7 @@ public class EventifyQueryService {
       try (KeyValueIterator<String, Event> it = eventStore.range(from, to)) {
         while (it.hasNext()) {
           Event event = it.next().value;
-          boolean isTarget = event.getId().equals(eventId);
-          if (isTarget) previousState = state;
+          if (event.getId().equals(eventId)) previousState = state;
           EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
           if (handler != null) {
             state = handler.apply(state, event);
