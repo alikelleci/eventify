@@ -8,7 +8,7 @@
     <div class="px-4 py-5 border-b border-surface-100 dark:border-surface-800 shrink-0">
       <div class="relative flex gap-2">
         <input #searchInput pInputText variant="filled" class="flex-1 min-w-0 p-inputtext-lg" placeholder="Search aggregate ID… ( / )"
-               [(ngModel)]="aggregateId" (keyup.enter)="search()"
+               [(ngModel)]="_aggregateId" (keyup.enter)="search()"
                (focus)="onSearchFocus()" (blur)="onSearchBlur()" />
         <p-button icon="pi pi-search" (onClick)="search()" [loading]="loading()" size="large" />
         @if (showRecent() && recentSearches().length > 0) {
