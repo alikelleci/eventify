@@ -13,6 +13,7 @@ import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { TabsModule } from 'primeng/tabs';
 import { TooltipModule } from 'primeng/tooltip';
+import { ToggleButtonModule } from 'primeng/togglebutton';
 import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
@@ -30,7 +31,7 @@ const MAX_RECENT = 8;
   imports: [
     CommonModule, FormsModule, DatePipe,
     InputTextModule, ButtonModule, DrawerModule,
-    SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule,
+    SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule, ToggleButtonModule,
     JsonHighlightPipe, JsonDiffPipe,
   ],
   providers: [MessageService],
@@ -79,6 +80,7 @@ export class EventsComponent {
   activeTab = signal('event');
   recentSearches = signal<string[]>(this.loadRecent());
   showRecent = signal(false);
+  showDiff = signal(false);
   hasResults = computed(() => this.events().length > 0);
 
   @HostListener('window:resize')
@@ -175,6 +177,7 @@ export class EventsComponent {
     this.selectedEvent.set(event);
     this.eventDetail.set(null);
     this.activeTab.set('event');
+    this.showDiff.set(false);
     if (this.isMobile()) this.drawerVisible.set(true);
     this.loadingDetail.set(true);
     this.detailSub = this.svc.getEventDetail(this.aggregateId().trim(), event.id)
