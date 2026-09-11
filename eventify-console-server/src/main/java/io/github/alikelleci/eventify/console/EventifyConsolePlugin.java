@@ -26,8 +26,9 @@ public class EventifyConsolePlugin implements EventifyPlugin {
         .getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
 
     if (applicationServer.isBlank()) {
-      throw new IllegalStateException(
-          "'" + StreamsConfig.APPLICATION_SERVER_CONFIG + "' must be configured to use the Eventify console.");
+      log.warn("'{}' is not configured, Eventify console server will not start.",
+          StreamsConfig.APPLICATION_SERVER_CONFIG);
+      return;
     }
 
     int port = URI.create("http://" + applicationServer).getPort();
