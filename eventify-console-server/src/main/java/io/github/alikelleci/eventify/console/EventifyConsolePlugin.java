@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
+import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.StreamsConfig;
 
@@ -11,15 +12,12 @@ import java.net.URI;
 @Slf4j
 public class EventifyConsolePlugin implements EventifyPlugin {
 
-  private EventifyConsoleServer consoleServer;
   private final String allowedOrigins;
+  private EventifyConsoleServer consoleServer;
 
-  public EventifyConsolePlugin() {
-    this("*");
-  }
-
-  public EventifyConsolePlugin(String allowedOrigins) {
-    this.allowedOrigins = allowedOrigins;
+  @Builder
+  private EventifyConsolePlugin(String allowedOrigins) {
+    this.allowedOrigins = allowedOrigins != null ? allowedOrigins : "*";
   }
 
   @Override
@@ -28,9 +26,8 @@ public class EventifyConsolePlugin implements EventifyPlugin {
         .getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
 
     if (applicationServer.isBlank()) {
-      log.warn("'{}' is not configured, Eventify console server will not start.",
-          StreamsConfig.APPLICATION_SERVER_CONFIG);
-      return;
+      throw new IllegalStateException(
+          "'" + StreamsConfig.APPLICATION_SERVER_CONFIG + "' must be configured to use the Eventify console.");
     }
 
     int port = URI.create("http://" + applicationServer).getPort();

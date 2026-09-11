@@ -17,6 +17,6 @@ public class EventifyConsoleAutoConfiguration {
 
   @Bean
   public InitializingBean eventifyConsolePluginRegistrar(List<Eventify> apps) {
-    return () -> apps.forEach(eventify -> eventify.registerPlugin(new EventifyConsolePlugin()));
+    return () -> apps.forEach(eventify -> eventify.registerPlugin(EventifyConsolePlugin.builder().build()));
   }
 }
