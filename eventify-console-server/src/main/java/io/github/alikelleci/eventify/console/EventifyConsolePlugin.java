@@ -12,6 +12,15 @@ import java.net.URI;
 public class EventifyConsolePlugin implements EventifyPlugin {
 
   private EventifyConsoleServer consoleServer;
+  private final String allowedOrigins;
+
+  public EventifyConsolePlugin() {
+    this("*");
+  }
+
+  public EventifyConsolePlugin(String allowedOrigins) {
+    this.allowedOrigins = allowedOrigins;
+  }
 
   @Override
   public void onStart(Eventify eventify) {
@@ -26,7 +35,7 @@ public class EventifyConsolePlugin implements EventifyPlugin {
 
     int port = URI.create("http://" + applicationServer).getPort();
     EventifyQueryService queryService = new EventifyQueryService(eventify);
-    consoleServer = new EventifyConsoleServer(queryService, eventify.getObjectMapper(), port);
+    consoleServer = new EventifyConsoleServer(queryService, eventify.getObjectMapper(), port, allowedOrigins);
 
     try {
       consoleServer.start();

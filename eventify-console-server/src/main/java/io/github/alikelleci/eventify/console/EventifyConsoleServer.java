@@ -31,12 +31,14 @@ public class EventifyConsoleServer {
   private final EventifyQueryService queryService;
   private final ObjectMapper objectMapper;
   private final int port;
+  private final String allowedOrigins;
   private HttpServer server;
 
-  public EventifyConsoleServer(EventifyQueryService queryService, ObjectMapper objectMapper, int port) {
+  public EventifyConsoleServer(EventifyQueryService queryService, ObjectMapper objectMapper, int port, String allowedOrigins) {
     this.queryService = queryService;
     this.objectMapper = objectMapper;
     this.port = port;
+    this.allowedOrigins = allowedOrigins;
   }
 
   public void start() throws IOException {
@@ -60,7 +62,19 @@ public class EventifyConsoleServer {
     }
   }
 
+  private void addCorsHeaders(HttpExchange exchange) {
+    exchange.getResponseHeaders().set("Access-Control-Allow-Origin", allowedOrigins);
+    exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  }
+
   private void handle(HttpExchange exchange) throws IOException {
+    addCorsHeaders(exchange);
+    if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+      exchange.sendResponseHeaders(204, -1);
+      exchange.close();
+      return;
+    }
     if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
       sendResponse(exchange, 405, "Method Not Allowed");
       return;
