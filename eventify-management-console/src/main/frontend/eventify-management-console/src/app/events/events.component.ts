@@ -97,7 +97,7 @@ export class EventsComponent implements OnInit {
   eventDetail = signal<EventDetail | null>(null);
   loadingDetail = signal(false);
 
-  private readonly MIN_SKELETON_MS = 500;
+  private readonly MIN_SKELETON_MS = 300;
 
   private minElapsed = { loading: false, loadingMore: false, loadingDetail: false };
   private dataReady = { loading: false, loadingMore: false, loadingDetail: false };
