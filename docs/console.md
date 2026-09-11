@@ -28,7 +28,7 @@ Add both modules to your project:
 
 ## Configuration
 
-The console server starts on the same host and port declared in `application.server`. This property is required — it tells Kafka Streams where this node can be reached for inter-node state queries, and it is the address the console server binds to.
+The console server binds to the host and port declared in `application.server`. This property serves two purposes: it tells Kafka Streams where this node can be reached for inter-node state queries, and it determines the address the console server listens on.
 
 ```java
 Properties props = new Properties();
@@ -58,7 +58,7 @@ http://localhost:8085/console/
 
 ## Spring Boot Integration
 
-When using the Spring Boot starter, the console plugin is registered automatically if `eventify-console-server` is on the classpath. No additional configuration is needed beyond setting `application.server` in your Kafka Streams properties.
+When using the Spring Boot starter, the console plugin is registered automatically if `eventify-console-server` is on the classpath. No explicit plugin registration is needed — only `application.server` must be set.
 
 ```java
 @Bean
@@ -76,9 +76,9 @@ public Eventify eventify() {
 
 ## Deployment Modes
 
-### Embedded (default)
+### Embedded
 
-The UI is served directly by your application. Each application gets its own console at its own host and port. This is the default mode when the jar is on the classpath.
+The UI is served directly by your application. Each application gets its own console at its own host and port. This is the default mode when the jars are on the classpath.
 
 ### Standalone Docker
 
@@ -100,7 +100,6 @@ eventify:
     - name: My App 2
       url: http://localhost:8086
 ```
-
 
 ## Security
 
