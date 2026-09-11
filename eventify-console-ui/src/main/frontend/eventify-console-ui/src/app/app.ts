@@ -23,28 +23,28 @@ import { AppEntry } from './config.service';
               (click)="op.toggle($event)"
               class="flex items-center gap-2 h-8 px-3 min-w-40 rounded border border-slate-600 bg-slate-800 hover:bg-slate-700 transition-colors text-sm text-slate-200 cursor-pointer outline-none">
               <span class="flex-1 text-left truncate">{{ backend.activeApp()?.name }}</span>
-              <i class="pi pi-chevron-down text-slate-400 text-xs"></i>
             </button>
 
             <p-popover #op>
-              <div class="flex flex-col min-w-48">
-                <div class="px-3 py-2 border-b border-surface-200 dark:border-surface-700">
+              <div class="flex flex-col" style="min-width: 220px">
+                <div class="px-4 py-3 border-b border-surface-200 dark:border-surface-700">
                   <span class="text-xs font-semibold text-surface-400 uppercase tracking-widest">Applications</span>
                 </div>
-                <div class="max-h-64 overflow-y-auto app-list">
+                <div class="max-h-64 overflow-y-auto app-list py-1">
                   @for (app of backend.apps(); track app.url) {
                     <div
                       (click)="selectApp(app, op)"
-                      class="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 transition-colors">
-                      <div class="w-3 shrink-0">
-                        @if (backend.activeApp()?.url === app.url) {
-                          <i class="pi pi-check text-primary-500 text-xs"></i>
-                        }
-                      </div>
-                      <div class="flex flex-col min-w-0 flex-1">
-                        <span class="text-sm truncate" [class.text-primary-500]="backend.activeApp()?.url === app.url">{{ app.name }}</span>
-                        <span class="text-xs text-surface-400 truncate">{{ app.url }}</span>
-                      </div>
+                      class="flex flex-col px-4 py-2.5 cursor-pointer transition-colors border-l-2"
+                      [class.border-primary-500]="backend.activeApp()?.url === app.url"
+                      [class.border-transparent]="backend.activeApp()?.url !== app.url"
+                      [class.bg-primary-50]="backend.activeApp()?.url === app.url"
+                      [class.dark:bg-primary-950]="backend.activeApp()?.url === app.url"
+                      [class.hover:bg-surface-50]="backend.activeApp()?.url !== app.url"
+                      [class.dark:hover:bg-surface-800]="backend.activeApp()?.url !== app.url">
+                      <span class="text-sm leading-snug"
+                        [class.font-medium]="backend.activeApp()?.url === app.url"
+                        [class.text-primary-600]="backend.activeApp()?.url === app.url">{{ app.name }}</span>
+                      <span class="text-xs text-surface-400 mt-0.5 truncate">{{ app.url }}</span>
                     </div>
                   }
                 </div>
