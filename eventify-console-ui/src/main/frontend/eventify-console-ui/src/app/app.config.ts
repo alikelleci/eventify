@@ -1,4 +1,4 @@
-import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { ApplicationConfig, provideBrowserGlobalErrorListeners, APP_INITIALIZER } from '@angular/core';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -7,6 +7,7 @@ import { mockInterceptor } from './mock.interceptor';
 import { providePrimeNG } from 'primeng/config';
 import Aura from '@primeuix/themes/aura';
 import { routes } from './app.routes';
+import { ConfigService } from './config.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -14,6 +15,12 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     provideHttpClient(withInterceptors(environment.useMockData ? [mockInterceptor] : [])),
     provideAnimationsAsync(),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: (cfg: ConfigService) => () => cfg.load(),
+      deps: [ConfigService],
+      multi: true,
+    },
     providePrimeNG({
       ripple: true,
       theme: {
