@@ -29,7 +29,7 @@
         </dependency>
         <dependency>
             <groupId>io.github.alikelleci</groupId>
-            <artifactId>eventify-management</artifactId>
+            <artifactId>eventify-console-server</artifactId>
             <version>${project.version}</version>
             <optional>true</optional>
         </dependency>

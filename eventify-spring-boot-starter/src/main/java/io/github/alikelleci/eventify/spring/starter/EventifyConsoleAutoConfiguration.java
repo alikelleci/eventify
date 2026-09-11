@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.spring.starter;
 
+import io.github.alikelleci.eventify.console.EventifyConsolePlugin;
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.management.EventifyManagementPlugin;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -11,12 +11,12 @@ import org.springframework.context.annotation.Bean;
 import java.util.List;
 
 @AutoConfiguration
-@ConditionalOnClass(EventifyManagementPlugin.class)
+@ConditionalOnClass(EventifyConsolePlugin.class)
 @ConditionalOnBean(Eventify.class)
-public class EventifyManagementAutoConfiguration {
+public class EventifyConsoleAutoConfiguration {
 
   @Bean
-  public InitializingBean eventifyWebPluginRegistrar(List<Eventify> apps) {
-    return () -> apps.forEach(eventify -> eventify.registerPlugin(new EventifyManagementPlugin()));
+  public InitializingBean eventifyConsolePluginRegistrar(List<Eventify> apps) {
+    return () -> apps.forEach(eventify -> eventify.registerPlugin(new EventifyConsolePlugin()));
   }
 }

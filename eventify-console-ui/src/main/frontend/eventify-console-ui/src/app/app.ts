@@ -11,7 +11,7 @@ import { RouterOutlet } from '@angular/router';
         <i class="pi pi-bolt text-primary-400 text-xl"></i>
         <span class="font-semibold text-lg tracking-tight text-white">Eventify</span>
         <span class="w-px h-4 bg-slate-600"></span>
-        <span class="text-sm text-slate-300">Management Console</span>
+        <span class="text-sm text-slate-300">Console</span>
       </header>
       <main class="flex-1 overflow-hidden">
         <router-outlet />

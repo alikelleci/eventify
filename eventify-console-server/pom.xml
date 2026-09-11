@@ -11,9 +11,9 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>eventify-management</artifactId>
-    <name>eventify-management</name>
-    <description>Management web server and UI plugin for Eventify</description>
+    <artifactId>eventify-console-server</artifactId>
+    <name>eventify-console-server</name>
+    <description>Console server and UI plugin for Eventify</description>
 
     <properties>
         <lombok.version>1.18.46</lombok.version>

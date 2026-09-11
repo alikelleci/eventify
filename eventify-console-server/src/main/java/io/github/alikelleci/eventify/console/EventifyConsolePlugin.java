@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.management;
+package io.github.alikelleci.eventify.console;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
@@ -9,9 +9,9 @@ import java.io.IOException;
 import java.net.URI;
 
 @Slf4j
-public class EventifyManagementPlugin implements EventifyPlugin {
+public class EventifyConsolePlugin implements EventifyPlugin {
 
-  private EventifyManagementServer managementServer;
+  private EventifyConsoleServer consoleServer;
 
   @Override
   public void onStart(Eventify eventify) {
@@ -19,26 +19,26 @@ public class EventifyManagementPlugin implements EventifyPlugin {
         .getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
 
     if (applicationServer.isBlank()) {
-      log.warn("'{}' is not configured, Eventify management server will not start.",
+      log.warn("'{}' is not configured, Eventify console server will not start.",
           StreamsConfig.APPLICATION_SERVER_CONFIG);
       return;
     }
 
     int port = URI.create("http://" + applicationServer).getPort();
     EventifyQueryService queryService = new EventifyQueryService(eventify);
-    managementServer = new EventifyManagementServer(queryService, eventify.getObjectMapper(), port);
+    consoleServer = new EventifyConsoleServer(queryService, eventify.getObjectMapper(), port);
 
     try {
-      managementServer.start();
+      consoleServer.start();
     } catch (IOException e) {
-      throw new RuntimeException("Failed to start Eventify management server", e);
+      throw new RuntimeException("Failed to start Eventify console server", e);
     }
   }
 
   @Override
   public void onStop(Eventify eventify) {
-    if (managementServer != null) {
-      managementServer.stop();
+    if (consoleServer != null) {
+      consoleServer.stop();
     }
   }
 }

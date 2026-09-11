@@ -1,7 +1,7 @@
-package io.github.alikelleci.eventify.management;
+package io.github.alikelleci.eventify.console;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.management.EventifyQueryService.QueryResult;
+import io.github.alikelleci.eventify.console.EventifyQueryService.QueryResult;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -19,7 +19,7 @@ import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
 @Slf4j
-public class EventifyManagementServer {
+public class EventifyConsoleServer {
 
   public static final int DEFAULT_PAGE_SIZE = 50;
   public static final int MAX_PAGE_SIZE = 500;
@@ -33,7 +33,7 @@ public class EventifyManagementServer {
   private final int port;
   private HttpServer server;
 
-  public EventifyManagementServer(EventifyQueryService queryService, ObjectMapper objectMapper, int port) {
+  public EventifyConsoleServer(EventifyQueryService queryService, ObjectMapper objectMapper, int port) {
     this.queryService = queryService;
     this.objectMapper = objectMapper;
     this.port = port;
@@ -50,13 +50,13 @@ public class EventifyManagementServer {
     });
     server.setExecutor(Executors.newCachedThreadPool());
     server.start();
-    log.info("Eventify management server started on port {}", port);
+    log.info("Eventify console server started on port {}", port);
   }
 
   public void stop() {
     if (server != null) {
       server.stop(0);
-      log.info("Eventify management server stopped.");
+      log.info("Eventify console server stopped.");
     }
   }
 
@@ -98,7 +98,7 @@ public class EventifyManagementServer {
         default -> sendResponse(exchange, 404, "Not Found");
       }
     } catch (Exception e) {
-      log.error("Unexpected error handling management request", e);
+      log.error("Unexpected error handling console request", e);
       sendResponse(exchange, 500, "Internal Server Error");
     }
   }
@@ -191,7 +191,7 @@ public class EventifyManagementServer {
       if (is == null) {
         try (java.io.InputStream fallback = getClass().getClassLoader().getResourceAsStream(CONSOLE_RESOURCES + "index.html")) {
           if (fallback == null) {
-            sendResponse(exchange, 404, "Management Console not available");
+            sendResponse(exchange, 404, "Eventify Console not available");
             return;
           }
           serveStream(exchange, fallback, "text/html");
