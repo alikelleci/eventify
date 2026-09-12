@@ -108,7 +108,7 @@
 <ng-template #detailContent>
   @if (selectedCommand(); as command) {
 
-    <div class="pb-5 border-b border-surface-100 dark:border-surface-800">
+    <div class="pb-5">
       <div class="flex items-center gap-2">
         <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ command.type }}</span>
         @if (result(command) === 'success') {
@@ -120,7 +120,7 @@
       <div class="text-xs text-surface-400 mt-0.5">{{ command.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</div>
     </div>
 
-    <div class="py-4 flex flex-col gap-3">
+    <div class="flex flex-col gap-3 mb-4">
       <div class="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-lg px-3 py-2.5">
         <div>
           <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-1">Command ID</div>
@@ -143,17 +143,15 @@
           tooltipPosition="top"
           (onClick)="copy(command.aggregateId, 'agg-id')" />
       </div>
+      @if (result(command) === 'failure' && cause(command)) {
+        <div class="bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2.5">
+          <div class="text-xs font-medium text-red-400 uppercase tracking-widest mb-1">Reason</div>
+          <div class="text-sm text-red-600 dark:text-red-400">{{ cause(command) }}</div>
+        </div>
+      }
     </div>
 
     <div class="border-t border-surface-100 dark:border-surface-800 pt-4">
-      @if (result(command) === 'failure' && cause(command)) {
-        <div class="mb-6">
-          <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-3">Reason</div>
-          <div class="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
-            {{ cause(command) }}
-          </div>
-        </div>
-      }
       <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-3">Payload</div>
       <div class="relative group mb-6">
         <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono" [innerHTML]="formatJson(command.payload) | jsonHighlight"></pre>
