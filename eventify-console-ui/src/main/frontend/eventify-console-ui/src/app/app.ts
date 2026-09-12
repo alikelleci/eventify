@@ -17,13 +17,13 @@ import { AppEntry } from './config.service';
         <span class="w-px h-4 bg-slate-600"></span>
 
         <div class="flex items-center gap-1">
-          <a routerLink="/events"
+          <a routerLink="/events" [queryParams]="{ eventId: null, commandId: null }" queryParamsHandling="merge"
              routerLinkActive="bg-slate-700 text-white"
              [routerLinkActiveOptions]="{ exact: false }"
              class="flex items-center h-7 px-3 rounded text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer outline-none">
             Events
           </a>
-          <a routerLink="/commands"
+          <a routerLink="/commands" [queryParams]="{ eventId: null, commandId: null }" queryParamsHandling="merge"
              routerLinkActive="bg-slate-700 text-white"
              [routerLinkActiveOptions]="{ exact: false }"
              class="flex items-center h-7 px-3 rounded text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer outline-none">
