@@ -110,9 +110,9 @@
               <div class="flex flex-col flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="font-medium text-sm truncate">{{ command.type }}</span>
-                  @if (isRetry(command)) { <p-tag value="retried" severity="warn" styleClass="shrink-0" /> }
                   @if (result(command) === 'success') { <p-tag value="success" severity="success" styleClass="shrink-0" /> }
                   @else if (result(command) === 'failure') { <p-tag value="failure" severity="danger" styleClass="shrink-0" /> }
+                  @if (isRetry(command)) { <p-tag value="retried" severity="warn" styleClass="shrink-0" /> }
                 </div>
                 <span class="text-xs text-surface-400 mt-0.5">{{ command.timestamp | date:'MMM d, y · HH:mm:ss' }}</span>
               </div>

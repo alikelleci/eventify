@@ -27,7 +27,7 @@ const MOCK_COMMANDS: CommandsPage = {
       timestamp: new Date(Date.now() - 120_000).toISOString(),
       type: 'ChangeFirstName',
       payload: { '@class': 'com.example.CustomerCommand$ChangeFirstName', id: AGGREGATE_ID, firstName: 'Jane' },
-      metadata: { '$correlationId': 'corr-003', '$result': 'failure', '$cause': 'Customer does not exist.', '$replyTo': 'my-app.replies' },
+      metadata: { '$correlationId': 'corr-003', '$result': 'success', 'retry': 'true', 'source': 'console', 'description': 'Retried via Eventify Console' },
       aggregateId: AGGREGATE_ID,
     },
     {

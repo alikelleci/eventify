@@ -12,13 +12,13 @@
   <div class="pb-5 border-b border-surface-100 dark:border-surface-800">
     <div class="flex items-center gap-2">
       <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ cmd.type }}</span>
-      @if (cmd.metadata['retry'] === 'true') {
-        <p-tag value="retried" severity="warn" styleClass="shrink-0" />
-      }
       @if (result() === 'success') {
         <p-tag value="success" severity="success" styleClass="shrink-0" />
       } @else if (result() === 'failure') {
         <p-tag value="failure" severity="danger" styleClass="shrink-0" />
+      }
+      @if (cmd.metadata['retry'] === 'true') {
+        <p-tag value="retried" severity="warn" styleClass="shrink-0" />
       }
     </div>
     <div class="text-xs text-surface-400 mt-0.5">{{ cmd.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</div>
