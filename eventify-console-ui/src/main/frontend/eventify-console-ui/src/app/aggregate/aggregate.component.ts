@@ -135,7 +135,14 @@ export class AggregateComponent {
     if (!id) return;
     this.showRecent.set(false);
     this.saveRecent(id);
-    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
+    const currentId = (this.route.snapshot.queryParams['id'] ?? '').trim();
+    if (id === currentId) {
+      this.resetAll();
+      this.loadEvents(id, null, false);
+      this.loadCommands(id);
+    } else {
+      this.router.navigate([], { queryParams: { id }, replaceUrl: true });
+    }
   }
 
   selectItem(item: EventMessage | CommandMessage) {
