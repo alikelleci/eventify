@@ -13,21 +13,20 @@ import { AppEntry } from './config.service';
     <div class="flex flex-col h-dvh bg-surface-0 dark:bg-surface-900 text-surface-900 dark:text-surface-100">
       <header class="flex items-center gap-3 px-5 py-3 border-b border-slate-700 bg-slate-900 shrink-0">
         <i class="pi pi-bolt text-primary-400 text-xl"></i>
-        <span class="font-semibold text-lg tracking-tight text-white">Eventify</span>
+        <span class="font-semibold text-lg tracking-tight"><span class="text-white">Eventify</span><span class="text-slate-300"> Console</span></span>
         <span class="w-px h-4 bg-slate-600"></span>
-        <span class="text-sm text-slate-300">Console</span>
 
-        <div class="flex items-center gap-1 ml-4">
+        <div class="flex items-center gap-1">
           <a routerLink="/events"
              routerLinkActive="bg-slate-700 text-white"
              [routerLinkActiveOptions]="{ exact: false }"
-             class="h-7 px-3 rounded text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer outline-none">
+             class="flex items-center h-7 px-3 rounded text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer outline-none">
             Events
           </a>
           <a routerLink="/commands"
              routerLinkActive="bg-slate-700 text-white"
              [routerLinkActiveOptions]="{ exact: false }"
-             class="h-7 px-3 rounded text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer outline-none">
+             class="flex items-center h-7 px-3 rounded text-sm text-slate-400 hover:text-slate-200 transition-colors cursor-pointer outline-none">
             Commands
           </a>
         </div>

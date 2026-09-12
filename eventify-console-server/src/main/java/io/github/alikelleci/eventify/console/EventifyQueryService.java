@@ -34,6 +34,8 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -122,12 +124,14 @@ public class EventifyQueryService {
 
           consumer.assign(Collections.singletonList(tp));
 
+          long lookbackMs = Instant.now().minus(7, ChronoUnit.DAYS).toEpochMilli();
+          Map<TopicPartition, Long> timestampOffsets = consumer.offsetsForTimes(Map.of(tp, lookbackMs));
+          long startOffset = timestampOffsets.get(tp) != null ? timestampOffsets.get(tp).offset() : 0L;
+          consumer.seek(tp, startOffset);
+
           Map<TopicPartition, Long> endOffsets = consumer.endOffsets(Collections.singletonList(tp));
           long endOffset = endOffsets.getOrDefault(tp, 0L);
-          if (endOffset == 0) continue;
-
-          long startOffset = Math.max(0, endOffset - limit * 10L);
-          consumer.seek(tp, startOffset);
+          if (startOffset >= endOffset) continue;
 
           boolean done = false;
           while (!done) {
