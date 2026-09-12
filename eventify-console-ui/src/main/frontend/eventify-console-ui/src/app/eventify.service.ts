@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CommandsPage, CorrelatedEventsPage, EventDetail, EventsPage } from './models';
+import { CommandsPage, CorrelatedEventsPage, EventDetail, EventsPage, CommandMessage } from './models';
 import { BackendService } from './backend.service';
 
 @Injectable({ providedIn: 'root' })
@@ -26,5 +26,9 @@ export class EventifyService {
   getCommands(aggregateId: string, limit = 500): Observable<CommandsPage> {
     const params = new HttpParams().set('limit', limit);
     return this.http.get<CommandsPage>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/commands`, { params });
+  }
+
+  retryCommand(aggregateId: string, commandId: string, command: CommandMessage): Observable<void> {
+    return this.http.post<void>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/commands/${encodeURIComponent(commandId)}/retry`, command);
   }
 }

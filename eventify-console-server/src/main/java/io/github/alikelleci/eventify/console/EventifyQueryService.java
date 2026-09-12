@@ -4,11 +4,18 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
+import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -70,6 +77,7 @@ public class EventifyQueryService {
   private final HostInfo thisHost;
   private final HttpClient httpClient;
   private final ObjectMapper objectMapper;
+  private final Producer<String, Command> producer;
 
   public EventifyQueryService(Eventify eventify) {
     this.eventify = eventify;
@@ -88,6 +96,40 @@ public class EventifyQueryService {
       log.warn("'{}' is not configured, running in single-node mode. Multi-node routing is disabled.",
           StreamsConfig.APPLICATION_SERVER_CONFIG);
     }
+
+    String bootstrapServers = eventify.getStreamsConfig().getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+    Properties producerProps = new Properties();
+    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    this.producer = new KafkaProducer<>(producerProps, new StringSerializer(), new JsonSerializer<>(objectMapper));
+  }
+
+  public void close() {
+    producer.close();
+  }
+
+  public QueryResult<Void> retryCommand(Command original) {
+    Metadata retryMetadata = Metadata.builder()
+        .putAll(original.getMetadata())
+        .build();
+    retryMetadata.remove(Metadata.REPLY_TO);
+
+    Command retryCommand = Command.builder()
+        .payload(original.getPayload())
+        .metadata(retryMetadata)
+        .build();
+
+    String commandTopic = original.getTopicInfo().value();
+
+    try {
+      producer.send(new ProducerRecord<>(commandTopic, null, retryCommand.getTimestamp().toEpochMilli(),
+          retryCommand.getAggregateId(), retryCommand));
+      log.info("Retried command {} as {} on topic {}", original.getId(), retryCommand.getId(), commandTopic);
+    } catch (Exception e) {
+      log.error("Failed to publish retry command for {}", original.getId(), e);
+      return new QueryResult.Unavailable<>("Failed to publish retry command");
+    }
+
+    return new QueryResult.Ok<>(null);
   }
 
   public QueryResult<CommandsPage> getCommands(String aggregateId, int limit) {

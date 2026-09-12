@@ -1,3 +1,5 @@
+<p-toast />
+
 @if (loading()) {
   <div class="flex flex-col gap-4 pt-1">
     <p-skeleton width="40%" height="1rem" />
@@ -43,13 +45,14 @@
     @if (result() === 'failure' && cause()) {
       <div class="flex items-center justify-between bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2.5">
         <div>
-          <div class="text-xs font-medium text-red-400 uppercase tracking-widest mb-1">Reason</div>
+          <div class="text-xs font-medium text-red-400 uppercase tracking-widest mb-1">Cause</div>
           <div class="text-sm text-red-600 dark:text-red-400">{{ cause() }}</div>
         </div>
-        <p-button [text]="true" [rounded]="true" severity="secondary"
-          [icon]="copiedKey() === 'cmd-cause' ? 'pi pi-check' : 'pi pi-copy'"
-          [pTooltip]="copiedKey() === 'cmd-cause' ? 'Copied!' : 'Copy'" tooltipPosition="top"
-          (onClick)="copy(cause()!, 'cmd-cause')" />
+        <p-button [text]="true" [rounded]="true" severity="danger"
+          [icon]="retrying() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'" size="small" styleClass="!w-24 !border !border-red-300 dark:!border-red-800"
+          [label]="retrying() ? 'Retrying…' : 'Retry'"
+          [disabled]="retrying()"
+          (onClick)="retry()" />
       </div>
     }
   </div>

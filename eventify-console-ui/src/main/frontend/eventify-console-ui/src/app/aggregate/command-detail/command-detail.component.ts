@@ -7,7 +7,9 @@ import { DrawerModule } from 'primeng/drawer';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
+import { ToastModule } from 'primeng/toast';
 import { TooltipModule } from 'primeng/tooltip';
+import { MessageService } from 'primeng/api';
 import { CommandMessage, EventMessage } from '../../models';
 import { EventifyService } from '../../eventify.service';
 import { JsonHighlightPipe } from '../../shared/json-highlight.pipe';
@@ -21,19 +23,22 @@ const MIN_SKELETON_MS = 300;
   standalone: true,
   imports: [
     CommonModule, DatePipe,
-    ButtonModule, DrawerModule, SkeletonModule, TagModule, TabsModule, TooltipModule,
+    ButtonModule, DrawerModule, SkeletonModule, TagModule, TabsModule, ToastModule, TooltipModule,
     JsonHighlightPipe, EventDetailComponent,
   ],
+  providers: [MessageService],
 })
 export class CommandDetailComponent {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly zone = inject(NgZone);
+  private readonly messageService = inject(MessageService);
 
   command = input<CommandMessage | null>(null);
 
   producedEvents = signal<EventMessage[] | null>(null);
   loading = signal(false);
+  retrying = signal(false);
   activeTab = signal('payload');
   copiedKey = signal<string | null>(null);
 
@@ -75,6 +80,23 @@ export class CommandDetailComponent {
   openEvent(event: EventMessage) {
     this.drawerEvent.set(event);
     this.drawerVisible.set(true);
+  }
+
+  retry() {
+    const cmd = this.command();
+    if (!cmd || this.retrying()) return;
+    this.retrying.set(true);
+    this.svc.retryCommand(cmd.aggregateId, cmd.id, cmd).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(() => {
+        this.retrying.set(false);
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to retry command.' });
+        return EMPTY;
+      }),
+    ).subscribe(() => {
+      this.retrying.set(false);
+      this.messageService.add({ severity: 'success', summary: 'Retried', detail: 'Command has been resubmitted.' });
+    });
   }
 
   result(): 'success' | 'failure' | null {

@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.console.EventifyQueryService.QueryResult;
+import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -64,7 +65,7 @@ public class EventifyConsoleServer {
 
   private void addCorsHeaders(HttpExchange exchange) {
     exchange.getResponseHeaders().set("Access-Control-Allow-Origin", allowedOrigins);
-    exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, OPTIONS");
+    exchange.getResponseHeaders().set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     exchange.getResponseHeaders().set("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
 
@@ -73,10 +74,6 @@ public class EventifyConsoleServer {
     if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
       exchange.sendResponseHeaders(204, -1);
       exchange.close();
-      return;
-    }
-    if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
-      sendResponse(exchange, 405, "Method Not Allowed");
       return;
     }
 
@@ -88,6 +85,27 @@ public class EventifyConsoleServer {
       String[] segments = path.split("/");
 
       boolean forwarded = Boolean.parseBoolean(queryParams.get("forwarded"));
+
+      // POST /api/aggregates/{id}/commands/{commandId}/retry
+      if ("POST".equalsIgnoreCase(exchange.getRequestMethod())
+          && segments.length == 7 && "aggregates".equals(segments[2])
+          && "commands".equals(segments[4]) && "retry".equals(segments[6])) {
+        try {
+          byte[] body = exchange.getRequestBody().readAllBytes();
+          Command command = objectMapper.readValue(body, Command.class);
+          QueryResult<Void> result = queryService.retryCommand(command);
+          sendQueryResult(exchange, result);
+        } catch (Exception e) {
+          log.error("Failed to parse retry request body", e);
+          sendResponse(exchange, 400, "Bad Request");
+        }
+        return;
+      }
+
+      if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+        sendResponse(exchange, 405, "Method Not Allowed");
+        return;
+      }
 
       // /api/aggregates/{id}/events/by-correlation/{correlationId}
       if (segments.length == 7 && "aggregates".equals(segments[2]) && "events".equals(segments[4]) && "by-correlation".equals(segments[5])) {
