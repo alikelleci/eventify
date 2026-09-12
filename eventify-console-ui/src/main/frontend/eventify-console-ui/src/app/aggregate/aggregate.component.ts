@@ -50,7 +50,7 @@ export class AggregateComponent {
   aggregateId = signal('');
   recentSearches = signal<string[]>(this.loadRecent());
   showRecent = signal(false);
-  mainTab = signal<'events' | 'commands'>('commands');
+  mainTab = signal<'events' | 'commands'>('events');
 
   // Events
   events = signal<EventMessage[]>([]);
