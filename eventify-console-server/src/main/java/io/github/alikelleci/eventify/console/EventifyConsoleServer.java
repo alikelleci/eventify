@@ -145,7 +145,7 @@ public class EventifyConsoleServer {
 
   private void handleGetCommands(HttpExchange exchange, String aggregateId,
                                  Map<String, String> queryParams) throws IOException {
-    int limit = clampLimit(parseIntOrDefault(queryParams.get("limit"), DEFAULT_PAGE_SIZE));
+    int limit = clampLimit(parseIntOrDefault(queryParams.get("limit"), MAX_PAGE_SIZE));
     QueryResult<EventifyQueryService.CommandsPage> result = queryService.getCommands(aggregateId, limit);
     sendQueryResult(exchange, result);
   }

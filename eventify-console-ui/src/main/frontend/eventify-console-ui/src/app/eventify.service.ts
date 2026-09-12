@@ -23,7 +23,7 @@ export class EventifyService {
     return this.http.get<CorrelatedEventsPage>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/events/by-correlation/${encodeURIComponent(correlationId)}`);
   }
 
-  getCommands(aggregateId: string, limit = 50): Observable<CommandsPage> {
+  getCommands(aggregateId: string, limit = 500): Observable<CommandsPage> {
     const params = new HttpParams().set('limit', limit);
     return this.http.get<CommandsPage>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/commands`, { params });
   }
