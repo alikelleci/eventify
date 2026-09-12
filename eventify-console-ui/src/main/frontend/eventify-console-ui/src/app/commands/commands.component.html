@@ -144,9 +144,16 @@
           (onClick)="copy(command.aggregateId, 'agg-id')" />
       </div>
       @if (result(command) === 'failure' && cause(command)) {
-        <div class="bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2.5">
-          <div class="text-xs font-medium text-red-400 uppercase tracking-widest mb-1">Reason</div>
-          <div class="text-sm text-red-600 dark:text-red-400">{{ cause(command) }}</div>
+        <div class="flex items-center justify-between bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2.5">
+          <div>
+            <div class="text-xs font-medium text-red-400 uppercase tracking-widest mb-1">Reason</div>
+            <div class="text-sm text-red-600 dark:text-red-400">{{ cause(command) }}</div>
+          </div>
+          <p-button [text]="true" [rounded]="true" severity="secondary"
+            [icon]="copiedKey() === 'cmd-cause' ? 'pi pi-check' : 'pi pi-copy'"
+            [pTooltip]="copiedKey() === 'cmd-cause' ? 'Copied!' : 'Copy'"
+            tooltipPosition="top"
+            (onClick)="copy(cause(command)!, 'cmd-cause')" />
         </div>
       }
     </div>
