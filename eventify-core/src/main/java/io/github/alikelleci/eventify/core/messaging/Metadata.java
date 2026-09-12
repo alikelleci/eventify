@@ -69,6 +69,7 @@ public class Metadata implements Map<String, String> {
     public Metadata build() {
       this.entries.remove(RESULT);
       this.entries.remove(CAUSE);
+      this.entries.remove(RETRY);
 
       return new Metadata(this.entries);
     }
