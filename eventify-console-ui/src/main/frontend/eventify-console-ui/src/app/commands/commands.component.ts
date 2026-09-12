@@ -2,9 +2,8 @@ import { Component, inject, signal, computed, HostListener, DestroyRef, NgZone, 
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { catchError, distinctUntilChanged, EMPTY } from 'rxjs';
+import { catchError, distinctUntilChanged, EMPTY, map } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
-import { map } from 'rxjs';
 
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
@@ -19,7 +18,7 @@ import { EventifyService } from '../eventify.service';
 import { CommandMessage } from '../models';
 import { JsonHighlightPipe } from '../shared/json-highlight.pipe';
 
-const RECENT_KEY = 'eventify.recentSearches';
+const RECENT_KEY = 'eventify.recentCommandSearches';
 const MAX_RECENT = 8;
 
 @Component({
@@ -57,16 +56,34 @@ export class CommandsComponent {
   private dataReady = false;
 
   constructor() {
-    this.route.queryParams
-      .pipe(
-        map(p => (p['id'] ?? '').trim()),
-        distinctUntilChanged(),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe(id => {
-        this.aggregateId.set(id);
-        if (id) this.doSearch(id);
-      });
+    // When aggregate ID changes → reload list
+    this.route.queryParams.pipe(
+      map(p => (p['id'] ?? '').trim()),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(id => {
+      this.aggregateId.set(id);
+      this.commands.set([]);
+      this.selectedCommand.set(null);
+      this.drawerVisible.set(false);
+      if (id) this.load(id);
+    });
+
+    // When commandId changes → select from list (commands are already in memory)
+    this.route.queryParams.pipe(
+      map(p => p['commandId'] ?? null),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(commandId => {
+      if (!commandId) {
+        this.selectedCommand.set(null);
+        this.drawerVisible.set(false);
+        return;
+      }
+      const found = this.commands().find(c => c.id === commandId) ?? null;
+      this.selectedCommand.set(found);
+      if (found && this.isMobile()) this.drawerVisible.set(true);
+    });
   }
 
   @HostListener('window:resize')
@@ -86,14 +103,19 @@ export class CommandsComponent {
     const idx = current ? list.findIndex(c => c.id === current.id) : -1;
     if (e.key === 'ArrowDown') { e.preventDefault(); this.select(list[Math.min(idx + 1, list.length - 1)]); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); this.select(list[Math.max(idx - 1, 0)]); }
-    else if (e.key === 'Escape') { this.selectedCommand.set(null); this.drawerVisible.set(false); }
+    else if (e.key === 'Escape') { this.router.navigate([], { queryParams: { id: this.aggregateId() }, replaceUrl: true }); }
   }
 
   search() {
     const id = this.aggregateId().trim();
     if (!id) return;
     this.showRecent.set(false);
+    this.saveRecent(id);
     this.router.navigate([], { queryParams: { id }, replaceUrl: true });
+  }
+
+  select(command: CommandMessage) {
+    this.router.navigate([], { queryParams: { id: this.aggregateId(), commandId: command.id }, replaceUrl: true });
   }
 
   onSearchFocus() {
@@ -108,6 +130,7 @@ export class CommandsComponent {
 
   selectRecent(id: string) {
     this.showRecent.set(false);
+    this.saveRecent(id);
     this.router.navigate([], { queryParams: { id }, replaceUrl: true });
   }
 
@@ -118,11 +141,6 @@ export class CommandsComponent {
     this.recentSearches.set(updated);
     localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
     if (updated.length === 0) this.showRecent.set(false);
-  }
-
-  select(command: CommandMessage) {
-    this.selectedCommand.set(command);
-    if (this.isMobile()) this.drawerVisible.set(true);
   }
 
   result(command: CommandMessage): 'success' | 'failure' | null {
@@ -157,29 +175,6 @@ export class CommandsComponent {
     return JSON.stringify(this.cleanPayload(obj as Record<string, unknown>), null, 2);
   }
 
-  private doSearch(id: string) {
-    this.commands.set([]);
-    this.selectedCommand.set(null);
-    this.drawerVisible.set(false);
-    this.saveRecent(id);
-    this.load(id);
-  }
-
-  private saveRecent(id: string) {
-    const current = this.recentSearches().filter(r => r !== id);
-    const updated = [id, ...current].slice(0, MAX_RECENT);
-    this.recentSearches.set(updated);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
-  }
-
-  private loadRecent(): string[] {
-    try {
-      return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    } catch {
-      return [];
-    }
-  }
-
   private load(id: string) {
     this.minElapsed = false;
     this.dataReady = false;
@@ -189,17 +184,36 @@ export class CommandsComponent {
       if (this.dataReady) this.loading.set(false);
     }, this.MIN_SKELETON_MS);
 
-    this.svc.getCommands(id)
-      .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
+    this.svc.getCommands(id).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(() => {
         this.dataReady = true;
         if (this.minElapsed) this.loading.set(false);
         this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load commands.' });
         return EMPTY;
-      }))
-      .subscribe(page => {
-        this.commands.set(page.commands);
-        this.dataReady = true;
-        if (this.minElapsed) this.loading.set(false);
-      });
+      }),
+    ).subscribe(page => {
+      this.commands.set(page.commands);
+      // If commandId is already in URL (permalink), select it now that list is loaded
+      const commandId = this.route.snapshot.queryParamMap.get('commandId');
+      if (commandId) {
+        const found = page.commands.find(c => c.id === commandId) ?? null;
+        this.selectedCommand.set(found);
+        if (found && this.isMobile()) this.drawerVisible.set(true);
+      }
+      this.dataReady = true;
+      if (this.minElapsed) this.loading.set(false);
+    });
+  }
+
+  private saveRecent(id: string) {
+    const updated = [id, ...this.recentSearches().filter(r => r !== id)].slice(0, MAX_RECENT);
+    this.recentSearches.set(updated);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+  }
+
+  private loadRecent(): string[] {
+    try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]'); }
+    catch { return []; }
   }
 }

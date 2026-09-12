@@ -43,44 +43,6 @@ export class EventsComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
-  constructor() {
-    this.route.queryParams
-      .pipe(
-        map(p => ({ id: (p['id'] ?? '').trim(), eventId: p['eventId'] ?? null })),
-        distinctUntilChanged((a, b) => a.id === b.id && a.eventId === b.eventId),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe(({ id, eventId }) => {
-        this.aggregateId.set(id);
-        if (id) this.doSearch(id);
-
-        if (eventId && eventId !== this.selectedEvent()?.id) {
-          this.setLoadingDetail(true);
-          this.svc.getEventDetail(id, eventId)
-            .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
-              this.setLoadingDetail(false);
-              return EMPTY;
-            }))
-            .subscribe(detail => {
-              this.selectedEvent.set(detail.event);
-              this.eventDetail.set(detail);
-              this.setLoadingDetail(false);
-            });
-        }
-      });
-  }
-
-  copiedKey = signal<string | null>(null);
-
-  copy(text: string, key: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      this.copiedKey.set(key);
-      this.zone.runOutsideAngular(() =>
-        setTimeout(() => this.zone.run(() => this.copiedKey.set(null)), 1500)
-      );
-    });
-  }
-
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
   readonly skeletonRows = Array(8);
@@ -93,10 +55,188 @@ export class EventsComponent {
   selectedEvent = signal<EventMessage | null>(null);
   eventDetail = signal<EventDetail | null>(null);
   loadingDetail = signal(false);
+  drawerVisible = signal(false);
+  isMobile = signal(window.innerWidth < 1024);
+  activeTab = signal('event');
+  recentSearches = signal<string[]>(this.loadRecent());
+  showRecent = signal(false);
+  showDiff = signal(false);
+  copiedKey = signal<string | null>(null);
+  hasResults = computed(() => this.events().length > 0);
 
   private readonly MIN_SKELETON_MS = 300;
   private minElapsed = { loading: false, loadingMore: false, loadingDetail: false };
   private dataReady = { loading: false, loadingMore: false, loadingDetail: false };
+
+  constructor() {
+    // When aggregate ID changes → reload list
+    this.route.queryParams.pipe(
+      map(p => (p['id'] ?? '').trim()),
+      distinctUntilChanged(),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(id => {
+      this.aggregateId.set(id);
+      this.events.set([]);
+      this.nextCursor.set(null);
+      this.selectedEvent.set(null);
+      this.eventDetail.set(null);
+      this.drawerVisible.set(false);
+      if (id) this.loadPage(id, null, false);
+    });
+
+    // When eventId changes → load detail
+    this.route.queryParams.pipe(
+      map(p => ({ id: (p['id'] ?? '').trim(), eventId: p['eventId'] ?? null })),
+      distinctUntilChanged((a, b) => a.eventId === b.eventId),
+      takeUntilDestroyed(this.destroyRef),
+    ).subscribe(({ id, eventId }) => {
+      if (!eventId) {
+        this.selectedEvent.set(null);
+        this.eventDetail.set(null);
+        this.drawerVisible.set(false);
+        return;
+      }
+      if (this.isMobile()) this.drawerVisible.set(true);
+      this.setLoadingDetail(true);
+      this.svc.getEventDetail(id, eventId).pipe(
+        takeUntilDestroyed(this.destroyRef),
+        catchError(() => { this.setLoadingDetail(false); return EMPTY; }),
+      ).subscribe(detail => {
+        this.selectedEvent.set(detail.event);
+        this.eventDetail.set(detail);
+        this.activeTab.set('event');
+        this.showDiff.set(false);
+        this.setLoadingDetail(false);
+      });
+    });
+  }
+
+  @HostListener('window:resize')
+  onResize() { this.isMobile.set(window.innerWidth < 1024); }
+
+  @HostListener('window:keydown', ['$event'])
+  onKeydown(e: KeyboardEvent) {
+    const tag = (e.target as HTMLElement).tagName;
+    if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
+      e.preventDefault();
+      this.searchInput?.nativeElement.focus();
+      return;
+    }
+    const list = this.events();
+    if (!list.length) return;
+    const current = this.selectedEvent();
+    const idx = current ? list.findIndex(ev => ev.id === current.id) : -1;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.selectEvent(list[Math.min(idx + 1, list.length - 1)]);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.selectEvent(list[Math.max(idx - 1, 0)]);
+    } else if (e.key === 'Escape') {
+      this.router.navigate([], { queryParams: { id: this.aggregateId() }, replaceUrl: true });
+    }
+  }
+
+  search() {
+    const id = this.aggregateId().trim();
+    if (!id) return;
+    this.showRecent.set(false);
+    this.saveRecent(id);
+    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
+  }
+
+  selectEvent(event: EventMessage) {
+    this.router.navigate([], { queryParams: { id: this.aggregateId(), eventId: event.id }, replaceUrl: true });
+  }
+
+  loadMore() {
+    const id = this.aggregateId().trim();
+    if (!id || !this.nextCursor()) return;
+    this.loadPage(id, this.nextCursor(), true);
+  }
+
+  onListScroll(el: HTMLDivElement) {
+    if (!this.nextCursor() || this.loadingMore()) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) this.loadMore();
+  }
+
+  onSearchFocus() {
+    if (this.recentSearches().length > 0) this.showRecent.set(true);
+  }
+
+  onSearchBlur() {
+    this.zone.runOutsideAngular(() =>
+      setTimeout(() => this.zone.run(() => this.showRecent.set(false)), 150)
+    );
+  }
+
+  selectRecent(id: string) {
+    this.showRecent.set(false);
+    this.saveRecent(id);
+    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
+  }
+
+  removeRecent(id: string, e: MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const updated = this.recentSearches().filter(r => r !== id);
+    this.recentSearches.set(updated);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+    if (updated.length === 0) this.showRecent.set(false);
+  }
+
+  copy(text: string, key: string) {
+    navigator.clipboard.writeText(text).then(() => {
+      this.copiedKey.set(key);
+      this.zone.runOutsideAngular(() =>
+        setTimeout(() => this.zone.run(() => this.copiedKey.set(null)), 1500)
+      );
+    });
+  }
+
+  allMetadataEntries(metadata: Record<string, string>): { key: string; value: string }[] {
+    return Object.entries(metadata ?? {}).map(([key, value]) => ({ key, value }));
+  }
+
+  cleanPayload(obj: Record<string, unknown>): Record<string, unknown> {
+    const cleaned = { ...obj };
+    delete cleaned['@class'];
+    return cleaned;
+  }
+
+  formatJson(obj: unknown): string {
+    return JSON.stringify(this.cleanPayload(obj as Record<string, unknown>), null, 2);
+  }
+
+  private loadPage(id: string, cursor: string | null, append: boolean) {
+    if (append) this.setLoadingMore(true);
+    else this.setLoading(true);
+
+    this.svc.getEvents(id, cursor).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(err => {
+        if (append) this.setLoadingMore(false); else this.setLoading(false);
+        const msg = err.status === 404 ? 'Aggregate not found.' : 'Failed to load events.';
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: msg });
+        return EMPTY;
+      }),
+    ).subscribe(page => {
+      this.events.update(prev => append ? [...prev, ...page.events] : page.events);
+      this.nextCursor.set(page.nextCursor);
+      if (append) this.setLoadingMore(false); else this.setLoading(false);
+    });
+  }
+
+  private saveRecent(id: string) {
+    const updated = [id, ...this.recentSearches().filter(r => r !== id)].slice(0, MAX_RECENT);
+    this.recentSearches.set(updated);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
+  }
+
+  private loadRecent(): string[] {
+    try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]'); }
+    catch { return []; }
+  }
 
   private setLoadingState(key: 'loading' | 'loadingMore' | 'loadingDetail', value: boolean) {
     if (value) {
@@ -113,152 +253,7 @@ export class EventsComponent {
     }
   }
 
-  private setLoading(value: boolean) { this.setLoadingState('loading', value); }
-  private setLoadingMore(value: boolean) { this.setLoadingState('loadingMore', value); }
-  private setLoadingDetail(value: boolean) { this.setLoadingState('loadingDetail', value); }
-  drawerVisible = signal(false);
-  isMobile = signal(window.innerWidth < 1024);
-  activeTab = signal('event');
-  recentSearches = signal<string[]>(this.loadRecent());
-  showRecent = signal(false);
-  showDiff = signal(false);
-  hasResults = computed(() => this.events().length > 0);
-
-  @HostListener('window:resize')
-  onResize() {
-    this.isMobile.set(window.innerWidth < 1024);
-  }
-
-  @HostListener('window:keydown', ['$event'])
-  onKeydown(e: KeyboardEvent) {
-    const tag = (e.target as HTMLElement).tagName;
-    if (e.key === '/' && tag !== 'INPUT' && tag !== 'TEXTAREA') {
-      e.preventDefault();
-      this.searchInput?.nativeElement.focus();
-      return;
-    }
-    const list = this.events();
-    if (!list.length) return;
-    const current = this.selectedEvent();
-    const idx = current ? list.findIndex(e => e.id === current.id) : -1;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      this.selectEvent(list[Math.min(idx + 1, list.length - 1)]);
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      this.selectEvent(list[Math.max(idx - 1, 0)]);
-    } else if (e.key === 'Escape') {
-      this.selectedEvent.set(null);
-      this.drawerVisible.set(false);
-    }
-  }
-
-  onSearchFocus() {
-    if (this.recentSearches().length > 0) this.showRecent.set(true);
-  }
-
-  onSearchBlur() {
-    this.zone.runOutsideAngular(() =>
-      setTimeout(() => this.zone.run(() => this.showRecent.set(false)), 150)
-    );
-  }
-
-  selectRecent(id: string) {
-    this.showRecent.set(false);
-    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
-  }
-
-  removeRecent(id: string, e: MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-    const updated = this.recentSearches().filter(r => r !== id);
-    this.recentSearches.set(updated);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
-    if (updated.length === 0) this.showRecent.set(false);
-  }
-
-  onListScroll(el: HTMLDivElement) {
-    if (!this.nextCursor() || this.loadingMore()) return;
-    const threshold = 100;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - threshold) {
-      this.loadMore();
-    }
-  }
-
-  allMetadataEntries(metadata: Record<string, string>): { key: string; value: string }[] {
-    return Object.entries(metadata ?? {}).map(([key, value]) => ({ key, value }));
-  }
-
-  search() {
-    const id = this.aggregateId().trim();
-    if (!id) return;
-    this.showRecent.set(false);
-    this.router.navigate([], { queryParams: { id }, replaceUrl: true });
-  }
-
-  loadMore() {
-    const id = this.aggregateId().trim();
-    if (!id || !this.nextCursor()) return;
-    this.loadPage(id, this.nextCursor(), true);
-  }
-
-  selectEvent(event: EventMessage) {
-    this.activeTab.set('event');
-    this.showDiff.set(false);
-    if (this.isMobile()) this.drawerVisible.set(true);
-    this.router.navigate([], { queryParams: { id: this.aggregateId(), eventId: event.id }, replaceUrl: true });
-  }
-
-  cleanPayload(obj: Record<string, unknown>): Record<string, unknown> {
-    const cleaned = { ...obj };
-    delete cleaned['@class'];
-    return cleaned;
-  }
-
-  formatJson(obj: unknown): string {
-    return JSON.stringify(this.cleanPayload(obj as Record<string, unknown>), null, 2);
-  }
-
-  private doSearch(id: string) {
-    this.events.set([]);
-    this.nextCursor.set(null);
-    this.selectedEvent.set(null);
-    this.eventDetail.set(null);
-    this.drawerVisible.set(false);
-    this.loadPage(id, null, false);
-  }
-
-  private saveRecent(id: string) {
-    const current = this.recentSearches().filter(r => r !== id);
-    const updated = [id, ...current].slice(0, MAX_RECENT);
-    this.recentSearches.set(updated);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(updated));
-  }
-
-  private loadRecent(): string[] {
-    try {
-      return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-    } catch {
-      return [];
-    }
-  }
-
-  private loadPage(id: string, cursor: string | null, append: boolean) {
-    if (append) this.setLoadingMore(true);
-    else this.setLoading(true);
-
-    this.svc.getEvents(id, cursor)
-      .pipe(takeUntilDestroyed(this.destroyRef), catchError(err => {
-        if (append) this.setLoadingMore(false); else this.setLoading(false);
-        const msg = err.status === 404 ? 'Aggregate not found.' : 'Failed to load events.';
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: msg });
-        return EMPTY;
-      }))
-      .subscribe(page => {
-        if (!append) this.saveRecent(id);
-        this.events.update(prev => append ? [...prev, ...page.events] : page.events);
-        this.nextCursor.set(page.nextCursor);
-        if (append) this.setLoadingMore(false); else this.setLoading(false);
-      });
-  }
+  private setLoading(v: boolean) { this.setLoadingState('loading', v); }
+  private setLoadingMore(v: boolean) { this.setLoadingState('loadingMore', v); }
+  private setLoadingDetail(v: boolean) { this.setLoadingState('loadingDetail', v); }
 }

@@ -146,14 +146,6 @@
     </div>
 
     <div class="border-t border-surface-100 dark:border-surface-800 pt-4">
-      @if (result(command) === 'failure' && cause(command)) {
-        <div class="mb-6">
-          <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-3">Reason</div>
-          <div class="px-4 py-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 text-sm">
-            {{ cause(command) }}
-          </div>
-        </div>
-      }
       <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-3">Payload</div>
       <div class="relative group mb-6">
         <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono" [innerHTML]="formatJson(command.payload) | jsonHighlight"></pre>
@@ -179,9 +171,22 @@
             </thead>
             <tbody>
               @for (entry of allMetadataEntries(command.metadata); track entry.key) {
-                <tr class="group border-b border-surface-100 dark:border-surface-800 last:border-0 hover:bg-surface-50 dark:hover:bg-surface-800">
-                  <td class="px-4 py-2.5 font-mono text-primary-600 dark:text-primary-400 break-all">{{ entry.key }}</td>
-                  <td class="px-4 py-2.5 text-surface-900 dark:text-surface-100 break-all">
+                <tr class="group border-b border-surface-100 dark:border-surface-800 last:border-0"
+                    [class.bg-red-50]="entry.key === '$cause'"
+                    [class.dark:bg-red-950]="entry.key === '$cause'"
+                    [class.hover:bg-red-100]="entry.key !== '$cause'"
+                    [class.hover:bg-surface-50]="entry.key !== '$cause'"
+                    [class.dark:hover:bg-surface-800]="entry.key !== '$cause'">
+                  <td class="px-4 py-2.5 font-mono break-all"
+                      [class.text-red-500]="entry.key === '$cause'"
+                      [class.dark:text-red-400]="entry.key === '$cause'"
+                      [class.text-primary-600]="entry.key !== '$cause'"
+                      [class.dark:text-primary-400]="entry.key !== '$cause'">{{ entry.key }}</td>
+                  <td class="px-4 py-2.5 break-all"
+                      [class.text-red-600]="entry.key === '$cause'"
+                      [class.dark:text-red-400]="entry.key === '$cause'"
+                      [class.text-surface-900]="entry.key !== '$cause'"
+                      [class.dark:text-surface-100]="entry.key !== '$cause'">
                     <div class="flex items-center justify-between gap-2">
                       <span class="break-all">{{ entry.value }}</span>
                       <p-button [text]="true" [rounded]="true" severity="secondary"
