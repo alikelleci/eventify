@@ -13,6 +13,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -125,8 +126,8 @@ public class EventifyQueryService {
           consumer.assign(Collections.singletonList(tp));
 
           long lookbackMs = Instant.now().minus(7, ChronoUnit.DAYS).toEpochMilli();
-          Map<TopicPartition, Long> timestampOffsets = consumer.offsetsForTimes(Map.of(tp, lookbackMs));
-          long startOffset = timestampOffsets.get(tp) != null ? timestampOffsets.get(tp).offset() : 0L;
+          OffsetAndTimestamp offsetAndTimestamp = consumer.offsetsForTimes(Map.of(tp, lookbackMs)).get(tp);
+          long startOffset = offsetAndTimestamp != null ? offsetAndTimestamp.offset() : 0L;
           consumer.seek(tp, startOffset);
 
           Map<TopicPartition, Long> endOffsets = consumer.endOffsets(Collections.singletonList(tp));
