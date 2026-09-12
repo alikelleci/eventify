@@ -184,6 +184,10 @@ export class AggregateComponent {
     return r === 'success' ? 'success' : r === 'failure' ? 'failure' : null;
   }
 
+  isRetry(command: CommandMessage): boolean {
+    return command.metadata['$retry'] === 'true';
+  }
+
   private resetAll() {
     this.events.set([]); this.nextCursor.set(null);
     this.commands.set([]);

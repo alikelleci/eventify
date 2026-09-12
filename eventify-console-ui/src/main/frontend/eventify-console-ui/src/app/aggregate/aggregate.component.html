@@ -110,6 +110,7 @@
               <div class="flex flex-col flex-1 min-w-0">
                 <div class="flex items-center gap-2">
                   <span class="font-medium text-sm truncate">{{ command.type }}</span>
+                  @if (isRetry(command)) { <p-tag value="retry" severity="warn" styleClass="shrink-0" /> }
                   @if (result(command) === 'success') { <p-tag value="success" severity="success" styleClass="shrink-0" /> }
                   @else if (result(command) === 'failure') { <p-tag value="failure" severity="danger" styleClass="shrink-0" /> }
                 </div>
