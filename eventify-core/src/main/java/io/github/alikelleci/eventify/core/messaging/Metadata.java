@@ -14,6 +14,7 @@ public class Metadata implements Map<String, String> {
   public static final String REPLY_TO = "$replyTo";
   public static final String RESULT = "$result";
   public static final String CAUSE = "$cause";
+  public static final String RETRY = "$retry";
 
   @Delegate
   private final Map<String, String> entries;

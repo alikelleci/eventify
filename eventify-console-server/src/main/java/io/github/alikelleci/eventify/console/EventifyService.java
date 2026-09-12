@@ -110,6 +110,7 @@ public class EventifyService {
   public ApiResult<Void> retryCommand(Command original) {
     Metadata retryMetadata = Metadata.builder()
         .putAll(original.getMetadata())
+        .put(Metadata.RETRY, "true")
         .build();
     retryMetadata.remove(Metadata.REPLY_TO);
 
