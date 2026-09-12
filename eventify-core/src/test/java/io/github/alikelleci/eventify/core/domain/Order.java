@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.example.customer.core;
+package io.github.alikelleci.eventify.core.domain;
 
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
@@ -11,13 +11,15 @@ import java.time.Instant;
 @Value
 @Builder(toBuilder = true)
 @AggregateRoot
-@EnableSnapshotting(threshold = 5)
-public class Customer {
+@EnableSnapshotting(threshold = 3)
+public class Order {
   @AggregateId
-  private String id;
-  private String firstName;
-  private String lastName;
-  private int credits;
-  private Instant birthday;
-  private Instant dateCreated;
+  String id;
+  String customer;
+  String shippingAddress;
+  String couponCode;
+  String status;
+  String trackingNumber;
+  Instant placedAt;
 }
+

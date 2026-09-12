@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.util;
+package io.github.alikelleci.eventify.core.support;
 
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
