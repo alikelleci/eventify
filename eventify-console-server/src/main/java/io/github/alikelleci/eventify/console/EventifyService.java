@@ -53,7 +53,7 @@ import java.util.Properties;
 import java.util.Set;
 
 @Slf4j
-public class EventifyQueryService {
+public class EventifyService {
 
   private static final String EVENT_STORE = "event-store";
   private static final String SNAPSHOT_STORE = "snapshot-store";
@@ -66,11 +66,11 @@ public class EventifyQueryService {
   public record EventDetail(Event event, AggregateState state, AggregateState previousState) {}
   public record CorrelatedEventsPage(List<Event> events) {}
 
-  public sealed interface QueryResult<T> {
-    record Ok<T>(T value) implements QueryResult<T> {}
-    record NotFound<T>() implements QueryResult<T> {}
-    record Unavailable<T>(String reason) implements QueryResult<T> {}
-    record RemoteError<T>(int statusCode) implements QueryResult<T> {}
+  public sealed interface ApiResult<T> {
+    record Ok<T>(T value) implements ApiResult<T> {}
+    record NotFound<T>() implements ApiResult<T> {}
+    record Unavailable<T>(String reason) implements ApiResult<T> {}
+    record RemoteError<T>(int statusCode) implements ApiResult<T> {}
   }
 
   private final Eventify eventify;
@@ -79,7 +79,7 @@ public class EventifyQueryService {
   private final ObjectMapper objectMapper;
   private final Producer<String, Command> producer;
 
-  public EventifyQueryService(Eventify eventify) {
+  public EventifyService(Eventify eventify) {
     this.eventify = eventify;
     this.objectMapper = eventify.getObjectMapper();
     this.httpClient = HttpClient.newBuilder()
@@ -107,7 +107,7 @@ public class EventifyQueryService {
     producer.close();
   }
 
-  public QueryResult<Void> retryCommand(Command original) {
+  public ApiResult<Void> retryCommand(Command original) {
     Metadata retryMetadata = Metadata.builder()
         .putAll(original.getMetadata())
         .build();
@@ -126,16 +126,16 @@ public class EventifyQueryService {
       log.info("Retried command {} as {} on topic {}", original.getId(), retryCommand.getId(), commandTopic);
     } catch (Exception e) {
       log.error("Failed to publish retry command for {}", original.getId(), e);
-      return new QueryResult.Unavailable<>("Failed to publish retry command");
+      return new ApiResult.Unavailable<>("Failed to publish retry command");
     }
 
-    return new QueryResult.Ok<>(null);
+    return new ApiResult.Ok<>(null);
   }
 
-  public QueryResult<CommandsPage> getCommands(String aggregateId, int limit) {
+  public ApiResult<CommandsPage> getCommands(String aggregateId, int limit) {
     Set<String> resultTopics = eventify.getResultTopics();
     if (resultTopics.isEmpty()) {
-      return new QueryResult.Ok<>(new CommandsPage(List.of()));
+      return new ApiResult.Ok<>(new CommandsPage(List.of()));
     }
 
     String bootstrapServers = eventify.getStreamsConfig().getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
@@ -197,16 +197,16 @@ public class EventifyQueryService {
       }
     } catch (Exception e) {
       log.error("Unexpected error querying commands for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Unexpected error");
+      return new ApiResult.Unavailable<>("Unexpected error");
     }
 
     results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
     List<Command> limited = results.size() > limit ? results.subList(0, limit) : results;
-    return new QueryResult.Ok<>(new CommandsPage(limited));
+    return new ApiResult.Ok<>(new CommandsPage(limited));
   }
 
-  public QueryResult<CorrelatedEventsPage> getEventsByCorrelation(String aggregateId, String correlationId, boolean forwarded) {
-    QueryResult<CorrelatedEventsPage> routing = checkRouting(aggregateId, forwarded,
+  public ApiResult<CorrelatedEventsPage> getEventsByCorrelation(String aggregateId, String correlationId, boolean forwarded) {
+    ApiResult<CorrelatedEventsPage> routing = checkRouting(aggregateId, forwarded,
         "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8)
             + "/events/by-correlation/" + URLEncoder.encode(correlationId, java.nio.charset.StandardCharsets.UTF_8),
         new TypeReference<CorrelatedEventsPage>() {});
@@ -225,18 +225,18 @@ public class EventifyQueryService {
           }
         }
       }
-      return new QueryResult.Ok<>(new CorrelatedEventsPage(events));
+      return new ApiResult.Ok<>(new CorrelatedEventsPage(events));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Event store not ready");
+      return new ApiResult.Unavailable<>("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying correlated events for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Unexpected error");
+      return new ApiResult.Unavailable<>("Unexpected error");
     }
   }
 
-  public QueryResult<EventsPage> getEvents(String aggregateId, String cursor, int limit, boolean forwarded) {
-    QueryResult<EventsPage> routing = checkRouting(aggregateId, forwarded,
+  public ApiResult<EventsPage> getEvents(String aggregateId, String cursor, int limit, boolean forwarded) {
+    ApiResult<EventsPage> routing = checkRouting(aggregateId, forwarded,
         "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8) + "/events" + buildEventsQuery(cursor, limit),
         new TypeReference<EventsPage>() {});
     if (routing != null) {
@@ -263,18 +263,18 @@ public class EventifyQueryService {
         nextCursor = extra.getId().substring(aggregateId.length() + 1);
       }
 
-      return new QueryResult.Ok<>(new EventsPage(events, nextCursor));
+      return new ApiResult.Ok<>(new EventsPage(events, nextCursor));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Event store not ready");
+      return new ApiResult.Unavailable<>("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying events for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Unexpected error");
+      return new ApiResult.Unavailable<>("Unexpected error");
     }
   }
 
-  public QueryResult<EventDetail> getEventDetail(String aggregateId, String eventId, boolean forwarded) {
-    QueryResult<EventDetail> routing = checkRouting(aggregateId, forwarded,
+  public ApiResult<EventDetail> getEventDetail(String aggregateId, String eventId, boolean forwarded) {
+    ApiResult<EventDetail> routing = checkRouting(aggregateId, forwarded,
         "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8) + "/events/" + URLEncoder.encode(eventId, java.nio.charset.StandardCharsets.UTF_8),
         new TypeReference<EventDetail>() {});
     if (routing != null) {
@@ -291,17 +291,14 @@ public class EventifyQueryService {
       if (targetEvent == null) {
         if (!isLocallyAuthoritative(aggregateId)) {
           log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
-          return new QueryResult.Unavailable<>("Ownership changed during query");
+          return new ApiResult.Unavailable<>("Ownership changed during query");
         }
-        return new QueryResult.NotFound<>();
+        return new ApiResult.NotFound<>();
       }
 
       String from = aggregateId + "@";
       String to = eventId;
 
-      // Strictly-before check: a snapshot taken AT the target event must not be used
-      // directly, otherwise the loop below never runs and previousState collapses
-      // into the same object as currentState.
       AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
           .filter(snap -> snap.getEventId().compareTo(to) < 0)
           .orElse(null);
@@ -312,10 +309,6 @@ public class EventifyQueryService {
 
       long version = state != null ? state.getVersion() : 0;
 
-      // previousState/previousVersion are tracked together so that the version
-      // reported on previousState is the number of events actually applied to
-      // reach it, not a stale/inherited value from whatever object "state" was
-      // pointing at.
       AggregateState previousState = state;
       long previousVersion = version;
 
@@ -350,18 +343,18 @@ public class EventifyQueryService {
           .version(previousVersion)
           .build();
 
-      return new QueryResult.Ok<>(new EventDetail(targetEvent, currentState, previousStateResult));
+      return new ApiResult.Ok<>(new EventDetail(targetEvent, currentState, previousStateResult));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Event store not ready");
+      return new ApiResult.Unavailable<>("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying event detail for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Unexpected error");
+      return new ApiResult.Unavailable<>("Unexpected error");
     }
   }
 
-  public QueryResult<AggregateState> getState(String aggregateId, String eventId, boolean forwarded) {
-    QueryResult<AggregateState> routing = checkRouting(aggregateId, forwarded,
+  public ApiResult<AggregateState> getState(String aggregateId, String eventId, boolean forwarded) {
+    ApiResult<AggregateState> routing = checkRouting(aggregateId, forwarded,
         "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8) + "/state" + buildStateQuery(eventId),
         new TypeReference<AggregateState>() {});
     if (routing != null) {
@@ -401,9 +394,9 @@ public class EventifyQueryService {
       if (state == null) {
         if (!isLocallyAuthoritative(aggregateId)) {
           log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
-          return new QueryResult.Unavailable<>("Ownership changed during query");
+          return new ApiResult.Unavailable<>("Ownership changed during query");
         }
-        return new QueryResult.NotFound<>();
+        return new ApiResult.NotFound<>();
       }
 
       state = AggregateState.builder()
@@ -414,22 +407,22 @@ public class EventifyQueryService {
           .version(version)
           .build();
 
-      return new QueryResult.Ok<>(state);
+      return new ApiResult.Ok<>(state);
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Event store not ready");
+      return new ApiResult.Unavailable<>("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying state for aggregate {}", aggregateId, e);
-      return new QueryResult.Unavailable<>("Unexpected error");
+      return new ApiResult.Unavailable<>("Unexpected error");
     }
   }
 
-  private <T> QueryResult<T> checkRouting(String aggregateId, boolean forwarded, String path, TypeReference<T> responseType) {
+  private <T> ApiResult<T> checkRouting(String aggregateId, boolean forwarded, String path, TypeReference<T> responseType) {
     KafkaStreams streams = eventify.getKafkaStreams();
 
     if (streams == null || streams.state() != KafkaStreams.State.RUNNING) {
       log.warn("Kafka Streams is not running");
-      return new QueryResult.Unavailable<>("Kafka Streams is not running");
+      return new ApiResult.Unavailable<>("Kafka Streams is not running");
     }
 
     if (thisHost.equals(HostInfo.unavailable())) {
@@ -439,7 +432,7 @@ public class EventifyQueryService {
     KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
     if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
       log.warn("Metadata unavailable for aggregate {}", aggregateId);
-      return new QueryResult.Unavailable<>("Metadata unavailable");
+      return new ApiResult.Unavailable<>("Metadata unavailable");
     }
 
     HostInfo activeHost = metadata.activeHost();
@@ -449,13 +442,13 @@ public class EventifyQueryService {
 
     if (forwarded) {
       log.warn("Aggregate {} not owned by this node after forwarding, possible rebalance", aggregateId);
-      return new QueryResult.Unavailable<>("Not owned by this node after forwarding");
+      return new ApiResult.Unavailable<>("Not owned by this node after forwarding");
     }
 
     return forward(aggregateId, activeHost, path, responseType);
   }
 
-  private <T> QueryResult<T> forward(String aggregateId, HostInfo target, String path, TypeReference<T> responseType) {
+  private <T> ApiResult<T> forward(String aggregateId, HostInfo target, String path, TypeReference<T> responseType) {
     try {
       String separator = path.contains("?") ? "&" : "?";
       String url = "http://" + target.host() + ":" + target.port() + path + separator + "forwarded=true";
@@ -471,16 +464,16 @@ public class EventifyQueryService {
 
       int status = response.statusCode();
       if (status == 200) {
-        return new QueryResult.Ok<>(objectMapper.readValue(response.body(), responseType));
+        return new ApiResult.Ok<>(objectMapper.readValue(response.body(), responseType));
       } else if (status == 404) {
-        return new QueryResult.NotFound<>();
+        return new ApiResult.NotFound<>();
       } else {
         log.warn("Remote node {} returned {} for aggregate {}", target, status, aggregateId);
-        return new QueryResult.RemoteError<>(status);
+        return new ApiResult.RemoteError<>(status);
       }
     } catch (IOException | InterruptedException e) {
       log.warn("Failed to forward request for aggregate {} to {}", aggregateId, target, e);
-      return new QueryResult.Unavailable<>("Failed to reach remote node");
+      return new ApiResult.Unavailable<>("Failed to reach remote node");
     }
   }
 

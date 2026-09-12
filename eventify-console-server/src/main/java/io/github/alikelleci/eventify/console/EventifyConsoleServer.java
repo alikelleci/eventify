@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.console;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.console.EventifyQueryService.QueryResult;
+
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import lombok.extern.slf4j.Slf4j;
 
@@ -29,13 +29,13 @@ public class EventifyConsoleServer {
   private static final String CONSOLE_PATH = "/console/";
   private static final String CONSOLE_RESOURCES = "META-INF/resources/console/";
 
-  private final EventifyQueryService queryService;
+  private final EventifyService queryService;
   private final ObjectMapper objectMapper;
   private final int port;
   private final String allowedOrigins;
   private HttpServer server;
 
-  public EventifyConsoleServer(EventifyQueryService queryService, ObjectMapper objectMapper, int port, String allowedOrigins) {
+  public EventifyConsoleServer(EventifyService queryService, ObjectMapper objectMapper, int port, String allowedOrigins) {
     this.queryService = queryService;
     this.objectMapper = objectMapper;
     this.port = port;
@@ -93,7 +93,7 @@ public class EventifyConsoleServer {
         try {
           byte[] body = exchange.getRequestBody().readAllBytes();
           Command command = objectMapper.readValue(body, Command.class);
-          QueryResult<Void> result = queryService.retryCommand(command);
+          EventifyService.ApiResult<Void> result = queryService.retryCommand(command);
           sendQueryResult(exchange, result);
         } catch (Exception e) {
           log.error("Failed to parse retry request body", e);
@@ -111,7 +111,7 @@ public class EventifyConsoleServer {
       if (segments.length == 7 && "aggregates".equals(segments[2]) && "events".equals(segments[4]) && "by-correlation".equals(segments[5])) {
         String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
         String correlationId = URLDecoder.decode(segments[6], StandardCharsets.UTF_8);
-        QueryResult<EventifyQueryService.CorrelatedEventsPage> result = queryService.getEventsByCorrelation(aggregateId, correlationId, forwarded);
+        EventifyService.ApiResult<EventifyService.CorrelatedEventsPage> result = queryService.getEventsByCorrelation(aggregateId, correlationId, forwarded);
         sendQueryResult(exchange, result);
         return;
       }
@@ -120,7 +120,7 @@ public class EventifyConsoleServer {
       if (segments.length == 6 && "aggregates".equals(segments[2]) && "events".equals(segments[4])) {
         String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
         String eventId = URLDecoder.decode(segments[5], StandardCharsets.UTF_8);
-        QueryResult<EventifyQueryService.EventDetail> result = queryService.getEventDetail(aggregateId, eventId, forwarded);
+        EventifyService.ApiResult<EventifyService.EventDetail> result = queryService.getEventDetail(aggregateId, eventId, forwarded);
         sendQueryResult(exchange, result);
         return;
       }
@@ -150,32 +150,32 @@ public class EventifyConsoleServer {
     String cursor = queryParams.get("cursor");
     int limit = clampLimit(parseIntOrDefault(queryParams.get("limit"), DEFAULT_PAGE_SIZE));
 
-    QueryResult<EventifyQueryService.EventsPage> result = queryService.getEvents(aggregateId, cursor, limit, forwarded);
+    EventifyService.ApiResult<EventifyService.EventsPage> result = queryService.getEvents(aggregateId, cursor, limit, forwarded);
     sendQueryResult(exchange, result);
   }
 
   private void handleGetState(HttpExchange exchange, String aggregateId,
                               Map<String, String> queryParams, boolean forwarded) throws IOException {
     String eventId = queryParams.get("eventId");
-    QueryResult<?> result = queryService.getState(aggregateId, eventId, forwarded);
+    EventifyService.ApiResult<?> result = queryService.getState(aggregateId, eventId, forwarded);
     sendQueryResult(exchange, result);
   }
 
   private void handleGetCommands(HttpExchange exchange, String aggregateId,
                                  Map<String, String> queryParams) throws IOException {
     int limit = clampLimit(parseIntOrDefault(queryParams.get("limit"), MAX_PAGE_SIZE));
-    QueryResult<EventifyQueryService.CommandsPage> result = queryService.getCommands(aggregateId, limit);
+    EventifyService.ApiResult<EventifyService.CommandsPage> result = queryService.getCommands(aggregateId, limit);
     sendQueryResult(exchange, result);
   }
 
-  private void sendQueryResult(HttpExchange exchange, QueryResult<?> result) throws IOException {
-    if (result instanceof QueryResult.Ok<?> ok) {
+  private void sendQueryResult(HttpExchange exchange, EventifyService.ApiResult<?> result) throws IOException {
+    if (result instanceof EventifyService.ApiResult.Ok<?> ok) {
       sendJson(exchange, 200, ok.value());
-    } else if (result instanceof QueryResult.NotFound<?>) {
+    } else if (result instanceof EventifyService.ApiResult.NotFound<?>) {
       sendResponse(exchange, 404, "Not Found");
-    } else if (result instanceof QueryResult.RemoteError<?> r) {
+    } else if (result instanceof EventifyService.ApiResult.RemoteError<?> r) {
       sendResponse(exchange, r.statusCode(), "Remote error");
-    } else if (result instanceof QueryResult.Unavailable<?> u) {
+    } else if (result instanceof EventifyService.ApiResult.Unavailable<?> u) {
       sendResponse(exchange, 503, u.reason());
     }
   }

@@ -14,7 +14,7 @@ public class EventifyConsolePlugin implements EventifyPlugin {
 
   private final String allowedOrigins;
   private EventifyConsoleServer consoleServer;
-  private EventifyQueryService queryService;
+  private EventifyService queryService;
 
   @Builder
   private EventifyConsolePlugin(String allowedOrigins) {
@@ -33,7 +33,7 @@ public class EventifyConsolePlugin implements EventifyPlugin {
     }
 
     int port = URI.create("http://" + applicationServer).getPort();
-    queryService = new EventifyQueryService(eventify);
+    queryService = new EventifyService(eventify);
     consoleServer = new EventifyConsoleServer(queryService, eventify.getObjectMapper(), port, allowedOrigins);
 
     try {
