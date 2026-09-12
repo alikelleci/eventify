@@ -11,6 +11,7 @@ import { DrawerModule } from 'primeng/drawer';
 import { SkeletonModule } from 'primeng/skeleton';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
+import { TabsModule } from 'primeng/tabs';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
@@ -25,7 +26,7 @@ const MAX_RECENT = 8;
   selector: 'app-commands',
   templateUrl: './commands.component.html',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, InputTextModule, ButtonModule, DrawerModule, SkeletonModule, TagModule, ToastModule, TooltipModule, JsonHighlightPipe],
+  imports: [CommonModule, FormsModule, DatePipe, InputTextModule, ButtonModule, DrawerModule, SkeletonModule, TagModule, ToastModule, TabsModule, TooltipModule, JsonHighlightPipe],
   providers: [MessageService],
 })
 export class CommandsComponent {
@@ -46,6 +47,7 @@ export class CommandsComponent {
   selectedCommand = signal<CommandMessage | null>(null);
   producedEvents = signal<EventMessage[] | null>(null);
   loadingDetail = signal(false);
+  activeTab = signal('command');
   drawerVisible = signal(false);
   isMobile = signal(window.innerWidth < 1024);
   copiedKey = signal<string | null>(null);
@@ -91,6 +93,7 @@ export class CommandsComponent {
       const found = this.commands().find(c => c.id === commandId) ?? null;
       this.selectedCommand.set(found);
       this.producedEvents.set(null);
+      this.activeTab.set('command');
       if (found) {
         if (this.isMobile()) this.drawerVisible.set(true);
         this.loadDetail(found);
@@ -216,6 +219,7 @@ export class CommandsComponent {
         const found = page.commands.find(c => c.id === commandId) ?? null;
         this.selectedCommand.set(found);
         this.producedEvents.set(null);
+        this.activeTab.set('command');
         if (found) {
           if (this.isMobile()) this.drawerVisible.set(true);
           this.loadDetail(found);

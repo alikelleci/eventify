@@ -171,7 +171,8 @@
     <div class="border-t border-surface-100 dark:border-surface-800 pt-4">
       <p-tabs [(value)]="activeTab">
         <p-tablist styleClass="!border-t-0">
-          <p-tab value="event">Event</p-tab>
+          <p-tab value="event">Payload</p-tab>
+          <p-tab value="metadata">Metadata</p-tab>
           <p-tab value="state">
             <span class="flex items-center gap-1.5">State
               @if (detail.state) {
@@ -225,10 +226,9 @@
         }
       }
 
-      <!-- Metadata — always visible -->
-      @if (allMetadataEntries(detail.event.metadata).length > 0) {
-        <div class="mt-6">
-          <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-3">Metadata</div>
+      <!-- Metadata tab -->
+      @if (activeTab() === 'metadata') {
+        @if (allMetadataEntries(detail.event.metadata).length > 0) {
           <div class="rounded-lg border border-surface-100 dark:border-surface-800 overflow-hidden">
             <table class="w-full text-xs">
               <thead>
@@ -257,7 +257,9 @@
               </tbody>
             </table>
           </div>
-        </div>
+        } @else {
+          <div class="text-sm text-surface-400">No metadata.</div>
+        }
       }
 
     </div>
