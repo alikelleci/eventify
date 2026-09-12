@@ -84,7 +84,7 @@ export class EventsComponent {
       if (id) this.loadPage(id, null, false);
     });
 
-    // When eventId changes → load detail
+    // When eventId changes → highlight immediately from list, then load detail
     this.route.queryParams.pipe(
       map(p => ({ id: (p['id'] ?? '').trim(), eventId: p['eventId'] ?? null })),
       distinctUntilChanged((a, b) => a.eventId === b.eventId),
@@ -96,6 +96,12 @@ export class EventsComponent {
         this.drawerVisible.set(false);
         return;
       }
+      // Highlight immediately from the already-loaded list
+      const fromList = this.events().find(e => e.id === eventId) ?? null;
+      this.selectedEvent.set(fromList);
+      this.eventDetail.set(null);
+      this.activeTab.set('event');
+      this.showDiff.set(false);
       if (this.isMobile()) this.drawerVisible.set(true);
       this.setLoadingDetail(true);
       this.svc.getEventDetail(id, eventId).pipe(
@@ -104,8 +110,6 @@ export class EventsComponent {
       ).subscribe(detail => {
         this.selectedEvent.set(detail.event);
         this.eventDetail.set(detail);
-        this.activeTab.set('event');
-        this.showDiff.set(false);
         this.setLoadingDetail(false);
       });
     });
