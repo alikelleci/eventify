@@ -691,7 +691,11 @@ KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("s
 
 ## 9. Eventify Console
 
-Eventify Console is an ops-facing UI for inspecting aggregate state and event history.
+Eventify Console is an operations-focused UI for inspecting and troubleshooting applications built with Eventify.
+
+Explore aggregates, replay their state at any point in history, inspect event payloads and state diffs, trace commands through correlation and causation, and retry failed commands — all from a single interface.
+
+Available both embedded in your application or as a standalone Docker deployment for centralized operations.
 
 It consists of two optional modules:
 
