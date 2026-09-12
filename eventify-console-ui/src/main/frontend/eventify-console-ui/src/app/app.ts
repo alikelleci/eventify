@@ -1,5 +1,5 @@
 import { Component, inject, ViewChild } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { PopoverModule } from 'primeng/popover';
 import { Popover } from 'primeng/popover';
 import { BackendService } from './backend.service';
@@ -8,7 +8,7 @@ import { AppEntry } from './config.service';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, PopoverModule],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, PopoverModule],
   template: `
     <div class="flex flex-col h-dvh bg-surface-0 dark:bg-surface-900 text-surface-900 dark:text-surface-100">
       <header class="flex items-center gap-3 px-5 py-3 border-b border-slate-700 bg-slate-900 shrink-0">
