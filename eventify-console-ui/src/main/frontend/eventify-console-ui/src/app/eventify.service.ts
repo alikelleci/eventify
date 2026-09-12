@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { EventDetail, EventsPage } from './models';
+import { CommandsPage, EventDetail, EventsPage } from './models';
 import { BackendService } from './backend.service';
 
 @Injectable({ providedIn: 'root' })
@@ -17,5 +17,10 @@ export class EventifyService {
 
   getEventDetail(aggregateId: string, eventId: string): Observable<EventDetail> {
     return this.http.get<EventDetail>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/events/${encodeURIComponent(eventId)}`);
+  }
+
+  getCommands(aggregateId: string, limit = 50): Observable<CommandsPage> {
+    const params = new HttpParams().set('limit', limit);
+    return this.http.get<CommandsPage>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/commands`, { params });
   }
 }

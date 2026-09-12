@@ -1,3 +1,16 @@
+export interface CommandMessage {
+  id: string;
+  timestamp: string;
+  type: string;
+  payload: Record<string, unknown> & { '@class'?: string };
+  metadata: Record<string, string>;
+  aggregateId: string;
+}
+
+export interface CommandsPage {
+  commands: CommandMessage[];
+}
+
 export interface EventMessage {
   id: string;
   timestamp: string;

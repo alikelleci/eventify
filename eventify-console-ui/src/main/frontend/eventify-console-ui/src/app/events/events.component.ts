@@ -47,13 +47,12 @@ export class EventsComponent {
     this.route.queryParams
       .pipe(
         map(p => ({ id: (p['id'] ?? '').trim(), eventId: p['eventId'] ?? null })),
+        distinctUntilChanged((a, b) => a.id === b.id && a.eventId === b.eventId),
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(({ id, eventId }) => {
-        if (id !== this.aggregateId()) {
-          this.aggregateId.set(id);
-          if (id) this.doSearch(id);
-        }
+        this.aggregateId.set(id);
+        if (id) this.doSearch(id);
 
         if (eventId && eventId !== this.selectedEvent()?.id) {
           this.setLoadingDetail(true);
@@ -96,7 +95,6 @@ export class EventsComponent {
   loadingDetail = signal(false);
 
   private readonly MIN_SKELETON_MS = 300;
-
   private minElapsed = { loading: false, loadingMore: false, loadingDetail: false };
   private dataReady = { loading: false, loadingMore: false, loadingDetail: false };
 

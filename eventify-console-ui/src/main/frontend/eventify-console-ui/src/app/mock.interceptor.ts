@@ -1,8 +1,53 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { of, delay } from 'rxjs';
-import { EventsPage, EventDetail, AggregateState } from './models';
+import { CommandsPage, EventsPage, EventDetail, AggregateState } from './models';
 
 const AGGREGATE_ID = 'customer-1';
+
+const MOCK_COMMANDS: CommandsPage = {
+  commands: [
+    {
+      id: `${AGGREGATE_ID}@0000000000005`,
+      timestamp: new Date(Date.now() - 10_000).toISOString(),
+      type: 'CreateCustomer',
+      payload: { '@class': 'com.example.CustomerCommand$CreateCustomer', id: AGGREGATE_ID, firstName: 'John', lastName: 'Doe' },
+      metadata: { '$correlationId': 'corr-005', '$result': 'success', '$replyTo': 'my-app.replies' },
+      aggregateId: AGGREGATE_ID,
+    },
+    {
+      id: `${AGGREGATE_ID}@0000000000004`,
+      timestamp: new Date(Date.now() - 30_000).toISOString(),
+      type: 'DeleteCustomer',
+      payload: { '@class': 'com.example.CustomerCommand$DeleteCustomer', id: AGGREGATE_ID },
+      metadata: { '$correlationId': 'corr-004', '$result': 'success', '$replyTo': 'my-app.replies' },
+      aggregateId: AGGREGATE_ID,
+    },
+    {
+      id: `${AGGREGATE_ID}@0000000000003`,
+      timestamp: new Date(Date.now() - 120_000).toISOString(),
+      type: 'ChangeFirstName',
+      payload: { '@class': 'com.example.CustomerCommand$ChangeFirstName', id: AGGREGATE_ID, firstName: 'Jane' },
+      metadata: { '$correlationId': 'corr-003', '$result': 'failure', '$cause': 'Customer does not exist.', '$replyTo': 'my-app.replies' },
+      aggregateId: AGGREGATE_ID,
+    },
+    {
+      id: `${AGGREGATE_ID}@0000000000002`,
+      timestamp: new Date(Date.now() - 180_000).toISOString(),
+      type: 'ChangeLastName',
+      payload: { '@class': 'com.example.CustomerCommand$ChangeLastName', id: AGGREGATE_ID, lastName: 'Smith' },
+      metadata: { '$correlationId': 'corr-002', '$result': 'success', '$replyTo': 'my-app.replies' },
+      aggregateId: AGGREGATE_ID,
+    },
+    {
+      id: `${AGGREGATE_ID}@0000000000001`,
+      timestamp: new Date(Date.now() - 300_000).toISOString(),
+      type: 'CreateCustomer',
+      payload: { '@class': 'com.example.CustomerCommand$CreateCustomer', id: AGGREGATE_ID, firstName: 'John', lastName: 'Doe' },
+      metadata: { '$correlationId': 'corr-001', '$result': 'failure', '$cause': 'Customer already exists.', '$replyTo': 'my-app.replies' },
+      aggregateId: AGGREGATE_ID,
+    },
+  ],
+};
 
 const MOCK_EVENTS: EventsPage = {
   events: [
@@ -108,7 +153,6 @@ const CUSTOMER_BASE = {
 };
 
 const MOCK_STATE_BY_EVENT: Record<string, AggregateState | null> = {
-  // v1: CustomerCreated → base state
   [`${AGGREGATE_ID}@0000000000001`]: {
     id: `${AGGREGATE_ID}@0000000000001`,
     timestamp: new Date(Date.now() - 300_000).toISOString(),
@@ -119,7 +163,6 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState | null> = {
     eventId: `${AGGREGATE_ID}@0000000000001`,
     version: 1,
   },
-  // v2: LastNameChanged → lastName: Smith
   [`${AGGREGATE_ID}@0000000000002`]: {
     id: `${AGGREGATE_ID}@0000000000002`,
     timestamp: new Date(Date.now() - 180_000).toISOString(),
@@ -130,7 +173,6 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState | null> = {
     eventId: `${AGGREGATE_ID}@0000000000002`,
     version: 2,
   },
-  // v3: FirstNameChanged → firstName: Jane
   [`${AGGREGATE_ID}@0000000000003`]: {
     id: `${AGGREGATE_ID}@0000000000003`,
     timestamp: new Date(Date.now() - 120_000).toISOString(),
@@ -141,9 +183,7 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState | null> = {
     eventId: `${AGGREGATE_ID}@0000000000003`,
     version: 3,
   },
-  // v4: CustomerDeleted → null
   [`${AGGREGATE_ID}@0000000000004`]: null,
-  // v5: CustomerCreated → fresh base state
   [`${AGGREGATE_ID}@0000000000005`]: {
     id: `${AGGREGATE_ID}@0000000000005`,
     timestamp: new Date(Date.now() - 10_000).toISOString(),
@@ -157,20 +197,26 @@ const MOCK_STATE_BY_EVENT: Record<string, AggregateState | null> = {
 };
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
-  if (req.url.includes('/api/aggregates') && req.url.includes('/events')) {
-    const eventDetailMatch = req.url.match(/\/api\/aggregates\/[^/]+\/events\/(.+)/);
-    if (eventDetailMatch) {
-      const eventId = decodeURIComponent(eventDetailMatch[1]);
-      const eventsList = MOCK_EVENTS.events;
-      const idx = eventsList.findIndex(e => e.id === eventId);
-      if (idx === -1) return of(new HttpResponse({ status: 404, body: 'Not Found' }));
-      const event = eventsList[idx];
-      const state = MOCK_STATE_BY_EVENT[eventId] ?? null;
-      const previousState = idx < eventsList.length - 1 ? (MOCK_STATE_BY_EVENT[eventsList[idx + 1].id] ?? null) : null;
-      const detail: EventDetail = { event, state, previousState };
-      return of(new HttpResponse({ status: 200, body: detail })).pipe(delay(300));
+  if (req.url.includes('/api/aggregates/')) {
+    if (req.url.includes('/commands')) {
+      return of(new HttpResponse({ status: 200, body: MOCK_COMMANDS })).pipe(delay(400));
     }
-    return of(new HttpResponse({ status: 200, body: MOCK_EVENTS })).pipe(delay(400));
+
+    if (req.url.includes('/events')) {
+      const eventDetailMatch = req.url.match(/\/api\/aggregates\/[^/]+\/events\/(.+)/);
+      if (eventDetailMatch) {
+        const eventId = decodeURIComponent(eventDetailMatch[1]);
+        const eventsList = MOCK_EVENTS.events;
+        const idx = eventsList.findIndex(e => e.id === eventId);
+        if (idx === -1) return of(new HttpResponse({ status: 404, body: 'Not Found' }));
+        const event = eventsList[idx];
+        const state = MOCK_STATE_BY_EVENT[eventId] ?? null;
+        const previousState = idx < eventsList.length - 1 ? (MOCK_STATE_BY_EVENT[eventsList[idx + 1].id] ?? null) : null;
+        const detail: EventDetail = { event, state, previousState };
+        return of(new HttpResponse({ status: 200, body: detail })).pipe(delay(300));
+      }
+      return of(new HttpResponse({ status: 200, body: MOCK_EVENTS })).pipe(delay(400));
+    }
   }
   return next(req);
 };

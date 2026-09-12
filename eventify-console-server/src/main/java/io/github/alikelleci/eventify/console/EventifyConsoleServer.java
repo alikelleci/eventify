@@ -109,6 +109,7 @@ public class EventifyConsoleServer {
       switch (endpoint) {
         case "events" -> handleGetEvents(exchange, aggregateId, queryParams, forwarded);
         case "state" -> handleGetState(exchange, aggregateId, queryParams, forwarded);
+        case "commands" -> handleGetCommands(exchange, aggregateId, queryParams);
         default -> sendResponse(exchange, 404, "Not Found");
       }
     } catch (Exception e) {
@@ -130,6 +131,13 @@ public class EventifyConsoleServer {
                               Map<String, String> queryParams, boolean forwarded) throws IOException {
     String eventId = queryParams.get("eventId");
     QueryResult<?> result = queryService.getState(aggregateId, eventId, forwarded);
+    sendQueryResult(exchange, result);
+  }
+
+  private void handleGetCommands(HttpExchange exchange, String aggregateId,
+                                 Map<String, String> queryParams) throws IOException {
+    int limit = clampLimit(parseIntOrDefault(queryParams.get("limit"), DEFAULT_PAGE_SIZE));
+    QueryResult<EventifyQueryService.CommandsPage> result = queryService.getCommands(aggregateId, limit);
     sendQueryResult(exchange, result);
   }
 

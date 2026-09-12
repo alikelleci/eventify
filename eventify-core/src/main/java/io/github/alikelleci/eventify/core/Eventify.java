@@ -247,7 +247,7 @@ public class Eventify {
     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
   }
 
-  private Set<String> getCommandTopics() {
+  public Set<String> getCommandTopics() {
     return commandHandlers.keySet().stream()
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)

@@ -3,11 +3,20 @@ package io.github.alikelleci.eventify.console;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyQueryMetadata;
 import org.apache.kafka.streams.StoreQueryParameters;
@@ -26,8 +35,12 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
+import java.util.Set;
 
 @Slf4j
 public class EventifyQueryService {
@@ -38,6 +51,7 @@ public class EventifyQueryService {
   private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(5);
   private static final Duration READ_TIMEOUT = Duration.ofSeconds(10);
 
+  public record CommandsPage(List<Command> commands) {}
   public record EventsPage(List<Event> events, String nextCursor) {}
   public record EventDetail(Event event, AggregateState state, AggregateState previousState) {}
 
@@ -70,6 +84,79 @@ public class EventifyQueryService {
       log.warn("'{}' is not configured, running in single-node mode. Multi-node routing is disabled.",
           StreamsConfig.APPLICATION_SERVER_CONFIG);
     }
+  }
+
+  public QueryResult<CommandsPage> getCommands(String aggregateId, int limit) {
+    Set<String> resultTopics = eventify.getCommandTopics().stream()
+        .map(t -> t + ".results")
+        .collect(java.util.stream.Collectors.toSet());
+    if (resultTopics.isEmpty()) {
+      return new QueryResult.Ok<>(new CommandsPage(List.of()));
+    }
+
+    String bootstrapServers = eventify.getStreamsConfig().getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
+
+    Properties props = new Properties();
+    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 500);
+
+    List<Command> results = new ArrayList<>();
+    JsonDeserializer<Command> commandDeserializer = new JsonDeserializer<>(Command.class, objectMapper);
+
+    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+      for (String topic : resultTopics) {
+        try {
+          List<TopicPartition> allPartitions = consumer.partitionsFor(topic).stream()
+              .map(pi -> new TopicPartition(topic, pi.partition()))
+              .toList();
+
+          if (allPartitions.isEmpty()) continue;
+
+          int numPartitions = allPartitions.size();
+          int partition = Utils.toPositive(Utils.murmur2(aggregateId.getBytes())) % numPartitions;
+          TopicPartition tp = new TopicPartition(topic, partition);
+
+          consumer.assign(Collections.singletonList(tp));
+
+          Map<TopicPartition, Long> endOffsets = consumer.endOffsets(Collections.singletonList(tp));
+          long endOffset = endOffsets.getOrDefault(tp, 0L);
+          if (endOffset == 0) continue;
+
+          long startOffset = Math.max(0, endOffset - limit * 10L);
+          consumer.seek(tp, startOffset);
+
+          boolean done = false;
+          while (!done) {
+            ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(3));
+            if (records.isEmpty()) break;
+            for (ConsumerRecord<String, String> record : records) {
+              if (record.offset() >= endOffset) { done = true; break; }
+              if (!aggregateId.equals(record.key())) continue;
+              if (record.value() == null) continue;
+              try {
+                Command command = commandDeserializer.deserialize(topic, record.value().getBytes());
+                if (command != null) results.add(command);
+              } catch (Exception e) {
+                log.warn("Failed to deserialize command record on topic {}", topic, e);
+              }
+            }
+          }
+        } catch (Exception e) {
+          log.warn("Failed to query command result topic {}", topic, e);
+        }
+      }
+    } catch (Exception e) {
+      log.error("Unexpected error querying commands for aggregate {}", aggregateId, e);
+      return new QueryResult.Unavailable<>("Unexpected error");
+    }
+
+    results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
+    List<Command> limited = results.size() > limit ? results.subList(0, limit) : results;
+    return new QueryResult.Ok<>(new CommandsPage(limited));
   }
 
   public QueryResult<EventsPage> getEvents(String aggregateId, String cursor, int limit, boolean forwarded) {
