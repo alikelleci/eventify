@@ -91,9 +91,7 @@ public class EventifyQueryService {
   }
 
   public QueryResult<CommandsPage> getCommands(String aggregateId, int limit) {
-    Set<String> resultTopics = eventify.getCommandTopics().stream()
-        .map(t -> t + ".results")
-        .collect(java.util.stream.Collectors.toSet());
+    Set<String> resultTopics = eventify.getResultTopics();
     if (resultTopics.isEmpty()) {
       return new QueryResult.Ok<>(new CommandsPage(List.of()));
     }
