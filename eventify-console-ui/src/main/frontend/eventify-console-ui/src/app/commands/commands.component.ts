@@ -188,7 +188,7 @@ export class CommandsComponent {
   }
 
   goToEvent(event: EventMessage) {
-    this.router.navigate(['/events'], { queryParams: { id: event.aggregateId, eventId: event.id } });
+    this.router.navigate(['events'], { queryParams: { id: event.aggregateId, eventId: event.id } });
   }
 
   private load(id: string) {
