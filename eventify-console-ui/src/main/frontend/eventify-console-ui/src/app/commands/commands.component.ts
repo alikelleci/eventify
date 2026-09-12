@@ -15,7 +15,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 
 import { EventifyService } from '../eventify.service';
-import { CommandMessage } from '../models';
+import { CommandMessage, EventMessage } from '../models';
 import { JsonHighlightPipe } from '../shared/json-highlight.pipe';
 
 const RECENT_KEY = 'eventify.recentCommandSearches';
@@ -44,6 +44,8 @@ export class CommandsComponent {
   commands = signal<CommandMessage[]>([]);
   loading = signal(false);
   selectedCommand = signal<CommandMessage | null>(null);
+  producedEvents = signal<EventMessage[] | null>(null);
+  loadingDetail = signal(false);
   drawerVisible = signal(false);
   isMobile = signal(window.innerWidth < 1024);
   copiedKey = signal<string | null>(null);
@@ -54,6 +56,8 @@ export class CommandsComponent {
   private readonly MIN_SKELETON_MS = 300;
   private minElapsed = false;
   private dataReady = false;
+  private minElapsedDetail = false;
+  private dataReadyDetail = false;
 
   constructor() {
     // When aggregate ID changes → reload list
@@ -65,6 +69,8 @@ export class CommandsComponent {
       this.aggregateId.set(id);
       this.commands.set([]);
       this.selectedCommand.set(null);
+      this.producedEvents.set(null);
+      this.loadingDetail.set(false);
       this.drawerVisible.set(false);
       if (id) this.load(id);
     });
@@ -77,12 +83,18 @@ export class CommandsComponent {
     ).subscribe(commandId => {
       if (!commandId) {
         this.selectedCommand.set(null);
+        this.producedEvents.set(null);
+        this.loadingDetail.set(false);
         this.drawerVisible.set(false);
         return;
       }
       const found = this.commands().find(c => c.id === commandId) ?? null;
       this.selectedCommand.set(found);
-      if (found && this.isMobile()) this.drawerVisible.set(true);
+      this.producedEvents.set(null);
+      if (found) {
+        if (this.isMobile()) this.drawerVisible.set(true);
+        this.loadDetail(found);
+      }
     });
   }
 
@@ -175,6 +187,10 @@ export class CommandsComponent {
     return JSON.stringify(this.cleanPayload(obj as Record<string, unknown>), null, 2);
   }
 
+  goToEvent(event: EventMessage) {
+    this.router.navigate(['/events'], { queryParams: { id: event.aggregateId, eventId: event.id } });
+  }
+
   private load(id: string) {
     this.minElapsed = false;
     this.dataReady = false;
@@ -199,11 +215,47 @@ export class CommandsComponent {
       if (commandId) {
         const found = page.commands.find(c => c.id === commandId) ?? null;
         this.selectedCommand.set(found);
-        if (found && this.isMobile()) this.drawerVisible.set(true);
+        this.producedEvents.set(null);
+        if (found) {
+          if (this.isMobile()) this.drawerVisible.set(true);
+          this.loadDetail(found);
+        }
       }
       this.dataReady = true;
       if (this.minElapsed) this.loading.set(false);
     });
+  }
+
+  private loadDetail(command: CommandMessage) {
+    this.setLoadingDetail(true);
+    const correlationId = command.metadata['$correlationId'];
+    if (!correlationId) {
+      this.producedEvents.set([]);
+      this.setLoadingDetail(false);
+      return;
+    }
+    this.svc.getEventsByCorrelation(command.aggregateId, correlationId).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      catchError(() => { this.setLoadingDetail(false); return EMPTY; }),
+    ).subscribe(page => {
+      this.producedEvents.set(page.events);
+      this.setLoadingDetail(false);
+    });
+  }
+
+  private setLoadingDetail(value: boolean) {
+    if (value) {
+      this.minElapsedDetail = false;
+      this.dataReadyDetail = false;
+      this.loadingDetail.set(true);
+      setTimeout(() => {
+        this.minElapsedDetail = true;
+        if (this.dataReadyDetail) this.loadingDetail.set(false);
+      }, this.MIN_SKELETON_MS);
+    } else {
+      this.dataReadyDetail = true;
+      if (this.minElapsedDetail) this.loadingDetail.set(false);
+    }
   }
 
   private saveRecent(id: string) {

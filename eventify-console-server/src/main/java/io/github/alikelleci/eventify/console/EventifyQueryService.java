@@ -57,6 +57,7 @@ public class EventifyQueryService {
   public record CommandsPage(List<Command> commands) {}
   public record EventsPage(List<Event> events, String nextCursor) {}
   public record EventDetail(Event event, AggregateState state, AggregateState previousState) {}
+  public record CorrelatedEventsPage(List<Event> events) {}
 
   public sealed interface QueryResult<T> {
     record Ok<T>(T value) implements QueryResult<T> {}
@@ -162,6 +163,36 @@ public class EventifyQueryService {
     results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
     List<Command> limited = results.size() > limit ? results.subList(0, limit) : results;
     return new QueryResult.Ok<>(new CommandsPage(limited));
+  }
+
+  public QueryResult<CorrelatedEventsPage> getEventsByCorrelation(String aggregateId, String correlationId, boolean forwarded) {
+    QueryResult<CorrelatedEventsPage> routing = checkRouting(aggregateId, forwarded,
+        "/api/aggregates/" + URLEncoder.encode(aggregateId, java.nio.charset.StandardCharsets.UTF_8)
+            + "/events/by-correlation/" + URLEncoder.encode(correlationId, java.nio.charset.StandardCharsets.UTF_8),
+        new TypeReference<CorrelatedEventsPage>() {});
+    if (routing != null) return routing;
+
+    try {
+      ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
+          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
+
+      List<Event> events = new ArrayList<>();
+      try (KeyValueIterator<String, Event> it = store.range(aggregateId + "@", aggregateId + "@~")) {
+        while (it.hasNext()) {
+          Event event = it.next().value;
+          if (correlationId.equals(event.getMetadata().get("$correlationId"))) {
+            events.add(event);
+          }
+        }
+      }
+      return new QueryResult.Ok<>(new CorrelatedEventsPage(events));
+    } catch (InvalidStateStoreException e) {
+      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      return new QueryResult.Unavailable<>("Event store not ready");
+    } catch (Exception e) {
+      log.error("Unexpected error querying correlated events for aggregate {}", aggregateId, e);
+      return new QueryResult.Unavailable<>("Unexpected error");
+    }
   }
 
   public QueryResult<EventsPage> getEvents(String aggregateId, String cursor, int limit, boolean forwarded) {

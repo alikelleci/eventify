@@ -1,6 +1,6 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { of, delay } from 'rxjs';
-import { CommandsPage, EventsPage, EventDetail, AggregateState } from './models';
+import { CommandsPage, CorrelatedEventsPage, EventsPage, EventDetail, AggregateState } from './models';
 
 const AGGREGATE_ID = 'customer-1';
 
@@ -74,7 +74,7 @@ const MOCK_EVENTS: EventsPage = {
       timestamp: new Date(Date.now() - 120_000).toISOString(),
       type: 'FirstNameChanged',
       payload: { '@class': 'com.example.CustomerEvent$FirstNameChanged', id: AGGREGATE_ID, firstName: 'Jane' },
-      metadata: { '$correlationId': 'corr-003', '$replyTo': 'my-app.replies' },
+      metadata: { '$correlationId': 'corr-003-no-match', '$replyTo': 'my-app.replies' },
       aggregateId: AGGREGATE_ID,
       revision: 1,
     },
@@ -129,7 +129,7 @@ const MOCK_EVENTS: EventsPage = {
         ],
         tags: ['new-customer', 'web-registration', 'referral'],
       },
-      metadata: { '$correlationId': 'corr-001', '$replyTo': 'my-app.replies' },
+      metadata: { '$correlationId': 'corr-001-no-match', '$replyTo': 'my-app.replies' },
       aggregateId: AGGREGATE_ID,
       revision: 1,
     },
@@ -203,7 +203,14 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
     }
 
     if (req.url.includes('/events')) {
-      const eventDetailMatch = req.url.match(/\/api\/aggregates\/[^/]+\/events\/(.+)/);
+      const correlationMatch = req.url.match(/\/events\/by-correlation\/(.+)/);
+      if (correlationMatch) {
+        const correlationId = decodeURIComponent(correlationMatch[1]);
+        const events = MOCK_EVENTS.events.filter(e => e.metadata['$correlationId'] === correlationId);
+        return of(new HttpResponse({ status: 200, body: { events } })).pipe(delay(300));
+      }
+
+      const eventDetailMatch = req.url.match(/\/events\/([^?]+)/);
       if (eventDetailMatch) {
         const eventId = decodeURIComponent(eventDetailMatch[1]);
         const eventsList = MOCK_EVENTS.events;

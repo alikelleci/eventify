@@ -1,3 +1,7 @@
+export interface CorrelatedEventsPage {
+  events: EventMessage[];
+}
+
 export interface CommandMessage {
   id: string;
   timestamp: string;

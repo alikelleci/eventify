@@ -89,6 +89,15 @@ public class EventifyConsoleServer {
 
       boolean forwarded = Boolean.parseBoolean(queryParams.get("forwarded"));
 
+      // /api/aggregates/{id}/events/by-correlation/{correlationId}
+      if (segments.length == 7 && "aggregates".equals(segments[2]) && "events".equals(segments[4]) && "by-correlation".equals(segments[5])) {
+        String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
+        String correlationId = URLDecoder.decode(segments[6], StandardCharsets.UTF_8);
+        QueryResult<EventifyQueryService.CorrelatedEventsPage> result = queryService.getEventsByCorrelation(aggregateId, correlationId, forwarded);
+        sendQueryResult(exchange, result);
+        return;
+      }
+
       // /api/aggregates/{id}/events/{eventId}
       if (segments.length == 6 && "aggregates".equals(segments[2]) && "events".equals(segments[4])) {
         String aggregateId = URLDecoder.decode(segments[3], StandardCharsets.UTF_8);
