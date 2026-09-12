@@ -14,7 +14,6 @@ public class Metadata implements Map<String, String> {
   public static final String REPLY_TO = "$replyTo";
   public static final String RESULT = "$result";
   public static final String CAUSE = "$cause";
-  public static final String RETRY = "$retry";
 
   @Delegate
   private final Map<String, String> entries;
@@ -69,7 +68,6 @@ public class Metadata implements Map<String, String> {
     public Metadata build() {
       this.entries.remove(RESULT);
       this.entries.remove(CAUSE);
-      this.entries.remove(RETRY);
 
       return new Metadata(this.entries);
     }

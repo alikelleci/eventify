@@ -52,6 +52,8 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 
+import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
+
 @Slf4j
 public class EventifyService {
 
@@ -110,9 +112,11 @@ public class EventifyService {
   public ApiResult<Void> retryCommand(Command original) {
     Metadata retryMetadata = Metadata.builder()
         .putAll(original.getMetadata())
+        .put("retry", "true")
+        .put("source", "console")
+        .put("description", "Retried via Eventify Console")
         .build();
-    retryMetadata.remove(Metadata.REPLY_TO);
-    retryMetadata.put(Metadata.RETRY, "true");
+    retryMetadata.remove(REPLY_TO);
 
     Command retryCommand = Command.builder()
         .payload(original.getPayload())

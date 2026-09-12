@@ -185,7 +185,7 @@ export class AggregateComponent {
   }
 
   isRetry(command: CommandMessage): boolean {
-    return command.metadata['$retry'] === 'true';
+    return command.metadata['retry'] === 'true';
   }
 
   private resetAll() {

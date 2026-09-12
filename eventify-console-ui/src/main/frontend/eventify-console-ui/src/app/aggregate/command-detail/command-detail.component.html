@@ -12,7 +12,7 @@
   <div class="pb-5 border-b border-surface-100 dark:border-surface-800">
     <div class="flex items-center gap-2">
       <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ cmd.type }}</span>
-      @if (cmd.metadata['$retry'] === 'true') {
+      @if (cmd.metadata['retry'] === 'true') {
         <p-tag value="retried" severity="warn" styleClass="shrink-0" />
       }
       @if (result() === 'success') {
