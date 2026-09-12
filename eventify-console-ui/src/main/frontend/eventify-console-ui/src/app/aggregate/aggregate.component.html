@@ -11,6 +11,7 @@
         <input #searchInput pInputText variant="filled" class="flex-1 min-w-0 p-inputtext-lg" placeholder="Enter aggregate ID…"
                [(ngModel)]="aggregateId" (keyup.enter)="search()"
                (focus)="onSearchFocus()" (blur)="onSearchBlur()" />
+        <p-button icon="pi pi-search" size="large" (onClick)="search()" />
         @if (showRecent() && recentSearches().length > 0) {
           <div class="absolute top-full left-0 right-12 mt-1 bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
             <div class="px-3 py-2 text-xs font-medium text-surface-400 uppercase tracking-widest border-b border-surface-100 dark:border-surface-800">Recent</div>
