@@ -80,6 +80,7 @@ export class EventsComponent {
       this.nextCursor.set(null);
       this.selectedEvent.set(null);
       this.eventDetail.set(null);
+      this.loadingDetail.set(false);
       this.drawerVisible.set(false);
       if (id) this.loadPage(id, null, false);
     });
@@ -93,6 +94,7 @@ export class EventsComponent {
       if (!eventId) {
         this.selectedEvent.set(null);
         this.eventDetail.set(null);
+        this.loadingDetail.set(false);
         this.drawerVisible.set(false);
         return;
       }

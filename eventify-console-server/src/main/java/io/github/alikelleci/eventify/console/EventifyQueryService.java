@@ -121,7 +121,7 @@ public class EventifyQueryService {
           if (allPartitions.isEmpty()) continue;
 
           int numPartitions = allPartitions.size();
-          int partition = Utils.toPositive(Utils.murmur2(aggregateId.getBytes())) % numPartitions;
+          int partition = Utils.toPositive(Utils.murmur2(aggregateId.getBytes(java.nio.charset.StandardCharsets.UTF_8))) % numPartitions;
           TopicPartition tp = new TopicPartition(topic, partition);
 
           consumer.assign(Collections.singletonList(tp));
