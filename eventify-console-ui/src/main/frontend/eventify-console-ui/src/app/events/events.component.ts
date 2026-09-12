@@ -1,9 +1,9 @@
-import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone, Input, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, HostListener, DestroyRef, ElementRef, ViewChild, NgZone } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { Router } from '@angular/router';
-import { catchError, EMPTY, Subscription } from 'rxjs';
+import { ActivatedRoute, Router } from '@angular/router';
+import { catchError, distinctUntilChanged, EMPTY, map } from 'rxjs';
 
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
@@ -35,40 +35,40 @@ const MAX_RECENT = 8;
   ],
   providers: [MessageService],
 })
-export class EventsComponent implements OnInit {
+export class EventsComponent {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly messageService = inject(MessageService);
   private readonly zone = inject(NgZone);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
-  private initialEventId: string | null = null;
+  constructor() {
+    this.route.queryParams
+      .pipe(
+        map(p => ({ id: (p['id'] ?? '').trim(), eventId: p['eventId'] ?? null })),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(({ id, eventId }) => {
+        if (id !== this.aggregateId()) {
+          this.aggregateId.set(id);
+          if (id) this.doSearch(id);
+        }
 
-  @Input() set id(value: string) {
-    if (value) {
-      this.aggregateId.set(value);
-      this.doSearch(value);
-    }
-  }
-
-  @Input() set eventId(value: string) {
-    if (value) this.initialEventId = value;
-  }
-
-  ngOnInit() {
-    if (this.initialEventId) {
-      this.setLoadingDetail(true);
-      this.svc.getEventDetail(this.aggregateId(), this.initialEventId)
-        .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
-          this.setLoadingDetail(false);
-          return EMPTY;
-        }))
-        .subscribe(detail => {
-          this.selectedEvent.set(detail.event);
-          this.eventDetail.set(detail);
-          this.setLoadingDetail(false);
-        });
-    }
+        if (eventId && eventId !== this.selectedEvent()?.id) {
+          this.setLoadingDetail(true);
+          this.svc.getEventDetail(id, eventId)
+            .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
+              this.setLoadingDetail(false);
+              return EMPTY;
+            }))
+            .subscribe(detail => {
+              this.selectedEvent.set(detail.event);
+              this.eventDetail.set(detail);
+              this.setLoadingDetail(false);
+            });
+        }
+      });
   }
 
   copiedKey = signal<string | null>(null);
@@ -85,8 +85,6 @@ export class EventsComponent implements OnInit {
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
   readonly skeletonRows = Array(8);
-
-  private detailSub?: Subscription;
 
   aggregateId = signal('');
   events = signal<EventMessage[]>([]);
@@ -168,10 +166,8 @@ export class EventsComponent implements OnInit {
   }
 
   selectRecent(id: string) {
-    this.aggregateId.set(id);
     this.showRecent.set(false);
     this.router.navigate([], { queryParams: { id }, replaceUrl: true });
-    this.doSearch(id);
   }
 
   removeRecent(id: string, e: MouseEvent) {
@@ -198,10 +194,8 @@ export class EventsComponent implements OnInit {
   search() {
     const id = this.aggregateId().trim();
     if (!id) return;
-    this.aggregateId.set(id);
     this.showRecent.set(false);
     this.router.navigate([], { queryParams: { id }, replaceUrl: true });
-    this.doSearch(id);
   }
 
   loadMore() {
@@ -211,23 +205,10 @@ export class EventsComponent implements OnInit {
   }
 
   selectEvent(event: EventMessage) {
-    this.detailSub?.unsubscribe();
-    this.selectedEvent.set(event);
-    this.eventDetail.set(null);
     this.activeTab.set('event');
     this.showDiff.set(false);
     if (this.isMobile()) this.drawerVisible.set(true);
     this.router.navigate([], { queryParams: { id: this.aggregateId(), eventId: event.id }, replaceUrl: true });
-    this.setLoadingDetail(true);
-    this.detailSub = this.svc.getEventDetail(this.aggregateId().trim(), event.id)
-      .pipe(takeUntilDestroyed(this.destroyRef), catchError(() => {
-        this.setLoadingDetail(false);
-        return EMPTY;
-      }))
-      .subscribe(detail => {
-        this.eventDetail.set(detail);
-        this.setLoadingDetail(false);
-      });
   }
 
   cleanPayload(obj: Record<string, unknown>): Record<string, unknown> {
