@@ -1,16 +1,14 @@
 package io.github.alikelleci.eventify.core.support;
 
 import com.github.javafaker.Faker;
-import io.github.alikelleci.eventify.core.domain.OrderCommand.PlaceOrder;
-import io.github.alikelleci.eventify.core.domain.OrderCommand.ConfirmOrder;
-import io.github.alikelleci.eventify.core.domain.OrderCommand.ShipOrder;
-import io.github.alikelleci.eventify.core.domain.OrderCommand.DeliverOrder;
-import io.github.alikelleci.eventify.core.domain.OrderCommand.CancelOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.PlaceOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.ConfirmOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.ShipOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.DeliverOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.CancelOrder;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 
 import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSE;

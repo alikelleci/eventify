@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.domain;
+package io.github.alikelleci.eventify.core.order;
 
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;

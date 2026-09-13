@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.domain;
+package io.github.alikelleci.eventify.core.order;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
