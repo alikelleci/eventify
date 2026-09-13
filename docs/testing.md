@@ -48,7 +48,6 @@ class OrderTest {
             .payload(PlaceOrder.builder()
                 .id("order-1")
                 .customer("John Doe")
-                .shippingAddress("123 Main St")
                 .build())
             .build();
 
@@ -66,10 +65,10 @@ class OrderTest {
     @Test
     void shouldFailWhenOrderAlreadyExists() {
         Command place1 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build())
+            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").build())
             .build();
         Command place2 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").shippingAddress("456 Oak Ave").build())
+            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").build())
             .build();
 
         commands.pipeInput(place1.getAggregateId(), place1);
