@@ -24,11 +24,11 @@ public class OrderResultHandler {
   }
 
   @HandleResult
-  public void handle(DeliverOrder event) {
+  public void handle(DeliverOrder command) {
   }
 
   @HandleResult
-  public void handle(CancelOrder event) {
+  public void handle(CancelOrder command) {
   }
 
 }
