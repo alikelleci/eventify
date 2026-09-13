@@ -82,20 +82,20 @@ public class EventifyConfig {
 ```java
 @Component
 public class OrderCommandHandler {
-  @HandleCommand
-  public OrderEvent handle(PlaceOrder command, Order state) { ... }
+    @HandleCommand
+    public OrderEvent handle(PlaceOrder command, Order state) { ... }
 }
 
 @Component
 public class OrderEventSourcingHandler {
-  @ApplyEvent
-  public Order apply(OrderPlaced event, Order state) { ... }
+    @ApplyEvent
+    public Order apply(OrderPlaced event, Order state) { ... }
 }
 
 @Component
 public class OrderEventHandler {
-  @HandleEvent
-  public void on(OrderPlaced event) { ... }
+    @HandleEvent
+    public void on(OrderPlaced event) { ... }
 }
 ```
 

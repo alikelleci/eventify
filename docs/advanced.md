@@ -12,7 +12,7 @@ Enable snapshotting by adding `@EnableSnapshotting` to your aggregate class:
 @AggregateRoot
 @EnableSnapshotting(threshold = 500)
 public class Order {
-  // ...
+    // ...
 }
 ```
 
@@ -54,19 +54,19 @@ class OrderPlaced implements OrderEvent {
 ```java
 public class OrderEventUpcaster {
 
-  // Migrates revision 1 → 2: adds a default shipping address
-  @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 1)
-  public JsonNode upcast(ObjectNode node) {
-    node.put("shippingAddress", "unknown");
-    return node;
-  }
+    // Migrates revision 1 → 2: adds a default shipping address
+    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 1)
+    public JsonNode upcast(ObjectNode node) {
+        node.put("shippingAddress", "unknown");
+        return node;
+    }
 
-  // Migrates revision 2 → 3: adds a default coupon code
-  @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 2)
-  public JsonNode upcast(ObjectNode node) {
-    node.putNull("couponCode");
-    return node;
-  }
+    // Migrates revision 2 → 3: adds a default coupon code
+    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 2)
+    public JsonNode upcast(ObjectNode node) {
+        node.putNull("couponCode");
+        return node;
+    }
 }
 ```
 

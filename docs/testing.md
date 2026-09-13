@@ -5,79 +5,79 @@ Eventify works with the Kafka Streams `TopologyTestDriver`, which runs the compl
 ```java
 class OrderTest {
 
-  TopologyTestDriver driver;
-  TestInputTopic<String, Command> commands;
-  TestOutputTopic<String, Command> results;
-  TestOutputTopic<String, Event> events;
+    TopologyTestDriver driver;
+    TestInputTopic<String, Command> commands;
+    TestOutputTopic<String, Command> results;
+    TestOutputTopic<String, Event> events;
 
-  @BeforeEach
-  void setup() {
-    Properties props = new Properties();
-    props.put(StreamsConfig.APPLICATION_ID_CONFIG, "test");
-    props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    @BeforeEach
+    void setup() {
+        Properties props = new Properties();
+        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "test");
+        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
-    Eventify eventify = Eventify.builder()
-        .streamsConfig(props)
-        .registerHandler(new OrderCommandHandler())
-        .registerHandler(new OrderEventSourcingHandler())
-        .build();
+        Eventify eventify = Eventify.builder()
+            .streamsConfig(props)
+            .registerHandler(new OrderCommandHandler())
+            .registerHandler(new OrderEventSourcingHandler())
+            .build();
 
-    driver = new TopologyTestDriver(eventify.topology());
+        driver = new TopologyTestDriver(eventify.topology());
 
-    commands = driver.createInputTopic(
-        "commands.order",
-        new StringSerializer(), new JsonSerializer<>());
+        commands = driver.createInputTopic(
+            "commands.order",
+            new StringSerializer(), new JsonSerializer<>());
 
-    results = driver.createOutputTopic(
-        "commands.order.results",
-        new StringDeserializer(), new JsonDeserializer<>(Command.class));
+        results = driver.createOutputTopic(
+            "commands.order.results",
+            new StringDeserializer(), new JsonDeserializer<>(Command.class));
 
-    events = driver.createOutputTopic(
-        "events.order",
-        new StringDeserializer(), new JsonDeserializer<>(Event.class));
-  }
+        events = driver.createOutputTopic(
+            "events.order",
+            new StringDeserializer(), new JsonDeserializer<>(Event.class));
+    }
 
-  @AfterEach
-  void tearDown() {
-    driver.close();
-  }
+    @AfterEach
+    void tearDown() {
+        driver.close();
+    }
 
-  @Test
-  void shouldPlaceOrder() {
-    Command command = Command.builder()
-        .payload(PlaceOrder.builder()
-            .id("order-1")
-            .customer("John Doe")
-            .build())
-        .build();
+    @Test
+    void shouldPlaceOrder() {
+        Command command = Command.builder()
+            .payload(PlaceOrder.builder()
+                .id("order-1")
+                .customer("John Doe")
+                .build())
+            .build();
 
-    commands.pipeInput(command.getAggregateId(), command);
+        commands.pipeInput(command.getAggregateId(), command);
 
-    List<Command> resultList = results.readValuesToList();
-    assertThat(resultList).hasSize(1);
-    assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
+        List<Command> resultList = results.readValuesToList();
+        assertThat(resultList).hasSize(1);
+        assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
 
-    List<Event> eventList = events.readValuesToList();
-    assertThat(eventList).hasSize(1);
-    assertThat(eventList.get(0).getPayload()).isInstanceOf(OrderPlaced.class);
-  }
+        List<Event> eventList = events.readValuesToList();
+        assertThat(eventList).hasSize(1);
+        assertThat(eventList.get(0).getPayload()).isInstanceOf(OrderPlaced.class);
+    }
 
-  @Test
-  void shouldFailWhenOrderAlreadyExists() {
-    Command place1 = Command.builder()
-        .payload(PlaceOrder.builder().id("order-1").customer("John Doe").build())
-        .build();
-    Command place2 = Command.builder()
-        .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").build())
-        .build();
+    @Test
+    void shouldFailWhenOrderAlreadyExists() {
+        Command place1 = Command.builder()
+            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").build())
+            .build();
+        Command place2 = Command.builder()
+            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").build())
+            .build();
 
-    commands.pipeInput(place1.getAggregateId(), place1);
-    commands.pipeInput(place2.getAggregateId(), place2);
+        commands.pipeInput(place1.getAggregateId(), place1);
+        commands.pipeInput(place2.getAggregateId(), place2);
 
-    List<Command> resultList = results.readValuesToList();
-    assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
-    assertThat(resultList.get(1).getMetadata().get("$result")).isEqualTo("failure");
-  }
+        List<Command> resultList = results.readValuesToList();
+        assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
+        assertThat(resultList.get(1).getMetadata().get("$result")).isEqualTo("failure");
+    }
 }
 ```
 

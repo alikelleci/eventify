@@ -7,37 +7,37 @@ Create a plain class and annotate its command-handling methods with `@HandleComm
 ```java
 public class OrderCommandHandler {
 
-  @HandleCommand
-  public OrderEvent handle(PlaceOrder command, Order state) {
-    if (state != null) {
-      throw new ValidationException("Order already exists.");
+    @HandleCommand
+    public OrderEvent handle(PlaceOrder command, Order state) {
+        if (state != null) {
+            throw new ValidationException("Order already exists.");
+        }
+        return OrderPlaced.builder()
+            .id(command.getId())
+            .customer(command.getCustomer())
+            .build();
     }
-    return OrderPlaced.builder()
-        .id(command.getId())
-        .customer(command.getCustomer())
-        .build();
-  }
 
-  @HandleCommand
-  public OrderEvent handle(ShipOrder command, Order state) {
-    if (state == null) {
-      throw new ValidationException("Order does not exist.");
+    @HandleCommand
+    public OrderEvent handle(ShipOrder command, Order state) {
+        if (state == null) {
+            throw new ValidationException("Order does not exist.");
+        }
+        return OrderShipped.builder()
+            .id(command.getId())
+            .trackingNumber(command.getTrackingNumber())
+            .build();
     }
-    return OrderShipped.builder()
-        .id(command.getId())
-        .trackingNumber(command.getTrackingNumber())
-        .build();
-  }
 
-  @HandleCommand
-  public OrderEvent handle(CancelOrder command, Order state) {
-    if (state == null) {
-      throw new ValidationException("Order does not exist.");
+    @HandleCommand
+    public OrderEvent handle(CancelOrder command, Order state) {
+        if (state == null) {
+            throw new ValidationException("Order does not exist.");
+        }
+        return OrderCancelled.builder()
+            .id(command.getId())
+            .build();
     }
-    return OrderCancelled.builder()
-        .id(command.getId())
-        .build();
-  }
 }
 ```
 
@@ -152,7 +152,7 @@ If multiple handlers process the same event type and you need to control their e
 @HandleEvent
 @Priority(10)
 public void on(OrderPlaced event) {
-  // invoked before handlers with lower priority
+    // invoked before handlers with lower priority
 }
 ```
 

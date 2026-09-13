@@ -27,8 +27,8 @@ CommandGateway gateway = CommandGateway.builder()
 ```java
 // Async — returns a CompletableFuture
 CompletableFuture<PlaceOrder> future = gateway.send(
-        PlaceOrder.builder().id("order-1").customer("John Doe").build()
-    );
+    PlaceOrder.builder().id("order-1").customer("John Doe").build()
+);
 
 // Blocking — waits up to 1 minute by default
 PlaceOrder result = gateway.sendAndWait(

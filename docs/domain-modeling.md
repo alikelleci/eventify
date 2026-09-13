@@ -9,11 +9,11 @@ An aggregate is a plain, immutable class annotated with `@AggregateRoot`. It rep
 @Builder(toBuilder = true)
 @AggregateRoot
 public class Order {
-  @AggregateId
-  String id;
-  String customer;
-  String trackingNumber;
-  Instant placedAt;
+    @AggregateId
+    String id;
+    String customer;
+    String trackingNumber;
+    Instant placedAt;
 }
 ```
 
@@ -66,27 +66,27 @@ public interface OrderCommand {
 @TopicInfo("events.order")
 public interface OrderEvent {
 
-  @Value
-  @Builder
-  class OrderPlaced implements OrderEvent {
-    @AggregateId
-    String id;
-    String customer;
-  }
+    @Value
+    @Builder
+    class OrderPlaced implements OrderEvent {
+        @AggregateId
+        String id;
+        String customer;
+    }
 
-  @Value
-  @Builder
-  class OrderShipped implements OrderEvent {
-    @AggregateId
-    String id;
-    String trackingNumber;
-  }
+    @Value
+    @Builder
+    class OrderShipped implements OrderEvent {
+        @AggregateId
+        String id;
+        String trackingNumber;
+    }
 
-  @Value
-  @Builder
-  class OrderCancelled implements OrderEvent {
-    @AggregateId
-    String id;
-  }
+    @Value
+    @Builder
+    class OrderCancelled implements OrderEvent {
+        @AggregateId
+        String id;
+    }
 }
 ```
