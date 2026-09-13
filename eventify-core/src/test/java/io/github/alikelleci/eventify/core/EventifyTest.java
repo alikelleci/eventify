@@ -14,12 +14,14 @@ import io.github.alikelleci.eventify.core.domain.OrderEvent.OrderConfirmed;
 import io.github.alikelleci.eventify.core.domain.OrderEvent.OrderShipped;
 import io.github.alikelleci.eventify.core.domain.OrderEvent.OrderDelivered;
 import io.github.alikelleci.eventify.core.domain.OrderEvent.OrderCancelled;
+import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import org.apache.commons.collections4.IteratorUtils;
+import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -29,6 +31,7 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -489,30 +492,48 @@ class EventifyTest {
     }
 
     @Test
-    @DisplayName("Should apply upcasters when replaying stored events")
-    void upcastingAppliedOnReplay() {
-      Command place = buildPlaceOrderCommand("order-1");
-      String expectedCustomer = ((PlaceOrder) place.getPayload()).getCustomer();
-      commands.pipeInput(place.getAggregateId(), place);
+    @DisplayName("Should upcast an old-revision event when the aggregate is replayed from the store")
+    void upcastingAppliedOnAggregateReplay() throws IllegalAccessException {
+      // Build a real OrderPlaced event, leaving shippingAddress/couponCode unset. Since the
+      // ObjectMapper is configured with NON_NULL inclusion, those fields simply won't appear
+      // in the serialized JSON - exactly like a genuine pre-revision-2 event on disk.
+      OrderPlaced payload = OrderPlaced.builder()
+          .id("order-1")
+          .customer("Jane Doe")
+          .build();
+      Event oldEvent = Event.builder()
+          .payload(payload)
+          .metadata(Metadata.builder().build())
+          .build();
 
-      // Second command forces a replay of the stored OrderPlaced event through the upcaster chain
+      // Event.revision is always stamped from OrderPlaced's current @Revision(3) annotation
+      // at construction time, so a freshly built event can never be anything but revision 3
+      // on its own. Reflection is the only way to simulate an event as it would have looked
+      // before the schema evolved - which is exactly the situation the upcaster exists for.
+      FieldUtils.writeField(oldEvent, "revision", 1, true);
+
+      // Seed the event store directly, bypassing the command flow entirely, so this event
+      // is the only thing on record for "order-1" when the aggregate is next loaded.
+      eventStore.put(oldEvent.getId(), oldEvent);
+
+      // Loading the aggregate to handle this command replays the stored event through
+      // eventStore.range(...), which deserializes via the same upcaster-aware eventSerde
+      // used everywhere else. If the upcast chain didn't run, the rebuilt Order would have
+      // shippingAddress=null instead of PLACED status ever being reached correctly.
       Command confirm = buildConfirmOrderCommand("order-1");
       commands.pipeInput(confirm.getAggregateId(), confirm);
 
       List<Command> resultList = results.readValuesToList();
-      assertThat(resultList).hasSize(2);
-      assertCommandResult(place, resultList.get(0), true);
-      // If the upcast chain throws (unresolved type, malformed JSON) or the resulting
-      // event fails to deserialize into OrderPlaced, this command fails instead.
-      assertCommandResult(confirm, resultList.get(1), true);
+      assertThat(resultList).hasSize(1);
+      assertCommandResult(confirm, resultList.get(0), true);
 
-      // Confirms that replaying the upcasted OrderPlaced event still reconstructs valid
-      // state - the synthetic fields the upcaster adds (shippingAddress, couponCode)
-      // aren't part of OrderPlaced, so they're simply ignored on deserialization; what
-      // matters here is that replay doesn't break and the payload comes back intact.
-      List<Event> storedEvents = readEventsFromStore(eventStore, "order-1");
-      assertThat(storedEvents).hasSize(2);
-      assertThat(((OrderPlaced) storedEvents.get(0).getPayload()).getCustomer()).isEqualTo(expectedCustomer);
+      // Confirm the stored event itself deserializes to the fully upcast shape.
+      Event upcastedEvent = eventStore.get(oldEvent.getId());
+      assertThat(upcastedEvent.getRevision()).isEqualTo(3);
+
+      OrderPlaced upcastedPayload = (OrderPlaced) upcastedEvent.getPayload();
+      assertThat(upcastedPayload.getShippingAddress()).isEqualTo("unknown");
+      assertThat(upcastedPayload.getCouponCode()).isNull();
     }
   }
 }
