@@ -1,0 +1,68 @@
+site_name: Eventify
+site_url: https://alikelleci.github.io/eventify
+site_description: Functional event-sourcing framework for the JVM
+site_author: Ali Kelleci
+repo_name: alikelleci/eventify
+repo_url: https://github.com/alikelleci/eventify
+
+theme:
+  name: material
+  icon:
+    logo: material/lightning-bolt
+  font:
+    text: Inter
+    code: JetBrains Mono
+  palette:
+    - scheme: default
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: teal
+      accent: teal
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.instant
+    - navigation.footer
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.inlinehilite
+  - tables
+  - attr_list
+
+extra_css:
+  - stylesheets/extra.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/alikelleci/eventify
+    - icon: material/language-java
+      link: https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core
+
+copyright: Copyright &copy; Ali Kelleci
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Domain Modeling: domain-modeling.md
+  - Handlers: handlers.md
+  - Command Gateway: command-gateway.md
+  - Advanced Features: advanced.md
+  - Testing: testing.md
+  - Annotation Reference: annotation-reference.md
