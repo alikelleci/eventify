@@ -34,6 +34,7 @@ public class CommandFactory {
             .id(aggregateId)
             .customer(faker.name().fullName())
             .shippingAddress(faker.address().fullAddress())
+            .couponCode(faker.commerce().promotionCode(4))
             .build())
         .metadata(defaultMetadata())
         .build();
