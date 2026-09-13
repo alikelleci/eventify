@@ -26,18 +26,18 @@ CommandGateway gateway = CommandGateway.builder()
 
 ```java
 // Async — returns a CompletableFuture
-CompletableFuture<CreateCustomer> future = gateway.send(
-    CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build()
+CompletableFuture<PlaceOrder> future = gateway.send(
+    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build()
 );
 
 // Blocking — waits up to 1 minute by default
-CreateCustomer result = gateway.sendAndWait(
-    CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build()
+PlaceOrder result = gateway.sendAndWait(
+    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build()
 );
 
 // Blocking with a custom timeout
-CreateCustomer result = gateway.sendAndWait(
-    CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build(),
+PlaceOrder result = gateway.sendAndWait(
+    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build(),
     30, TimeUnit.SECONDS);
 ```
 

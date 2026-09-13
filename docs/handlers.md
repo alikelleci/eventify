@@ -5,37 +5,37 @@
 Create a plain class and annotate its command-handling methods with `@HandleCommand`. The first parameter is always the command payload. Eventify automatically injects the remaining parameters.
 
 ```java
-public class CustomerCommandHandler {
+public class OrderCommandHandler {
 
     @HandleCommand
-    public CustomerEvent handle(CreateCustomer command, Customer state) {
+    public OrderEvent handle(PlaceOrder command, Order state) {
         if (state != null) {
-            throw new ValidationException("Customer already exists.");
+            throw new ValidationException("Order already exists.");
         }
-        return CustomerCreated.builder()
+        return OrderPlaced.builder()
             .id(command.getId())
-            .firstName(command.getFirstName())
-            .lastName(command.getLastName())
+            .customer(command.getCustomer())
+            .shippingAddress(command.getShippingAddress())
             .build();
     }
 
     @HandleCommand
-    public CustomerEvent handle(ChangeFirstName command, Customer state) {
+    public OrderEvent handle(ShipOrder command, Order state) {
         if (state == null) {
-            throw new ValidationException("Customer does not exist.");
+            throw new ValidationException("Order does not exist.");
         }
-        return FirstNameChanged.builder()
+        return OrderShipped.builder()
             .id(command.getId())
-            .firstName(command.getFirstName())
+            .trackingNumber(command.getTrackingNumber())
             .build();
     }
 
     @HandleCommand
-    public CustomerEvent handle(DeleteCustomer command, Customer state) {
+    public OrderEvent handle(CancelOrder command, Order state) {
         if (state == null) {
-            throw new ValidationException("Customer does not exist.");
+            throw new ValidationException("Order does not exist.");
         }
-        return CustomerDeleted.builder()
+        return OrderCancelled.builder()
             .id(command.getId())
             .build();
     }
@@ -60,12 +60,12 @@ In addition to the command payload and aggregate state, you can declare the foll
 
 ```java
 @HandleCommand
-public CustomerEvent handle(CreateCustomer command,
-                            Customer state,
-                            Metadata metadata,
-                            @Timestamp Instant timestamp,
-                            @MessageId String messageId,
-                            @MetadataValue("$correlationId") String correlationId) {
+public OrderEvent handle(PlaceOrder command,
+                          Order state,
+                          Metadata metadata,
+                          @Timestamp Instant timestamp,
+                          @MessageId String messageId,
+                          @MetadataValue("$correlationId") String correlationId) {
     // ...
 }
 ```
@@ -83,27 +83,27 @@ public CustomerEvent handle(CreateCustomer command,
 Create a plain class and annotate its event-sourcing methods with `@ApplyEvent`. These methods define how each event is applied to produce the next aggregate state. The first parameter is the event payload; all remaining parameters are resolved by type and can appear in any order.
 
 ```java
-public class CustomerEventSourcingHandler {
+public class OrderEventSourcingHandler {
 
     @ApplyEvent
-    public Customer apply(CustomerCreated event, Customer state) {
-        return Customer.builder()
+    public Order apply(OrderPlaced event, Order state) {
+        return Order.builder()
             .id(event.getId())
-            .firstName(event.getFirstName())
-            .lastName(event.getLastName())
+            .customer(event.getCustomer())
+            .shippingAddress(event.getShippingAddress())
             .createdAt(Instant.now())
             .build();
     }
 
     @ApplyEvent
-    public Customer apply(FirstNameChanged event, Customer state) {
+    public Order apply(OrderShipped event, Order state) {
         return state.toBuilder()
-            .firstName(event.getFirstName())
+            .trackingNumber(event.getTrackingNumber())
             .build();
     }
 
     @ApplyEvent
-    public Customer apply(CustomerDeleted event, Customer state) {
+    public Order apply(OrderCancelled event, Order state) {
         return null; // returning null signals the aggregate no longer exists
     }
 }
@@ -127,20 +127,20 @@ public class CustomerEventSourcingHandler {
 Create a plain class and annotate methods with `@HandleEvent` to react to published events. Event handlers are typically used for side effects such as updating a read model, sending a notification, or triggering a downstream process.
 
 ```java
-public class CustomerEventHandler {
+public class OrderEventHandler {
 
     @HandleEvent
-    public void on(CustomerCreated event) {
+    public void on(OrderPlaced event) {
         // e.g. insert into a read model database
     }
 
     @HandleEvent
-    public void on(FirstNameChanged event) {
+    public void on(OrderShipped event) {
         // e.g. update the read model
     }
 
     @HandleEvent
-    public void on(CustomerDeleted event) {
+    public void on(OrderCancelled event) {
         // e.g. remove from the read model
     }
 }
@@ -153,7 +153,7 @@ If multiple handlers process the same event type and you need to control their e
 ```java
 @HandleEvent
 @Priority(10)
-public void on(CustomerCreated event) {
+public void on(OrderPlaced event) {
     // invoked before handlers with lower priority
 }
 ```

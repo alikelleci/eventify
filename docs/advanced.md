@@ -11,7 +11,7 @@ Enable snapshotting by adding `@EnableSnapshotting` to your aggregate class:
 @Builder(toBuilder = true)
 @AggregateRoot
 @EnableSnapshotting(threshold = 500)
-public class Customer {
+public class Order {
     // ...
 }
 ```
@@ -35,37 +35,36 @@ As your application evolves, the structure of your events may change. Upcasting 
 
 ### Example
 
-Suppose `CustomerCreated` started at revision 1 and is now at revision 3 after two schema changes:
+Suppose `OrderPlaced` started at revision 1 and is now at revision 3 after two schema changes:
 
 ```java
 // Current version of the event — revision 3
 @Revision(3)
 @Value
 @Builder
-class CustomerCreated implements CustomerEvent {
+class OrderPlaced implements OrderEvent {
     @AggregateId
     String id;
-    String firstName;
-    String lastName;
-    String email;       // added in revision 2
-    String phoneNumber; // added in revision 3
+    String customer;
+    String shippingAddress; // added in revision 2
+    String couponCode;      // added in revision 3
 }
 ```
 
 ```java
-public class CustomerEventUpcaster {
+public class OrderEventUpcaster {
 
-    // Migrates revision 1 → 2: adds a default email
-    @Upcast(type = "com.example.CustomerEvent$CustomerCreated", revision = 1)
+    // Migrates revision 1 → 2: adds a default shipping address
+    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 1)
     public JsonNode upcast(ObjectNode node) {
-        node.put("email", "unknown@example.com");
+        node.put("shippingAddress", "unknown");
         return node;
     }
 
-    // Migrates revision 2 → 3: adds a default phone number
-    @Upcast(type = "com.example.CustomerEvent$CustomerCreated", revision = 2)
+    // Migrates revision 2 → 3: adds a default coupon code
+    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 2)
     public JsonNode upcast(ObjectNode node) {
-        node.put("phoneNumber", "unknown");
+        node.putNull("couponCode");
         return node;
     }
 }

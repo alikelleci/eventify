@@ -107,9 +107,9 @@ props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerHandler(new CustomerCommandHandler())
-    .registerHandler(new CustomerEventSourcingHandler())
-    .registerHandler(new CustomerEventHandler())
+    .registerHandler(new OrderCommandHandler())
+    .registerHandler(new OrderEventSourcingHandler())
+    .registerHandler(new OrderEventHandler())
     .build();
 
 eventify.start();
@@ -155,21 +155,21 @@ public class EventifyConfig {
 
 ```java
 @Component
-public class CustomerCommandHandler {
+public class OrderCommandHandler {
     @HandleCommand
-    public CustomerEvent handle(CreateCustomer command, Customer state) { ... }
+    public OrderEvent handle(PlaceOrder command, Order state) { ... }
 }
 
 @Component
-public class CustomerEventSourcingHandler {
+public class OrderEventSourcingHandler {
     @ApplyEvent
-    public Customer apply(CustomerCreated event, Customer state) { ... }
+    public Order apply(OrderPlaced event, Order state) { ... }
 }
 
 @Component
-public class CustomerEventHandler {
+public class OrderEventHandler {
     @HandleEvent
-    public void on(CustomerCreated event) { ... }
+    public void on(OrderPlaced event) { ... }
 }
 ```
 
@@ -189,11 +189,12 @@ An aggregate is a plain, immutable class annotated with `@AggregateRoot`. It rep
 @Value
 @Builder(toBuilder = true)
 @AggregateRoot
-public class Customer {
+public class Order {
     @AggregateId
     String id;
-    String firstName;
-    String lastName;
+    String customer;
+    String shippingAddress;
+    String trackingNumber;
     Instant createdAt;
 }
 ```
@@ -209,32 +210,32 @@ Commands and events are plain, immutable value objects. The recommended pattern 
 #### Commands
 
 ```java
-@TopicInfo("commands.customer")
-public interface CustomerCommand {
+@TopicInfo("commands.order")
+public interface OrderCommand {
 
     @Value
     @Builder
-    class CreateCustomer implements CustomerCommand {
+    class PlaceOrder implements OrderCommand {
         @AggregateId
         String id;
         @NotBlank
-        String firstName;
+        String customer;
         @NotBlank
-        String lastName;
+        String shippingAddress;
     }
 
     @Value
     @Builder
-    class ChangeFirstName implements CustomerCommand {
+    class ShipOrder implements OrderCommand {
         @AggregateId
         String id;
         @NotBlank
-        String firstName;
+        String trackingNumber;
     }
 
     @Value
     @Builder
-    class DeleteCustomer implements CustomerCommand {
+    class CancelOrder implements OrderCommand {
         @AggregateId
         String id;
     }
@@ -246,29 +247,29 @@ public interface CustomerCommand {
 #### Events
 
 ```java
-@TopicInfo("events.customer")
-public interface CustomerEvent {
+@TopicInfo("events.order")
+public interface OrderEvent {
 
     @Value
     @Builder
-    class CustomerCreated implements CustomerEvent {
+    class OrderPlaced implements OrderEvent {
         @AggregateId
         String id;
-        String firstName;
-        String lastName;
+        String customer;
+        String shippingAddress;
     }
 
     @Value
     @Builder
-    class FirstNameChanged implements CustomerEvent {
+    class OrderShipped implements OrderEvent {
         @AggregateId
         String id;
-        String firstName;
+        String trackingNumber;
     }
 
     @Value
     @Builder
-    class CustomerDeleted implements CustomerEvent {
+    class OrderCancelled implements OrderEvent {
         @AggregateId
         String id;
     }
@@ -284,37 +285,37 @@ public interface CustomerEvent {
 Create a plain class and annotate its command-handling methods with `@HandleCommand`. The first parameter is always the command payload. Eventify automatically injects the remaining parameters.
 
 ```java
-public class CustomerCommandHandler {
+public class OrderCommandHandler {
 
     @HandleCommand
-    public CustomerEvent handle(CreateCustomer command, Customer state) {
+    public OrderEvent handle(PlaceOrder command, Order state) {
         if (state != null) {
-            throw new ValidationException("Customer already exists.");
+            throw new ValidationException("Order already exists.");
         }
-        return CustomerCreated.builder()
+        return OrderPlaced.builder()
             .id(command.getId())
-            .firstName(command.getFirstName())
-            .lastName(command.getLastName())
+            .customer(command.getCustomer())
+            .shippingAddress(command.getShippingAddress())
             .build();
     }
 
     @HandleCommand
-    public CustomerEvent handle(ChangeFirstName command, Customer state) {
+    public OrderEvent handle(ShipOrder command, Order state) {
         if (state == null) {
-            throw new ValidationException("Customer does not exist.");
+            throw new ValidationException("Order does not exist.");
         }
-        return FirstNameChanged.builder()
+        return OrderShipped.builder()
             .id(command.getId())
-            .firstName(command.getFirstName())
+            .trackingNumber(command.getTrackingNumber())
             .build();
     }
 
     @HandleCommand
-    public CustomerEvent handle(DeleteCustomer command, Customer state) {
+    public OrderEvent handle(CancelOrder command, Order state) {
         if (state == null) {
-            throw new ValidationException("Customer does not exist.");
+            throw new ValidationException("Order does not exist.");
         }
-        return CustomerDeleted.builder()
+        return OrderCancelled.builder()
             .id(command.getId())
             .build();
     }
@@ -339,12 +340,12 @@ In addition to the command payload and aggregate state, you can declare the foll
 
 ```java
 @HandleCommand
-public CustomerEvent handle(CreateCustomer command,
-                            Customer state,
-                            Metadata metadata,
-                            @Timestamp Instant timestamp,
-                            @MessageId String messageId,
-                            @MetadataValue("$correlationId") String correlationId) {
+public OrderEvent handle(PlaceOrder command,
+                          Order state,
+                          Metadata metadata,
+                          @Timestamp Instant timestamp,
+                          @MessageId String messageId,
+                          @MetadataValue("$correlationId") String correlationId) {
     // ...
 }
 ```
@@ -362,27 +363,27 @@ public CustomerEvent handle(CreateCustomer command,
 Create a plain class and annotate its event-sourcing methods with `@ApplyEvent`. These methods define how each event is applied to produce the next aggregate state. The first parameter is the event payload; all remaining parameters are resolved by type and can appear in any order.
 
 ```java
-public class CustomerEventSourcingHandler {
+public class OrderEventSourcingHandler {
 
     @ApplyEvent
-    public Customer apply(CustomerCreated event, Customer state) {
-        return Customer.builder()
+    public Order apply(OrderPlaced event, Order state) {
+        return Order.builder()
             .id(event.getId())
-            .firstName(event.getFirstName())
-            .lastName(event.getLastName())
+            .customer(event.getCustomer())
+            .shippingAddress(event.getShippingAddress())
             .createdAt(Instant.now())
             .build();
     }
 
     @ApplyEvent
-    public Customer apply(FirstNameChanged event, Customer state) {
+    public Order apply(OrderShipped event, Order state) {
         return state.toBuilder()
-            .firstName(event.getFirstName())
+            .trackingNumber(event.getTrackingNumber())
             .build();
     }
 
     @ApplyEvent
-    public Customer apply(CustomerDeleted event, Customer state) {
+    public Order apply(OrderCancelled event, Order state) {
         return null; // returning null signals the aggregate no longer exists
     }
 }
@@ -406,20 +407,20 @@ public class CustomerEventSourcingHandler {
 Create a plain class and annotate methods with `@HandleEvent` to react to published events. Event handlers are typically used for side effects such as updating a read model, sending a notification, or triggering a downstream process.
 
 ```java
-public class CustomerEventHandler {
+public class OrderEventHandler {
 
     @HandleEvent
-    public void on(CustomerCreated event) {
+    public void on(OrderPlaced event) {
         // e.g. insert into a read model database
     }
 
     @HandleEvent
-    public void on(FirstNameChanged event) {
+    public void on(OrderShipped event) {
         // e.g. update the read model
     }
 
     @HandleEvent
-    public void on(CustomerDeleted event) {
+    public void on(OrderCancelled event) {
         // e.g. remove from the read model
     }
 }
@@ -432,7 +433,7 @@ If multiple handlers process the same event type and you need to control their e
 ```java
 @HandleEvent
 @Priority(10)
-public void on(CustomerCreated event) {
+public void on(OrderPlaced event) {
     // invoked before handlers with lower priority
 }
 ```
@@ -476,18 +477,18 @@ CommandGateway gateway = CommandGateway.builder()
 
 ```java
 // Async — returns a CompletableFuture
-CompletableFuture<CreateCustomer> future = gateway.send(
-    CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build()
+CompletableFuture<PlaceOrder> future = gateway.send(
+    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build()
 );
 
 // Blocking — waits up to 1 minute by default
-CreateCustomer result = gateway.sendAndWait(
-    CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build()
+PlaceOrder result = gateway.sendAndWait(
+    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build()
 );
 
 // Blocking with a custom timeout
-CreateCustomer result = gateway.sendAndWait(
-    CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build(),
+PlaceOrder result = gateway.sendAndWait(
+    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build(),
     30, TimeUnit.SECONDS);
 ```
 
@@ -508,7 +509,7 @@ Enable snapshotting by adding `@EnableSnapshotting` to your aggregate class:
 @Builder(toBuilder = true)
 @AggregateRoot
 @EnableSnapshotting(threshold = 500)
-public class Customer {
+public class Order {
     // ...
 }
 ```
@@ -532,37 +533,36 @@ As your application evolves, the structure of your events may change. Upcasting 
 
 #### Example
 
-Suppose `CustomerCreated` started at revision 1 and is now at revision 3 after two schema changes:
+Suppose `OrderPlaced` started at revision 1 and is now at revision 3 after two schema changes:
 
 ```java
 // Current version of the event — revision 3
 @Revision(3)
 @Value
 @Builder
-class CustomerCreated implements CustomerEvent {
+class OrderPlaced implements OrderEvent {
     @AggregateId
     String id;
-    String firstName;
-    String lastName;
-    String email;       // added in revision 2
-    String phoneNumber; // added in revision 3
+    String customer;
+    String shippingAddress; // added in revision 2
+    String couponCode;      // added in revision 3
 }
 ```
 
 ```java
-public class CustomerEventUpcaster {
+public class OrderEventUpcaster {
 
-    // Migrates revision 1 → 2: adds a default email
-    @Upcast(type = "com.example.CustomerEvent$CustomerCreated", revision = 1)
+    // Migrates revision 1 → 2: adds a default shipping address
+    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 1)
     public JsonNode upcast(ObjectNode node) {
-        node.put("email", "unknown@example.com");
+        node.put("shippingAddress", "unknown");
         return node;
     }
 
-    // Migrates revision 2 → 3: adds a default phone number
-    @Upcast(type = "com.example.CustomerEvent$CustomerCreated", revision = 2)
+    // Migrates revision 2 → 3: adds a default coupon code
+    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 2)
     public JsonNode upcast(ObjectNode node) {
-        node.put("phoneNumber", "unknown");
+        node.putNull("couponCode");
         return node;
     }
 }
@@ -579,7 +579,7 @@ public class CustomerEventUpcaster {
 Eventify works with the Kafka Streams `TopologyTestDriver`, which runs the complete processing topology in memory without requiring a running Kafka broker. This makes tests fast and deterministic.
 
 ```java
-class CustomerTest {
+class OrderTest {
 
     TopologyTestDriver driver;
     TestInputTopic<String, Command> commands;
@@ -594,22 +594,22 @@ class CustomerTest {
 
         Eventify eventify = Eventify.builder()
             .streamsConfig(props)
-            .registerHandler(new CustomerCommandHandler())
-            .registerHandler(new CustomerEventSourcingHandler())
+            .registerHandler(new OrderCommandHandler())
+            .registerHandler(new OrderEventSourcingHandler())
             .build();
 
         driver = new TopologyTestDriver(eventify.topology());
 
         commands = driver.createInputTopic(
-            "commands.customer",
+            "commands.order",
             new StringSerializer(), new JsonSerializer<>());
 
         results = driver.createOutputTopic(
-            "commands.customer.results",
+            "commands.order.results",
             new StringDeserializer(), new JsonDeserializer<>(Command.class));
 
         events = driver.createOutputTopic(
-            "events.customer",
+            "events.order",
             new StringDeserializer(), new JsonDeserializer<>(Event.class));
     }
 
@@ -619,12 +619,12 @@ class CustomerTest {
     }
 
     @Test
-    void shouldCreateCustomer() {
+    void shouldPlaceOrder() {
         Command command = Command.builder()
-            .payload(CreateCustomer.builder()
-                .id("customer-1")
-                .firstName("John")
-                .lastName("Doe")
+            .payload(PlaceOrder.builder()
+                .id("order-1")
+                .customer("John Doe")
+                .shippingAddress("123 Main St")
                 .build())
             .build();
 
@@ -636,20 +636,20 @@ class CustomerTest {
 
         List<Event> eventList = events.readValuesToList();
         assertThat(eventList).hasSize(1);
-        assertThat(eventList.get(0).getPayload()).isInstanceOf(CustomerCreated.class);
+        assertThat(eventList.get(0).getPayload()).isInstanceOf(OrderPlaced.class);
     }
 
     @Test
-    void shouldFailWhenCustomerAlreadyExists() {
-        Command create1 = Command.builder()
-            .payload(CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build())
+    void shouldFailWhenOrderAlreadyExists() {
+        Command place1 = Command.builder()
+            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build())
             .build();
-        Command create2 = Command.builder()
-            .payload(CreateCustomer.builder().id("customer-1").firstName("Jane").lastName("Doe").build())
+        Command place2 = Command.builder()
+            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").shippingAddress("456 Oak Ave").build())
             .build();
 
-        commands.pipeInput(create1.getAggregateId(), create1);
-        commands.pipeInput(create2.getAggregateId(), create2);
+        commands.pipeInput(place1.getAggregateId(), place1);
+        commands.pipeInput(place2.getAggregateId(), place2);
 
         List<Command> resultList = results.readValuesToList();
         assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");

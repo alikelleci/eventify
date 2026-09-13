@@ -3,7 +3,7 @@
 Eventify works with the Kafka Streams `TopologyTestDriver`, which runs the complete processing topology in memory without requiring a running Kafka broker. This makes tests fast and deterministic.
 
 ```java
-class CustomerTest {
+class OrderTest {
 
     TopologyTestDriver driver;
     TestInputTopic<String, Command> commands;
@@ -18,22 +18,22 @@ class CustomerTest {
 
         Eventify eventify = Eventify.builder()
             .streamsConfig(props)
-            .registerHandler(new CustomerCommandHandler())
-            .registerHandler(new CustomerEventSourcingHandler())
+            .registerHandler(new OrderCommandHandler())
+            .registerHandler(new OrderEventSourcingHandler())
             .build();
 
         driver = new TopologyTestDriver(eventify.topology());
 
         commands = driver.createInputTopic(
-            "commands.customer",
+            "commands.order",
             new StringSerializer(), new JsonSerializer<>());
 
         results = driver.createOutputTopic(
-            "commands.customer.results",
+            "commands.order.results",
             new StringDeserializer(), new JsonDeserializer<>(Command.class));
 
         events = driver.createOutputTopic(
-            "events.customer",
+            "events.order",
             new StringDeserializer(), new JsonDeserializer<>(Event.class));
     }
 
@@ -43,12 +43,12 @@ class CustomerTest {
     }
 
     @Test
-    void shouldCreateCustomer() {
+    void shouldPlaceOrder() {
         Command command = Command.builder()
-            .payload(CreateCustomer.builder()
-                .id("customer-1")
-                .firstName("John")
-                .lastName("Doe")
+            .payload(PlaceOrder.builder()
+                .id("order-1")
+                .customer("John Doe")
+                .shippingAddress("123 Main St")
                 .build())
             .build();
 
@@ -60,20 +60,20 @@ class CustomerTest {
 
         List<Event> eventList = events.readValuesToList();
         assertThat(eventList).hasSize(1);
-        assertThat(eventList.get(0).getPayload()).isInstanceOf(CustomerCreated.class);
+        assertThat(eventList.get(0).getPayload()).isInstanceOf(OrderPlaced.class);
     }
 
     @Test
-    void shouldFailWhenCustomerAlreadyExists() {
-        Command create1 = Command.builder()
-            .payload(CreateCustomer.builder().id("customer-1").firstName("John").lastName("Doe").build())
+    void shouldFailWhenOrderAlreadyExists() {
+        Command place1 = Command.builder()
+            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build())
             .build();
-        Command create2 = Command.builder()
-            .payload(CreateCustomer.builder().id("customer-1").firstName("Jane").lastName("Doe").build())
+        Command place2 = Command.builder()
+            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").shippingAddress("456 Oak Ave").build())
             .build();
 
-        commands.pipeInput(create1.getAggregateId(), create1);
-        commands.pipeInput(create2.getAggregateId(), create2);
+        commands.pipeInput(place1.getAggregateId(), place1);
+        commands.pipeInput(place2.getAggregateId(), place2);
 
         List<Command> resultList = results.readValuesToList();
         assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");

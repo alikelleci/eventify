@@ -33,9 +33,9 @@ props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerHandler(new CustomerCommandHandler())
-    .registerHandler(new CustomerEventSourcingHandler())
-    .registerHandler(new CustomerEventHandler())
+    .registerHandler(new OrderCommandHandler())
+    .registerHandler(new OrderEventSourcingHandler())
+    .registerHandler(new OrderEventHandler())
     .build();
 
 eventify.start();
@@ -81,21 +81,21 @@ public class EventifyConfig {
 
 ```java
 @Component
-public class CustomerCommandHandler {
+public class OrderCommandHandler {
     @HandleCommand
-    public CustomerEvent handle(CreateCustomer command, Customer state) { ... }
+    public OrderEvent handle(PlaceOrder command, Order state) { ... }
 }
 
 @Component
-public class CustomerEventSourcingHandler {
+public class OrderEventSourcingHandler {
     @ApplyEvent
-    public Customer apply(CustomerCreated event, Customer state) { ... }
+    public Order apply(OrderPlaced event, Order state) { ... }
 }
 
 @Component
-public class CustomerEventHandler {
+public class OrderEventHandler {
     @HandleEvent
-    public void on(CustomerCreated event) { ... }
+    public void on(OrderPlaced event) { ... }
 }
 ```
 

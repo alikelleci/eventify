@@ -8,11 +8,12 @@ An aggregate is a plain, immutable class annotated with `@AggregateRoot`. It rep
 @Value
 @Builder(toBuilder = true)
 @AggregateRoot
-public class Customer {
+public class Order {
     @AggregateId
     String id;
-    String firstName;
-    String lastName;
+    String customer;
+    String shippingAddress;
+    String trackingNumber;
     Instant createdAt;
 }
 ```
@@ -28,32 +29,32 @@ Commands and events are plain, immutable value objects. The recommended pattern 
 ### Commands
 
 ```java
-@TopicInfo("commands.customer")
-public interface CustomerCommand {
+@TopicInfo("commands.order")
+public interface OrderCommand {
 
     @Value
     @Builder
-    class CreateCustomer implements CustomerCommand {
+    class PlaceOrder implements OrderCommand {
         @AggregateId
         String id;
         @NotBlank
-        String firstName;
+        String customer;
         @NotBlank
-        String lastName;
+        String shippingAddress;
     }
 
     @Value
     @Builder
-    class ChangeFirstName implements CustomerCommand {
+    class ShipOrder implements OrderCommand {
         @AggregateId
         String id;
         @NotBlank
-        String firstName;
+        String trackingNumber;
     }
 
     @Value
     @Builder
-    class DeleteCustomer implements CustomerCommand {
+    class CancelOrder implements OrderCommand {
         @AggregateId
         String id;
     }
@@ -65,29 +66,29 @@ public interface CustomerCommand {
 ### Events
 
 ```java
-@TopicInfo("events.customer")
-public interface CustomerEvent {
+@TopicInfo("events.order")
+public interface OrderEvent {
 
     @Value
     @Builder
-    class CustomerCreated implements CustomerEvent {
+    class OrderPlaced implements OrderEvent {
         @AggregateId
         String id;
-        String firstName;
-        String lastName;
+        String customer;
+        String shippingAddress;
     }
 
     @Value
     @Builder
-    class FirstNameChanged implements CustomerEvent {
+    class OrderShipped implements OrderEvent {
         @AggregateId
         String id;
-        String firstName;
+        String trackingNumber;
     }
 
     @Value
     @Builder
-    class CustomerDeleted implements CustomerEvent {
+    class OrderCancelled implements OrderEvent {
         @AggregateId
         String id;
     }
