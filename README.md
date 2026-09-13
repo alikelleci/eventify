@@ -193,9 +193,8 @@ public class Order {
     @AggregateId
     String id;
     String customer;
-    String shippingAddress;
     String trackingNumber;
-    Instant createdAt;
+    Instant placedAt;
 }
 ```
 
@@ -220,8 +219,6 @@ public interface OrderCommand {
         String id;
         @NotBlank
         String customer;
-        @NotBlank
-        String shippingAddress;
     }
 
     @Value
@@ -256,7 +253,6 @@ public interface OrderEvent {
         @AggregateId
         String id;
         String customer;
-        String shippingAddress;
     }
 
     @Value
@@ -295,7 +291,6 @@ public class OrderCommandHandler {
         return OrderPlaced.builder()
             .id(command.getId())
             .customer(command.getCustomer())
-            .shippingAddress(command.getShippingAddress())
             .build();
     }
 
@@ -370,8 +365,7 @@ public class OrderEventSourcingHandler {
         return Order.builder()
             .id(event.getId())
             .customer(event.getCustomer())
-            .shippingAddress(event.getShippingAddress())
-            .createdAt(Instant.now())
+            .placedAt(Instant.now())
             .build();
     }
 
@@ -478,17 +472,17 @@ CommandGateway gateway = CommandGateway.builder()
 ```java
 // Async — returns a CompletableFuture
 CompletableFuture<PlaceOrder> future = gateway.send(
-    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build()
+    PlaceOrder.builder().id("order-1").customer("John Doe").build()
 );
 
 // Blocking — waits up to 1 minute by default
 PlaceOrder result = gateway.sendAndWait(
-    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build()
+    PlaceOrder.builder().id("order-1").customer("John Doe").build()
 );
 
 // Blocking with a custom timeout
 PlaceOrder result = gateway.sendAndWait(
-    PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build(),
+    PlaceOrder.builder().id("order-1").customer("John Doe").build(),
     30, TimeUnit.SECONDS);
 ```
 
@@ -624,7 +618,6 @@ class OrderTest {
             .payload(PlaceOrder.builder()
                 .id("order-1")
                 .customer("John Doe")
-                .shippingAddress("123 Main St")
                 .build())
             .build();
 
@@ -642,10 +635,10 @@ class OrderTest {
     @Test
     void shouldFailWhenOrderAlreadyExists() {
         Command place1 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").shippingAddress("123 Main St").build())
+            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").build())
             .build();
         Command place2 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").shippingAddress("456 Oak Ave").build())
+            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").build())
             .build();
 
         commands.pipeInput(place1.getAggregateId(), place1);

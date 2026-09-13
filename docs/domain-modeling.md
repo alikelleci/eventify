@@ -12,9 +12,8 @@ public class Order {
     @AggregateId
     String id;
     String customer;
-    String shippingAddress;
     String trackingNumber;
-    Instant createdAt;
+    Instant placedAt;
 }
 ```
 
@@ -39,8 +38,6 @@ public interface OrderCommand {
         String id;
         @NotBlank
         String customer;
-        @NotBlank
-        String shippingAddress;
     }
 
     @Value
@@ -75,7 +72,6 @@ public interface OrderEvent {
         @AggregateId
         String id;
         String customer;
-        String shippingAddress;
     }
 
     @Value

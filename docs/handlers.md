@@ -15,7 +15,6 @@ public class OrderCommandHandler {
         return OrderPlaced.builder()
             .id(command.getId())
             .customer(command.getCustomer())
-            .shippingAddress(command.getShippingAddress())
             .build();
     }
 
@@ -90,8 +89,7 @@ public class OrderEventSourcingHandler {
         return Order.builder()
             .id(event.getId())
             .customer(event.getCustomer())
-            .shippingAddress(event.getShippingAddress())
-            .createdAt(Instant.now())
+            .placedAt(Instant.now())
             .build();
     }
 
