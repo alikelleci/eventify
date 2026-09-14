@@ -103,7 +103,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6">
           <h3 class="s-title">Distributed</h3>
-          <p class="s-text">Aggregates are spread over Kafka partitions and shared by all running instances.</p>
+          <p class="s-text">Distributed and scalable by design, built on Kafka. Run more instances as your load grows.</p>
         </div>
       </article>
     </div>
