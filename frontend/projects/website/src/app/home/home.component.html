@@ -50,7 +50,7 @@
   <section class="bg-surface-50 dark:bg-surface-950">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Built around events</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Event sourcing essentials</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
           The event history is the source of truth, and Eventify builds everything else from it.
         </p>
@@ -59,12 +59,12 @@
     </div>
   </section>
 
-  <!-- Eventify Console: the text, and a real screen of the console beside it that runs off the page -->
+  <!-- Eventify Console: the text, and a real screen of the console beside it that runs off the page and fades out at the bottom -->
   <section class="overflow-hidden border-t border-surface-100 dark:border-surface-800">
-    <div class="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:py-28">
-      <div>
+    <div class="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:py-0">
+      <div class="lg:py-28">
         <div class="text-xs font-semibold uppercase tracking-widest text-primary-600 dark:text-primary-400">Eventify Console</div>
-        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">See inside every aggregate</h2>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">A clear view of your aggregates</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
           An optional console for operating Eventify applications: inspect events, state and commands, find out why a command
           failed and retry it.
@@ -80,9 +80,11 @@
         </a>
       </div>
 
-      <!-- Wider than its column, so about half of it shows; too dense below lg -->
-      <div class="hidden lg:block">
-        <app-console-screen class="block w-[60rem]" />
+      <!-- Wider than its column, so about half of it shows, and fading out at the bottom edge of the section; too dense below lg -->
+      <div class="hidden self-end pt-20 lg:block">
+        <div class="max-h-[30rem] w-[60rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
+          <app-console-screen class="block" />
+        </div>
       </div>
     </div>
   </section>
