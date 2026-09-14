@@ -99,7 +99,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="q-title">Which events did it produce?</h3>
-          <p class="q-text">Each command is linked to the events it produced by their correlation ID.</p>
+          <p class="q-text">Correlate events back to the command that produced them, and see everything it caused.</p>
         </div>
       </article>
     </div>
