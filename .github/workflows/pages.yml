@@ -52,7 +52,10 @@ jobs:
           mkdir -p public
           cp -r frontend/dist/website/browser/. public/
           cp -r site-docs public/docs
-          # GitHub Pages has no fallback to index.html: its 404 page loads the website, which then routes /console itself.
+          # The website is one HTML page; GitHub Pages only serves files that exist. Each website page besides the root
+          # gets its own copy, so opening it directly returns 200. Add new website routes here.
+          mkdir -p public/console && cp public/index.html public/console/index.html
+          # Any other unknown address loads the website too, which redirects to the home page.
           cp public/index.html public/404.html
           touch public/.nojekyll
 
