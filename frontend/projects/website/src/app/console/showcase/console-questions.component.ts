@@ -2,7 +2,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
 
 /**
  * The questions the console answers, as four wide blocks, two by two, that play one story in turn: the events arrive, the state changes,
- * a command fails, and a retry produces the missing event. One 12-second cycle, a quarter per block.
+ * a command fails, and a command is traced to the events it produced. One 12-second cycle, a quarter per block.
  * Without the animation (before it scrolls into view, or with reduced motion) every block shows its end state.
  */
 @Component({
@@ -77,22 +77,29 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
         </div>
       </article>
 
-      <!-- 4. Try again: Retry is pressed, and the event follows -->
+      <!-- 4. Correlate: a command, the events it produced, and the correlation ID that links them -->
       <article class="q-card q-focus-4 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
-          <div class="flex flex-col items-center">
-            <span class="q-press inline-flex items-center gap-1.5 rounded-md bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
-              <i class="pi pi-refresh text-[10px]"></i>Retry
-            </span>
-            <span class="q-link h-6 border-l border-dashed border-primary-400"></span>
-            <span class="q-result flex items-center gap-2 rounded-full border border-primary-300 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">
-              <span class="h-1.5 w-1.5 rounded-full bg-primary-500"></span>OrderShipped
+          <div class="flex flex-col items-center gap-3">
+            <div class="flex items-center">
+              <span class="q-command rounded-md border border-surface-200 bg-surface-0 px-2.5 py-1.5 text-xs font-medium text-surface-900 shadow-sm dark:border-surface-700 dark:bg-surface-900 dark:text-surface-0">PlaceOrder</span>
+              <svg class="h-20 w-10 shrink-0 text-primary-400" viewBox="0 0 40 80" fill="none">
+                <path class="q-branch-1" pathLength="1" d="M0 40 C 20 40, 20 14, 40 14" stroke="currentColor" stroke-width="1.5" />
+                <path class="q-branch-2" pathLength="1" d="M0 40 C 20 40, 20 66, 40 66" stroke="currentColor" stroke-width="1.5" />
+              </svg>
+              <div class="flex flex-col gap-7">
+                <span class="q-event-1 rounded-full border border-primary-300 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">OrderPlaced</span>
+                <span class="q-event-2 rounded-full border border-primary-300 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">OrderConfirmed</span>
+              </div>
+            </div>
+            <span class="q-correlation inline-flex items-center gap-1.5 rounded-full border border-surface-200 bg-surface-0 px-2.5 py-0.5 font-mono text-[10px] text-surface-500 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-400">
+              <i class="pi pi-link text-[9px] text-primary-500"></i>$correlationId 5f0c2b1e
             </span>
           </div>
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
-          <h3 class="q-title">Can I try it again?</h3>
-          <p class="q-text">Retry a failed command once the cause is fixed, and follow the events it produces.</p>
+          <h3 class="q-title">Which events did it produce?</h3>
+          <p class="q-text">Each command is linked to the events it produced by their correlation ID.</p>
         </div>
       </article>
     </div>
@@ -148,10 +155,13 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       :host(.playing) .q-failed { animation: q-from-56 12s infinite; }
       :host(.playing) .q-cause { animation: q-from-60 12s infinite; }
 
-      /* 4. Retry is pressed, the link draws, the event appears */
-      :host(.playing) .q-press { animation: q-press 12s infinite; }
-      :host(.playing) .q-link { animation: q-link 12s infinite; transform-origin: top; }
-      :host(.playing) .q-result { animation: q-from-86 12s infinite; }
+      /* 4. The command, then each event it produced with its branch; the correlation ID with the last one */
+      :host(.playing) .q-command { animation: q-from-76 12s infinite; }
+      :host(.playing) :is(.q-branch-1, .q-branch-2) { stroke-dasharray: 1; }
+      :host(.playing) .q-branch-1 { animation: q-draw-79 12s infinite; }
+      :host(.playing) .q-event-1 { animation: q-from-82 12s infinite; }
+      :host(.playing) .q-branch-2 { animation: q-draw-84 12s infinite; }
+      :host(.playing) :is(.q-event-2, .q-correlation) { animation: q-from-87 12s infinite; }
     }
 
     /* Each block is lit during its quarter */
@@ -173,9 +183,12 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
     @keyframes q-from-56 { 0%, 56% { opacity: 0; } 58%, 100% { opacity: 1; } }
     @keyframes q-from-60 { 0%, 60% { opacity: 0; } 63%, 100% { opacity: 1; } }
 
-    @keyframes q-press { 0%, 79% { transform: none; } 80% { transform: scale(0.92); } 82%, 100% { transform: none; } }
-    @keyframes q-link { 0%, 82% { transform: scaleY(0); } 85%, 100% { transform: scaleY(1); } }
-    @keyframes q-from-86 { 0%, 85% { opacity: 0; transform: translateY(-4px); } 88%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-from-76 { 0%, 76% { opacity: 0; transform: translateX(-4px); } 78%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-from-82 { 0%, 82% { opacity: 0; transform: translateX(-4px); } 84%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-from-87 { 0%, 87% { opacity: 0; transform: translateX(-4px); } 89%, 100% { opacity: 1; transform: none; } }
+    /* A branch draws from the command to its event */
+    @keyframes q-draw-79 { 0%, 79% { stroke-dashoffset: 1; } 82%, 100% { stroke-dashoffset: 0; } }
+    @keyframes q-draw-84 { 0%, 84% { stroke-dashoffset: 1; } 87%, 100% { stroke-dashoffset: 0; } }
   `,
 })
 export class ConsoleQuestionsComponent {
