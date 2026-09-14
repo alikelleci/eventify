@@ -13,7 +13,30 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
     <!-- Two by two on desktop; each block is a wide card with its question on the left and its scene on the right -->
     <div class="grid gap-6 lg:grid-cols-2">
 
-      <!-- 1. What happened: the events arrive, oldest first -->
+      <!-- 1. Correlate: a command, the events it produced, and the correlation ID that links them -->
+      <article class="q-card q-focus-4 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+        <div class="q-stage" aria-hidden="true">
+          <div class="flex flex-col items-center gap-3">
+            <div class="flex items-center">
+              <span class="q-command rounded-md border border-surface-200 bg-surface-0 px-2.5 py-1.5 text-xs font-medium text-surface-900 shadow-sm dark:border-surface-700 dark:bg-surface-900 dark:text-surface-0">PlaceOrder</span>
+              <svg class="h-20 w-10 shrink-0 text-primary-400" viewBox="0 0 40 80" fill="none">
+                <path class="q-branch-1" pathLength="1" d="M0 40 C 20 40, 20 14, 40 14" stroke="currentColor" stroke-width="1.5" />
+                <path class="q-branch-2" pathLength="1" d="M0 40 C 20 40, 20 66, 40 66" stroke="currentColor" stroke-width="1.5" />
+              </svg>
+              <div class="flex flex-col gap-7">
+                <span class="q-event-1 rounded-full border border-primary-300 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">OrderPlaced</span>
+                <span class="q-event-2 rounded-full border border-primary-300 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">OrderConfirmed</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
+          <h3 class="q-title">Which events did it produce?</h3>
+          <p class="q-text">Correlate events back to the command that produced them, and see everything it caused.</p>
+        </div>
+      </article>
+
+      <!-- 2. What happened: the events arrive, oldest first -->
       <article class="q-card q-focus-1 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 rounded-lg border border-surface-200 bg-surface-0 py-1.5 text-xs shadow-sm dark:border-surface-700 dark:bg-surface-900">
@@ -33,7 +56,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
         </div>
       </article>
 
-      <!-- 2. Why it looks like this: the status changes -->
+      <!-- 3. Why it looks like this: the status changes -->
       <article class="q-card q-focus-2 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 overflow-hidden rounded-lg border border-surface-200 bg-surface-0 py-1.5 font-mono text-[11px] leading-6 shadow-sm dark:border-surface-700 dark:bg-surface-900">
@@ -53,7 +76,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
         </div>
       </article>
 
-      <!-- 3. Did it go through: a command is sent and rejected -->
+      <!-- 4. Did it go through: a command is sent and rejected -->
       <article class="q-card q-focus-3 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 rounded-lg border border-surface-200 bg-surface-0 p-3 text-xs shadow-sm dark:border-surface-700 dark:bg-surface-900">
@@ -74,32 +97,6 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="q-title">Did my command go through?</h3>
           <p class="q-text">Each command with its outcome, and the cause when it was rejected.</p>
-        </div>
-      </article>
-
-      <!-- 4. Correlate: a command, the events it produced, and the correlation ID that links them -->
-      <article class="q-card q-focus-4 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
-        <div class="q-stage" aria-hidden="true">
-          <div class="flex flex-col items-center gap-3">
-            <div class="flex items-center">
-              <span class="q-command rounded-md border border-surface-200 bg-surface-0 px-2.5 py-1.5 text-xs font-medium text-surface-900 shadow-sm dark:border-surface-700 dark:bg-surface-900 dark:text-surface-0">PlaceOrder</span>
-              <svg class="h-20 w-10 shrink-0 text-primary-400" viewBox="0 0 40 80" fill="none">
-                <path class="q-branch-1" pathLength="1" d="M0 40 C 20 40, 20 14, 40 14" stroke="currentColor" stroke-width="1.5" />
-                <path class="q-branch-2" pathLength="1" d="M0 40 C 20 40, 20 66, 40 66" stroke="currentColor" stroke-width="1.5" />
-              </svg>
-              <div class="flex flex-col gap-7">
-                <span class="q-event-1 rounded-full border border-primary-300 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">OrderPlaced</span>
-                <span class="q-event-2 rounded-full border border-primary-300 bg-primary-50 px-3 py-1 text-xs font-medium text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">OrderConfirmed</span>
-              </div>
-            </div>
-            <span class="q-correlation inline-flex items-center gap-1.5 rounded-full border border-surface-200 bg-surface-0 px-2.5 py-0.5 font-mono text-[10px] text-surface-500 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-400">
-              <i class="pi pi-link text-[9px] text-primary-500"></i>$correlationId 5f0c2b1e
-            </span>
-          </div>
-        </div>
-        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
-          <h3 class="q-title">Which events did it produce?</h3>
-          <p class="q-text">Correlate events back to the command that produced them, and see everything it caused.</p>
         </div>
       </article>
     </div>
