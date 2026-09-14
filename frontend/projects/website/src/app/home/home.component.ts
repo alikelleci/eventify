@@ -86,7 +86,7 @@ export class HomeComponent {
     { visual: 'state', title: 'State from events', text: 'Aggregates are rebuilt from their events, so the event history is the source of truth.' },
     { visual: 'snapshots', title: 'Snapshots', text: 'Long histories are rebuilt from the latest snapshot instead of from the first event.' },
     { visual: 'upcasting', title: 'Event upcasting', text: 'Change the structure of an event, and older events are migrated as they are read.' },
-    { visual: 'distributed', title: 'Distributed', text: 'Built on Kafka Streams: aggregates are spread over partitions and shared by all running instances.' },
+    { visual: 'distributed', title: 'Distributed', text: 'Built on Kafka: aggregates are spread over partitions and shared by all running instances.' },
   ];
 
   // Example data for the illustrations.

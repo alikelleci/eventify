@@ -49,8 +49,7 @@
   <!-- Features: a card per event sourcing feature, each with a small illustration of the idea -->
   <section class="bg-surface-50 dark:bg-surface-950">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
-      <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Core capabilities</h2>
-      <div class="mt-10 grid gap-5 md:grid-cols-2">
+      <div class="grid gap-5 md:grid-cols-2">
         @for (feature of features; track feature.title) {
           <div class="overflow-hidden rounded-2xl border border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
             <div class="flex h-44 items-center justify-center border-b border-surface-100 bg-gradient-to-br from-primary-50 via-surface-0 to-surface-50 px-6 font-mono text-[11px] dark:border-surface-800 dark:from-primary-950/40 dark:via-surface-900 dark:to-surface-900"
@@ -167,23 +166,24 @@
     </div>
   </section>
 
-  <!-- Get started -->
-  <section #getStarted class="scroll-mt-4 border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
-    <div class="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-2 lg:gap-16 lg:py-24">
+  <!-- Get started: dark again, closing the page like the hero opens it -->
+  <section #getStarted class="scroll-mt-4 relative overflow-hidden bg-slate-950">
+    <div class="pointer-events-none absolute -bottom-48 -left-40 h-[32rem] w-[32rem] rounded-full bg-primary-500/10 blur-3xl" aria-hidden="true"></div>
+    <div class="relative mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-2 lg:gap-16 lg:py-24">
       <div>
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Get started</h2>
-        <p class="mt-4 max-w-lg leading-relaxed text-surface-500 dark:text-surface-400">
+        <h2 class="text-3xl font-semibold tracking-tight text-white">Get started</h2>
+        <p class="mt-4 max-w-lg leading-relaxed text-slate-400">
           Eventify is available on Maven Central. The documentation walks you through your first aggregate.
         </p>
         <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
           <p-button label="Read the docs" icon="pi pi-book" (onClick)="openDocs()" />
           <a [href]="githubUrl" target="_blank" rel="noopener"
-             class="inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
+             class="inline-flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white">
             <i class="pi pi-github"></i> GitHub
           </a>
         </div>
       </div>
-      <pre class="overflow-x-auto rounded-xl bg-slate-900 px-5 py-4 font-mono text-[0.8rem] leading-relaxed text-slate-200"><code>{{ dependency }}</code></pre>
+      <pre class="overflow-x-auto rounded-xl border border-white/10 bg-slate-900 px-5 py-4 font-mono text-[0.8rem] leading-relaxed text-slate-200"><code>{{ dependency }}</code></pre>
     </div>
   </section>
 </div>
