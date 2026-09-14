@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DOCS_HOME_URL, GITHUB_URL } from '@eventify/ui/links';
 import { ConsoleScreenComponent } from '../console/showcase/console-screen.component';
+import { FeatureStoryComponent } from './feature-story.component';
 import { highlightJava } from '../shared/java-highlight';
 
 interface CodeSample {
@@ -10,19 +11,12 @@ interface CodeSample {
   code: string;
 }
 
-interface Feature {
-  /** Which small illustration the feature card shows. */
-  visual: 'state' | 'snapshots' | 'upcasting' | 'distributed';
-  title: string;
-  text: string;
-}
-
 /** The Eventify framework's home page. */
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [RouterLink, ButtonModule, ConsoleScreenComponent],
+  imports: [RouterLink, ButtonModule, FeatureStoryComponent, ConsoleScreenComponent],
   host: { class: 'block h-full' },
 })
 export class HomeComponent {
@@ -80,20 +74,6 @@ export class HomeComponent {
   // Highlighted once. All samples are rendered on top of each other, so the window is as tall as the longest one
   // and doesn't change height when switching tabs.
   readonly highlightedSamples = this.samples.map(sample => highlightJava(sample.code));
-
-  // The event sourcing itself, not integrations or tooling.
-  readonly features: Feature[] = [
-    { visual: 'state', title: 'State from events', text: 'Aggregates are rebuilt from their events, so the event history is the source of truth.' },
-    { visual: 'snapshots', title: 'Snapshots', text: 'Long histories are rebuilt from the latest snapshot instead of from the first event.' },
-    { visual: 'upcasting', title: 'Event upcasting', text: 'Change the structure of an event, and older events are migrated as they are read.' },
-    { visual: 'distributed', title: 'Distributed', text: 'Built on Kafka: aggregates are spread over partitions and shared by all running instances.' },
-  ];
-
-  // Example data for the illustrations.
-  readonly stateEvents = ['OrderPlaced', 'ItemAdded', 'OrderPaid'];
-  readonly timeline = Array.from({ length: 10 }, (_, i) => i);
-  readonly snapshotAt = 6;
-  readonly instances = [['P0', 'P3'], ['P1', 'P4'], ['P2', 'P5']];
 
   readonly dependency = `<dependency>
   <groupId>io.github.alikelleci</groupId>
