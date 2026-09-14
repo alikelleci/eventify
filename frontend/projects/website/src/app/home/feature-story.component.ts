@@ -38,7 +38,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Event replay</h3>
-          <p class="s-text">The state is rebuilt by replaying the events, so the event history is the source of truth.</p>
+          <p class="s-text">Recreate your data at any point in time by replaying events. Your complete history is always there.</p>
         </div>
       </article>
 
@@ -72,7 +72,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Snapshots</h3>
-          <p class="s-text">Long histories are read from the latest snapshot instead of from the first event.</p>
+          <p class="s-text">Speed up your system with periodic snapshots. Load state instantly, not from the beginning of time.</p>
         </div>
       </article>
 
@@ -94,7 +94,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Upcasting</h3>
-          <p class="s-text">Change the structure of an event, and older events are migrated as they are read.</p>
+          <p class="s-text">Evolve your data model without migrations. Old events transform automatically as you need them.</p>
         </div>
       </article>
 
@@ -115,7 +115,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Distributed</h3>
-          <p class="s-text">Distributed and scalable by design, built on Kafka. Run more instances as your load grows.</p>
+          <p class="s-text">Scale horizontally without limits. Run more instances as your system grows.</p>
         </div>
       </article>
     </div>

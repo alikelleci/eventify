@@ -42,9 +42,9 @@ export class HomeComponent {
   ];
 
   readonly features: Feature[] = [
-    { icon: 'pi pi-list', title: 'Event history', text: 'Every event of an aggregate, newest first, with its payload and metadata.' },
-    { icon: 'pi pi-database', title: 'State at every event', text: 'See the aggregate as it was after each event, and diff it against the state before.' },
-    { icon: 'pi pi-send', title: 'Commands and outcomes', text: 'Follow each command and its result: succeeded, failed with a cause, or retried.' },
-    { icon: 'pi pi-refresh', title: 'Trace and retry', text: 'Jump from a command to the events it produced, and retry failed commands in one click.' },
+    { icon: 'pi pi-list', title: 'Event history', text: 'See every event in order from oldest to newest, understand what happened and when.' },
+    { icon: 'pi pi-database', title: 'State at every event', text: 'View the aggregate exactly as it was after each event to understand the complete picture.' },
+    { icon: 'pi pi-send', title: 'Commands and outcomes', text: 'Follow each command and see clearly what happened: succeeded, failed and why.' },
+    { icon: 'pi pi-refresh', title: 'Trace commands to events', text: 'See which events a command produced and understand the complete command flow.' },
   ];
 }
