@@ -2,7 +2,7 @@ import { Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DOCS_HOME_URL, GITHUB_URL } from '@eventify/ui/links';
-import { ConsoleIllustrationComponent } from '../shared/console-illustration.component';
+import { ConsoleScreenComponent } from '../console/showcase/console-screen.component';
 import { highlightJava } from '../shared/java-highlight';
 
 interface CodeSample {
@@ -22,7 +22,7 @@ interface Feature {
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [RouterLink, ButtonModule, ConsoleIllustrationComponent],
+  imports: [RouterLink, ButtonModule, ConsoleScreenComponent],
   host: { class: 'block h-full' },
 })
 export class HomeComponent {
