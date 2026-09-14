@@ -28,17 +28,29 @@
     </div>
   </section>
 
-  <!-- The features of the console, shown on the life of one order, one moment at a time -->
-  <section class="border-t border-surface-100 dark:border-surface-800">
+  <!-- The event timeline of one order, played as steps -->
+  <section class="border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Inspect, understand, correlate</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Step through the history</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          When an aggregate looks wrong, the console shows what happened, why, and which command led to it. Step through
-          the life of one order.
+          Every event of an aggregate on one timeline, and the state it left behind.
         </p>
       </div>
       <app-aggregate-replay class="mt-12 block" />
+    </div>
+  </section>
+
+  <!-- The commands of the same order: what they produced, why one failed, and its retry -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
+      <div class="max-w-2xl">
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Follow every command</h2>
+        <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
+          See what each command led to, and when one fails, why, and what happens when you retry it.
+        </p>
+      </div>
+      <app-command-trace class="mt-12 block" />
     </div>
   </section>
 
