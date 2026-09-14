@@ -59,7 +59,7 @@ const STEP_MS = 300;
               <span class="s-in absolute left-[9px] flex h-[15px] w-[15px] items-center justify-center rounded-full bg-primary-500 text-white" [class.s-out]="before(12)">
                 <i class="pi pi-camera text-[7px]"></i>
               </span>
-              <span class="s-in font-medium text-primary-700 dark:text-primary-300" [class.s-out]="before(12)">snapshot</span>
+              <span class="s-in ml-1 font-medium text-primary-700 dark:text-primary-300" [class.s-out]="before(12)">snapshot</span>
             </div>
             @for (i of [4, 5]; track i; let last = $last) {
               <div class="s-row">
