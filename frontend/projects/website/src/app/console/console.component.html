@@ -41,13 +41,13 @@
     </div>
   </section>
 
-  <!-- Replay: one order, step by step -->
+  <!-- Replay: the events of one order, one by one -->
   <section class="border-t border-surface-100 dark:border-surface-800">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Replay an aggregate</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Replay the events</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          Follow one order from start to finish: every event with the state it left behind, and every command with its outcome, including the one that failed and was retried.
+          Step through the events of an aggregate one by one and watch its state build up, seeing exactly what each event changed.
         </p>
       </div>
       <app-aggregate-replay class="mt-10 block" />

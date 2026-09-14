@@ -27,7 +27,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
           </div>
         </div>
         <div class="px-6 pt-4 pb-6">
-          <h3 class="q-title">What happened to this order?</h3>
+          <h3 class="q-title">What happened to this aggregate?</h3>
           <p class="q-text">Every event, in the order it happened, with its payload and metadata.</p>
         </div>
         <span class="q-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
@@ -69,7 +69,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
                 <span class="q-failed col-start-1 row-start-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">failure</span>
               </span>
             </div>
-            <p class="q-cause mt-2 text-[11px] leading-relaxed text-red-600 dark:text-red-400">Carrier DHL is temporarily unavailable.</p>
+            <p class="q-cause mt-2 text-[11px] leading-relaxed text-red-600 dark:text-red-400">Carrier is temporarily unavailable.</p>
           </div>
         </div>
         <div class="px-6 pt-4 pb-6">
@@ -192,13 +192,14 @@ export class ConsoleQuestionsComponent {
   readonly playing = signal(false);
 
   constructor() {
-    // The story starts from the beginning once the blocks are in view.
+    // The story starts from the beginning once the top of the blocks is well in view
+    // (not a share of them: on a phone the blocks are taller than the screen).
     const observer = new IntersectionObserver(([entry]) => {
       if (entry.isIntersecting) {
         this.playing.set(true);
         observer.disconnect();
       }
-    }, { threshold: 0.4 });
+    }, { rootMargin: '0px 0px -25% 0px' });
     observer.observe(inject(ElementRef).nativeElement);
     inject(DestroyRef).onDestroy(() => observer.disconnect());
   }

@@ -52,7 +52,7 @@ const MOMENTS: Moment[] = [
   },
   {
     kind: 'command', type: 'ShipOrder', time: '10:47',
-    cause: 'Carrier DHL is temporarily unavailable.',
+    cause: 'Carrier is temporarily unavailable.',
     payload: [['carrier', '"DHL"']],
     version: 2,
     state: [
