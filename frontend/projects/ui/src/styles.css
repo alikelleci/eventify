@@ -1,0 +1,72 @@
+/* Shared by the console and the website: Tailwind, PrimeUI, icons and the base styles of the shared components. */
+/* No automatic class detection: Tailwind would scan from the directory ng runs in, which misses files when that's a
+   project folder. Each app lists its own sources (its code and ui) in its styles.css instead. */
+@import "tailwindcss" source(none);
+@import "primeicons/primeicons.css";
+@import "jsondiffpatch/formatters/styles/html.css";
+
+@plugin "tailwindcss-primeui";
+
+html, body {
+  height: 100%;
+  margin: 0;
+  @apply text-surface-900 antialiased;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  letter-spacing: -0.011em;
+}
+
+/* jsondiffpatch overrides */
+.jsondiffpatch-delta {
+  font-family: ui-monospace, 'Cascadia Code', 'Source Code Pro', Menlo, monospace;
+  font-size: 0.75rem;
+  width: 100%;
+  padding-left: 0;
+}
+.jsondiffpatch-delta ul {
+  padding-left: 1rem;
+}
+.jsondiffpatch-property-name {
+  color: rgb(51 65 85);
+}
+.jsondiffpatch-added .jsondiffpatch-property-name,
+.jsondiffpatch-added .jsondiffpatch-value pre,
+.jsondiffpatch-modified .jsondiffpatch-right-value pre,
+.jsondiffpatch-textdiff-added {
+  background: #d1fae5;
+  color: #065f46;
+}
+.jsondiffpatch-deleted .jsondiffpatch-property-name,
+.jsondiffpatch-deleted pre,
+.jsondiffpatch-modified .jsondiffpatch-left-value pre,
+.jsondiffpatch-textdiff-deleted {
+  background: #fee2e2;
+  color: #991b1b;
+  text-decoration: none;
+}
+.jsondiffpatch-unchanged {
+  color: #94a3b8;
+}
+@media (prefers-color-scheme: dark) {
+  .jsondiffpatch-property-name {
+    color: rgb(203 213 225);
+  }
+  .jsondiffpatch-added .jsondiffpatch-property-name,
+  .jsondiffpatch-added .jsondiffpatch-value pre,
+  .jsondiffpatch-modified .jsondiffpatch-right-value pre,
+  .jsondiffpatch-textdiff-added {
+    background: #064e3b;
+    color: #6ee7b7;
+  }
+  .jsondiffpatch-deleted .jsondiffpatch-property-name,
+  .jsondiffpatch-deleted pre,
+  .jsondiffpatch-modified .jsondiffpatch-left-value pre,
+  .jsondiffpatch-textdiff-deleted {
+    background: #450a0a;
+    color: #fca5a5;
+  }
+  .jsondiffpatch-unchanged {
+    color: #475569;
+  }
+}
+

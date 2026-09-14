@@ -1,0 +1,93 @@
+<p-toast />
+
+<!-- Tracking the load object recreates everything inside on each search, so it all starts from scratch -->
+@for (current of [load()]; track current) {
+
+<div class="relative flex h-full overflow-hidden">
+
+  <!-- Opening an aggregate: one skeleton for the whole view, until the events and the auto-selected detail are ready -->
+  @if (opening()) {
+    <app-aggregate-skeleton class="absolute inset-0 z-10" />
+  }
+
+  <!-- Left: tabs with a list each. Not lazy: both lists load right away, so commands load in the background. -->
+  <div class="flex flex-col h-full shrink-0 w-full lg:w-[480px] border-r border-surface-100 dark:border-surface-800 overflow-hidden">
+    <p-tabs [(value)]="tab" class="flex flex-col h-full !bg-transparent">
+      <div class="relative px-4 shrink-0">
+        <p-tablist>
+          <p-tab value="events">Events</p-tab>
+          <p-tab value="commands">Commands</p-tab>
+        </p-tablist>
+        <!-- Refreshes both lists; spins until the list that was open is shown again, the other loads in the background -->
+        <p-button icon="pi pi-refresh" [text]="true" [rounded]="true" severity="secondary" size="small"
+                  class="absolute right-5 top-1/2 -translate-y-1/2" ariaLabel="Refresh events and commands"
+                  [loading]="refreshing()" (onClick)="refresh()" />
+      </div>
+      <p-tabpanels class="flex-1 min-h-0 !p-0 !bg-transparent">
+        <!-- Each list sits in a bordered box (like a command's produced events), so its rows read as clickable.
+             The box grows with the list up to the pane's height; beyond that the list scrolls inside it. -->
+        <!-- Tracking the lists object recreates both lists on refresh: their requests are cancelled and they load again -->
+        <p-tabpanel value="events" class="h-full">
+          <div class="h-full px-4 pt-3 pb-4">
+            @for (_ of [lists()]; track _) {
+            <app-event-list class="max-h-full rounded-lg border border-surface-100 dark:border-surface-800"
+                            [aggregateId]="current.id" [active]="tab() === 'events'" [selected]="selected()"
+                            (select)="selectItem($event)" (loaded)="onEventsLoaded($event)" />
+            }
+          </div>
+        </p-tabpanel>
+        <p-tabpanel value="commands" class="h-full">
+          <div class="h-full px-4 pt-3 pb-4">
+            @for (_ of [lists()]; track _) {
+            <app-command-list class="max-h-full rounded-lg border border-surface-100 dark:border-surface-800"
+                              [aggregateId]="current.id" [active]="tab() === 'commands'" [selected]="selected()"
+                              (select)="selectItem($event)" (loaded)="onCommandsLoaded($event)" />
+            }
+          </div>
+        </p-tabpanel>
+      </p-tabpanels>
+    </p-tabs>
+  </div>
+
+  <!-- Right: detail pane (desktop) -->
+  @if (!isMobile()) {
+    <div class="flex-1 overflow-y-auto">
+      @if (isEvent(selected())) {
+        <div class="px-6 py-5">
+          <app-event-detail [event]="selectedEvent()" (loaded)="onDetailLoaded()" />
+        </div>
+      } @else if (isCommand(selected())) {
+        <div class="px-6 py-5">
+          <app-command-detail [command]="selectedCommand()" (loaded)="onDetailLoaded()" />
+        </div>
+      } @else if (activeListHasItems()) {
+        <div class="flex flex-col items-center justify-center h-full gap-3 text-surface-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/>
+            <rect x="9" y="3" width="6" height="4" rx="1"/>
+            <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+          </svg>
+          <span class="text-sm">Select an item to view details</span>
+        </div>
+      }
+      <!-- Otherwise empty: nothing to select yet (still loading) or at all (the list's empty state says so) -->
+    </div>
+  }
+
+</div>
+
+<!-- Mobile drawer -->
+@if (isMobile()) {
+  <p-drawer [(visible)]="drawerVisible" position="right"
+    [modal]="true" styleClass="w-full" [blockScroll]="true"
+    [header]="isEvent(selected()) ? 'Event Details' : 'Command Details'"
+    appendTo="body">
+    @if (isEvent(selected())) {
+      <app-event-detail [event]="selectedEvent()" />
+    } @else {
+      <app-command-detail [command]="selectedCommand()" />
+    }
+  </p-drawer>
+}
+
+}

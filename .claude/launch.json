@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "console-ui",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd frontend && npx ng serve console --port 4301"
+      ],
+      "port": 4301
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd frontend && npx ng serve website --port 4302"
+      ],
+      "port": 4302
+    }
+  ]
+}

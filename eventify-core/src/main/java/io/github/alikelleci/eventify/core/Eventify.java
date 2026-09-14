@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandProcessor;
@@ -72,6 +73,7 @@ public class Eventify {
   private final StateRestoreListener stateRestoreListener;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
+  private final List<EventifyPlugin> plugins = new ArrayList<>();
 
   private KafkaStreams kafkaStreams;
 
@@ -79,16 +81,22 @@ public class Eventify {
                      StateListener stateListener,
                      StateRestoreListener stateRestoreListener,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
-                     ObjectMapper objectMapper) {
+                     ObjectMapper objectMapper,
+                     List<EventifyPlugin> plugins) {
     this.streamsConfig = streamsConfig;
     this.stateListener = stateListener;
     this.stateRestoreListener = stateRestoreListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
+    this.plugins.addAll(plugins);
   }
 
   public void registerHandler(Object handler) {
     HandlerUtils.registerHandler(this, handler);
+  }
+
+  public void registerPlugin(EventifyPlugin plugin) {
+    this.plugins.add(plugin);
   }
 
   public static EventifyBuilder builder() {
@@ -218,6 +226,7 @@ public class Eventify {
 
     log.info("Eventify is starting...");
     kafkaStreams.start();
+    plugins.forEach(plugin -> plugin.onStart(this));
   }
 
   public void stop() {
@@ -226,6 +235,7 @@ public class Eventify {
     }
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofSeconds(60));
+    plugins.forEach(plugin -> plugin.onStop(this));
     log.info("Eventify shut down complete.");
   }
 
@@ -257,7 +267,7 @@ public class Eventify {
         .collect(Collectors.toSet());
   }
 
-  private Set<String> getResultTopics() {
+  public Set<String> getResultTopics() {
     return resultHandlers.keySet().stream()
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
@@ -269,6 +279,7 @@ public class Eventify {
 
   public static class EventifyBuilder {
     private final List<Object> handlers = new ArrayList<>();
+    private final List<EventifyPlugin> plugins = new ArrayList<>();
 
     private Properties streamsConfig;
     private StateListener stateListener;
@@ -278,6 +289,11 @@ public class Eventify {
 
     public EventifyBuilder registerHandler(Object handler) {
       handlers.add(handler);
+      return this;
+    }
+
+    public EventifyBuilder registerPlugin(EventifyPlugin plugin) {
+      plugins.add(plugin);
       return this;
     }
 
@@ -343,7 +359,8 @@ public class Eventify {
           this.stateListener,
           this.stateRestoreListener,
           this.uncaughtExceptionHandler,
-          this.objectMapper);
+          this.objectMapper,
+          this.plugins);
 
       this.handlers.forEach(eventify::registerHandler);
 

@@ -1,0 +1,145 @@
+@if (loading()) {
+  <app-detail-skeleton />
+} @else if (command(); as cmd) {
+  <div class="pb-5 border-b border-surface-100 dark:border-surface-800">
+    <div class="flex items-center gap-2">
+      <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ cmd.type }}</span>
+      @if (result() === 'success') {
+        <p-tag value="success" severity="success" styleClass="shrink-0" />
+      } @else if (result() === 'failure') {
+        <p-tag value="failure" severity="danger" styleClass="shrink-0" />
+      }
+      @if (cmd.metadata['retry'] === 'true') {
+        <p-tag value="retried" severity="warn" styleClass="shrink-0" />
+      }
+    </div>
+    <div class="text-xs text-surface-400 mt-0.5">{{ cmd.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</div>
+  </div>
+
+  <div class="py-4 flex flex-col gap-3">
+    <div class="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-lg px-3 py-2.5">
+      <div>
+        <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-1">Command ID</div>
+        <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ cmd.id }}</div>
+      </div>
+      <p-button [text]="true" [rounded]="true" severity="secondary"
+        [icon]="copiedKey() === 'cmd-id' ? 'pi pi-check' : 'pi pi-copy'"
+        [pTooltip]="copiedKey() === 'cmd-id' ? 'Copied!' : 'Copy'" tooltipPosition="top"
+        (onClick)="copy(cmd.id, 'cmd-id')" />
+    </div>
+    <div class="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-lg px-3 py-2.5">
+      <div>
+        <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-1">Aggregate ID</div>
+        <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ cmd.aggregateId }}</div>
+      </div>
+      <p-button [text]="true" [rounded]="true" severity="secondary"
+        [icon]="copiedKey() === 'agg-id' ? 'pi pi-check' : 'pi pi-copy'"
+        [pTooltip]="copiedKey() === 'agg-id' ? 'Copied!' : 'Copy'" tooltipPosition="top"
+        (onClick)="copy(cmd.aggregateId, 'agg-id')" />
+    </div>
+    @if (result() === 'failure' && cause()) {
+      <div class="flex items-center justify-between bg-red-50 dark:bg-red-950 rounded-lg px-3 py-2.5">
+        <div>
+          <div class="text-xs font-medium text-red-400 uppercase tracking-widest mb-1">Cause</div>
+          <div class="text-sm text-red-600 dark:text-red-400">{{ cause() }}</div>
+        </div>
+        <p-button [text]="true" [rounded]="true" severity="danger"
+          [icon]="retrying() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'" size="small" styleClass="!w-24 !border !border-red-300 dark:!border-red-800"
+          [label]="retrying() ? 'Retrying…' : 'Retry'"
+          [disabled]="retrying()"
+          (onClick)="retry()" />
+      </div>
+    }
+  </div>
+
+  <div class="border-t border-surface-100 dark:border-surface-800 pt-4">
+    <p-tabs [(value)]="activeTab">
+      <p-tablist styleClass="!border-t-0">
+        <p-tab value="payload">Payload</p-tab>
+        <p-tab value="metadata">Metadata</p-tab>
+        <p-tab value="events">
+          <span class="flex items-center gap-1.5">Events
+            @if (producedEvents(); as evts) { <p-tag [value]="evts.length.toString()" severity="secondary" /> }
+          </span>
+        </p-tab>
+      </p-tablist>
+    </p-tabs>
+  </div>
+
+  <div class="pt-4">
+    @if (activeTab() === 'payload') {
+      <div class="relative group">
+        <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono" [innerHTML]="payloadJson() | jsonHighlight"></pre>
+        <p-button [text]="true" [rounded]="true" severity="secondary"
+          class="!absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+          [icon]="copiedKey() === 'payload' ? 'pi pi-check' : 'pi pi-copy'"
+          [pTooltip]="copiedKey() === 'payload' ? 'Copied!' : 'Copy'" tooltipPosition="top"
+          (onClick)="copy(payloadJson(), 'payload')" />
+      </div>
+    }
+    @if (activeTab() === 'metadata') {
+      @if (metadata().length > 0) {
+        <div class="rounded-lg border border-surface-100 dark:border-surface-800 overflow-hidden">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="bg-surface-50 dark:bg-surface-700 border-b border-surface-100 dark:border-surface-800">
+                <th class="text-left px-4 py-2 text-surface-400 font-medium uppercase tracking-widest w-2/5">Key</th>
+                <th class="text-left px-4 py-2 text-surface-400 font-medium uppercase tracking-widest">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (entry of metadata(); track entry.key) {
+                <tr class="group border-b border-surface-100 dark:border-surface-800 last:border-0 hover:bg-surface-50 dark:hover:bg-surface-800">
+                  <td class="px-4 py-2.5 font-mono text-primary-600 dark:text-primary-400 break-all">{{ entry.key }}</td>
+                  <td class="px-4 py-2.5 text-surface-900 dark:text-surface-100 break-all">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="break-all">{{ entry.value }}</span>
+                      <p-button [text]="true" [rounded]="true" severity="secondary"
+                        class="opacity-0 group-hover:opacity-100 transition-opacity"
+                        [icon]="copiedKey() === entry.key ? 'pi pi-check' : 'pi pi-copy'"
+                        [pTooltip]="copiedKey() === entry.key ? 'Copied!' : 'Copy'" tooltipPosition="top"
+                        (onClick)="copy(entry.value, entry.key)" />
+                    </div>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else {
+        <div class="text-sm text-surface-400">No metadata.</div>
+      }
+    }
+    @if (activeTab() === 'events') {
+      @if (producedEvents(); as events) {
+        @if (events.length > 0) {
+          <!-- Same timeline rows as the events list, boxed like the metadata table so they read as this tab's list.
+               Milliseconds shown since these events often share a second. -->
+          <div class="rounded-lg border border-surface-100 dark:border-surface-800 overflow-hidden">
+            @for (event of events; track event.id) {
+              <app-timeline-item [first]="$first" [last]="$last" (click)="openEvent(event)">
+                <div class="flex flex-col flex-1 min-w-0">
+                  <div class="flex items-center gap-2 h-[22px]">
+                    <span class="font-medium text-sm truncate">{{ event.type }}</span>
+                    @if (event.revision > 1) { <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" /> }
+                  </div>
+                  <span class="text-xs text-surface-400 mt-0.5">{{ event.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</span>
+                </div>
+                <i class="pi pi-chevron-right text-surface-400 text-sm shrink-0"></i>
+              </app-timeline-item>
+            }
+          </div>
+        } @else {
+          <div class="text-sm text-surface-400">No events produced.</div>
+        }
+      }
+    }
+  </div>
+}
+
+<!-- Produced event drawer -->
+<p-drawer [(visible)]="drawerVisible" position="right"
+  [modal]="true" styleClass="w-full lg:w-[600px]" [blockScroll]="true"
+  header="Event Details" appendTo="body">
+  <app-event-detail [event]="drawerEvent()" />
+</p-drawer>

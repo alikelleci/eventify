@@ -1,0 +1,31 @@
+@if (loading()) {
+  <app-list-skeleton />
+} @else if (events().length === 0) {
+  <div class="flex flex-col items-center justify-center py-16 gap-3 text-surface-400">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/>
+    </svg>
+    <span class="text-sm">No events found for this aggregate</span>
+  </div>
+} @else {
+  @for (event of events(); track event.id) {
+    <app-timeline-item [selected]="selected() === event" [first]="$first" [last]="$last && !nextCursor()"
+                       (click)="select.emit(event)">
+      <div class="flex flex-col flex-1 min-w-0">
+        <div class="flex items-center gap-2 h-[22px]">
+          <span class="font-medium text-sm truncate">{{ event.type }}</span>
+          @if (event.revision > 1) { <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" /> }
+        </div>
+        <span class="text-xs text-surface-400 mt-0.5">{{ event.timestamp | date:'MMM d, y · HH:mm:ss' }}</span>
+      </div>
+      <i class="pi pi-chevron-right text-surface-400 text-sm shrink-0"></i>
+    </app-timeline-item>
+  }
+  @if (loadingMore()) {
+    <app-list-skeleton [continues]="true" />
+  } @else if (!nextCursor()) {
+    <div class="flex items-center justify-center gap-2 px-4 py-3 text-xs text-surface-400">
+      <i class="pi pi-check-circle"></i><span>All events loaded</span>
+    </div>
+  }
+}

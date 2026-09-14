@@ -1,0 +1,14 @@
+@import "../../ui/src/styles.css";
+
+/* Where Tailwind looks for classes, relative to this file: the console and the shared ui code */
+@source ".";
+@source "../../ui/src";
+
+/* Indeterminate progress bar under the header while an aggregate loads */
+.header-progress {
+  animation: header-progress 1.1s ease-in-out infinite;
+}
+@keyframes header-progress {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}

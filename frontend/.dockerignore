@@ -1,0 +1,6 @@
+# The image installs and builds the UI itself; local installs and build output would overwrite it.
+**/node_modules
+**/dist
+**/.angular
+target
+**/.DS_Store

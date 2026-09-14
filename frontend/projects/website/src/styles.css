@@ -1,0 +1,5 @@
+@import "../../ui/src/styles.css";
+
+/* Where Tailwind looks for classes, relative to this file: the website and the shared ui code */
+@source ".";
+@source "../../ui/src";
