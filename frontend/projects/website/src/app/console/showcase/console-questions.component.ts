@@ -31,7 +31,6 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
           <h3 class="q-title">What happened to this aggregate?</h3>
           <p class="q-text">Every event, in the order it happened, with its payload and metadata.</p>
         </div>
-        <span class="q-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
 
       <!-- 2. Why it looks like this: the status changes -->
@@ -76,7 +75,6 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
           <h3 class="q-title">Did my command go through?</h3>
           <p class="q-text">Each command with its outcome, and the cause when it was rejected.</p>
         </div>
-        <span class="q-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
 
       <!-- 4. Try again: Retry is pressed, and the event follows -->
@@ -121,15 +119,6 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
     @media (prefers-color-scheme: dark) {
       .q-stage { background-color: var(--p-surface-950); background-image: radial-gradient(var(--p-surface-800) 1px, transparent 1px); }
     }
-
-    /* Leads to the block beside it, in the gap between them (desktop only, where two blocks share a row) */
-    .q-next {
-      display: none; position: absolute; z-index: 1; top: calc(50% - 0.625rem); right: -1.1rem;
-      width: 1.25rem; height: 1.25rem; align-items: center; justify-content: center; border-radius: 9999px;
-      border: 1px solid var(--p-surface-200); background: var(--p-surface-0); color: var(--p-surface-400);
-    }
-    @media (prefers-color-scheme: dark) { .q-next { border-color: var(--p-surface-700); background: var(--p-surface-900); } }
-    @media (min-width: 1024px) { .q-next { display: flex; } }
 
     /* The removed line and the failure only exist once they happen */
     .q-removed, .q-failed { opacity: 1; }

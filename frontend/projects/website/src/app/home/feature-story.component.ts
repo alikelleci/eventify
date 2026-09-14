@@ -37,7 +37,6 @@ const STEP_MS = 300;
           <h3 class="s-title">Event replay</h3>
           <p class="s-text">The state is rebuilt by replaying the events, so the event history is the source of truth.</p>
         </div>
-        <span class="s-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
 
       <!-- 2. Snapshots: a snapshot is taken, and the events before it are no longer read -->
@@ -63,7 +62,6 @@ const STEP_MS = 300;
           <h3 class="s-title">Snapshots</h3>
           <p class="s-text">Long histories are read from the latest snapshot instead of from the first event.</p>
         </div>
-        <span class="s-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
 
       <!-- 3. Upcasting: the old revision is migrated as it is read -->
@@ -86,7 +84,6 @@ const STEP_MS = 300;
           <h3 class="s-title">Upcasting</h3>
           <p class="s-text">Change the structure of an event, and older events are migrated as they are read.</p>
         </div>
-        <span class="s-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
 
       <!-- 4. Distributed: the partitions go to the running instances, one instance at a time -->
@@ -126,18 +123,12 @@ const STEP_MS = 300;
     }
     .s-box { border: 1px solid var(--p-surface-200); border-radius: 0.5rem; background: var(--p-surface-0); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); }
     .s-box-new { border-color: var(--p-primary-300); }
-    .s-next {
-      display: none; position: absolute; z-index: 1; top: 5.25rem; right: -1.1rem; width: 1.25rem; height: 1.25rem;
-      align-items: center; justify-content: center; border-radius: 9999px;
-      border: 1px solid var(--p-surface-200); background: var(--p-surface-0); color: var(--p-surface-400);
-    }
-    @media (min-width: 1024px) { .s-next { display: flex; } }
     @media (prefers-color-scheme: dark) {
       .s-card { border-color: var(--p-surface-800); background: var(--p-surface-900); }
       .s-title { color: var(--p-surface-0); }
       .s-text { color: var(--p-surface-400); }
       .s-stage { color: var(--p-surface-200); background: var(--p-surface-950) radial-gradient(var(--p-surface-800) 1px, transparent 1px) 0 0 / 14px 14px; }
-      .s-box, .s-next { border-color: var(--p-surface-700); background: var(--p-surface-900); }
+      .s-box { border-color: var(--p-surface-700); background: var(--p-surface-900); }
       .s-box-new { border-color: var(--p-primary-800); }
     }
 
