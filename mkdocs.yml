@@ -1,5 +1,5 @@
 site_name: Eventify
-site_url: https://alikelleci.github.io/eventify
+site_url: https://alikelleci.github.io/eventify/docs/
 site_description: Functional event-sourcing framework for the JVM
 site_author: Ali Kelleci
 repo_name: alikelleci/eventify
@@ -49,6 +49,8 @@ extra_css:
   - stylesheets/extra.css
 
 extra:
+  # The logo links back to the website; the docs are published under its /docs/ path (see .github/workflows/pages.yml).
+  homepage: https://alikelleci.github.io/eventify/
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/alikelleci/eventify

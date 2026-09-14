@@ -1,0 +1,63 @@
+name: Deploy Website and Docs
+
+# One GitHub Pages site: the website at the root, the documentation under /docs/.
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# A newer deploy replaces an older one that is still running.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build website
+        working-directory: frontend
+        run: |
+          npm ci
+          npx ng build website --base-href /eventify/
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Build docs
+        run: |
+          pip install mkdocs-material ghp-import
+          mkdocs build --site-dir site-docs
+
+      - name: Assemble site
+        run: |
+          mkdir -p public
+          cp -r frontend/dist/website/browser/. public/
+          cp -r site-docs public/docs
+          # GitHub Pages has no fallback to index.html: its 404 page loads the website, which then routes /console itself.
+          cp public/index.html public/404.html
+          touch public/.nojekyll
+
+      - name: Deploy to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          ghp-import --no-jekyll --push --force --message "Deploy website and docs" public
