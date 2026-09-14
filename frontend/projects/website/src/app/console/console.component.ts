@@ -50,7 +50,7 @@ export class ConsoleComponent {
     },
     {
       title: 'Register the plugin',
-      text: 'With the Spring Boot starter this happens automatically; just set application.server.',
+      text: 'Set application.server to the host and port the console listens on, and register the plugin.',
       code: `props.put(StreamsConfig.APPLICATION_SERVER_CONFIG,
           "localhost:8085");
 
