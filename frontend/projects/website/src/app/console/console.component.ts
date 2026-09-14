@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
 import { DOCS_URL, GITHUB_URL } from '@eventify/ui/links';
 import { EventShowcaseComponent } from './showcase/event-showcase.component';
 import { CommandShowcaseComponent } from './showcase/command-showcase.component';
@@ -7,7 +8,8 @@ import { ConsoleIllustrationComponent } from '../shared/console-illustration.com
 import { SetupStep, SetupStepsComponent } from '../shared/setup-steps.component';
 
 interface Feature {
-  icon: string;
+  /** Which fragment of the console the panel shows. */
+  visual: 'history' | 'state' | 'commands' | 'retry';
   title: string;
   text: string;
 }
@@ -17,7 +19,7 @@ interface Feature {
   selector: 'app-console',
   templateUrl: './console.component.html',
   standalone: true,
-  imports: [ButtonModule, EventShowcaseComponent, CommandShowcaseComponent, ConsoleIllustrationComponent, SetupStepsComponent],
+  imports: [ButtonModule, TagModule, EventShowcaseComponent, CommandShowcaseComponent, ConsoleIllustrationComponent, SetupStepsComponent],
   host: { class: 'block h-full' },
 })
 export class ConsoleComponent {
@@ -25,10 +27,10 @@ export class ConsoleComponent {
   readonly githubUrl = GITHUB_URL;
 
   readonly features: Feature[] = [
-    { icon: 'pi pi-list', title: 'Event history', text: 'Every event of an aggregate, newest first, with its payload and metadata.' },
-    { icon: 'pi pi-database', title: 'State at every event', text: 'See the aggregate as it was after each event, and diff it against the state before.' },
-    { icon: 'pi pi-send', title: 'Commands and outcomes', text: 'Follow each command and its result: succeeded, failed with a cause, or retried.' },
-    { icon: 'pi pi-refresh', title: 'Trace and retry', text: 'Jump from a command to the events it produced, and retry failed commands in one click.' },
+    { visual: 'history', title: 'Event history', text: 'Every event of an aggregate, newest first, with its payload and metadata.' },
+    { visual: 'state', title: 'State at every event', text: 'See the aggregate as it was after each event, and diff it against the state before.' },
+    { visual: 'commands', title: 'Commands and outcomes', text: 'Follow each command and its result: succeeded, failed with a cause, or retried.' },
+    { visual: 'retry', title: 'Trace and retry', text: 'Jump from a command to the events it produced, and retry failed commands in one click.' },
   ];
 
   /** Example applications for the standalone app switcher illustration; the first one is active. */
