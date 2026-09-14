@@ -1,8 +1,8 @@
 import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core';
 
 /**
- * The questions the console answers, as four wide blocks, two by two, that play one story in turn: the events arrive, the state changes,
- * a command fails, and a command is traced to the events it produced. One 12-second cycle, a quarter per block.
+ * The questions the console answers, as four wide blocks, two by two, that play one story in turn: a command is traced to
+ * the events it produced, the events arrive, the state changes, and a command fails. One 12-second cycle, a quarter per block.
  * Without the animation (before it scrolls into view, or with reduced motion) every block shows its end state.
  */
 @Component({
@@ -14,7 +14,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
     <div class="grid gap-6 lg:grid-cols-2">
 
       <!-- 1. Correlate: a command, the events it produced, and the correlation ID that links them -->
-      <article class="q-card q-focus-4 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-1 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="flex flex-col items-center gap-3">
             <div class="flex items-center">
@@ -37,7 +37,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       </article>
 
       <!-- 2. What happened: the events arrive, oldest first -->
-      <article class="q-card q-focus-1 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-2 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 rounded-lg border border-surface-200 bg-surface-0 py-1.5 text-xs shadow-sm dark:border-surface-700 dark:bg-surface-900">
             @for (event of events; track event; let first = $first, last = $last, i = $index) {
@@ -57,7 +57,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       </article>
 
       <!-- 3. Why it looks like this: the status changes -->
-      <article class="q-card q-focus-2 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-3 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 overflow-hidden rounded-lg border border-surface-200 bg-surface-0 py-1.5 font-mono text-[11px] leading-6 shadow-sm dark:border-surface-700 dark:bg-surface-900">
             <div class="px-3 text-surface-400">&nbsp; total: 169.40</div>
@@ -77,7 +77,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       </article>
 
       <!-- 4. Did it go through: a command is sent and rejected -->
-      <article class="q-card q-focus-3 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-4 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 rounded-lg border border-surface-200 bg-surface-0 p-3 text-xs shadow-sm dark:border-surface-700 dark:bg-surface-900">
             <div class="flex items-center gap-2">
@@ -128,7 +128,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
     .q-removed, .q-failed { opacity: 1; }
     .q-before, .q-pending { opacity: 0; }
 
-    /* ---- The story, 12s per cycle, only while in view and motion is welcome ---- */
+    /* ---- The story, 12s per cycle, a quarter per block in the order on the page, only while in view and motion is welcome ---- */
     @media (prefers-reduced-motion: no-preference) {
       :host(.playing) .q-card { animation: 12s infinite; }
       :host(.playing) .q-focus-1 { animation-name: q-focus-1; }
@@ -136,29 +136,29 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       :host(.playing) .q-focus-3 { animation-name: q-focus-3; }
       :host(.playing) .q-focus-4 { animation-name: q-focus-4; }
 
-      /* 1. The events arrive: OrderPlaced, OrderConfirmed, then OrderShipped */
-      :host(.playing) .q-arrive-1 { animation: q-arrive-1 12s infinite; }
-      :host(.playing) .q-arrive-2 { animation: q-arrive-2 12s infinite; }
-      :host(.playing) .q-arrive-3 { animation: q-arrive-3 12s infinite; }
-
-      /* 2. The status line is replaced by the removed and added lines */
-      :host(.playing) .q-before { animation: q-until-28 12s infinite; }
-      :host(.playing) .q-removed { animation: q-from-28 12s infinite; }
-      :host(.playing) .q-added-1 { animation: q-from-31 12s infinite; }
-      :host(.playing) .q-added-2 { animation: q-from-34 12s infinite; }
-
-      /* 3. Pending, then rejected with its cause */
-      :host(.playing) .q-pending { animation: q-until-56 12s infinite; }
-      :host(.playing) .q-failed { animation: q-from-56 12s infinite; }
-      :host(.playing) .q-cause { animation: q-from-60 12s infinite; }
-
-      /* 4. The command, then each event it produced with its branch; the correlation ID with the last one */
-      :host(.playing) .q-command { animation: q-from-76 12s infinite; }
+      /* 1. The command, then each event it produced with its branch */
+      :host(.playing) .q-command { animation: q-from-1 12s infinite; }
       :host(.playing) :is(.q-branch-1, .q-branch-2) { stroke-dasharray: 1; }
-      :host(.playing) .q-branch-1 { animation: q-draw-79 12s infinite; }
-      :host(.playing) .q-event-1 { animation: q-from-82 12s infinite; }
-      :host(.playing) .q-branch-2 { animation: q-draw-84 12s infinite; }
-      :host(.playing) :is(.q-event-2, .q-correlation) { animation: q-from-87 12s infinite; }
+      :host(.playing) .q-branch-1 { animation: q-draw-4 12s infinite; }
+      :host(.playing) .q-event-1 { animation: q-from-7 12s infinite; }
+      :host(.playing) .q-branch-2 { animation: q-draw-9 12s infinite; }
+      :host(.playing) .q-event-2 { animation: q-from-12 12s infinite; }
+
+      /* 2. The events arrive: OrderPlaced, OrderConfirmed, then OrderShipped */
+      :host(.playing) .q-arrive-1 { animation: q-down-27 12s infinite; }
+      :host(.playing) .q-arrive-2 { animation: q-down-33 12s infinite; }
+      :host(.playing) .q-arrive-3 { animation: q-down-39 12s infinite; }
+
+      /* 3. The status line is replaced by the removed and added lines */
+      :host(.playing) .q-before { animation: q-until-53 12s infinite; }
+      :host(.playing) .q-removed { animation: q-fade-53 12s infinite; }
+      :host(.playing) .q-added-1 { animation: q-from-56 12s infinite; }
+      :host(.playing) .q-added-2 { animation: q-from-59 12s infinite; }
+
+      /* 4. Pending, then rejected with its cause */
+      :host(.playing) .q-pending { animation: q-until-81 12s infinite; }
+      :host(.playing) .q-failed { animation: q-fade-81 12s infinite; }
+      :host(.playing) .q-cause { animation: q-fade-85 12s infinite; }
     }
 
     /* Each block is lit during its quarter */
@@ -167,25 +167,25 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
     @keyframes q-focus-3 { 0%, 49% { box-shadow: 0 0 0 0 transparent; } 51%, 73% { box-shadow: 0 0 0 2px var(--p-primary-400); } 76%, 100% { box-shadow: 0 0 0 0 transparent; } }
     @keyframes q-focus-4 { 0%, 74% { box-shadow: 0 0 0 0 transparent; } 76%, 98% { box-shadow: 0 0 0 2px var(--p-primary-400); } 100% { box-shadow: 0 0 0 0 transparent; } }
 
-    @keyframes q-arrive-1 { 0%, 2% { opacity: 0; transform: translateY(-4px); } 6%, 100% { opacity: 1; transform: none; } }
-    @keyframes q-arrive-2 { 0%, 8% { opacity: 0; transform: translateY(-4px); } 12%, 100% { opacity: 1; transform: none; } }
-    @keyframes q-arrive-3 { 0%, 14% { opacity: 0; transform: translateY(-4px); } 18%, 100% { opacity: 1; transform: none; } }
+    /* Hidden until the given percentage of the cycle, then in */
+    @keyframes q-from-1 { 0%, 1% { opacity: 0; transform: translateX(-4px); } 3%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-from-7 { 0%, 7% { opacity: 0; transform: translateX(-4px); } 9%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-from-12 { 0%, 12% { opacity: 0; transform: translateX(-4px); } 14%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-draw-4 { 0%, 4% { stroke-dashoffset: 1; } 7%, 100% { stroke-dashoffset: 0; } }
+    @keyframes q-draw-9 { 0%, 9% { stroke-dashoffset: 1; } 12%, 100% { stroke-dashoffset: 0; } }
 
-    @keyframes q-until-28 { 0%, 28% { opacity: 1; } 30%, 100% { opacity: 0; } }
-    @keyframes q-from-28 { 0%, 28% { opacity: 0; } 30%, 100% { opacity: 1; } }
-    @keyframes q-from-31 { 0%, 31% { opacity: 0; transform: translateX(-4px); } 34%, 100% { opacity: 1; transform: none; } }
-    @keyframes q-from-34 { 0%, 34% { opacity: 0; transform: translateX(-4px); } 37%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-down-27 { 0%, 27% { opacity: 0; transform: translateY(-4px); } 31%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-down-33 { 0%, 33% { opacity: 0; transform: translateY(-4px); } 37%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-down-39 { 0%, 39% { opacity: 0; transform: translateY(-4px); } 43%, 100% { opacity: 1; transform: none; } }
 
-    @keyframes q-until-56 { 0%, 56% { opacity: 1; } 58%, 100% { opacity: 0; } }
-    @keyframes q-from-56 { 0%, 56% { opacity: 0; } 58%, 100% { opacity: 1; } }
-    @keyframes q-from-60 { 0%, 60% { opacity: 0; } 63%, 100% { opacity: 1; } }
+    @keyframes q-until-53 { 0%, 53% { opacity: 1; } 55%, 100% { opacity: 0; } }
+    @keyframes q-fade-53 { 0%, 53% { opacity: 0; } 55%, 100% { opacity: 1; } }
+    @keyframes q-from-56 { 0%, 56% { opacity: 0; transform: translateX(-4px); } 59%, 100% { opacity: 1; transform: none; } }
+    @keyframes q-from-59 { 0%, 59% { opacity: 0; transform: translateX(-4px); } 62%, 100% { opacity: 1; transform: none; } }
 
-    @keyframes q-from-76 { 0%, 76% { opacity: 0; transform: translateX(-4px); } 78%, 100% { opacity: 1; transform: none; } }
-    @keyframes q-from-82 { 0%, 82% { opacity: 0; transform: translateX(-4px); } 84%, 100% { opacity: 1; transform: none; } }
-    @keyframes q-from-87 { 0%, 87% { opacity: 0; transform: translateX(-4px); } 89%, 100% { opacity: 1; transform: none; } }
-    /* A branch draws from the command to its event */
-    @keyframes q-draw-79 { 0%, 79% { stroke-dashoffset: 1; } 82%, 100% { stroke-dashoffset: 0; } }
-    @keyframes q-draw-84 { 0%, 84% { stroke-dashoffset: 1; } 87%, 100% { stroke-dashoffset: 0; } }
+    @keyframes q-until-81 { 0%, 81% { opacity: 1; } 83%, 100% { opacity: 0; } }
+    @keyframes q-fade-81 { 0%, 81% { opacity: 0; } 83%, 100% { opacity: 1; } }
+    @keyframes q-fade-85 { 0%, 85% { opacity: 0; } 88%, 100% { opacity: 1; } }
   `,
 })
 export class ConsoleQuestionsComponent {
