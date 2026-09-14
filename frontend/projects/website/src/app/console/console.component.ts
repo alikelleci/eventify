@@ -1,19 +1,15 @@
 import { Component } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 import { DOCS_URL, GITHUB_URL } from '@eventify/ui/links';
-import { EventShowcaseComponent } from './showcase/event-showcase.component';
-import { CommandShowcaseComponent } from './showcase/command-showcase.component';
 import { AggregateReplayComponent } from './showcase/aggregate-replay.component';
-import { ConsoleFeaturesComponent } from './showcase/console-features.component';
-import { ConsoleIllustrationComponent } from '../shared/console-illustration.component';
 import { SetupStep, SetupStepsComponent } from '../shared/setup-steps.component';
 
-/** The Eventify Console page: what the console shows, how it looks, and how to set it up. */
+/** The Eventify Console page: the console in one picture, how a change flows through it, and how to set it up. */
 @Component({
   selector: 'app-console',
   templateUrl: './console.component.html',
   standalone: true,
-  imports: [ButtonModule, ConsoleFeaturesComponent, AggregateReplayComponent, EventShowcaseComponent, CommandShowcaseComponent, ConsoleIllustrationComponent, SetupStepsComponent],
+  imports: [ButtonModule, AggregateReplayComponent, SetupStepsComponent],
   host: { class: 'block h-full' },
 })
 export class ConsoleComponent {
