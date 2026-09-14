@@ -1,13 +1,15 @@
 <div class="h-full overflow-y-auto">
-  <div class="mx-auto max-w-6xl px-6 pt-[8vh] pb-24 lg:pt-[12vh]">
+  <!-- Hero: dark, continuing from the header, with a faint grid and a teal glow -->
+  <section class="relative overflow-hidden bg-slate-950">
+    <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgb(255_255_255/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.04)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -right-40 -top-40 h-[36rem] w-[36rem] rounded-full bg-primary-500/15 blur-3xl" aria-hidden="true"></div>
 
-    <!-- Hero -->
-    <section class="grid items-center gap-12 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+    <div class="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pt-[8vh] pb-[10vh] grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:pt-[12vh]">
       <div>
-        <h1 class="text-4xl font-semibold leading-[1.1] tracking-tight text-surface-900 sm:text-5xl dark:text-surface-0">
+        <h1 class="text-4xl font-semibold leading-[1.1] tracking-tight text-white sm:text-5xl">
           Functional event sourcing for the JVM
         </h1>
-        <p class="mt-5 max-w-xl text-lg leading-relaxed text-surface-500 dark:text-surface-400">
+        <p class="mt-5 max-w-xl text-lg leading-relaxed text-slate-400">
           Write your domain logic as plain, annotated Java methods. Eventify stores the events, rebuilds the state and routes
           the messages, on Apache Kafka.
         </p>
@@ -15,18 +17,18 @@
         <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
           <p-button label="Get started" icon="pi pi-arrow-down" iconPos="right" size="large" (onClick)="getStarted.scrollIntoView({ behavior: 'smooth' })" />
           <a [href]="docsUrl" target="_blank" rel="noopener"
-             class="inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
+             class="inline-flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white">
             Read the docs <i class="pi pi-arrow-up-right text-xs"></i>
           </a>
         </div>
-        <p class="mt-6 flex items-center gap-2 text-sm text-surface-400">
+        <p class="mt-6 flex items-center gap-2 text-sm text-slate-500">
           <i class="pi pi-server"></i> A Kafka broker is the only infrastructure you need.
         </p>
       </div>
 
       <!-- Code window: one tab per kind of handler -->
-      <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-[0_32px_64px_-24px_rgba(15,23,42,0.45)]">
-        <div class="flex items-center gap-1 overflow-x-auto border-b border-slate-800 px-3" role="tablist" aria-label="Code samples">
+      <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/40 backdrop-blur">
+        <div class="flex items-center gap-1 overflow-x-auto border-b border-white/10 px-3" role="tablist" aria-label="Code samples">
           @for (sample of samples; track sample.label) {
             <button type="button" role="tab" [attr.aria-selected]="$index === activeSample()"
                     class="shrink-0 cursor-pointer border-b-2 px-3 py-2.5 text-xs font-medium transition-colors"
@@ -41,8 +43,8 @@
           }
         </div>
       </div>
-    </section>
-  </div>
+    </div>
+  </section>
 
   <!-- How it works -->
   <section class="border-t border-surface-100 dark:border-surface-800">
