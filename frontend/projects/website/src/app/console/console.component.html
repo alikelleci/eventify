@@ -28,29 +28,17 @@
     </div>
   </section>
 
-  <!-- The questions the console answers, played as one short story -->
-  <section class="border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
+  <!-- The questions the console answers, and the life of one order that answers them, one moment at a time -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
         <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Inspect, understand, correlate</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          When an aggregate looks wrong, the console shows what happened, why, and which command led to it.
+          When an aggregate looks wrong, the console shows what happened, why, and which command led to it. Step through
+          the life of one order.
         </p>
       </div>
-      <app-console-questions class="mt-12 block" />
-    </div>
-  </section>
-
-  <!-- Replay: the events of one order, one by one -->
-  <section class="border-t border-surface-100 dark:border-surface-800">
-    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
-      <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Step through the history</h2>
-        <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          Move through the events of an aggregate one by one and see how each of them changes its state.
-        </p>
-      </div>
-      <app-aggregate-replay class="mt-10 block" />
+      <app-aggregate-replay class="mt-12 block" />
     </div>
   </section>
 

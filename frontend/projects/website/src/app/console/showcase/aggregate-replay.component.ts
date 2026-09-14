@@ -22,17 +22,28 @@ interface Moment {
   payload: [string, string][];
   version: number;
   state: Field[];
+  /** The question the console answers at this moment, an index into QUESTIONS. */
+  answers: number;
 }
+
+/** The questions the console answers, in the order the order's life first raises them. */
+const QUESTIONS = [
+  { title: 'What happened to this aggregate?', text: 'Every event, in the order it happened, with its payload.' },
+  { title: 'Which events did it produce?', text: 'Each event links back to the command that produced it.' },
+  { title: 'Did my command go through?', text: 'Each command with its outcome, and the cause when it failed.' },
+  { title: 'Why does it look like this?', text: 'The state after any event, and exactly what that event changed.' },
+];
 
 /**
  * The life of one order, as the console shows it: each event with the state it produced, and each command with its outcome.
- * It plays by itself once it scrolls into view, until someone picks a moment.
+ * Above it, the questions the console answers; the one the current moment answers is lit, and picking one jumps to it.
+ * It plays by itself once it scrolls into view, until someone picks a moment or a question.
  */
 const MOMENTS: Moment[] = [
   {
     kind: 'event', type: 'OrderPlaced', time: '09:12', via: 'PlaceOrder',
     payload: [['customerId', '"customer-42"'], ['total', '169.40']],
-    version: 1,
+    version: 1, answers: 0,
     state: [
       { key: 'status', value: '"PLACED"', added: true },
       { key: 'customerId', value: '"customer-42"', added: true },
@@ -42,7 +53,7 @@ const MOMENTS: Moment[] = [
   {
     kind: 'event', type: 'OrderConfirmed', time: '09:12', via: 'PlaceOrder',
     payload: [['paymentReference', '"PSP-7F3A"']],
-    version: 2,
+    version: 2, answers: 1,
     state: [
       { key: 'status', value: '"CONFIRMED"', was: '"PLACED"' },
       { key: 'customerId', value: '"customer-42"' },
@@ -54,7 +65,7 @@ const MOMENTS: Moment[] = [
     kind: 'command', type: 'ShipOrder', time: '10:47',
     cause: 'Carrier is temporarily unavailable.',
     payload: [['carrier', '"DHL"']],
-    version: 2,
+    version: 2, answers: 2,
     state: [
       { key: 'status', value: '"CONFIRMED"' },
       { key: 'customerId', value: '"customer-42"' },
@@ -65,7 +76,7 @@ const MOMENTS: Moment[] = [
   {
     kind: 'event', type: 'OrderShipped', time: '11:02', via: 'ShipOrder', revision: 2, retried: true,
     payload: [['carrier', '"DHL"'], ['trackingNumber', '"JD0146"']],
-    version: 3,
+    version: 3, answers: 3,
     state: [
       { key: 'status', value: '"SHIPPED"', was: '"CONFIRMED"' },
       { key: 'customerId', value: '"customer-42"' },
@@ -77,7 +88,7 @@ const MOMENTS: Moment[] = [
   {
     kind: 'event', type: 'OrderDelivered', time: '14:30', via: 'DeliverOrder',
     payload: [['signedBy', '"J. de Vries"']],
-    version: 4,
+    version: 4, answers: 3,
     state: [
       { key: 'status', value: '"DELIVERED"', was: '"SHIPPED"' },
       { key: 'customerId', value: '"customer-42"' },
@@ -91,7 +102,7 @@ const MOMENTS: Moment[] = [
     kind: 'command', type: 'CancelOrder', time: '14:41',
     cause: 'Order has already been delivered.',
     payload: [['reason', '"CUSTOMER_REQUEST"']],
-    version: 4,
+    version: 4, answers: 2,
     state: [
       { key: 'status', value: '"DELIVERED"' },
       { key: 'customerId', value: '"customer-42"' },
@@ -109,7 +120,20 @@ const STEP_MS = 3000;
   selector: 'app-aggregate-replay',
   standalone: true,
   template: `
-    <div class="overflow-hidden rounded-2xl border border-surface-200 bg-surface-0 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.35)] dark:border-surface-700 dark:bg-surface-900">
+    <!-- The questions: two by two on a phone, where only their titles show, and in a row from lg up -->
+    <div class="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-4">
+      @for (question of questions; track question.title; let i = $index) {
+        <button type="button" (click)="ask(i)" [attr.aria-pressed]="i === current().answers"
+                class="group cursor-pointer border-l-2 py-1 pl-4 text-left transition-colors duration-300"
+                [class]="i === current().answers ? 'border-primary-500' : 'border-surface-200 hover:border-surface-400 dark:border-surface-700 dark:hover:border-surface-500'">
+          <span class="block text-sm font-semibold transition-colors duration-300"
+                [class]="i === current().answers ? 'text-surface-900 dark:text-surface-0' : 'text-surface-500 group-hover:text-surface-800 dark:text-surface-400 dark:group-hover:text-surface-100'">{{ question.title }}</span>
+          <span class="mt-1 hidden text-sm leading-relaxed text-surface-500 sm:block dark:text-surface-400">{{ question.text }}</span>
+        </button>
+      }
+    </div>
+
+    <div class="mt-10 overflow-hidden rounded-2xl border border-surface-200 bg-surface-0 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.35)] dark:border-surface-700 dark:bg-surface-900">
 
       <!-- Aggregate, and play / pause -->
       <div class="flex items-center gap-3 border-b border-surface-100 px-4 py-3 sm:px-6 dark:border-surface-800">
@@ -179,7 +203,7 @@ const STEP_MS = 3000;
 
             @if (moment.via) {
               <p class="mt-2 text-xs text-surface-500 dark:text-surface-400">
-                Produced by <span class="font-medium text-surface-700 dark:text-surface-200">{{ moment.via }}</span>@if (moment.retried) {, retried from the console}
+                Produced by <span class="font-medium text-surface-700 dark:text-surface-200">{{ moment.via }}</span>@if (moment.retried) {, retried from the console}@for (sibling of producedWith(moment); track sibling) {, together with <span class="font-medium text-surface-700 dark:text-surface-200">{{ sibling }}</span>}
               </p>
             } @else {
               <p class="mt-2 text-xs text-surface-500 dark:text-surface-400">No events produced</p>
@@ -232,6 +256,7 @@ const STEP_MS = 3000;
 })
 export class AggregateReplayComponent {
   readonly moments = MOMENTS;
+  readonly questions = QUESTIONS;
   readonly active = signal(0);
   readonly playing = signal(false);
   readonly current = computed(() => MOMENTS[this.active()]);
@@ -262,6 +287,16 @@ export class AggregateReplayComponent {
   select(index: number) {
     this.stop();
     this.active.set(index);
+  }
+
+  /** Jumps to the first moment that answers the question. */
+  ask(question: number) {
+    this.select(MOMENTS.findIndex(moment => moment.answers === question));
+  }
+
+  /** The other events the command behind this event produced. */
+  producedWith(moment: Moment): string[] {
+    return MOMENTS.filter(other => other !== moment && other.kind === 'event' && other.via === moment.via).map(other => other.type);
   }
 
   togglePlay() {
