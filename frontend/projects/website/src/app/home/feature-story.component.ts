@@ -115,7 +115,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Distributed</h3>
-          <p class="s-text">Scale horizontally by design. Run more instances as your system grows.</p>
+          <p class="s-text">Horizontally scalable by design. Run more instances as your system grows.</p>
         </div>
       </article>
     </div>
