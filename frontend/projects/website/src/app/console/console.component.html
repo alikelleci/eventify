@@ -24,6 +24,8 @@
       <app-console-illustration class="hidden lg:block" />
     </section>
 
+    <app-console-features class="mt-20 block" />
+
     <!-- One order, replayed: the whole console in a single picture -->
     <section class="mt-24">
       <div class="max-w-2xl">
@@ -93,51 +95,6 @@
         <div class="rounded-3xl bg-gradient-to-br from-primary-50 via-surface-50 to-surface-100 p-2.5 ring-1 ring-surface-200/70 sm:p-8 dark:from-primary-950/50 dark:via-surface-900 dark:to-surface-950 dark:ring-surface-800" aria-hidden="true" inert>
           <div class="rounded-2xl border border-surface-200 bg-surface-0 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.35)] dark:border-surface-700 dark:bg-surface-900">
             <div class="px-4 py-4 sm:px-6 sm:py-5"><app-command-showcase variant="produced" /></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Standalone -->
-  <section class="border-t border-surface-100 dark:border-surface-800">
-    <div class="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:gap-16 lg:py-28">
-      <div class="">
-        <div class="text-xs font-semibold uppercase tracking-widest text-primary-600 dark:text-primary-400">Standalone</div>
-        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">One console for all your services</h2>
-        <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">Embed the console in a single application, or run it standalone with Docker and switch between all your Eventify applications from one place.</p>
-        <ul class="mt-6 space-y-2.5 text-sm text-surface-600 dark:text-surface-300">
-            <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Embedded: served by your application itself</span></li>
-            <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Standalone: one Docker container, many applications</span></li>
-        </ul>
-      </div>
-      <div>
-        <div class="rounded-3xl bg-gradient-to-br from-primary-50 via-surface-50 to-surface-100 p-2.5 ring-1 ring-surface-200/70 sm:p-8 dark:from-primary-950/50 dark:via-surface-900 dark:to-surface-950 dark:ring-surface-800" aria-hidden="true" inert>
-          <!-- A copy of the header's app switcher, open: the same classes as app-switcher.component.ts.
-               Static, because the real one closes on any click on the page (and the real header would add a live search box). -->
-          <div class="overflow-hidden rounded-2xl border border-surface-200 shadow-[0_24px_60px_-30px_rgba(15,23,42,0.35)] dark:border-surface-700">
-            <div class="flex items-center gap-3 border-b border-slate-700 bg-slate-900 px-5 py-3">
-              <i class="pi pi-bolt text-lg text-primary-400"></i>
-              <span class="tracking-tight"><span class="font-semibold text-white">Eventify</span><span class="ml-1.5 font-light text-slate-300">Console</span></span>
-              <div class="relative ml-auto w-44">
-                <div class="flex h-8 items-center gap-2 rounded border border-slate-500 bg-slate-700/60 pl-3 pr-2.5 text-sm text-slate-100">
-                  <span class="flex-1 truncate">{{ apps[0] }}</span>
-                  <i class="pi pi-chevron-down rotate-180 text-xs text-slate-400"></i>
-                </div>
-                <div class="absolute top-full right-0 z-10 mt-1 w-64 overflow-hidden rounded-lg border border-surface-200 bg-surface-0 shadow-lg dark:border-surface-700 dark:bg-surface-900">
-                  <div class="border-b border-surface-100 px-3 py-2 text-xs font-medium uppercase tracking-widest text-surface-400 dark:border-surface-800">Applications</div>
-                  @for (app of apps; track app; let first = $first) {
-                    <div class="flex min-h-10 items-center gap-2 border-l-2 px-3 py-2"
-                         [class]="first ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-transparent'">
-                      <i class="pi pi-server shrink-0 text-xs text-surface-400"></i>
-                      <span class="truncate text-sm" [class]="first ? 'text-primary-600 dark:text-primary-400' : 'text-surface-900 dark:text-surface-100'">{{ app }}</span>
-                    </div>
-                  }
-                </div>
-              </div>
-            </div>
-            <!-- Room for the open dropdown -->
-            <div class="h-44 bg-surface-50 dark:bg-surface-950"></div>
           </div>
         </div>
       </div>

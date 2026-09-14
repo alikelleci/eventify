@@ -4,6 +4,7 @@ import { DOCS_URL, GITHUB_URL } from '@eventify/ui/links';
 import { EventShowcaseComponent } from './showcase/event-showcase.component';
 import { CommandShowcaseComponent } from './showcase/command-showcase.component';
 import { AggregateReplayComponent } from './showcase/aggregate-replay.component';
+import { ConsoleFeaturesComponent } from './showcase/console-features.component';
 import { ConsoleIllustrationComponent } from '../shared/console-illustration.component';
 import { SetupStep, SetupStepsComponent } from '../shared/setup-steps.component';
 
@@ -12,15 +13,12 @@ import { SetupStep, SetupStepsComponent } from '../shared/setup-steps.component'
   selector: 'app-console',
   templateUrl: './console.component.html',
   standalone: true,
-  imports: [ButtonModule, AggregateReplayComponent, EventShowcaseComponent, CommandShowcaseComponent, ConsoleIllustrationComponent, SetupStepsComponent],
+  imports: [ButtonModule, ConsoleFeaturesComponent, AggregateReplayComponent, EventShowcaseComponent, CommandShowcaseComponent, ConsoleIllustrationComponent, SetupStepsComponent],
   host: { class: 'block h-full' },
 })
 export class ConsoleComponent {
   readonly docsUrl = DOCS_URL;
   readonly githubUrl = GITHUB_URL;
-
-  /** Example applications for the standalone app switcher illustration; the first one is active. */
-  readonly apps = ['orders-service', 'payments-service', 'inventory-service'];
 
   /** Setup, as described in the console docs. */
   readonly setupSteps: SetupStep[] = [
