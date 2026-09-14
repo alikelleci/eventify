@@ -5,7 +5,7 @@ const STEPS = 40;
 const STEP_MS = 300;
 
 /**
- * The event sourcing features, as a row of four blocks that play in turn: events build the state, a snapshot shortens
+ * The event sourcing features, as four wide blocks, two by two, that play in turn: events build the state, a snapshot shortens
  * the replay, an old event is upcast, and the partitions spread over the instances. One 12-second cycle, a quarter per block.
  * Before it scrolls into view, or with reduced motion, every block shows its end state.
  */
@@ -13,7 +13,8 @@ const STEP_MS = 300;
   selector: 'app-feature-story',
   standalone: true,
   template: `
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Two by two on desktop; each block is a wide card with its feature on the left and its scene on the right -->
+    <div class="grid gap-6 lg:grid-cols-2">
 
       <!-- 1. Event replay: the events arrive, and the state follows -->
       <article class="s-card" [class.s-lit]="block() === 0">
@@ -33,7 +34,7 @@ const STEP_MS = 300;
             </div>
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Event replay</h3>
           <p class="s-text">The state is rebuilt by replaying the events, so the event history is the source of truth.</p>
         </div>
@@ -58,7 +59,7 @@ const STEP_MS = 300;
             }
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Snapshots</h3>
           <p class="s-text">Long histories are read from the latest snapshot instead of from the first event.</p>
         </div>
@@ -80,7 +81,7 @@ const STEP_MS = 300;
             </div>
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Upcasting</h3>
           <p class="s-text">Change the structure of an event, and older events are migrated as they are read.</p>
         </div>
@@ -101,7 +102,7 @@ const STEP_MS = 300;
             }
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Distributed</h3>
           <p class="s-text">Distributed and scalable by design, built on Kafka. Run more instances as your load grows.</p>
         </div>
@@ -114,12 +115,17 @@ const STEP_MS = 300;
       border: 1px solid var(--p-surface-200); background: var(--p-surface-0); transition: box-shadow 0.3s;
     }
     .s-lit { box-shadow: 0 0 0 2px var(--p-primary-400); }
-    .s-title { font-size: 1rem; font-weight: 600; color: var(--p-surface-900); }
+    .s-title { font-size: 1rem; font-weight: 600; letter-spacing: -0.01em; color: var(--p-surface-900); }
     .s-text { margin-top: 0.5rem; font-size: 0.875rem; line-height: 1.6; color: var(--p-surface-500); }
     .s-stage {
       display: flex; align-items: center; justify-content: center; height: 11rem; margin: 0.5rem 0.5rem 0; padding: 0 1rem;
       border-radius: 0.75rem; font-size: 0.75rem; color: var(--p-surface-700);
       background: var(--p-surface-50) radial-gradient(var(--p-surface-200) 1px, transparent 1px) 0 0 / 14px 14px;
+    }
+    /* From sm up the card is a row: the text on the left, the scene filling the rest */
+    @media (min-width: 640px) {
+      .s-card { flex-direction: row; }
+      .s-stage { flex: 1; height: auto; min-height: 11rem; margin: 0.5rem; }
     }
     .s-box { border: 1px solid var(--p-surface-200); border-radius: 0.5rem; background: var(--p-surface-0); box-shadow: 0 1px 2px rgb(0 0 0 / 0.05); }
     .s-box-new { border-color: var(--p-primary-300); }
