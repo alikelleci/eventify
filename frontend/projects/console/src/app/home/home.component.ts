@@ -1,10 +1,8 @@
-import { Component, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
-import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
-import { SearchService } from '../services/search.service';
-import { TimelineItemComponent } from '@eventify/ui/components/timeline-item.component';
-import { DOCS_URL } from '@eventify/ui/links';
+import {Component, inject} from '@angular/core';
+import {ButtonModule} from 'primeng/button';
+import {TagModule} from 'primeng/tag';
+import {SearchService} from '../services/search.service';
+import {DOCS_URL} from '@eventify/ui/links';
 
 interface Feature {
   icon: string;
@@ -17,7 +15,7 @@ interface Feature {
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [DatePipe, ButtonModule, TagModule, TimelineItemComponent],
+  imports: [ButtonModule, TagModule],
   host: { class: 'block h-full' },
 })
 export class HomeComponent {
