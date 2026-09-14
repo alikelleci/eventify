@@ -87,13 +87,48 @@
     </div>
   </section>
 
+  <!-- Why event sourcing -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
+      <div class="max-w-2xl">
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Why event sourcing?</h2>
+        <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
+          Traditional systems lose their history. Event sourcing gives you a complete, immutable record of every change—perfect for debugging, compliance, and understanding exactly what happened.
+        </p>
+      </div>
+      <div class="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="rounded-xl border border-surface-200 p-6 dark:border-surface-700">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+            <i class="pi pi-lock text-lg"></i>
+          </div>
+          <h3 class="mt-4 text-sm font-semibold text-surface-900 dark:text-surface-0">Complete audit trail</h3>
+          <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">Never lose track of what changed, when, or why. Every decision is recorded.</p>
+        </div>
+        <div class="rounded-xl border border-surface-200 p-6 dark:border-surface-700">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+            <i class="pi pi-history text-lg"></i>
+          </div>
+          <h3 class="mt-4 text-sm font-semibold text-surface-900 dark:text-surface-0">Time travel debugging</h3>
+          <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">Replay events to see exactly how your system reached any state. Bugs become obvious.</p>
+        </div>
+        <div class="rounded-xl border border-surface-200 p-6 dark:border-surface-700">
+          <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+            <i class="pi pi-shield text-lg"></i>
+          </div>
+          <h3 class="mt-4 text-sm font-semibold text-surface-900 dark:text-surface-0">Built-in resilience</h3>
+          <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">No more data loss. Your history is immutable and always recoverable.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- Get started -->
   <section #getStarted class="scroll-mt-4 border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
     <div class="mx-auto grid max-w-6xl items-center gap-10 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-2 lg:gap-16 lg:py-24">
       <div>
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Get started</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Start building in minutes</h2>
         <p class="mt-4 max-w-lg leading-relaxed text-surface-500 dark:text-surface-400">
-          Eventify is available on Maven Central. The documentation walks you through your first aggregate.
+          Add the dependency, define your events, and start building reliable systems. Step-by-step guides take you from zero to production-ready.
         </p>
         <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
           <p-button label="Read the docs" icon="pi pi-book" (onClick)="openDocs()" />
