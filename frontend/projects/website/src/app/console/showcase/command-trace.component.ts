@@ -4,11 +4,11 @@ import { StepPlayer } from './step-player';
 
 /**
  * Two steps, each a flow from a command through its outcome to its events:
- * PlaceOrder succeeds and produces two events that share its correlation ID;
+ * PlaceOrder succeeds and produces two events;
  * ShipOrder fails with its cause and produces nothing, then Retry sends it again and it produces OrderShipped.
  */
 const STEPS = [
-  { title: 'Trace a command to its events', text: 'See every event a command produced, linked by its correlation ID.' },
+  { title: 'Trace a command to its events', text: 'See every event a command produced.' },
   { title: 'Retry a failed command', text: 'See why a command failed, and send it again from the console.' },
 ];
 
@@ -170,7 +170,6 @@ const FRAMES = [[5500], [3500, 4500]];
       box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
     }
     .c-event-name { font-size: 0.8125rem; font-weight: 600; color: var(--p-surface-900); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    /* The correlation ID a command shares with its events */
     .c-chip {
       display: block; width: fit-content; padding: 0 0.375rem; border-radius: 0.25rem; font-family: ui-monospace, monospace; font-size: 10px;
       line-height: 1.25rem; background: var(--p-primary-50); color: var(--p-primary-700);
