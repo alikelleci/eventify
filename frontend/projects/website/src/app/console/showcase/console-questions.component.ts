@@ -1,7 +1,7 @@
 import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core';
 
 /**
- * The questions the console answers, as four blocks that play one story in turn: the events arrive, the state changes,
+ * The questions the console answers, as four wide blocks, two by two, that play one story in turn: the events arrive, the state changes,
  * a command fails, and a retry produces the missing event. One 12-second cycle, a quarter per block.
  * Without the animation (before it scrolls into view, or with reduced motion) every block shows its end state.
  */
@@ -10,10 +10,11 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
   standalone: true,
   host: { '[class.playing]': 'playing()' },
   template: `
-    <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+    <!-- Two by two on desktop; each block is a wide card with its question on the left and its scene on the right -->
+    <div class="grid gap-6 lg:grid-cols-2">
 
       <!-- 1. What happened: the events arrive, oldest first -->
-      <article class="q-card q-focus-1 relative flex flex-col rounded-2xl border border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-1 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 rounded-lg border border-surface-200 bg-surface-0 py-1.5 text-xs shadow-sm dark:border-surface-700 dark:bg-surface-900">
             @for (event of events; track event; let first = $first, last = $last, i = $index) {
@@ -26,7 +27,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
             }
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="q-title">What happened to this aggregate?</h3>
           <p class="q-text">Every event, in the order it happened, with its payload and metadata.</p>
         </div>
@@ -34,7 +35,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       </article>
 
       <!-- 2. Why it looks like this: the status changes -->
-      <article class="q-card q-focus-2 relative flex flex-col rounded-2xl border border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-2 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 overflow-hidden rounded-lg border border-surface-200 bg-surface-0 py-1.5 font-mono text-[11px] leading-6 shadow-sm dark:border-surface-700 dark:bg-surface-900">
             <div class="px-3 text-surface-400">&nbsp; total: 169.40</div>
@@ -47,15 +48,14 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
             <div class="q-added-2 bg-emerald-50 px-3 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">+ carrier: "DHL"</div>
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="q-title">Why does it look like this?</h3>
           <p class="q-text">The state after any event, and exactly what that event changed.</p>
         </div>
-        <span class="q-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
 
       <!-- 3. Did it go through: a command is sent and rejected -->
-      <article class="q-card q-focus-3 relative flex flex-col rounded-2xl border border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-3 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="w-full max-w-48 rounded-lg border border-surface-200 bg-surface-0 p-3 text-xs shadow-sm dark:border-surface-700 dark:bg-surface-900">
             <div class="flex items-center gap-2">
@@ -72,7 +72,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
             <p class="q-cause mt-2 text-[11px] leading-relaxed text-red-600 dark:text-red-400">Carrier is temporarily unavailable.</p>
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="q-title">Did my command go through?</h3>
           <p class="q-text">Each command with its outcome, and the cause when it was rejected.</p>
         </div>
@@ -80,7 +80,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       </article>
 
       <!-- 4. Try again: Retry is pressed, and the event follows -->
-      <article class="q-card q-focus-4 relative flex flex-col rounded-2xl border border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
+      <article class="q-card q-focus-4 relative flex flex-col rounded-2xl border sm:flex-row border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
         <div class="q-stage" aria-hidden="true">
           <div class="flex flex-col items-center">
             <span class="q-press inline-flex items-center gap-1.5 rounded-md bg-primary-500 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
@@ -92,7 +92,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
             </span>
           </div>
         </div>
-        <div class="px-6 pt-4 pb-6">
+        <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="q-title">Can I try it again?</h3>
           <p class="q-text">Retry a failed command once the cause is fixed, and follow the events it produces.</p>
         </div>
@@ -107,7 +107,7 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       .q-text { color: var(--p-surface-400); }
     }
 
-    /* The scene: a dotted panel at the top of each block */
+    /* The scene: a dotted panel, at the top of a block on a phone and on its right from sm up */
     .q-stage {
       display: flex; align-items: center; justify-content: center;
       height: 10rem; margin: 0.5rem 0.5rem 0; padding: 0 1rem; border-radius: 0.75rem;
@@ -115,13 +115,16 @@ import { Component, DestroyRef, ElementRef, inject, signal } from '@angular/core
       background-image: radial-gradient(var(--p-surface-200) 1px, transparent 1px);
       background-size: 14px 14px;
     }
+    @media (min-width: 640px) {
+      .q-stage { flex: 1; height: auto; min-height: 11rem; margin: 0.5rem; }
+    }
     @media (prefers-color-scheme: dark) {
       .q-stage { background-color: var(--p-surface-950); background-image: radial-gradient(var(--p-surface-800) 1px, transparent 1px); }
     }
 
-    /* Leads to the next block, in the gap between them (desktop only) */
+    /* Leads to the block beside it, in the gap between them (desktop only, where two blocks share a row) */
     .q-next {
-      display: none; position: absolute; z-index: 1; top: 5.25rem; right: -1.1rem;
+      display: none; position: absolute; z-index: 1; top: calc(50% - 0.625rem); right: -1.1rem;
       width: 1.25rem; height: 1.25rem; align-items: center; justify-content: center; border-radius: 9999px;
       border: 1px solid var(--p-surface-200); background: var(--p-surface-0); color: var(--p-surface-400);
     }
