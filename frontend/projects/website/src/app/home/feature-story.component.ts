@@ -15,7 +15,7 @@ const STEP_MS = 300;
   template: `
     <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
 
-      <!-- 1. State from events: the events arrive, and the state follows -->
+      <!-- 1. Event replay: the events arrive, and the state follows -->
       <article class="s-card" [class.s-lit]="block() === 0">
         <div class="s-stage" aria-hidden="true">
           <div class="flex w-full max-w-44 flex-col items-center">
@@ -34,8 +34,8 @@ const STEP_MS = 300;
           </div>
         </div>
         <div class="px-6 pt-4 pb-6">
-          <h3 class="s-title">State from events</h3>
-          <p class="s-text">The state is rebuilt from the events, so the event history is the source of truth.</p>
+          <h3 class="s-title">Event replay</h3>
+          <p class="s-text">The state is rebuilt by replaying the events, so the event history is the source of truth.</p>
         </div>
         <span class="s-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
@@ -66,7 +66,7 @@ const STEP_MS = 300;
         <span class="s-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
       </article>
 
-      <!-- 3. Event upcasting: the old revision is migrated as it is read -->
+      <!-- 3. Upcasting: the old revision is migrated as it is read -->
       <article class="s-card" [class.s-lit]="block() === 2">
         <div class="s-stage" aria-hidden="true">
           <div class="flex w-full max-w-44 flex-col items-center font-mono text-[11px]">
@@ -83,7 +83,7 @@ const STEP_MS = 300;
           </div>
         </div>
         <div class="px-6 pt-4 pb-6">
-          <h3 class="s-title">Event upcasting</h3>
+          <h3 class="s-title">Upcasting</h3>
           <p class="s-text">Change the structure of an event, and older events are migrated as they are read.</p>
         </div>
         <span class="s-next" aria-hidden="true"><i class="pi pi-chevron-right text-[9px]"></i></span>
