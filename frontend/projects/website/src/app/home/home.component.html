@@ -1,0 +1,158 @@
+<div class="h-full overflow-y-auto">
+  <div class="mx-auto max-w-6xl px-6 pt-[8vh] pb-24 lg:pt-[12vh]">
+
+    <!-- Hero -->
+    <section class="grid items-center gap-12 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div>
+        <h1 class="text-4xl font-semibold leading-[1.1] tracking-tight text-surface-900 sm:text-5xl dark:text-surface-0">
+          Functional event sourcing for the JVM
+        </h1>
+        <p class="mt-5 max-w-xl text-lg leading-relaxed text-surface-500 dark:text-surface-400">
+          Write your domain logic as plain, annotated Java methods. Eventify stores the events, rebuilds the state and routes
+          the messages, on Apache Kafka.
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+          <p-button label="Get started" icon="pi pi-arrow-down" iconPos="right" size="large" (onClick)="getStarted.scrollIntoView({ behavior: 'smooth' })" />
+          <a [href]="docsUrl" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
+            Read the docs <i class="pi pi-arrow-up-right text-xs"></i>
+          </a>
+        </div>
+        <p class="mt-6 flex items-center gap-2 text-sm text-surface-400">
+          <i class="pi pi-server"></i> A Kafka broker is the only infrastructure you need.
+        </p>
+      </div>
+
+      <!-- Code window: one tab per kind of handler -->
+      <div class="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-[0_32px_64px_-24px_rgba(15,23,42,0.45)]">
+        <div class="flex items-center gap-1 overflow-x-auto border-b border-slate-800 px-3" role="tablist" aria-label="Code samples">
+          @for (sample of samples; track sample.label) {
+            <button type="button" role="tab" [attr.aria-selected]="$index === activeSample()"
+                    class="shrink-0 cursor-pointer border-b-2 px-3 py-2.5 text-xs font-medium transition-colors"
+                    [class]="$index === activeSample() ? 'border-primary-400 text-slate-100' : 'border-transparent text-slate-400 hover:text-slate-200'"
+                    (click)="activeSample.set($index)">{{ sample.label }}</button>
+          }
+        </div>
+        <div class="grid">
+          @for (html of highlightedSamples; track $index) {
+            <pre class="col-start-1 row-start-1 overflow-x-auto px-5 py-4 font-mono text-[0.8rem] leading-relaxed text-slate-200"
+                 [class.invisible]="$index !== activeSample()" [attr.aria-hidden]="$index !== activeSample()"><code [innerHTML]="html"></code></pre>
+          }
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- How it works -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="text-xs font-semibold uppercase tracking-widest text-primary-600 dark:text-primary-400">How it works</div>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Built on Kafka and Kafka Streams</h2>
+        <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
+          Commands and events flow through Kafka topics, and events are stored durably in Kafka Streams. No separate database
+          or event store to run.
+        </p>
+      </div>
+
+      <ol class="mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        @for (step of flow; track step.title; let last = $last) {
+          <li class="relative rounded-xl border border-surface-200 p-5 dark:border-surface-700">
+            <div class="flex items-center gap-3">
+              <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+                <i [class]="step.icon"></i>
+              </div>
+              <h3 class="text-sm font-semibold text-surface-900 dark:text-surface-0">{{ step.title }}</h3>
+            </div>
+            <p class="mt-3 text-sm leading-relaxed text-surface-500 dark:text-surface-400">{{ step.text }}</p>
+            <!-- Arrow to the next step, on wide screens where the steps sit side by side -->
+            @if (!last) {
+              <i class="pi pi-arrow-right absolute -right-3.5 top-1/2 z-10 hidden -translate-y-1/2 rounded-full bg-surface-0 p-1 text-xs text-surface-400 lg:block dark:bg-surface-900" aria-hidden="true"></i>
+            }
+          </li>
+        }
+      </ol>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="text-xs font-semibold uppercase tracking-widest text-primary-600 dark:text-primary-400">Features</div>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Everything an event-sourced application needs</h2>
+      </div>
+
+      <div class="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        @for (feature of features; track feature.title) {
+          <div class="rounded-xl border border-surface-200 bg-surface-0 p-5 dark:border-surface-700 dark:bg-surface-900">
+            <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+              <i [class]="feature.icon"></i>
+            </div>
+            <h3 class="mt-4 text-sm font-semibold text-surface-900 dark:text-surface-0">{{ feature.title }}</h3>
+            <p class="mt-1.5 text-sm leading-relaxed text-surface-500 dark:text-surface-400">{{ feature.text }}</p>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Eventify Console -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:py-28">
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-widest text-primary-600 dark:text-primary-400">Eventify Console</div>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">See inside every aggregate</h2>
+        <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
+          An optional console for operating Eventify applications: inspect events, state and commands, find out why a command
+          failed and retry it.
+        </p>
+        <ul class="mt-6 space-y-2.5 text-sm text-surface-600 dark:text-surface-300">
+          <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Event history and the state after every event</span></li>
+          <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Commands with their outcome and the events they produced</span></li>
+          <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Embedded in your application, or standalone with Docker</span></li>
+        </ul>
+        <a routerLink="/console"
+           class="mt-8 inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+          Explore the Console <i class="pi pi-arrow-right text-xs"></i>
+        </a>
+      </div>
+      <app-console-illustration class="hidden lg:block" />
+    </div>
+  </section>
+
+  <!-- Get started -->
+  <section #getStarted class="scroll-mt-4 border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="text-xs font-semibold uppercase tracking-widest text-primary-600 dark:text-primary-400">Get started</div>
+        <h2 class="mt-3 text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Up and running in three steps</h2>
+      </div>
+
+      <app-setup-steps class="mt-12 block" [steps]="setupSteps" />
+
+      <a [href]="mavenCentralUrl" target="_blank" rel="noopener"
+         class="mt-8 inline-flex items-center gap-2 text-sm text-surface-500 hover:text-primary-600 dark:text-surface-400 dark:hover:text-primary-400">
+        <i class="pi pi-box"></i> Find the latest version on Maven Central <i class="pi pi-arrow-up-right text-xs"></i>
+      </a>
+    </div>
+  </section>
+
+  <!-- Call to action -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto flex max-w-6xl flex-col items-start gap-6 px-6 py-20 lg:flex-row lg:items-center lg:justify-between">
+      <div>
+        <h2 class="text-2xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Start building with Eventify</h2>
+        <p class="mt-2 text-surface-500 dark:text-surface-400">The documentation covers modeling, handlers, testing and the console.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-4">
+        <p-button label="Read the docs" icon="pi pi-book" size="large" (onClick)="openDocs()" />
+        <a [href]="githubUrl" target="_blank" rel="noopener"
+           class="inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
+          <i class="pi pi-github"></i> View on GitHub
+        </a>
+      </div>
+    </div>
+  </section>
+</div>

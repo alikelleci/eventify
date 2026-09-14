@@ -1,14 +1,16 @@
 import { Routes } from '@angular/router';
 import { WebsiteLayoutComponent } from './layout/website-layout.component';
-import { LandingComponent } from './landing/landing.component';
+import { HomeComponent } from './home/home.component';
+import { ConsoleComponent } from './console/console.component';
 
-/** The public website: the product page, without the console's search or backend. */
+/** The public website: the framework's home page and the Eventify Console page, with a shared header. */
 export const routes: Routes = [
   {
     path: '',
     component: WebsiteLayoutComponent,
     children: [
-      { path: '', component: LandingComponent },
+      { path: '', component: HomeComponent, title: 'Eventify | Functional event sourcing for the JVM' },
+      { path: 'console', component: ConsoleComponent, title: 'Eventify Console | Operational visibility for event-sourced systems' },
     ],
   },
   { path: '**', redirectTo: '' },

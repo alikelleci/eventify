@@ -1,11 +1,10 @@
 import { Component } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
-import { TagModule } from 'primeng/tag';
 import { DOCS_URL, GITHUB_URL } from '@eventify/ui/links';
 import { EventShowcaseComponent } from './showcase/event-showcase.component';
 import { CommandShowcaseComponent } from './showcase/command-showcase.component';
-import { TimelineItemComponent } from '@eventify/ui/components/timeline-item.component';
+import { ConsoleIllustrationComponent } from '../shared/console-illustration.component';
+import { SetupStep, SetupStepsComponent } from '../shared/setup-steps.component';
 
 interface Feature {
   icon: string;
@@ -13,38 +12,17 @@ interface Feature {
   text: string;
 }
 
-interface SetupStep {
-  title: string;
-  text: string;
-  code: string;
-}
-
+/** The Eventify Console page: what the console shows, how it looks, and how to set it up. */
 @Component({
-  selector: 'app-landing',
-  templateUrl: './landing.component.html',
+  selector: 'app-console',
+  templateUrl: './console.component.html',
   standalone: true,
-  imports: [DatePipe, ButtonModule, TagModule, TimelineItemComponent, EventShowcaseComponent, CommandShowcaseComponent],
+  imports: [ButtonModule, EventShowcaseComponent, CommandShowcaseComponent, ConsoleIllustrationComponent, SetupStepsComponent],
   host: { class: 'block h-full' },
 })
-export class LandingComponent {
+export class ConsoleComponent {
   readonly docsUrl = DOCS_URL;
   readonly githubUrl = GITHUB_URL;
-
-  /** Example data for the illustration, newest first like the lists in the app. */
-  readonly now = Date.now();
-  // The failed command is second, so it stays visible above the events card in front.
-  readonly illustrationCommands = [
-    { type: 'ShipOrder', agoMs: 20_020, failed: false },
-    { type: 'ApplyDiscount', agoMs: 90_000, failed: true },
-    { type: 'CapturePayment', agoMs: 140_010, failed: false },
-    { type: 'PlaceOrder', agoMs: 380_010, failed: false },
-  ];
-  readonly illustrationEvents = [
-    { type: 'OrderShipped', agoMs: 20_000 },
-    { type: 'ShipmentLabelCreated', agoMs: 20_012 },
-    { type: 'PaymentReceived', agoMs: 140_000 },
-    { type: 'OrderPlaced', agoMs: 380_000 },
-  ];
 
   readonly features: Feature[] = [
     { icon: 'pi pi-list', title: 'Event history', text: 'Every event of an aggregate, newest first, with its payload and metadata.' },
