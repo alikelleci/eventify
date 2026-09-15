@@ -143,7 +143,7 @@ Every page and API call then needs a login. The console shows who is logged in, 
 
 Behind a proxy that terminates TLS, make sure the proxy sends the `X-Forwarded-*` headers, so the redirects use the address people opened.
 
-Your applications don't log in: they use the same console address as people, and prove who they are with the application token. If your organization also puts a login in front of the console (for example on a load balancer), give applications an address that doesn't go through that login, such as the console's internal address in your network.
+Your applications don't log in: they use the same console address as people, and prove who they are with the application token. If you use a login in front of the console instead, for example on a load balancer or proxy, your applications can't pass it: give them an address that doesn't go through that login, such as the console's internal address, or exclude the path `/rsocket` from that login.
 
 ### Application token
 
