@@ -73,14 +73,14 @@ export class TimelineItemComponent {
       return `bg-emerald-500 ${baseBorder}`;
     }
 
-    // Default colors by tone (not selected, not highlighted)
-    const [fill, ring] = {
-      neutral: ['bg-surface-300 dark:bg-surface-600', ''],
-      success: ['bg-emerald-500', 'ring-emerald-500'],
-      failure: ['bg-red-500', 'ring-red-500'],
-      placeholder: ['bg-surface-200 dark:bg-surface-700', ''],
+    // Default colors by tone (not selected, not highlighted) — no rings except on selected
+    const fill = {
+      neutral: 'bg-surface-300 dark:bg-surface-600',
+      success: 'bg-emerald-500',
+      failure: 'bg-red-500',
+      placeholder: 'bg-surface-200 dark:bg-surface-700',
     }[this.tone()];
 
-    return `${fill} ${baseBorder}${ring ? ' ring-1 ' + ring : ''}`;
+    return `${fill} ${baseBorder}`;
   });
 }
