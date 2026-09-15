@@ -1,6 +1,5 @@
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { copyToClipboard } from '@eventify/ui/clipboard';
-import { DOCS_URL } from '@eventify/ui/links';
 import { highlightJava } from '../shared/java-highlight';
 
 interface SetupStep {
@@ -43,24 +42,24 @@ const REGISTER = `Eventify eventify = Eventify.builder()
 const STEPS: SetupStep[] = [
   {
     title: 'Run the console',
-    text: 'One container serves the UI and accepts the connections from your applications. Then open <code>localhost:8080/console</code>.',
+    text: 'A single container, nothing else to install. Then open <code>localhost:8080</code>.',
     label: 'Terminal', code: DOCKER, html: highlightShell(DOCKER),
   },
   {
     title: 'Add the plugin',
-    text: 'Add it to every application you want to see in the console.',
+    text: 'Add the console plugin to your application.',
     label: 'pom.xml', code: DEPENDENCY, html: highlightXml(DEPENDENCY),
   },
   {
     title: 'Connect your application',
-    text: 'Register the plugin with the console’s address.',
+    text: 'Point it at the console, and you’re done.',
     label: 'Java', code: REGISTER, html: highlightJava(REGISTER),
   },
 ];
 
 /**
- * How to run the console: the setup steps with their code, and next to them how the pieces connect.
- * The diagram makes the one thing people don't expect visible: the applications connect to the console, not the other way around.
+ * How to run the console: the setup steps with their code, and next to them the applications connecting to it.
+ * Kept light on purpose: the page advertises the console, the docs explain how it works.
  */
 @Component({
   selector: 'app-get-started',
@@ -94,30 +93,15 @@ const STEPS: SetupStep[] = [
         }
       </ol>
 
-      <!-- How it connects: the browser talks to the console, the application instances connect to it -->
-      <figure class="rounded-2xl border border-surface-200 bg-surface-0 p-6 lg:sticky lg:top-8 dark:border-surface-800 dark:bg-surface-900">
-        <figcaption class="text-xs font-medium uppercase tracking-widest text-surface-400">How it connects</figcaption>
-
-        <div class="mt-6 flex flex-col items-center" aria-hidden="true">
-          <div class="flex items-center gap-2 rounded-lg border border-surface-200 px-3 py-2 text-sm text-surface-600 dark:border-surface-700 dark:text-surface-300">
-            <i class="pi pi-desktop text-surface-400"></i> Browser
-          </div>
-
-          <div class="relative flex h-12 w-full justify-center">
-            <span class="w-px bg-surface-300 dark:bg-surface-600"></span>
-            <i class="pi pi-angle-down absolute -bottom-1.5 text-xs text-surface-400"></i>
-            <span class="absolute top-1/2 -translate-y-1/2 bg-surface-0 px-1.5 font-mono text-[10px] text-surface-400 dark:bg-surface-900">HTTP</span>
-          </div>
-
-          <div class="relative flex w-full max-w-[16rem] items-center gap-3 rounded-xl border border-primary-300 bg-primary-50 px-4 py-3 shadow-[0_0_0_4px_color-mix(in_srgb,var(--p-primary-500)_12%,transparent)] dark:border-primary-700 dark:bg-primary-950">
+      <!-- Your applications connect to the console by themselves -->
+      <figure class="rounded-2xl border border-surface-200 bg-surface-0 p-6 sm:p-8 lg:sticky lg:top-8 dark:border-surface-800 dark:bg-surface-900">
+        <div class="flex flex-col items-center" aria-hidden="true">
+          <div class="flex w-full max-w-[16rem] items-center gap-3 rounded-xl border border-primary-300 bg-primary-50 px-4 py-3 shadow-[0_0_0_4px_color-mix(in_srgb,var(--p-primary-500)_12%,transparent)] dark:border-primary-700 dark:bg-primary-950">
             <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-500 text-white"><i class="pi pi-bolt text-sm"></i></span>
-            <span class="min-w-0">
-              <span class="block text-sm font-semibold text-surface-900 dark:text-surface-0">Eventify Console</span>
-              <span class="block font-mono text-[11px] text-surface-500 dark:text-surface-400">Docker · :8080</span>
-            </span>
+            <span class="text-sm font-semibold text-surface-900 dark:text-surface-0">Eventify Console</span>
           </div>
 
-          <!-- One connection per instance, flowing towards the console -->
+          <!-- Flowing towards the console -->
           <div class="relative h-16 w-full">
             <svg class="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 300 64" preserveAspectRatio="none" fill="none">
               @for (path of connections; track path) {
@@ -125,31 +109,22 @@ const STEPS: SetupStep[] = [
                 <path [attr.d]="path" class="connection-flow stroke-primary-500" stroke-width="1.5" stroke-dasharray="3 9" stroke-linecap="round" vector-effect="non-scaling-stroke" />
               }
             </svg>
-            <i class="pi pi-angle-up absolute -top-1.5 left-1/2 -translate-x-1/2 text-xs text-primary-500"></i>
-            <span class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-surface-0 px-1.5 font-mono text-[10px] text-surface-400 dark:bg-surface-900">RSocket</span>
           </div>
 
           <div class="grid w-full grid-cols-3 gap-2">
-            @for (instance of instances; track $index) {
-              <div class="flex min-w-0 flex-col items-center rounded-lg border border-surface-200 px-1 py-2 dark:border-surface-700">
-                <span class="max-w-full truncate font-mono text-xs text-surface-700 dark:text-surface-200">{{ instance.app }}</span>
-                <span class="text-[10px] text-surface-400">{{ instance.name }}</span>
+            @for (app of apps; track app) {
+              <div class="flex min-w-0 items-center justify-center gap-1.5 rounded-lg border border-surface-200 px-1 py-2 dark:border-surface-700">
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-primary-500"></span>
+                <span class="truncate font-mono text-xs text-surface-700 dark:text-surface-200">{{ app }}</span>
               </div>
             }
           </div>
         </div>
 
-        <ul class="mt-7 space-y-3 border-t border-surface-100 pt-5 text-sm text-surface-600 dark:border-surface-800 dark:text-surface-300">
-          <li class="flex gap-3"><i class="pi pi-arrow-up mt-1 text-xs text-primary-500"></i><span>Your applications connect to the console, so they don't need an open port.</span></li>
-          <li class="flex gap-3"><i class="pi pi-plus-circle mt-1 text-xs text-primary-500"></i><span>New applications and instances show up by themselves; there's no list of URLs to maintain.</span></li>
-          <li class="flex gap-3"><i class="pi pi-refresh mt-1 text-xs text-primary-500"></i><span>They reconnect on their own when the console restarts.</span></li>
-        </ul>
-
-        <p class="mt-5 flex gap-3 rounded-lg bg-surface-50 px-3 py-2.5 text-xs leading-relaxed text-surface-500 dark:bg-surface-950 dark:text-surface-400">
-          <i class="pi pi-shield mt-0.5 text-xs"></i>
-          <span>In production, add login with your identity provider and an application token.
-            <a [href]="securityUrl" target="_blank" rel="noopener" class="font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">Security</a></span>
-        </p>
+        <figcaption class="mt-8 text-center">
+          <span class="block text-base font-semibold text-surface-900 dark:text-surface-0">Your applications show up by themselves</span>
+          <span class="mt-1.5 block text-sm leading-relaxed text-surface-500 dark:text-surface-400">Start an application and it's in the console. No ports to open, nothing else to configure.</span>
+        </figcaption>
       </figure>
     </div>
   `,
@@ -163,16 +138,9 @@ const STEPS: SetupStep[] = [
 })
 export class GetStartedComponent {
   readonly steps = STEPS;
-  readonly securityUrl = `${DOCS_URL}#security`;
+  readonly apps = ['orders', 'payments', 'shipping'];
 
-  /** Two instances of one application and one of another, as the console sees them. */
-  readonly instances = [
-    { app: 'orders', name: 'instance 1' },
-    { app: 'orders', name: 'instance 2' },
-    { app: 'payments', name: 'instance 1' },
-  ];
-
-  /** From the centre of each instance up to the console. */
+  /** From the centre of each application up to the console. */
   readonly connections = ['M50 64 C50 32 150 32 150 0', 'M150 64 L150 0', 'M250 64 C250 32 150 32 150 0'];
 
   /** The step whose code was just copied, for a moment. */
