@@ -49,6 +49,14 @@ public class ConsoleConnector {
    */
   private static final Duration ACCEPTED_AFTER = Duration.ofSeconds(1);
 
+  /**
+   * Console requests run inside the application, next to its own work: at most this many at the same time, with at
+   * most {@link #MAX_WAITING_QUERIES} waiting. Beyond that a request is refused, so the console can't take over the
+   * application.
+   */
+  static final int MAX_RUNNING_QUERIES = 4;
+  static final int MAX_WAITING_QUERIES = 100;
+
   /** WebSocket frames are limited to 64 KB, so larger replies (a page of events) are sent in parts. */
   static final int FRAGMENT_SIZE = 16 * 1024;
 
@@ -226,10 +234,11 @@ public class ConsoleConnector {
     ConsoleRequestHandler.Reply handle(String route, byte[] data, CancelSignal cancel);
   }
 
-  /** Queries read state stores and Kafka topics; a few at a time, so the console can't take over the application. */
+  /** Runs the queries: they read state stores and Kafka topics, see {@link #MAX_RUNNING_QUERIES}. */
   private static ThreadPoolExecutor queryExecutor() {
     AtomicInteger threads = new AtomicInteger();
-    ThreadPoolExecutor executor = new ThreadPoolExecutor(4, 4, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), runnable -> {
+    ThreadPoolExecutor executor = new ThreadPoolExecutor(MAX_RUNNING_QUERIES, MAX_RUNNING_QUERIES, 60, TimeUnit.SECONDS,
+        new ArrayBlockingQueue<>(MAX_WAITING_QUERIES), runnable -> {
       Thread thread = new Thread(runnable, "eventify-console-" + threads.incrementAndGet());
       thread.setDaemon(true);
       return thread;
