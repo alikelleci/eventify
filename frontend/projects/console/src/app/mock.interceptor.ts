@@ -180,6 +180,7 @@ const APPS: AppEntry[] = [
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.url.endsWith('/api/apps')) return respond(APPS, 100);
+  if (req.url.endsWith('/api/session')) return respond({ loginEnabled: false, user: null, appTokenRequired: false }, 50);
   if (!req.url.includes('/api/apps/') || !req.url.includes('/aggregates/')) return next(req);
 
   const aggregateId = decodeURIComponent(req.url.match(/\/aggregates\/([^/?]+)/)?.[1] ?? '');

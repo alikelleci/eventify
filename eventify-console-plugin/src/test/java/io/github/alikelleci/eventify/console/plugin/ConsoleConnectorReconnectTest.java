@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.rsocket.RSocket;
 import io.rsocket.SocketAcceptor;
 import io.rsocket.core.RSocketServer;
+import io.rsocket.exceptions.RejectedSetupException;
 import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.WebsocketServerTransport;
 import org.junit.jupiter.api.AfterEach;
@@ -19,13 +20,15 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-/** The console is redeployed: the connector notices, keeps trying, and connects again once the console is back. */
+/** How the connector behaves when the console goes away, comes back, or refuses it. */
 class ConsoleConnectorReconnectTest {
 
   private final AtomicInteger setups = new AtomicInteger();
   private final List<RSocket> connections = new CopyOnWriteArrayList<>();
+  private volatile boolean rejecting;
   private CloseableChannel console;
   private ConsoleConnector connector;
 
@@ -41,7 +44,7 @@ class ConsoleConnectorReconnectTest {
     console = startConsole(port);
 
     NodeInfo info = new NodeInfo("reconnect-test", "reconnect-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
-    connector = new ConsoleConnector(URI.create("http://localhost:" + port), info,
+    connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
         (route, data) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
     connector.start();
     await().atMost(Duration.ofSeconds(10)).until(() -> connector.isConnected() && setups.get() == 1);
@@ -58,10 +61,31 @@ class ConsoleConnectorReconnectTest {
     await().atMost(Duration.ofSeconds(45)).until(() -> connector.isConnected() && setups.get() == 2);
   }
 
+  @Test
+  void aRejectedInstanceTriesAgainSlowly() throws Exception {
+    int port = freePort();
+    rejecting = true;
+    console = startConsole(port);
+
+    NodeInfo info = new NodeInfo("reject-test", "reject-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
+    connector = new ConsoleConnector(URI.create("http://localhost:" + port), "wrong", info,
+        (route, data) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
+    connector.start();
+
+    // One attempt, then the next one only after the long delay: not a new connection every second.
+    await().atMost(Duration.ofSeconds(10)).until(() -> setups.get() == 1);
+    Thread.sleep(5000);
+    assertThat(setups.get()).isEqualTo(1);
+    assertThat(connector.isConnected()).isFalse();
+  }
+
   private CloseableChannel startConsole(int port) {
     return RSocketServer.create(SocketAcceptor.with(new RSocket() {}))
         .acceptor((setup, sendingSocket) -> {
           setups.incrementAndGet();
+          if (rejecting) {
+            return Mono.error(new RejectedSetupException("Wrong or missing application token"));
+          }
           connections.add(sendingSocket);
           return Mono.just(new RSocket() {});
         })

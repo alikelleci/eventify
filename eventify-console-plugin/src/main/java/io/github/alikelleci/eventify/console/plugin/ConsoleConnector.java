@@ -8,6 +8,7 @@ import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.SocketAcceptor;
 import io.rsocket.core.RSocketConnector;
+import io.rsocket.exceptions.RejectedSetupException;
 import io.rsocket.transport.netty.client.WebsocketClientTransport;
 import io.rsocket.util.DefaultPayload;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ import reactor.util.retry.Retry;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.function.BiFunction;
 
@@ -37,10 +39,17 @@ public class ConsoleConnector {
   private static final Duration MIN_BACKOFF = Duration.ofSeconds(1);
   private static final Duration MAX_BACKOFF = Duration.ofSeconds(30);
 
+  /**
+   * RSocket doesn't confirm that the console accepted a connection: a rejection (e.g. a wrong token) arrives as the
+   * connection closing right after it opened. A connection still open after this long was accepted.
+   */
+  private static final Duration ACCEPTED_AFTER = Duration.ofSeconds(1);
+
   /** WebSocket frames are limited to 64 KB, so larger replies (a page of events) are sent in parts. */
   static final int FRAGMENT_SIZE = 16 * 1024;
 
   private final URI uri;
+  private final String token;
   private final NodeInfo nodeInfo;
   private final BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler;
   private final ObjectMapper protocolMapper = new ObjectMapper();
@@ -50,14 +59,19 @@ public class ConsoleConnector {
   private volatile boolean running;
   private volatile Disposable connecting;
   private volatile RSocket connection;
+  private volatile boolean accepted;
+  /** The last reason the console gave for rejecting this instance, so it's logged once, not on every attempt. */
+  private volatile String lastRejection;
 
   /**
    * @param consoleUrl the console's address, as opened in the browser, e.g. {@code http://eventify-console:8080}
+   * @param token      the console's application token, or {@code null} when the console doesn't require one
    * @param nodeInfo   what this instance tells the console about itself
    * @param handler    answers a request: route name and request data in, reply out
    */
-  public ConsoleConnector(URI consoleUrl, NodeInfo nodeInfo, BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler) {
+  public ConsoleConnector(URI consoleUrl, String token, NodeInfo nodeInfo, BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler) {
     this.uri = rsocketUri(consoleUrl);
+    this.token = token;
     this.nodeInfo = nodeInfo;
     this.handler = handler;
   }
@@ -80,15 +94,17 @@ public class ConsoleConnector {
     scheduler.dispose();
   }
 
-  /** Whether the connection to the console is open right now. */
+  /** Whether the console accepted this instance and the connection is open right now. */
   public boolean isConnected() {
     RSocket current = connection;
-    return current != null && !current.isDisposed();
+    return accepted && current != null && !current.isDisposed();
   }
 
   private void connect(Duration delay) {
     Mono<RSocket> connect = RSocketConnector.create()
-        .setupPayload(Mono.fromCallable(() -> DefaultPayload.create(protocolMapper.writeValueAsBytes(nodeInfo))))
+        .setupPayload(Mono.fromCallable(() -> DefaultPayload.create(
+            protocolMapper.writeValueAsBytes(nodeInfo),
+            token == null ? new byte[0] : token.getBytes(StandardCharsets.UTF_8))))
         .dataMimeType(ConsoleProtocol.DATA_MIME_TYPE)
         .metadataMimeType(ConsoleProtocol.METADATA_MIME_TYPE)
         .keepAlive(KEEPALIVE_INTERVAL, KEEPALIVE_MAX_LIFETIME)
@@ -122,16 +138,37 @@ public class ConsoleConnector {
       return;
     }
     connection = rsocket;
-    log.info("Connected to the Eventify Console at {} as {}", uri, nodeInfo.nodeId());
+    accepted = false;
 
-    rsocket.onClose()
-        .doFinally(signal -> {
-          if (running) {
-            log.warn("Lost the connection to the Eventify Console at {}. Reconnecting.", uri);
-            connect(MIN_BACKOFF);
-          }
-        })
-        .subscribe(null, e -> log.debug("Connection to the Eventify Console closed with an error", e));
+    Mono.delay(ACCEPTED_AFTER)
+        .takeUntilOther(rsocket.onClose().onErrorResume(e -> Mono.empty()))
+        .subscribe(ignored -> {
+          accepted = true;
+          lastRejection = null;
+          log.info("Connected to the Eventify Console at {} as {}", uri, nodeInfo.nodeId());
+        });
+
+    rsocket.onClose().subscribe(null, this::onClosed, () -> onClosed(null));
+  }
+
+  private void onClosed(Throwable error) {
+    accepted = false;
+    if (!running) {
+      return;
+    }
+
+    if (error instanceof RejectedSetupException rejected) {
+      // Trying again every second won't help (a wrong token stays wrong), so try again slowly and say why once.
+      if (!String.valueOf(rejected.getMessage()).equals(lastRejection)) {
+        log.error("The Eventify Console at {} rejected this instance: {}. Trying again every {} seconds.",
+            uri, rejected.getMessage(), MAX_BACKOFF.toSeconds());
+      }
+      lastRejection = String.valueOf(rejected.getMessage());
+      connect(MAX_BACKOFF);
+    } else {
+      log.warn("Lost the connection to the Eventify Console at {}. Reconnecting.", uri);
+      connect(MIN_BACKOFF);
+    }
   }
 
   private Mono<Payload> handle(Payload request) {

@@ -2,6 +2,7 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { BackendService } from '@eventify/ui/services/backend.service';
 import { SearchService } from '../services/search.service';
+import { SessionService } from '../services/session.service';
 import { AppSwitcherComponent } from './app-switcher.component';
 import { HeaderSearchComponent } from './header-search.component';
 
@@ -25,6 +26,16 @@ import { HeaderSearchComponent } from './header-search.component';
       @if (backend.apps().length > 0) {
         <app-app-switcher class="ml-auto sm:ml-0 w-44" />
       }
+
+      <!-- With login: who is logged in, and log out -->
+      @if (session.session().loginEnabled) {
+        <button type="button" (click)="session.logout()" title="Log out"
+                class="flex items-center gap-2 h-8 px-2.5 rounded text-sm text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary-400"
+                [class.ml-auto]="backend.apps().length === 0">
+          <span class="hidden md:inline max-w-40 truncate">{{ session.session().user }}</span>
+          <i class="pi pi-sign-out text-xs"></i>
+        </button>
+      }
     </header>
 
     <!-- On mobile the search gets its own white bar below the header -->
@@ -44,4 +55,5 @@ import { HeaderSearchComponent } from './header-search.component';
 export class HeaderComponent {
   readonly backend = inject(BackendService);
   readonly search = inject(SearchService);
+  readonly session = inject(SessionService);
 }

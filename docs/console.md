@@ -60,13 +60,16 @@ eventify.start();
 
 The application appears in the console under its `application.id`. All instances with the same `application.id` are one application.
 
-When the console is unreachable, or the connection drops, the plugin keeps reconnecting in the background. Your application keeps running normally either way.
+When the console is unreachable, or the connection drops (for example while the console is redeployed), the plugin keeps reconnecting in the background, waiting up to 30 seconds between attempts. Your application keeps running normally either way.
+
+If the console refuses the application, for example because of a wrong token, the plugin logs the reason once and tries again every 30 seconds.
 
 ### Plugin options
 
 | Method | Required | Description |
 |---|---|---|
 | `url(String)` | Yes | The console's address, e.g. `http://eventify-console:8080`. Use `https://` when the console is served over TLS. |
+| `token(String)` | When the console requires it | The console's application token (see [Security](#security)). Read it from the environment, e.g. `System.getenv("EVENTIFY_CONSOLE_TOKEN")`, rather than putting it in code. |
 
 ### Spring Boot
 
@@ -104,6 +107,10 @@ The console is a Spring Boot application, so it can be configured with environme
 |---|---|---|
 | `SERVER_PORT` | `8080` | The port for the UI, the API and the connections from the applications. |
 | `EVENTIFY_CONSOLE_REQUESTTIMEOUT` | `60s` | How long to wait for an application to answer. Reading commands from Kafka can take a while. |
+| `EVENTIFY_CONSOLE_APPTOKEN` | – | The secret applications must send to connect. See [Security](#security). |
+| `EVENTIFY_CONSOLE_OIDC_ISSUERURI` | – | Your identity provider, e.g. `https://login.example.com/realms/ops`. Turns on login. |
+| `EVENTIFY_CONSOLE_OIDC_CLIENTID` | – | The console's client id at the identity provider. |
+| `EVENTIFY_CONSOLE_OIDC_CLIENTSECRET` | – | The console's client secret at the identity provider. |
 
 ## Running more than one console
 
@@ -113,6 +120,44 @@ Within an environment, run a single console instance. It keeps the connected app
 
 ## Security
 
-The console does not implement authentication yet. Do not expose it publicly. Place it behind a reverse proxy or load balancer that handles authentication, and only allow your applications to reach its `/rsocket` endpoint.
+Two things protect the console: people log in with your identity provider, and applications prove who they are with a token. Configure both in production. Without them, the console logs a warning at startup.
 
-Anyone who can reach the console can see the events of the connected applications and retry commands.
+### Login
+
+The console supports login with any OpenID Connect identity provider, such as Keycloak, Microsoft Entra ID, Okta or Google.
+
+1. Register the console as a client at your identity provider, with this redirect URI:
+   ```
+   https://<console address>/login/oauth2/code/sso
+   ```
+2. Start the console with the provider and the client's credentials:
+   ```bash
+   docker run -p 8080:8080 \
+     -e EVENTIFY_CONSOLE_OIDC_ISSUERURI=https://login.example.com/realms/ops \
+     -e EVENTIFY_CONSOLE_OIDC_CLIENTID=eventify-console \
+     -e EVENTIFY_CONSOLE_OIDC_CLIENTSECRET=... \
+     ghcr.io/alikelleci/eventify-console:latest
+   ```
+
+Every page and API call then needs a login. The console shows who is logged in, with a button to log out. The identity provider must be reachable when the console starts, because the console reads its settings then.
+
+Behind a proxy that terminates TLS, make sure the proxy sends the `X-Forwarded-*` headers, so the redirects use the address people opened.
+
+### Application token
+
+Start the console with a secret token, and give every application the same token:
+
+```bash
+docker run -p 8080:8080 -e EVENTIFY_CONSOLE_APPTOKEN=... ghcr.io/alikelleci/eventify-console:latest
+```
+
+```java
+EventifyConsolePlugin.builder()
+    .url("http://eventify-console:8080")
+    .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))
+    .build()
+```
+
+The console refuses applications without the right token, so nobody can connect a fake application and serve made-up data or receive retries.
+
+Applications connect on the `/rsocket` endpoint and don't log in with the identity provider: the token is how they authenticate.

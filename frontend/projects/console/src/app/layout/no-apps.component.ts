@@ -1,5 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { DOCS_URL } from '@eventify/ui/links';
+import { SessionService } from '../services/session.service';
 
 /** Shown instead of the console while no application is connected to it. */
 @Component({
@@ -28,10 +29,16 @@ import { DOCS_URL } from '@eventify/ui/links';
 })
 export class NoAppsComponent {
   readonly docsUrl = DOCS_URL;
-  readonly example = `Eventify.builder()
+  private readonly session = inject(SessionService);
+
+  // The token line only when this console requires one; its value is a secret, so it comes from the environment.
+  get example(): string {
+    const token = this.session.session().appTokenRequired ? `\n        .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))` : '';
+    return `Eventify.builder()
     .streamsConfig(props)
     .registerPlugin(EventifyConsolePlugin.builder()
-        .url("${location.origin}")
+        .url("${location.origin}")${token}
         .build())
     .build();`;
+  }
 }
