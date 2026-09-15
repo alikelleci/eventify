@@ -48,8 +48,8 @@ export class TimelineItemComponent {
     const positionClasses = hidden ? 'hidden' :
       (this.last() ? '' : 'top-1/2 bottom-0');
 
-    // Green line if: this is selected, or in the highlighted connector chain, or the next item is selected
-    const colorClasses = this.selected() || this.highlightedConnector() || this.nextItemSelected()
+    // Green line if: this is selected or in the highlighted connector chain (older items below)
+    const colorClasses = this.selected() || this.highlightedConnector()
       ? 'bg-emerald-500'
       : 'bg-surface-200 dark:bg-surface-700';
 
