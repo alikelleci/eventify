@@ -6,7 +6,7 @@ export type TimelineTone = 'neutral' | 'success' | 'failure' | 'placeholder';
 /**
  * One row of a vertical timeline: a dot on a connecting line, with the row's content projected next to it.
  * Used by the events and commands lists and their skeleton, so the line and dots always line up.
- * Like the replay on the landing page, the line is filled from the oldest item up to the selected one.
+ * Like the replay on the landing page, a list can fill the line from the oldest item up to the selected one (see `reached`).
  */
 @Component({
   selector: 'app-timeline-item',
@@ -48,9 +48,9 @@ export class TimelineItemComponent {
   lowerLineClass = computed(() => this.reached() ? this.filledLine : this.emptyLine);
 
   dotClass = computed(() => {
-    // Commands keep their outcome colour; events are filled once reached.
+    // Commands keep their outcome colour; events are filled once reached, or when selected.
     const [fill, ring] = {
-      neutral: this.reached() ? ['bg-primary-500', 'ring-primary-500/20'] : ['bg-surface-300 dark:bg-surface-600', ''],
+      neutral: this.reached() || this.selected() ? ['bg-primary-500', 'ring-primary-500/20'] : ['bg-surface-300 dark:bg-surface-600', ''],
       success: ['bg-emerald-500', 'ring-emerald-500/20'],
       failure: ['bg-red-500', 'ring-red-500/20'],
       placeholder: ['bg-surface-200 dark:bg-surface-700', ''],
