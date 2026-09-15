@@ -65,12 +65,12 @@ The console is configured with the following environment variables:
 
 ## Security
 
-The console supports two kinds of authentication:
+The console supports two authentication methods:
 
-- **Users** log in through an OpenID Connect identity provider.
-- **Applications** connect with a token.
+- **User authentication** through an OpenID Connect identity provider.
+- **Application authentication** using a token.
 
-Both are optional, so the console works out of the box on your machine. In production, configure both: the console logs a warning at startup for each one that is missing.
+For production, configure both methods. If either is not configured, the console will show a warning at startup.
 
 ### Login
 
@@ -91,21 +91,17 @@ The console supports any OpenID Connect identity provider, such as Keycloak, Mic
 
 ### Application token
 
-The application token prevents unauthorized clients from connecting to the console as an application.
+The application token prevents unauthorized clients from connecting to the console.
 
 Start the console with a token:
-
 ```bash
 docker run -p 8080:8080 -e EVENTIFY_CONSOLE_APPTOKEN=... ghcr.io/alikelleci/eventify-console:latest
 ```
 
-Configure the same token in the plugin of every application. Read it from the environment rather than putting it in code:
-
+Configure the same token in the Eventify client:
 ```java
 EventifyConsolePlugin.builder()
     .url("http://localhost:8080")
     .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))
     .build()
 ```
-
-Applications without the right token are refused.

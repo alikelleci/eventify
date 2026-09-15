@@ -38,7 +38,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Event replay</h3>
-          <p class="s-text">Rebuild your data as it was at any moment by replaying its events. The complete history is always there.</p>
+          <p class="s-text">Replay the events to see your data exactly as it was at any moment. Nothing is ever lost.</p>
         </div>
       </article>
 
@@ -94,7 +94,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Upcasting</h3>
-          <p class="s-text">Change your events as your application grows. Older events are upgraded to the new shape when they're read.</p>
+          <p class="s-text">Change the structure of your events at any time. Older events are upgraded to the new structure when they're read.</p>
         </div>
       </article>
 

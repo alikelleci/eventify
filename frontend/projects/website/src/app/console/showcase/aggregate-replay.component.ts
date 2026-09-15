@@ -59,7 +59,7 @@ const EVENTS: OrderEvent[] = [
  * as it was after it, and the third highlights what it changed. The part of the card a step is about stays bright, the other dims.
  */
 const STEPS = [
-  { title: 'Replay the history', text: 'Play the events of an order one by one to see what happened at each step.', focus: 'event', diff: false },
+  { title: 'Replay the history', text: 'Play the events one by one to see what happened at each step.', focus: 'event', diff: false },
   { title: 'View the state at any moment', text: 'See the state exactly as it was after each event.', focus: 'state', diff: false },
   { title: 'See what changed', text: 'The fields each event added or changed, highlighted.', focus: 'state', diff: true },
 ];

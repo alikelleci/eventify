@@ -22,7 +22,7 @@ public class EventifyConsolePlugin implements EventifyPlugin {
   private ConsoleConnector connector;
 
   /**
-   * @param url   the console's address, as opened in the browser, e.g. {@code http://eventify-console:8080}
+   * @param url   the console's address, as opened in the browser, e.g. {@code http://localhost:8080}
    * @param token the console's application token; only needed when the console is started with one
    */
   @Builder

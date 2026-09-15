@@ -75,7 +75,7 @@ public class ConsoleConnector {
   private volatile String lastRejection;
 
   /**
-   * @param consoleUrl the console's address, as opened in the browser, e.g. {@code http://eventify-console:8080}
+   * @param consoleUrl the console's address, as opened in the browser, e.g. {@code http://localhost:8080}
    * @param token      the console's application token, or {@code null} when the console doesn't require one
    * @param nodeInfo   what this instance tells the console about itself
    * @param handler    answers a request
