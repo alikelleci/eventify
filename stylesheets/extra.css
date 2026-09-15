@@ -1,0 +1,23 @@
+.md-footer {
+  background-color: var(--md-default-fg-color--lightest);
+}
+
+.md-footer-meta {
+  background-color: var(--md-footer-bg-color);
+}
+
+.md-footer__link {
+  color: var(--md-default-fg-color);
+}
+
+.md-footer__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.md-footer__title {
+  color: var(--md-default-fg-color);
+}
+
+.md-footer__direction {
+  color: var(--md-default-fg-color--light);
+}
