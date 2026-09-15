@@ -23,6 +23,7 @@ import java.time.Duration;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -200,8 +201,17 @@ public class ConsoleConnector {
         }, executor), true))
         .doOnCancel(cancel::cancel)
         .onErrorResume(e -> {
-          log.warn("Failed to handle console request for route {}", route, e);
-          return Mono.fromCallable(() -> toPayload(ConsoleRequestHandler.Reply.of(ReplyHeader.unavailable("Too busy or unexpected error"))));
+          Throwable cause = e instanceof CompletionException && e.getCause() != null ? e.getCause() : e;
+          String reason;
+          if (cause instanceof RejectedExecutionException) {
+            // Not an error: this instance protects itself against more console requests than it handles at once.
+            log.warn("Refused a {} request from the Eventify Console: this instance is already handling as many as it allows", route);
+            reason = "The application is busy right now: try again in a moment";
+          } else {
+            log.warn("Failed to handle console request for route {}", route, cause);
+            reason = "Unexpected error";
+          }
+          return Mono.fromCallable(() -> toPayload(ConsoleRequestHandler.Reply.of(ReplyHeader.unavailable(reason))));
         });
   }
 

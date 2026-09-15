@@ -13,6 +13,7 @@ import { JsonHighlightPipe } from '../../pipes/json-highlight.pipe';
 import { DetailSkeletonComponent } from '../skeletons/detail-skeleton.component';
 import { afterMinLoading } from '../../loading-timing';
 import { copyToClipboard } from '../../clipboard';
+import { errorDetail } from '../../errors';
 import { cleanPayload, formatPayload, metadataEntries } from '../../payload';
 import { JsonDiffPipe } from '../../pipes/json-diff.pipe';
 
@@ -69,7 +70,11 @@ export class EventDetailComponent {
       this.loading.set(true);
       this.request = this.svc.getEventDetail(ev.aggregateId, ev.id).pipe(
         takeUntilDestroyed(this.destroyRef),
-        catchError(() => { this.finishLoading(); return EMPTY; }),
+        catchError(err => {
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load the event details.') });
+          this.finishLoading();
+          return EMPTY;
+        }),
       ).subscribe(detail => {
         this.detail.set(detail);
         afterMinLoading(startedAt, () => { if (this.eventId() === id) this.finishLoading(); });

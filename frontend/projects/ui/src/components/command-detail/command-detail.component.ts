@@ -73,7 +73,11 @@ export class CommandDetailComponent {
       this.loading.set(true);
       this.request = this.svc.getEventsByCorrelation(cmd.aggregateId, correlationId).pipe(
         takeUntilDestroyed(this.destroyRef),
-        catchError(() => { this.finishLoading(); return EMPTY; }),
+        catchError(err => {
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load the events of this command.') });
+          this.finishLoading();
+          return EMPTY;
+        }),
       ).subscribe(page => {
         this.producedEvents.set(page.events);
         afterMinLoading(startedAt, () => { if (this.commandId() === id) this.finishLoading(); });
