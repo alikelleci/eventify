@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, OnInit, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, inject, input, output, computed, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY } from 'rxjs';
@@ -35,6 +35,8 @@ export class CommandListComponent implements OnInit {
 
   commands = signal<CommandMessage[]>([]);
   loading = signal(true);
+  /** Position of the selected item in this list, or -1 when the selection is not one of these commands. */
+  selectedIndex = computed(() => this.commands().indexOf(this.selected() as CommandMessage));
 
   ngOnInit() {
     const startedAt = Date.now();

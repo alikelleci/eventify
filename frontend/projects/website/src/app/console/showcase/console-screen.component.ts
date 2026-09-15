@@ -122,7 +122,7 @@ const EXAMPLE_API: Partial<EventifyService> = {
           <div class="min-h-0 flex-1 px-4 pt-3 pb-4">
             <div class="overflow-hidden rounded-lg border border-surface-100 dark:border-surface-800">
               @for (event of events; track event.id) {
-                <app-timeline-item [selected]="event === selected" [first]="$first" [last]="$last" [interactive]="false">
+                <app-timeline-item [selected]="event === selected" [reached]="$index >= events.indexOf(selected)" [first]="$first" [last]="$last" [interactive]="false">
                   <div class="flex min-w-0 flex-1 flex-col">
                     <div class="flex h-[22px] items-center gap-2">
                       <span class="truncate text-sm font-medium">{{ event.type }}</span>

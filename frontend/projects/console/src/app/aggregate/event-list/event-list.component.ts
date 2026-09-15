@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, HostListener, OnInit, inject, input, output, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, OnInit, inject, input, output, computed, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY } from 'rxjs';
@@ -37,6 +37,8 @@ export class EventListComponent implements OnInit {
   events = signal<EventMessage[]>([]);
   nextCursor = signal<string | null>(null);
   loading = signal(true);
+  /** Position of the selected item in this list, or -1 when the selection is not one of these events. */
+  selectedIndex = computed(() => this.events().indexOf(this.selected() as EventMessage));
   loadingMore = signal(false);
 
   ngOnInit() {
