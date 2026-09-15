@@ -181,6 +181,7 @@ const APPS: AppEntry[] = [
     { name: 'shipping', instances: 3, versions: ['1.4.0', '1.4.0', '1.5.0'] },   // mixed versions (rolling deploy)
     { name: 'inventory', instances: 0 },                                         // offline
     { name: 'customers', instances: 6 },                                         // more instances than a card lists
+    { name: 'events-gateway', instances: 16 },                                   // many instances
     { name: 'billing', instances: 2 },
     { name: 'notifications', instances: 1 },
     { name: 'catalog', instances: 4 },

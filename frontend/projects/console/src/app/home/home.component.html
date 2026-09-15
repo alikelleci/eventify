@@ -19,7 +19,7 @@
       <app-connected-apps [apps]="connectedApps()" class="mx-auto block max-w-xl" />
     </section>
 
-    <!-- The applications, a card each, coloured by status; the details open in a drawer -->
+    <!-- The applications, a card each, red when offline; the details open in a drawer -->
     <section class="mt-8">
       <div class="flex min-h-9 flex-wrap items-center justify-between gap-3">
         <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-0">
@@ -42,7 +42,7 @@
                   class="flex cursor-pointer flex-col rounded-2xl border p-5 text-left transition-colors"
                   [class]="offline
                     ? 'bg-red-50/50 dark:bg-red-950/20 ' + (isActive(app) ? 'border-red-400 dark:border-red-700' : 'border-red-100 hover:border-red-300 dark:border-red-950 dark:hover:border-red-800')
-                    : 'bg-primary-50/50 dark:bg-primary-950/20 ' + (isActive(app) ? 'border-primary-500 dark:border-primary-600' : 'border-primary-100 hover:border-primary-300 dark:border-primary-950 dark:hover:border-primary-800')">
+                    : 'bg-surface-0 dark:bg-surface-900 ' + (isActive(app) ? 'border-primary-500 dark:border-primary-600' : 'border-surface-200 hover:border-surface-300 dark:border-surface-800 dark:hover:border-surface-600')">
             <span class="flex w-full items-start justify-between gap-3">
               <span class="min-w-0 truncate text-lg font-semibold tracking-tight text-surface-900 dark:text-surface-0">{{ app.name }}</span>
               <span class="mt-1 inline-flex shrink-0 items-center gap-1.5 text-xs font-medium"
