@@ -4,7 +4,7 @@ Eventify Console is an operations-focused UI for inspecting and troubleshooting 
 
 Explore aggregates, replay their state at any point in history, inspect event payloads and state diffs, trace commands through correlation and causation, and retry failed commands — all from a single interface.
 
-The console runs as its own Docker container. Your applications connect to it: they show up by themselves as soon as they start, and they don't need to open a port.
+The console runs as its own Docker container. Applications connect to it directly: they appear automatically when they start.
 
 ## Running the console
 
@@ -56,11 +56,11 @@ The console can be configured with following environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `SERVER_PORT` | `8080` | The port for the UI, the API and the connections from the applications. |
-| `EVENTIFY_CONSOLE_REQUESTTIMEOUT` | `60s` | How long to wait for an application to answer. Reading commands from Kafka can take a while. |
-| `EVENTIFY_CONSOLE_APPTOKEN` | – | The token applications must send to connect. See [Security](#security). |
-| `EVENTIFY_CONSOLE_OIDC_ISSUERURI` | – | Your identity provider, e.g. `https://login.example.com/realms/ops`. Turns on login. |
-| `EVENTIFY_CONSOLE_OIDC_CLIENTID` | – | The console's client id at the identity provider. |
+| `SERVER_PORT` | `8080` | The port that is running on. |
+| `EVENTIFY_CONSOLE_REQUESTTIMEOUT` | `60s` | How long to wait for an application to respond. |
+| `EVENTIFY_CONSOLE_APPTOKEN` | – | The token applications must provide when connecting. See [Security](#security). |
+| `EVENTIFY_CONSOLE_OIDC_ISSUERURI` | – | The identity provider URL, e.g. https://login.example.com/realms/ops. Setting this enables login. |
+| `EVENTIFY_CONSOLE_OIDC_CLIENTID` | – | The console's client ID at the identity provider. |
 | `EVENTIFY_CONSOLE_OIDC_CLIENTSECRET` | – | The console's client secret at the identity provider. |
 
 ## Security
