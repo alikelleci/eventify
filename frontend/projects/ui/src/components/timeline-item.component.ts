@@ -28,6 +28,8 @@ export class TimelineItemComponent {
   selected = input(false);
   /** Whether this older event (below selected) should have its line and dot highlighted. */
   highlightedConnector = input(false);
+  /** Whether the next item in the list is selected. */
+  nextItemSelected = input(false);
   filled = input(false);
   /** Clickable rows get a hover background and pointer. */
   interactive = input(true);
@@ -46,8 +48,8 @@ export class TimelineItemComponent {
     const positionClasses = hidden ? 'hidden' :
       (this.last() ? '' : 'top-1/2 bottom-0');
 
-    // Green line if this is selected (line going down from it) or in the highlighted connector chain (older items)
-    const colorClasses = this.selected() || this.highlightedConnector()
+    // Green line if: this is selected, or in the highlighted connector chain, or the next item is selected
+    const colorClasses = this.selected() || this.highlightedConnector() || this.nextItemSelected()
       ? 'bg-emerald-500'
       : 'bg-surface-200 dark:bg-surface-700';
 
