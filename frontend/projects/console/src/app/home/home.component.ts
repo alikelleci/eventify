@@ -1,61 +1,92 @@
-import {Component, computed, inject} from '@angular/core';
-import {ButtonModule} from 'primeng/button';
-import {TagModule} from 'primeng/tag';
+import {Component, DestroyRef, computed, inject, signal} from '@angular/core';
 import {SearchService} from '../services/search.service';
-import {DOCS_URL} from '@eventify/ui/links';
-import {BackendService} from '@eventify/ui/services/backend.service';
+import {AppEntry, AppNode, BackendService} from '@eventify/ui/services/backend.service';
 import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
 
-interface Feature {
-  icon: string;
-  title: string;
-  text: string;
-}
+/** A card lists at most this many instances; the rest are counted. */
+const MAX_INSTANCES = 3;
+/** From this many applications on, a filter helps to find one. */
+const FILTER_FROM = 7;
 
-/** The console's start page: what it does and where to begin. The full product page is the website's landing. */
+/**
+ * The console's start page: a live overview of the applications connected to it and their instances.
+ * Picking an application makes it the one the header searches in.
+ */
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [ButtonModule, TagModule, ConnectedAppsComponent],
+  imports: [ConnectedAppsComponent],
   host: { class: 'block h-full' },
+  styles: `
+    .home-stage { background: var(--p-surface-50) radial-gradient(var(--p-surface-200) 1px, transparent 1px) 0 0 / 14px 14px; }
+    @media (prefers-color-scheme: dark) {
+      .home-stage { background: var(--p-surface-950) radial-gradient(var(--p-surface-800) 1px, transparent 1px) 0 0 / 14px 14px; }
+    }
+  `,
 })
 export class HomeComponent {
-  readonly search = inject(SearchService);
-  private readonly backend = inject(BackendService);
+  private readonly search = inject(SearchService);
+  readonly backend = inject(BackendService);
 
-  /** The applications connected right now, each with its number of instances. */
-  readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
-    name: app.name,
-    note: app.nodes.length === 1 ? '1 instance' : `${app.nodes.length} instances`,
-  })));
-  readonly connectedLabel = computed(() => {
-    const count = this.backend.apps().length;
-    return count === 1 ? '1 application connected' : `${count} applications connected`;
+  readonly maxInstances = MAX_INSTANCES;
+
+  /** Ticks every half minute, so "connected 5 min ago" stays true without a new list. */
+  private readonly now = signal(Date.now());
+
+  readonly query = signal('');
+  readonly showFilter = computed(() => this.backend.apps().length >= FILTER_FROM);
+  readonly filteredApps = computed(() => {
+    const query = this.query().trim().toLowerCase();
+    return query ? this.backend.apps().filter(app => app.name.toLowerCase().includes(query)) : this.backend.apps();
   });
 
-  readonly docsUrl = DOCS_URL;
+  readonly instanceCount = computed(() => this.backend.apps().reduce((sum, app) => sum + app.nodes.length, 0));
+  readonly offlineCount = computed(() => this.backend.apps().filter(app => app.nodes.length === 0).length);
 
-  /** Example data for the illustration, newest first like the lists in the app. */
-  readonly now = Date.now();
-  // The failed command is second, so it stays visible above the events card in front.
-  readonly illustrationCommands = [
-    { type: 'ShipOrder', agoMs: 20_020, failed: false },
-    { type: 'ApplyDiscount', agoMs: 90_000, failed: true },
-    { type: 'CapturePayment', agoMs: 140_010, failed: false },
-    { type: 'PlaceOrder', agoMs: 380_010, failed: false },
-  ];
-  readonly illustrationEvents = [
-    { type: 'OrderShipped', agoMs: 20_000 },
-    { type: 'ShipmentLabelCreated', agoMs: 20_012 },
-    { type: 'PaymentReceived', agoMs: 140_000 },
-    { type: 'OrderPlaced', agoMs: 380_000 },
-  ];
+  /** The picture at the top, each application with its number of instances. */
+  readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
+    name: app.name,
+    note: app.nodes.length ? this.plural(app.nodes.length, 'instance') : 'offline',
+  })));
 
-  readonly features: Feature[] = [
-    { icon: 'pi pi-list', title: 'Event history', text: 'See every event in order from oldest to newest, understand what happened and when.' },
-    { icon: 'pi pi-database', title: 'State at every event', text: 'View the aggregate exactly as it was after each event to understand the complete picture.' },
-    { icon: 'pi pi-send', title: 'Commands and outcomes', text: 'Follow each command and see clearly what happened: succeeded, failed and why.' },
-    { icon: 'pi pi-refresh', title: 'Trace commands to events', text: 'See which events a command produced and understand the complete command flow.' },
-  ];
+  constructor() {
+    const timer = setInterval(() => this.now.set(Date.now()), 30_000);
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
+
+  /** Makes the application the one to search in, and puts the cursor in the search box. */
+  open(app: AppEntry) {
+    this.backend.setActiveApp(app);
+    this.search.focusSearch();
+  }
+
+  // By name: the list is refreshed every few seconds with new objects.
+  isActive(app: AppEntry): boolean {
+    return app.name === this.backend.activeApp()?.name;
+  }
+
+  /** The versions its instances run, when they differ (e.g. during a rolling deploy). */
+  versions(app: AppEntry): string[] {
+    const versions = [...new Set(app.nodes.map(node => node.version).filter((v): v is string => !!v))];
+    return versions.length > 1 ? versions : [];
+  }
+
+  /** The instance's host name, or the start of its id when it didn't send one. */
+  instanceName(node: AppNode): string {
+    return node.hostname ?? node.nodeId.split(':')[0];
+  }
+
+  connectedFor(node: AppNode): string {
+    const minutes = Math.floor((this.now() - Date.parse(node.connectedAt)) / 60_000);
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h`;
+    return this.plural(Math.floor(hours / 24), 'day');
+  }
+
+  plural(count: number, word: string): string {
+    return `${count} ${word}${count === 1 ? '' : 's'}`;
+  }
 }

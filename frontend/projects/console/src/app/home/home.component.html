@@ -1,51 +1,104 @@
 <div class="h-full overflow-y-auto">
-  <div class="flex-1 flex flex-col items-center justify-center px-6 py-12">
-    <div class="max-w-2xl w-full">
-      <!-- The applications connected to this console, live -->
-      <div class="mx-auto mb-10 max-w-md">
-        <app-connected-apps [apps]="connectedApps()" />
-        <p class="mt-3 text-center text-xs text-surface-400">{{ connectedLabel() }}</p>
+  <div class="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6 lg:py-10">
+
+    <!-- Overview: the totals, and the applications connected to this console -->
+    <section class="grid overflow-hidden rounded-2xl border border-surface-200 dark:border-surface-800 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div class="flex flex-col justify-center p-6 sm:p-8">
+        <h1 class="text-2xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Applications</h1>
+        <p class="mt-1.5 text-sm text-surface-500 dark:text-surface-400">Connected to this console right now. The list updates by itself.</p>
+
+        <dl class="mt-6 flex flex-wrap gap-x-10 gap-y-4">
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-widest text-surface-400">Applications</dt>
+            <dd class="mt-1 text-3xl font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ backend.apps().length }}</dd>
+          </div>
+          <div>
+            <dt class="text-xs font-medium uppercase tracking-widest text-surface-400">Instances</dt>
+            <dd class="mt-1 text-3xl font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ instanceCount() }}</dd>
+          </div>
+          @if (offlineCount()) {
+            <div>
+              <dt class="text-xs font-medium uppercase tracking-widest text-surface-400">Offline</dt>
+              <dd class="mt-1 text-3xl font-semibold tabular-nums text-orange-500">{{ offlineCount() }}</dd>
+            </div>
+          }
+        </dl>
       </div>
 
-      <!-- Heading -->
-      <h1 class="text-center text-3xl font-semibold text-surface-900 dark:text-surface-0 mb-3">
-        See what happened
-      </h1>
+      <div class="home-stage flex items-center justify-center border-t border-surface-200 px-6 py-8 lg:border-t-0 lg:border-l dark:border-surface-800">
+        <app-connected-apps [apps]="connectedApps()" class="w-full max-w-md" />
+      </div>
+    </section>
 
-      <!-- Description -->
-      <p class="text-center text-base text-surface-500 dark:text-surface-400 mb-8">
-        Search any aggregate to see all its events, its state at any moment, and why each command succeeded or failed.
-      </p>
-
-      <!-- Search button -->
-      <div class="flex justify-center mb-12">
-        <p-button label="Search an aggregate" icon="pi pi-search" size="large" (onClick)="search.focusSearch()" />
+    <!-- The applications, one card each -->
+    <section class="mt-10">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-sm font-semibold text-surface-900 dark:text-surface-0">
+          All applications <span class="ml-1 font-normal text-surface-400">{{ filteredApps().length }}</span>
+        </h2>
+        @if (showFilter()) {
+          <label class="relative block w-full sm:w-64">
+            <span class="sr-only">Filter applications</span>
+            <i class="pi pi-filter pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs text-surface-400"></i>
+            <input type="text" placeholder="Filter applications" [value]="query()" (input)="query.set($any($event.target).value)"
+                   class="h-9 w-full rounded-lg border border-surface-200 bg-surface-0 pr-3 pl-8 text-sm text-surface-900 outline-none placeholder:text-surface-400 focus:border-primary-500 dark:border-surface-700 dark:bg-surface-900 dark:text-surface-0" />
+          </label>
+        }
       </div>
 
-      <!-- Quick reference cards -->
-      <div class="grid gap-4 sm:grid-cols-3">
-        <div class="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400 mb-3">
-            <i class="pi pi-list text-sm"></i>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        @for (app of filteredApps(); track app.name) {
+          <button type="button" (click)="open(app)"
+                  class="group flex cursor-pointer flex-col rounded-xl border bg-surface-0 p-4 text-left transition-colors dark:bg-surface-900"
+                  [class]="isActive(app) ? 'border-primary-400 dark:border-primary-700' : 'border-surface-200 hover:border-surface-300 dark:border-surface-800 dark:hover:border-surface-600'">
+            <div class="flex w-full items-center gap-2">
+              <span class="h-2 w-2 shrink-0 rounded-full" [class]="app.nodes.length ? 'bg-primary-500' : 'bg-orange-500'"></span>
+              <span class="min-w-0 flex-1 truncate font-mono text-sm font-medium text-surface-900 dark:text-surface-0">{{ app.name }}</span>
+              @if (isActive(app)) {
+                <span class="shrink-0 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-700 dark:bg-primary-950 dark:text-primary-300">Selected</span>
+              }
+            </div>
+
+            <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 pl-4 text-xs">
+              @if (app.nodes.length) {
+                <span class="text-surface-500 dark:text-surface-400">{{ plural(app.nodes.length, 'instance') }}</span>
+              } @else {
+                <span class="text-orange-600 dark:text-orange-400">Offline, waiting for an instance to connect</span>
+              }
+              @if (versions(app).length) {
+                <span class="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 dark:bg-amber-950 dark:text-amber-300" [title]="'Versions: ' + versions(app).join(', ')">
+                  <i class="pi pi-exclamation-triangle text-[9px]"></i>{{ versions(app).length }} versions
+                </span>
+              }
+            </div>
+
+            <!-- The instances: host, version, and how long connected -->
+            @if (app.nodes.length) {
+              <ul class="mt-3 w-full divide-y divide-surface-100 border-t border-surface-100 dark:divide-surface-800 dark:border-surface-800">
+                @for (node of app.nodes.slice(0, maxInstances); track node.nodeId) {
+                  <li class="flex items-center gap-2 py-1.5 text-xs">
+                    <i class="pi pi-server text-[10px] text-surface-400"></i>
+                    <span class="min-w-0 flex-1 truncate font-mono text-surface-700 dark:text-surface-200" [title]="node.nodeId">{{ instanceName(node) }}</span>
+                    @if (node.version) { <span class="shrink-0 font-mono text-surface-400">{{ node.version }}</span> }
+                    <span class="w-14 shrink-0 text-right text-surface-400" [title]="'Connected at ' + node.connectedAt">{{ connectedFor(node) }}</span>
+                  </li>
+                }
+              </ul>
+              @if (app.nodes.length > maxInstances) {
+                <span class="pt-1.5 text-xs text-surface-400">+{{ plural(app.nodes.length - maxInstances, 'more instance') }}</span>
+              }
+            }
+
+            <span class="mt-auto flex items-center gap-1.5 pt-3 text-xs font-medium text-surface-500 transition-colors group-hover:text-primary-600 dark:text-surface-400 dark:group-hover:text-primary-400">
+              <i class="pi pi-search text-[10px]"></i> Search in {{ app.name }}
+            </span>
+          </button>
+        } @empty {
+          <div class="col-span-full rounded-xl border border-dashed border-surface-300 px-4 py-10 text-center text-sm text-surface-400 dark:border-surface-700">
+            No applications match “{{ query() }}”
           </div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-surface-700 dark:text-surface-200 mb-1">Event history</h3>
-          <p class="text-xs text-surface-500 dark:text-surface-400">Complete event history in order</p>
-        </div>
-        <div class="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400 mb-3">
-            <i class="pi pi-database text-sm"></i>
-          </div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-surface-700 dark:text-surface-200 mb-1">State snapshots</h3>
-          <p class="text-xs text-surface-500 dark:text-surface-400">Aggregate state at any point</p>
-        </div>
-        <div class="rounded-xl border border-surface-200 p-4 dark:border-surface-700">
-          <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400 mb-3">
-            <i class="pi pi-send text-sm"></i>
-          </div>
-          <h3 class="text-xs font-semibold uppercase tracking-wide text-surface-700 dark:text-surface-200 mb-1">Command traces</h3>
-          <p class="text-xs text-surface-500 dark:text-surface-400">Commands and their outcomes</p>
-        </div>
+        }
       </div>
-    </div>
+    </section>
   </div>
 </div>
