@@ -2,30 +2,16 @@
   <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
     <h1 class="sr-only">Connected applications</h1>
 
-    <!-- The totals -->
-    <dl class="grid grid-cols-2 gap-3 lg:grid-cols-4">
-      <div class="rounded-xl border border-surface-200 bg-surface-0 px-4 py-3 dark:border-surface-800 dark:bg-surface-900">
-        <dt class="flex items-center gap-2 text-xs font-medium text-surface-500 dark:text-surface-400"><i class="pi pi-th-large text-[11px]"></i>Applications</dt>
-        <dd class="mt-1 text-3xl font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ backend.apps().length }}</dd>
-      </div>
-      <div class="rounded-xl border border-surface-200 bg-surface-0 px-4 py-3 dark:border-surface-800 dark:bg-surface-900">
-        <dt class="flex items-center gap-2 text-xs font-medium text-surface-500 dark:text-surface-400"><i class="pi pi-server text-[11px]"></i>Instances</dt>
-        <dd class="mt-1 text-3xl font-semibold tabular-nums text-surface-900 dark:text-surface-0">{{ instanceCount() }}</dd>
-      </div>
-      <div class="rounded-xl border px-4 py-3"
-           [class]="offlineCount() ? 'border-red-100 bg-linear-to-br from-red-50/80 to-surface-0 dark:border-red-950 dark:from-red-950/30 dark:to-surface-900' : 'border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900'">
-        <dt class="flex items-center gap-2 text-xs font-medium" [class]="offlineCount() ? 'text-red-600 dark:text-red-400' : 'text-surface-500 dark:text-surface-400'">
-          <i class="pi pi-times-circle text-[11px]"></i>Offline
-        </dt>
-        <dd class="mt-1 text-3xl font-semibold tabular-nums" [class]="offlineCount() ? 'text-red-600 dark:text-red-400' : 'text-surface-900 dark:text-surface-0'">{{ offlineCount() }}</dd>
-      </div>
-      <div class="rounded-xl border px-4 py-3"
-           [class]="mixedCount() ? 'border-amber-100 bg-linear-to-br from-amber-50/80 to-surface-0 dark:border-amber-950 dark:from-amber-950/30 dark:to-surface-900' : 'border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900'">
-        <dt class="flex items-center gap-2 text-xs font-medium" [class]="mixedCount() ? 'text-amber-600 dark:text-amber-400' : 'text-surface-500 dark:text-surface-400'">
-          <i class="pi pi-exclamation-triangle text-[11px]"></i>Mixed versions
-        </dt>
-        <dd class="mt-1 text-3xl font-semibold tabular-nums" [class]="mixedCount() ? 'text-amber-600 dark:text-amber-400' : 'text-surface-900 dark:text-surface-0'">{{ mixedCount() }}</dd>
-      </div>
+    <!-- The totals, in one row -->
+    <dl class="grid grid-cols-2 rounded-2xl border border-surface-200 dark:border-surface-800 lg:grid-cols-4">
+      @for (stat of stats(); track stat.label; let i = $index) {
+        <div class="px-5 py-4 sm:px-6"
+             [class]="(i % 2 ? 'border-l ' : '') + (i >= 2 ? 'border-t lg:border-t-0 ' : '') + (i === 2 ? 'lg:border-l ' : '') + 'border-surface-200 dark:border-surface-800'">
+          <dt class="text-xs font-medium uppercase tracking-widest text-surface-400">{{ stat.label }}</dt>
+          <dd class="mt-1 text-3xl font-semibold tabular-nums"
+              [class]="stat.value && stat.tone === 'red' ? 'text-red-500' : stat.value && stat.tone === 'amber' ? 'text-amber-500' : 'text-surface-900 dark:text-surface-0'">{{ stat.value }}</dd>
+        </div>
+      }
     </dl>
 
     <!-- The centre: the console with its applications, live -->
@@ -53,40 +39,35 @@
         @for (app of filteredApps(); track app.name) {
           @let offline = app.nodes.length === 0;
           <button type="button" (click)="showDetail(app)"
-                  class="group flex cursor-pointer flex-col rounded-2xl border bg-linear-to-br p-5 text-left transition-all hover:-translate-y-0.5 hover:shadow-md"
-                  [class]="(offline
-                    ? 'border-red-100 from-red-50/80 to-surface-0 hover:border-red-200 dark:border-red-950 dark:from-red-950/30 dark:to-surface-900 dark:hover:border-red-900'
-                    : 'border-primary-100 from-primary-50/80 to-surface-0 hover:border-primary-200 dark:border-primary-950 dark:from-primary-950/30 dark:to-surface-900 dark:hover:border-primary-900')
-                    + (isActive(app) ? ' ring-2 ring-primary-500/60 ring-offset-2 ring-offset-surface-0 dark:ring-offset-surface-900' : '')">
-            <span class="flex w-full items-center gap-3">
-              <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl"
-                    [class]="offline ? 'bg-red-100 text-red-500 dark:bg-red-950/60 dark:text-red-400' : 'bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400'">
-                <i class="pi" [class]="offline ? 'pi-power-off' : 'pi-server'"></i>
+                  class="flex cursor-pointer flex-col rounded-2xl border p-5 text-left transition-colors"
+                  [class]="offline
+                    ? 'bg-red-50/50 dark:bg-red-950/20 ' + (isActive(app) ? 'border-red-400 dark:border-red-700' : 'border-red-100 hover:border-red-300 dark:border-red-950 dark:hover:border-red-800')
+                    : 'bg-primary-50/50 dark:bg-primary-950/20 ' + (isActive(app) ? 'border-primary-500 dark:border-primary-600' : 'border-primary-100 hover:border-primary-300 dark:border-primary-950 dark:hover:border-primary-800')">
+            <span class="flex w-full items-start justify-between gap-3">
+              <span class="min-w-0 truncate text-lg font-semibold tracking-tight text-surface-900 dark:text-surface-0">{{ app.name }}</span>
+              <span class="mt-1 inline-flex shrink-0 items-center gap-1.5 text-xs font-medium"
+                    [class]="offline ? 'text-red-600 dark:text-red-400' : 'text-primary-600 dark:text-primary-400'">
+                <span class="h-1.5 w-1.5 rounded-full" [class]="offline ? 'bg-red-500' : 'bg-primary-500'"></span>{{ offline ? 'Offline' : 'Online' }}
               </span>
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-lg font-semibold tracking-tight text-surface-900 dark:text-surface-0">{{ app.name }}</span>
-                <span class="block text-xs font-medium" [class]="offline ? 'text-red-500 dark:text-red-400' : 'text-primary-600 dark:text-primary-400'">
-                  {{ offline ? 'Offline' : 'Online' }}
-                </span>
-              </span>
-              <i class="pi pi-chevron-right shrink-0 text-xs text-surface-400 transition-transform group-hover:translate-x-0.5"></i>
             </span>
 
-            <span class="mt-4 flex w-full items-center justify-between gap-2 text-xs">
-              <!-- One dot per instance -->
-              <span class="flex min-w-0 items-center gap-2">
-                @if (!offline) {
+            <span class="mt-3 flex w-full flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+              @if (offline) {
+                <span class="text-surface-500 dark:text-surface-400">No instances connected</span>
+              } @else {
+                <!-- One dot per instance -->
+                <span class="flex items-center gap-2 text-surface-500 dark:text-surface-400">
                   <span class="flex items-center gap-1" aria-hidden="true">
                     @for (node of app.nodes.slice(0, maxDots); track node.nodeId) {
-                      <span class="h-2 w-2 rounded-full bg-primary-400"></span>
+                      <span class="h-2 w-2 rounded-full bg-primary-300 dark:bg-primary-700"></span>
                     }
                   </span>
-                }
-                <span class="truncate text-surface-600 dark:text-surface-300">{{ offline ? 'No instances connected' : plural(app.nodes.length, 'instance') }}</span>
-              </span>
+                  {{ plural(app.nodes.length, 'instance') }}
+                </span>
+              }
               @if (versions(app).length) {
-                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900">
-                  <i class="pi pi-exclamation-triangle text-[9px]"></i>Mixed versions
+                <span class="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                  <i class="pi pi-exclamation-triangle text-[10px]"></i>Mixed versions
                 </span>
               }
             </span>
@@ -106,10 +87,7 @@
           styleClass="w-full sm:!w-[30rem]">
   <ng-template #header>
     @if (detail(); as app) {
-      <div class="flex min-w-0 items-center gap-3">
-        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" [class]="app.nodes.length ? 'bg-primary-100 text-primary-600 dark:bg-primary-950/60 dark:text-primary-400' : 'bg-red-100 text-red-500 dark:bg-red-950/60 dark:text-red-400'">
-          <i class="pi" [class]="app.nodes.length ? 'pi-server' : 'pi-power-off'"></i>
-        </span>
+      <div class="min-w-0">
         <span class="min-w-0">
           <span class="block truncate text-lg font-semibold text-surface-900 dark:text-surface-0">{{ app.name }}</span>
           <span class="block text-xs font-medium" [class]="app.nodes.length ? 'text-primary-600 dark:text-primary-400' : 'text-red-500 dark:text-red-400'">

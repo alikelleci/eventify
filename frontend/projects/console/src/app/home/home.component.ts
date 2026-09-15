@@ -41,6 +41,14 @@ export class HomeComponent {
   readonly offlineCount = computed(() => this.backend.apps().filter(app => app.nodes.length === 0).length);
   readonly mixedCount = computed(() => this.backend.apps().filter(app => this.versions(app).length > 0).length);
 
+  /** The totals in the top row; offline and mixed versions are coloured once there are any. */
+  readonly stats = computed(() => [
+    { label: 'Applications', value: this.backend.apps().length, tone: null },
+    { label: 'Instances', value: this.instanceCount(), tone: null },
+    { label: 'Offline', value: this.offlineCount(), tone: 'red' },
+    { label: 'Mixed versions', value: this.mixedCount(), tone: 'amber' },
+  ]);
+
   /** The picture in the centre, each application with its number of instances. */
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
     name: app.name,
