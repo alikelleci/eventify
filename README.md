@@ -4,7 +4,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alikelleci/eventify-core.svg)](https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Eventify is a lightweight Java library for functional event sourcing built on Kafka. Add it to your Java app and get complete event sourcing out of the box—all you need is Kafka and your business logic.
+Eventify is a lightweight Java library for event sourcing built on Kafka. Add it to your Java app and get complete event sourcing out of the box—all you need is Kafka and your business logic.
 
 Define your domain logic using plain, annotated Java methods. No base classes to extend, no framework interfaces to implement. Eventify handles event storage, state reconstruction, and event publishing for you.
 
