@@ -36,7 +36,7 @@ public class ConsoleRequestHandler {
     this.eventifyMapper = eventifyMapper;
   }
 
-  public Reply handle(String routeName, byte[] data) {
+  public Reply handle(String routeName, byte[] data, CancelSignal cancel) {
     Route route;
     try {
       route = Route.valueOf(routeName);
@@ -64,7 +64,7 @@ public class ConsoleRequestHandler {
         }
         case COMMANDS -> {
           Requests.Commands request = read(data, Requests.Commands.class);
-          yield toReply(service.getCommands(requireAggregateId(request.aggregateId()), clampLimit(request.limit(), MAX_PAGE_SIZE)));
+          yield toReply(service.getCommands(requireAggregateId(request.aggregateId()), clampLimit(request.limit(), MAX_PAGE_SIZE), cancel));
         }
         case RETRY_COMMAND -> toReply(service.retryCommand(eventifyMapper.readValue(data, Command.class)));
       };

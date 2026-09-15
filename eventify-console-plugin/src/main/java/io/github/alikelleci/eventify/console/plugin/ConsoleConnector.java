@@ -14,15 +14,18 @@ import io.rsocket.util.DefaultPayload;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Scheduler;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.retry.Retry;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.function.BiFunction;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Keeps a connection from this application instance to the Eventify Console and answers the console's requests on it.
@@ -51,10 +54,9 @@ public class ConsoleConnector {
   private final URI uri;
   private final String token;
   private final NodeInfo nodeInfo;
-  private final BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler;
+  private final Handler handler;
   private final ObjectMapper protocolMapper = new ObjectMapper();
-  /** Queries read state stores and Kafka topics; a few at a time, so the console can't take over the application. */
-  private final Scheduler scheduler = Schedulers.newBoundedElastic(4, 100, "eventify-console");
+  private final ThreadPoolExecutor executor = queryExecutor();
 
   private volatile boolean running;
   private volatile Disposable connecting;
@@ -67,9 +69,9 @@ public class ConsoleConnector {
    * @param consoleUrl the console's address, as opened in the browser, e.g. {@code http://eventify-console:8080}
    * @param token      the console's application token, or {@code null} when the console doesn't require one
    * @param nodeInfo   what this instance tells the console about itself
-   * @param handler    answers a request: route name and request data in, reply out
+   * @param handler    answers a request
    */
-  public ConsoleConnector(URI consoleUrl, String token, NodeInfo nodeInfo, BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler) {
+  public ConsoleConnector(URI consoleUrl, String token, NodeInfo nodeInfo, Handler handler) {
     this.uri = rsocketUri(consoleUrl);
     this.token = token;
     this.nodeInfo = nodeInfo;
@@ -91,7 +93,8 @@ public class ConsoleConnector {
     if (current != null) {
       current.dispose();
     }
-    scheduler.dispose();
+    // Without interrupting queries that are still running: Kafka clients don't handle interrupts well.
+    executor.shutdown();
   }
 
   /** Whether the console accepted this instance and the connection is open right now. */
@@ -181,12 +184,48 @@ public class ConsoleConnector {
       request.release();
     }
 
-    return Mono.fromCallable(() -> toPayload(handler.apply(route, data)))
-        .subscribeOn(scheduler)
+    // When the console cancels a request (someone refreshed the page, or the console stopped), the query gets the
+    // signal: a query that hasn't started is skipped, a running one can stop cleanly (see EventifyService.getCommands).
+    // The thread is never interrupted: that would break a Kafka consumer halfway a poll or close.
+    CancelSignal cancel = new CancelSignal();
+    return Mono.defer(() -> Mono.fromFuture(CompletableFuture.supplyAsync(() -> {
+          if (cancel.isCancelled()) {
+            return null;
+          }
+          try {
+            return toPayload(handler.handle(route, data, cancel));
+          } catch (Exception e) {
+            throw new CompletionException(e);
+          }
+        }, executor), true))
+        .doOnCancel(cancel::cancel)
         .onErrorResume(e -> {
           log.warn("Failed to handle console request for route {}", route, e);
           return Mono.fromCallable(() -> toPayload(ConsoleRequestHandler.Reply.of(ReplyHeader.unavailable("Too busy or unexpected error"))));
         });
+  }
+
+  /** Answers the console's requests. */
+  @FunctionalInterface
+  public interface Handler {
+    /**
+     * @param route  the route name
+     * @param data   the request data
+     * @param cancel tells when the console no longer waits for the answer
+     */
+    ConsoleRequestHandler.Reply handle(String route, byte[] data, CancelSignal cancel);
+  }
+
+  /** Queries read state stores and Kafka topics; a few at a time, so the console can't take over the application. */
+  private static ThreadPoolExecutor queryExecutor() {
+    AtomicInteger threads = new AtomicInteger();
+    ThreadPoolExecutor executor = new ThreadPoolExecutor(4, 4, 60, TimeUnit.SECONDS, new ArrayBlockingQueue<>(100), runnable -> {
+      Thread thread = new Thread(runnable, "eventify-console-" + threads.incrementAndGet());
+      thread.setDaemon(true);
+      return thread;
+    });
+    executor.allowCoreThreadTimeOut(true);
+    return executor;
   }
 
   private Payload toPayload(ConsoleRequestHandler.Reply reply) throws Exception {

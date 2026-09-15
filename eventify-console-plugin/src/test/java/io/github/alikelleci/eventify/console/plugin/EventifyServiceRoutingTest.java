@@ -16,6 +16,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
@@ -29,6 +30,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,15 +63,18 @@ class EventifyServiceRoutingTest {
     if (second != null) second.stop();
   }
 
-  @Test
-  void anInstanceThatDoesNotOwnAnAggregateNamesTheOwner() throws Exception {
+  @BeforeAll
+  static void createTopics() throws Exception {
     // Co-partitioned source topics, with a partition for each instance.
     try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
       admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
     }
+  }
 
-    first = start("first");
-    second = start("second");
+  @Test
+  void anInstanceThatDoesNotOwnAnAggregateNamesTheOwner() throws Exception {
+    first = start(APPLICATION_ID, "first");
+    second = start(APPLICATION_ID, "second");
     assertThat(first.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG))
         .matches(APPLICATION_ID + "\\.[0-9a-f-]{36}:0");
 
@@ -117,9 +125,44 @@ class EventifyServiceRoutingTest {
     assertThat(owners).containsExactlyInAnyOrder(firstId, secondId);
   }
 
-  private Eventify start(String name) {
+  /** An application with only a command handler and an event sourcing handler still shows its commands. */
+  @Test
+  void aCancelledCommandReadStopsWithoutAffectingAnotherRead() throws Exception {
+    first = start("commands-test", "commands");
+    await().atMost(Duration.ofSeconds(60)).until(() -> first.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
+
+    String id = "item-with-commands";
+    try (KafkaProducer<String, Command> producer = new KafkaProducer<>(
+        Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()), new StringSerializer(), new JsonSerializer<>())) {
+      Command command = Command.builder().payload(CreateItem.builder().id(id).name("Item").build()).build();
+      producer.send(new ProducerRecord<>("commands.item", id, command)).get();
+    }
+
+    EventifyService service = new EventifyService(first);
+    ExecutorService tabs = Executors.newFixedThreadPool(2);
+    try {
+      await().atMost(Duration.ofSeconds(60)).untilAsserted(() ->
+          assertThat(service.getCommands(id, 50, new CancelSignal()))
+              .isInstanceOfSatisfying(ApiResult.Ok.class, ok -> assertThat(((EventifyService.CommandsPage) ok.value()).commands()).isNotEmpty()));
+
+      // Two tabs read the commands at the same time; the first one refreshes, which cancels its read.
+      CancelSignal refreshed = new CancelSignal();
+      refreshed.cancel();
+      Future<ApiResult<EventifyService.CommandsPage>> firstTab = tabs.submit(() -> service.getCommands(id, 50, refreshed));
+      Future<ApiResult<EventifyService.CommandsPage>> secondTab = tabs.submit(() -> service.getCommands(id, 50, new CancelSignal()));
+
+      assertThat(firstTab.get(10, TimeUnit.SECONDS)).isEqualTo(new ApiResult.Unavailable<>("Cancelled"));
+      assertThat(secondTab.get(10, TimeUnit.SECONDS))
+          .isInstanceOfSatisfying(ApiResult.Ok.class, ok -> assertThat(((EventifyService.CommandsPage) ok.value()).commands()).isNotEmpty());
+    } finally {
+      tabs.shutdownNow();
+      service.close();
+    }
+  }
+
+  private Eventify start(String applicationId, String name) {
     Properties properties = new Properties();
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.resolve(name).toString());
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);

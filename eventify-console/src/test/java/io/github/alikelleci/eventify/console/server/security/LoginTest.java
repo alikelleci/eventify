@@ -128,7 +128,7 @@ class LoginTest {
   void applicationsConnectWithoutALogin() {
     NodeInfo info = new NodeInfo("login-test", "login-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
     ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
-        (route, data) -> new Reply(ReplyHeader.ok(), new byte[0]));
+        (route, data, cancel) -> new Reply(ReplyHeader.ok(), new byte[0]));
     connector.start();
     try {
       await().atMost(Duration.ofSeconds(15)).until(() -> registry.find("login-test.a:0") != null);

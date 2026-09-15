@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BiFunction;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
@@ -103,7 +102,7 @@ class ConsoleServerTest {
   @Test
   void aRetryPassesTheCommandOnUnread() {
     Map<String, String> received = new ConcurrentHashMap<>();
-    connect("retry", "retry.a:0", (route, data) -> {
+    connect("retry", "retry.a:0", (route, data, cancel) -> {
       received.put(route, new String(data, StandardCharsets.UTF_8));
       return new Reply(ReplyHeader.ok(), new byte[0]);
     });
@@ -151,11 +150,11 @@ class ConsoleServerTest {
         .expectStatus().isNotFound();
   }
 
-  private ConsoleConnector connect(String applicationId, String nodeId, BiFunction<String, byte[], Reply> handler) {
+  private ConsoleConnector connect(String applicationId, String nodeId, ConsoleConnector.Handler handler) {
     NodeInfo info = new NodeInfo(applicationId, nodeId, "localhost", "test", ConsoleProtocol.VERSION);
-    ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data) -> {
+    ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data, cancel) -> {
       calls.computeIfAbsent(nodeId, id -> new AtomicInteger()).incrementAndGet();
-      return handler.apply(route, data);
+      return handler.handle(route, data, cancel);
     });
     connector.start();
     connectors.add(connector);
@@ -175,11 +174,11 @@ class ConsoleServerTest {
             .value(value -> assertThat(count == 0 ? String.valueOf(value) : value.toString()).isEqualTo(count == 0 ? "[]" : "[" + count + "]")));
   }
 
-  private static BiFunction<String, byte[], Reply> ok(String json) {
-    return (route, data) -> new Reply(ReplyHeader.ok(), json.getBytes(StandardCharsets.UTF_8));
+  private static ConsoleConnector.Handler ok(String json) {
+    return (route, data, cancel) -> new Reply(ReplyHeader.ok(), json.getBytes(StandardCharsets.UTF_8));
   }
 
-  private static BiFunction<String, byte[], Reply> notOwner(String owner) {
-    return (route, data) -> new Reply(ReplyHeader.notOwner(owner), new byte[0]);
+  private static ConsoleConnector.Handler notOwner(String owner) {
+    return (route, data, cancel) -> new Reply(ReplyHeader.notOwner(owner), new byte[0]);
   }
 }

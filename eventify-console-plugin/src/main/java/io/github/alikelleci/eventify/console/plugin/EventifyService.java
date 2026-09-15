@@ -20,6 +20,7 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -44,6 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 
@@ -131,8 +133,15 @@ public class EventifyService {
     return new ApiResult.Ok<>(null);
   }
 
-  public ApiResult<CommandsPage> getCommands(String aggregateId, int limit) {
-    Set<String> resultTopics = eventify.getResultTopics();
+  /**
+   * Reads the aggregate's commands from the result topics. Every call has its own consumer, so calls never affect each
+   * other. When the request is cancelled, only this call's consumer stops, the way Kafka intends: with a wakeup.
+   */
+  public ApiResult<CommandsPage> getCommands(String aggregateId, int limit, CancelSignal cancel) {
+    // Eventify writes the result of every handled command to its command topic with .results.
+    Set<String> resultTopics = eventify.getCommandTopics().stream()
+        .map(topic -> topic.concat(".results"))
+        .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {
       return new ApiResult.Ok<>(new CommandsPage(List.of()));
     }
@@ -151,7 +160,9 @@ public class EventifyService {
     List<Command> results = new ArrayList<>();
     JsonDeserializer<Command> commandDeserializer = new JsonDeserializer<>(Command.class, objectMapper);
 
-    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props)) {
+    // Closed in reverse order: the wakeup is unregistered before the consumer closes.
+    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+         AutoCloseable stopOnCancel = cancel.onCancel(consumer::wakeup)) {
       for (String topic : resultTopics) {
         try {
           List<TopicPartition> allPartitions = consumer.partitionsFor(topic).stream()
@@ -191,10 +202,15 @@ public class EventifyService {
               }
             }
           }
+        } catch (WakeupException e) {
+          throw e;
         } catch (Exception e) {
           log.warn("Failed to query command result topic {}", topic, e);
         }
       }
+    } catch (WakeupException e) {
+      log.debug("Stopped reading commands for aggregate {}: the request was cancelled", aggregateId);
+      return new ApiResult.Unavailable<>("Cancelled");
     } catch (Exception e) {
       log.error("Unexpected error querying commands for aggregate {}", aggregateId, e);
       return new ApiResult.Unavailable<>("Unexpected error");

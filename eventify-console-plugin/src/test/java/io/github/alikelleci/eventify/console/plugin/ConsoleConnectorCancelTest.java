@@ -1,0 +1,135 @@
+package io.github.alikelleci.eventify.console.plugin;
+
+import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
+import io.github.alikelleci.eventify.console.protocol.NodeInfo;
+import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
+import io.github.alikelleci.eventify.console.protocol.Route;
+import io.rsocket.Payload;
+import io.rsocket.RSocket;
+import io.rsocket.core.RSocketServer;
+import io.rsocket.transport.netty.server.CloseableChannel;
+import io.rsocket.transport.netty.server.WebsocketServerTransport;
+import io.rsocket.util.DefaultPayload;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import reactor.core.Disposable;
+import reactor.core.publisher.Mono;
+
+import java.net.ServerSocket;
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+/** The console cancels a request while its query waits or runs, e.g. because someone refreshed the page. */
+class ConsoleConnectorCancelTest {
+
+  private final AtomicReference<RSocket> application = new AtomicReference<>();
+  private final List<Disposable> requests = new ArrayList<>();
+  /** What each query saw, by the name it was sent with. */
+  private final Map<String, String> outcomes = new ConcurrentHashMap<>();
+  private final CountDownLatch release = new CountDownLatch(1);
+  private CloseableChannel console;
+  private ConsoleConnector connector;
+
+  @BeforeEach
+  void setUp() throws Exception {
+    int port;
+    try (ServerSocket socket = new ServerSocket(0)) {
+      port = socket.getLocalPort();
+    }
+    console = RSocketServer.create((setup, sendingSocket) -> {
+          application.set(sendingSocket);
+          return Mono.just(new RSocket() {});
+        })
+        .bind(WebsocketServerTransport.create("localhost", port))
+        .block(Duration.ofSeconds(10));
+
+    NodeInfo info = new NodeInfo("cancel-test", "cancel-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
+    connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data, cancel) -> {
+      String name = new String(data, StandardCharsets.UTF_8);
+      try {
+        if (name.startsWith("busy")) {
+          // Occupies one of the connector's threads until the test releases it.
+          release.await(10, TimeUnit.SECONDS);
+          outcomes.put(name, "finished");
+        } else {
+          // A slow query, like reading commands from Kafka, that stops as soon as it's told to.
+          long until = System.currentTimeMillis() + 3000;
+          while (!cancel.isCancelled() && System.currentTimeMillis() < until) {
+            Thread.sleep(20);
+          }
+          outcomes.put(name, cancel.isCancelled() ? "stopped" : "finished");
+        }
+      } catch (InterruptedException e) {
+        outcomes.put(name, "interrupted");
+      }
+      return new ConsoleRequestHandler.Reply(ReplyHeader.ok(), name.getBytes(StandardCharsets.UTF_8));
+    });
+    connector.start();
+    await().atMost(Duration.ofSeconds(10)).until(() -> connector.isConnected());
+  }
+
+  @AfterEach
+  void tearDown() {
+    release.countDown();
+    requests.forEach(Disposable::dispose);
+    if (connector != null) connector.stop();
+    if (console != null) console.dispose();
+  }
+
+  @Test
+  void aRunningQueryIsToldToStopAndNotInterrupted() {
+    Disposable request = send("slow").subscribe();
+    await().pollDelay(Duration.ofMillis(300)).atMost(Duration.ofSeconds(1)).until(() -> true);
+    request.dispose();
+
+    await().atMost(Duration.ofSeconds(2)).until(() -> outcomes.containsKey("slow"));
+    assertThat(outcomes.get("slow")).isEqualTo("stopped");
+  }
+
+  @Test
+  void aWaitingQueryThatIsCancelledIsSkipped() {
+    // All four threads are busy, so the next query has to wait...
+    for (int i = 0; i < 4; i++) {
+      requests.add(send("busy-" + i).subscribe());
+    }
+    Disposable waiting = send("waiting").subscribe();
+    await().pollDelay(Duration.ofMillis(300)).atMost(Duration.ofSeconds(1)).until(() -> true);
+
+    // ...and is cancelled before its turn.
+    waiting.dispose();
+    release.countDown();
+
+    await().atMost(Duration.ofSeconds(5)).until(() -> outcomes.keySet().stream().filter(k -> k.startsWith("busy")).count() == 4);
+    await().during(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(2)).until(() -> !outcomes.containsKey("waiting"));
+  }
+
+  @Test
+  void cancellingOneRequestDoesNotAffectAnother() {
+    Disposable cancelled = send("tab-1").subscribe();
+    Mono<String> other = send("tab-2").map(payload -> payload.getDataUtf8());
+
+    await().pollDelay(Duration.ofMillis(300)).atMost(Duration.ofSeconds(1)).until(() -> true);
+    cancelled.dispose();
+
+    assertThat(other.block(Duration.ofSeconds(10))).isEqualTo("tab-2");
+    assertThat(outcomes.get("tab-2")).isEqualTo("finished");
+    await().atMost(Duration.ofSeconds(2)).until(() -> "stopped".equals(outcomes.get("tab-1")));
+  }
+
+  private Mono<Payload> send(String name) {
+    return application.get().requestResponse(DefaultPayload.create(
+        name.getBytes(StandardCharsets.UTF_8), Route.COMMANDS.name().getBytes(StandardCharsets.UTF_8)));
+  }
+}

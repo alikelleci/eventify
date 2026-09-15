@@ -248,7 +248,7 @@ public class Eventify {
     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
   }
 
-  private Set<String> getCommandTopics() {
+  public Set<String> getCommandTopics() {
     return commandHandlers.keySet().stream()
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
@@ -268,7 +268,7 @@ public class Eventify {
         .collect(Collectors.toSet());
   }
 
-  public Set<String> getResultTopics() {
+  private Set<String> getResultTopics() {
     return resultHandlers.keySet().stream()
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)

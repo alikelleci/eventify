@@ -45,7 +45,7 @@ class ConsoleConnectorReconnectTest {
 
     NodeInfo info = new NodeInfo("reconnect-test", "reconnect-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
-        (route, data) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
+        (route, data, cancel) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
     connector.start();
     await().atMost(Duration.ofSeconds(10)).until(() -> connector.isConnected() && setups.get() == 1);
 
@@ -69,7 +69,7 @@ class ConsoleConnectorReconnectTest {
 
     NodeInfo info = new NodeInfo("reject-test", "reject-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
-        (route, data) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
+        (route, data, cancel) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
     connector.start();
 
     // One attempt, then the next one only after the long delay: not a new connection every second.
