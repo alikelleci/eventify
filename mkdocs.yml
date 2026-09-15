@@ -1,6 +1,6 @@
 site_name: Eventify
 site_url: https://alikelleci.github.io/eventify/docs/
-site_description: Functional event-sourcing framework for the JVM
+site_description: Event sourcing for Java, built on Kafka
 site_author: Ali Kelleci
 repo_name: alikelleci/eventify
 repo_url: https://github.com/alikelleci/eventify

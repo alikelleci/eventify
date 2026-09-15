@@ -1,16 +1,22 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, input, signal } from '@angular/core';
 import { copyToClipboard } from '@eventify/ui/clipboard';
-import { highlightJava } from '../shared/java-highlight';
+import { highlightJava } from './java-highlight';
 
-interface SetupStep {
+export interface SetupStep {
   title: string;
   /** HTML, so names can be set in <code>. */
   text: string;
   /** Shown above the code, like a file or window name. */
   label: string;
+  language: 'shell' | 'xml' | 'java';
   code: string;
-  /** The code as HTML, highlighted once. */
-  html: string;
+}
+
+/** What the applications connect to in the picture next to the steps. */
+export interface SetupHub {
+  label: string;
+  /** A PrimeIcons class, e.g. pi-bolt. */
+  icon: string;
 }
 
 const escapeHtml = (code: string) => code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -23,43 +29,12 @@ const highlightXml = (code: string) =>
 const highlightShell = (code: string) =>
   escapeHtml(code).replace(/^(docker run)/, '<span class="text-primary-300">$1</span>').replace(/(\s-[\w-]+)/g, '<span class="text-slate-400">$1</span>');
 
-const DOCKER = 'docker run -p 8080:8080 ghcr.io/alikelleci/eventify-console:latest';
-
-const DEPENDENCY = `<dependency>
-  <groupId>io.github.alikelleci</groupId>
-  <artifactId>eventify-console-plugin</artifactId>
-  <version>x.y.z</version>
-</dependency>`;
-
-const REGISTER = `Eventify eventify = Eventify.builder()
-    .streamsConfig(props)
-    .registerPlugin(EventifyConsolePlugin.builder()
-        .url("http://localhost:8080")
-        .build())
-    .build();`;
-
-/** The same three steps as in the console's documentation. */
-const STEPS: SetupStep[] = [
-  {
-    title: 'Run the console',
-    text: 'A single container, nothing else to install. Then open <code>localhost:8080</code>.',
-    label: 'Terminal', code: DOCKER, html: highlightShell(DOCKER),
-  },
-  {
-    title: 'Add the plugin',
-    text: 'Add the console plugin to your application.',
-    label: 'pom.xml', code: DEPENDENCY, html: highlightXml(DEPENDENCY),
-  },
-  {
-    title: 'Connect your application',
-    text: 'Point it at the console, and you’re done.',
-    label: 'Java', code: REGISTER, html: highlightJava(REGISTER),
-  },
-];
+const HIGHLIGHT = { shell: highlightShell, xml: highlightXml, java: highlightJava };
 
 /**
- * How to run the console: the setup steps with their code, and next to them the applications connecting to it.
- * Kept light on purpose: the page advertises the console, the docs explain how it works.
+ * The "get started" block of the website's pages: numbered setup steps with copyable code, and next to them
+ * a picture of the applications connecting to what the page is about (Kafka on the home page, the console on its page).
+ * Kept light on purpose: the pages advertise, the docs explain how it works.
  */
 @Component({
   selector: 'app-get-started',
@@ -69,7 +44,7 @@ const STEPS: SetupStep[] = [
 
       <!-- The steps, numbered on a line -->
       <ol class="relative">
-        @for (step of steps; track step.title; let i = $index) {
+        @for (step of highlighted(); track step.title; let i = $index) {
           <li class="relative grid grid-cols-[2rem_minmax(0,1fr)] gap-x-4" [class.pb-10]="!$last">
             @if (!$last) { <span class="absolute top-9 bottom-1 left-[calc(1rem-0.5px)] w-px bg-surface-200 dark:bg-surface-700" aria-hidden="true"></span> }
             <span class="flex h-8 w-8 items-center justify-center rounded-full border border-primary-200 bg-primary-50 text-sm font-semibold text-primary-700 dark:border-primary-800 dark:bg-primary-950 dark:text-primary-300">{{ i + 1 }}</span>
@@ -93,15 +68,15 @@ const STEPS: SetupStep[] = [
         }
       </ol>
 
-      <!-- Your applications connect to the console by themselves -->
+      <!-- The applications, connecting to the hub -->
       <figure class="rounded-2xl border border-surface-200 bg-surface-0 p-6 sm:p-8 lg:sticky lg:top-8 dark:border-surface-800 dark:bg-surface-900">
         <div class="flex flex-col items-center" aria-hidden="true">
           <div class="flex w-full max-w-[16rem] items-center gap-3 rounded-xl border border-primary-300 bg-primary-50 px-4 py-3 shadow-[0_0_0_4px_color-mix(in_srgb,var(--p-primary-500)_12%,transparent)] dark:border-primary-700 dark:bg-primary-950">
-            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-500 text-white"><i class="pi pi-bolt text-sm"></i></span>
-            <span class="text-sm font-semibold text-surface-900 dark:text-surface-0">Eventify Console</span>
+            <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-500 text-white"><i class="pi text-sm" [class]="hub().icon"></i></span>
+            <span class="text-sm font-semibold text-surface-900 dark:text-surface-0">{{ hub().label }}</span>
           </div>
 
-          <!-- Flowing towards the console -->
+          <!-- Flowing towards the hub -->
           <div class="relative h-16 w-full">
             <svg class="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 300 64" preserveAspectRatio="none" fill="none">
               @for (path of connections; track path) {
@@ -132,10 +107,16 @@ const STEPS: SetupStep[] = [
   `,
 })
 export class GetStartedComponent {
-  readonly steps = STEPS;
+  steps = input.required<SetupStep[]>();
+  hub = input.required<SetupHub>();
+
+  /** The steps with their code highlighted, once per change of steps. */
+  readonly highlighted = computed(() => this.steps().map(step => ({ ...step, html: HIGHLIGHT[step.language](step.code) })));
+
+  /** The same example applications on every page. */
   readonly apps = ['orders', 'payments', 'shipping'];
 
-  /** From the centre of each application up to the console. */
+  /** From the centre of each application up to the hub. */
   readonly connections = ['M50 64 C50 32 150 32 150 0', 'M150 64 L150 0', 'M250 64 C250 32 150 32 150 0'];
 
   /** The step whose code was just copied, for a moment. */
@@ -147,7 +128,7 @@ export class GetStartedComponent {
   }
 
   async copy(index: number) {
-    if (!await copyToClipboard(this.steps[index].code)) return;
+    if (!await copyToClipboard(this.steps()[index].code)) return;
     this.copied.set(index);
     clearTimeout(this.resetCopied);
     this.resetCopied = setTimeout(() => this.copied.set(null), 2000);

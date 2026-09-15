@@ -9,8 +9,8 @@ export const routes: Routes = [
     path: '',
     component: WebsiteLayoutComponent,
     children: [
-      { path: '', component: HomeComponent, title: 'Eventify | Functional event sourcing for the JVM' },
-      { path: 'console', component: ConsoleComponent, title: 'Eventify Console | Operational visibility for event-sourced systems' },
+      { path: '', component: HomeComponent, title: 'Eventify | Event sourcing for Java, built on Kafka' },
+      { path: 'console', component: ConsoleComponent, title: 'Eventify Console | See everything, debug anything' },
     ],
   },
   { path: '**', redirectTo: '' },

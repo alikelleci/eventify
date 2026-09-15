@@ -48,29 +48,29 @@ eventify.start();
 | Method | Required | Description |
 |---|---|---|
 | `url(String)` | Yes | The console's address, e.g. `http://localhost:8080`. Use `https://` when the console is served over TLS. |
-| `token(String)` | No | The console's application token (see [Security](#security)). |
+| `token(String)` | When the console requires one | The console's application token. See [Application token](#application-token). |
 
 ## Configuring the console
 
-The console can be configured with following environment variables:
+The console is configured with the following environment variables:
 
 | Variable | Default | Description |
 |---|---|---|
-| `SERVER_PORT` | `8080` | The port that is running on. |
+| `SERVER_PORT` | `8080` | The port the console listens on, for both the UI and the application connections. |
 | `EVENTIFY_CONSOLE_REQUESTTIMEOUT` | `60s` | How long to wait for an application to respond. |
-| `EVENTIFY_CONSOLE_APPTOKEN` | – | The token applications must provide when connecting. See [Security](#security). |
-| `EVENTIFY_CONSOLE_OIDC_ISSUERURI` | – | The identity provider URL, e.g. https://login.example.com/realms/ops. Setting this enables login. |
+| `EVENTIFY_CONSOLE_APPTOKEN` | – | The token applications must provide when connecting. See [Application token](#application-token). |
+| `EVENTIFY_CONSOLE_OIDC_ISSUERURI` | – | The identity provider URL, e.g. `https://login.example.com/realms/ops`. Setting this enables login. See [Login](#login). |
 | `EVENTIFY_CONSOLE_OIDC_CLIENTID` | – | The console's client ID at the identity provider. |
 | `EVENTIFY_CONSOLE_OIDC_CLIENTSECRET` | – | The console's client secret at the identity provider. |
 
 ## Security
 
-The console supports two authentication methods:
+The console supports two kinds of authentication:
 
-- **User authentication** through an OpenID Connect identity provider.
-- **Application authentication** using a token.
+- **Users** log in through an OpenID Connect identity provider.
+- **Applications** connect with a token.
 
-For production, configure both methods. If either is not configured, the console will show a warning at startup.
+Both are optional, so the console works out of the box on your machine. In production, configure both: the console logs a warning at startup for each one that is missing.
 
 ### Login
 
@@ -91,17 +91,21 @@ The console supports any OpenID Connect identity provider, such as Keycloak, Mic
 
 ### Application token
 
-The application token prevents unauthorized clients from connecting to the console.
+The application token prevents unauthorized clients from connecting to the console as an application.
 
 Start the console with a token:
+
 ```bash
 docker run -p 8080:8080 -e EVENTIFY_CONSOLE_APPTOKEN=... ghcr.io/alikelleci/eventify-console:latest
 ```
 
-Configure the same token in the Eventify client:
+Configure the same token in the plugin of every application. Read it from the environment rather than putting it in code:
+
 ```java
 EventifyConsolePlugin.builder()
-    .url("http://eventify-console:8080")
+    .url("http://localhost:8080")
     .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))
     .build()
 ```
+
+Applications without the right token are refused.

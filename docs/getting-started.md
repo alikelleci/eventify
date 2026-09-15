@@ -41,7 +41,7 @@ Eventify eventify = Eventify.builder()
 eventify.start();
 ```
 
-Each handler class is a plain Java object. Eventify inspects each object for annotated methods and registers them automatically. You can register as many handler classes as your application requires.
+Each handler class is a plain Java object. Eventify inspects each object for annotated methods and registers them automatically. You can register as many handler classes as your application requires. See [Handlers](handlers.md) for how to write them.
 
 ### Builder options
 
@@ -102,3 +102,9 @@ public class OrderEventHandler {
 The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application context is ready.
 
 > **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`).
+
+## Next steps
+
+- [Domain Modeling](domain-modeling.md): define your aggregates, commands, and events.
+- [Command Gateway](command-gateway.md): send commands from your API layer.
+- [Eventify Console](console.md): inspect your running applications.

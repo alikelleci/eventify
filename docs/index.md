@@ -29,3 +29,13 @@ A class that reacts to published events to perform side effects, such as updatin
 
 **Upcaster**  
 A class that migrates older event data to a newer schema. As your event structure evolves, upcasters transparently transform stored event data before it is deserialized.
+
+## Eventify Console
+
+[Eventify Console](console.md) is a web interface for your Eventify applications. Browse the event history of any aggregate, see its state after every event, and trace commands to the events they produced, including why a command failed. It runs as a Docker container, and your applications connect to it.
+
+## Next steps
+
+- [Getting Started](getting-started.md): add Eventify to your project and start your first application.
+- [Domain Modeling](domain-modeling.md): define aggregates, commands, and events.
+- [Handlers](handlers.md): write the business logic.

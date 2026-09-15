@@ -38,7 +38,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Event replay</h3>
-          <p class="s-text">Recreate your data at any point in time by replaying events. Your complete history is always there.</p>
+          <p class="s-text">Rebuild your data as it was at any moment by replaying its events. The complete history is always there.</p>
         </div>
       </article>
 
@@ -72,7 +72,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Snapshots</h3>
-          <p class="s-text">Speed up your system with periodic snapshots. Load state instantly, not from the beginning of time.</p>
+          <p class="s-text">Save the state now and then, so only the latest events need to be replayed.</p>
         </div>
       </article>
 
@@ -94,7 +94,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Upcasting</h3>
-          <p class="s-text">Evolve your data model without migrations. Old events transform automatically as you need them.</p>
+          <p class="s-text">Change your events as your application grows. Older events are upgraded to the new shape when they're read.</p>
         </div>
       </article>
 
@@ -115,7 +115,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Distributed</h3>
-          <p class="s-text">Horizontally scalable by design. Run more instances as your system grows.</p>
+          <p class="s-text">Run more instances as your system grows. The work is spread over them automatically.</p>
         </div>
       </article>
     </div>

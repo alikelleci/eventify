@@ -5,6 +5,7 @@ import { DOCS_HOME_URL, GITHUB_URL } from '@eventify/ui/links';
 import { ConsoleScreenComponent } from '../console/showcase/console-screen.component';
 import { FeatureStoryComponent } from './feature-story.component';
 import { highlightJava } from '../shared/java-highlight';
+import { GetStartedComponent, SetupHub, SetupStep } from '../shared/get-started.component';
 
 interface CodeSample {
   label: string;
@@ -16,7 +17,7 @@ interface CodeSample {
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [RouterLink, ButtonModule, FeatureStoryComponent, ConsoleScreenComponent],
+  imports: [RouterLink, ButtonModule, FeatureStoryComponent, ConsoleScreenComponent, GetStartedComponent],
   host: { class: 'block h-full' },
 })
 export class HomeComponent {
@@ -75,11 +76,45 @@ export class HomeComponent {
   // and doesn't change height when switching tabs.
   readonly highlightedSamples = this.samples.map(sample => highlightJava(sample.code));
 
-  readonly dependency = `<dependency>
+  /** The same steps as the Getting Started page of the documentation. */
+  readonly steps: SetupStep[] = [
+    {
+      title: 'Add the dependency',
+      text: 'Add Eventify to your project. Using Spring Boot? Use <code>eventify-spring-boot-starter</code> instead.',
+      label: 'pom.xml', language: 'xml',
+      code: `<dependency>
   <groupId>io.github.alikelleci</groupId>
   <artifactId>eventify-core</artifactId>
   <version>x.y.z</version>
-</dependency>`;
+</dependency>`,
+    },
+    {
+      title: 'Write your business logic',
+      text: 'Plain Java classes with annotated methods. No base classes to extend, no interfaces to implement.',
+      label: 'Java', language: 'java',
+      code: `public class OrderCommandHandler {
+
+    @HandleCommand
+    public OrderEvent handle(PlaceOrder command, Order state) {
+        return OrderPlaced.builder()
+            .id(command.getId())
+            .build();
+    }
+}`,
+    },
+    {
+      title: 'Register and start',
+      text: 'Point Eventify at your Kafka broker, register your handlers, and start.',
+      label: 'Java', language: 'java',
+      code: `Eventify eventify = Eventify.builder()
+    .streamsConfig(props)
+    .registerHandler(new OrderCommandHandler())
+    .build();
+
+eventify.start();`,
+    },
+  ];
+  readonly hub: SetupHub = { label: 'Kafka', icon: 'pi-server' };
 
   openDocs() {
     window.open(this.docsUrl, '_blank', 'noopener');

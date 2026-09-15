@@ -32,9 +32,9 @@
   <section class="border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Replay your data in real time</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Replay your data, step by step</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          Walk through every event and its impact. See the state before and after each change, understand the exact sequence of what happened.
+          Walk through everything that happened, in order. See the data before and after each change, and exactly what each change did.
         </p>
       </div>
       <app-aggregate-replay class="mt-12 block" />
@@ -47,7 +47,7 @@
       <div class="max-w-2xl">
         <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Trace commands and understand failures</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          See which events each command created and understand exactly why it failed. Debug faster with complete visibility into your command flow.
+          See what every command did, and why one failed. Once the problem is fixed, send it again right from the console.
         </p>
       </div>
       <app-command-trace class="mt-12 block" />
@@ -64,7 +64,7 @@
         </p>
       </div>
 
-      <app-get-started class="mt-12 block" />
+      <app-get-started [steps]="steps" [hub]="hub" class="mt-12 block" />
 
       <div class="mt-12 flex flex-wrap items-center gap-x-6 gap-y-4">
         <p-button label="Read the docs" icon="pi pi-book" (onClick)="openDocs()" />
