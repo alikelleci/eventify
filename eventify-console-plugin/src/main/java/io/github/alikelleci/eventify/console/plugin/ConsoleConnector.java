@@ -40,8 +40,8 @@ public class ConsoleConnector {
   private static final Duration MAX_BACKOFF = Duration.ofSeconds(30);
 
   /**
-   * RSocket doesn't confirm that the console accepted a connection: a rejection (e.g. a wrong token) arrives as the
-   * connection closing right after it opened. A connection still open after this long was accepted.
+   * RSocket doesn't confirm that the console accepted a connection: a rejection (e.g. a wrong token)
+   * arrives as the connection closing right after it opened. A connection still open after this long was accepted.
    */
   private static final Duration ACCEPTED_AFTER = Duration.ofSeconds(1);
 
@@ -158,7 +158,7 @@ public class ConsoleConnector {
     }
 
     if (error instanceof RejectedSetupException rejected) {
-      // Trying again every second won't help (a wrong token stays wrong), so try again slowly and say why once.
+      // Trying again every second won't help (the console will refuse again), so try again slowly and say why once.
       if (!String.valueOf(rejected.getMessage()).equals(lastRejection)) {
         log.error("The Eventify Console at {} rejected this instance: {}. Trying again every {} seconds.",
             uri, rejected.getMessage(), MAX_BACKOFF.toSeconds());

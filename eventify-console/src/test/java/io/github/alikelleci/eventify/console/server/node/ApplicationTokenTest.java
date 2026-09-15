@@ -1,11 +1,10 @@
-package io.github.alikelleci.eventify.console.server.security;
+package io.github.alikelleci.eventify.console.server.node;
 
 import io.github.alikelleci.eventify.console.plugin.ConsoleConnector;
 import io.github.alikelleci.eventify.console.plugin.ConsoleRequestHandler.Reply;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
-import io.github.alikelleci.eventify.console.server.node.NodeRegistry;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

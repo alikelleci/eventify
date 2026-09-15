@@ -62,7 +62,7 @@ The application appears in the console under its `application.id`. All instances
 
 When the console is unreachable, or the connection drops (for example while the console is redeployed), the plugin keeps reconnecting in the background, waiting up to 30 seconds between attempts. Your application keeps running normally either way.
 
-If the console refuses the application, for example because of a wrong token, the plugin logs the reason once and tries again every 30 seconds.
+If the console refuses the application, for example because it doesn't support the application's protocol version yet, the plugin logs the reason once and tries again every 30 seconds.
 
 ### Plugin options
 
@@ -143,9 +143,11 @@ Every page and API call then needs a login. The console shows who is logged in, 
 
 Behind a proxy that terminates TLS, make sure the proxy sends the `X-Forwarded-*` headers, so the redirects use the address people opened.
 
+Your applications don't log in: they use the same console address as people, and prove who they are with the application token. If your organization also puts a login in front of the console (for example on a load balancer), give applications an address that doesn't go through that login, such as the console's internal address in your network.
+
 ### Application token
 
-Start the console with a secret token, and give every application the same token:
+Without a token, any client that can reach the console can connect as an application, and could show made-up data or receive retries. To prevent that, start the console with a secret token, and give every application the same token:
 
 ```bash
 docker run -p 8080:8080 -e EVENTIFY_CONSOLE_APPTOKEN=... ghcr.io/alikelleci/eventify-console:latest
@@ -158,6 +160,4 @@ EventifyConsolePlugin.builder()
     .build()
 ```
 
-The console refuses applications without the right token, so nobody can connect a fake application and serve made-up data or receive retries.
-
-Applications connect on the `/rsocket` endpoint and don't log in with the identity provider: the token is how they authenticate.
+The console refuses applications without the right token; they log the reason and try again every 30 seconds. Without `EVENTIFY_CONSOLE_APPTOKEN`, the console accepts every application and logs a warning at startup.

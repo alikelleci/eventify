@@ -68,7 +68,7 @@ class ConsoleConnectorReconnectTest {
     console = startConsole(port);
 
     NodeInfo info = new NodeInfo("reject-test", "reject-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
-    connector = new ConsoleConnector(URI.create("http://localhost:" + port), "wrong", info,
+    connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
         (route, data) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
     connector.start();
 
@@ -84,7 +84,7 @@ class ConsoleConnectorReconnectTest {
         .acceptor((setup, sendingSocket) -> {
           setups.incrementAndGet();
           if (rejecting) {
-            return Mono.error(new RejectedSetupException("Wrong or missing application token"));
+            return Mono.error(new RejectedSetupException("Protocol version 2 is not supported by this console (up to 1): upgrade the console"));
           }
           connections.add(sendingSocket);
           return Mono.just(new RSocket() {});
