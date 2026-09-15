@@ -178,15 +178,15 @@ const APPS: AppEntry[] = [
   ] },
   // TEMP: many more applications, to preview the home dashboard with a long list. Remove this block afterwards.
   ...[
-    { name: 'shipping', instances: 3, versions: ['1.4.0', '1.4.0', '1.5.0'] },   // mixed versions (rolling deploy)
+    { name: 'shipping', instances: 3, versions: ['1.4.0', '1.4.0', '1.5.0'] },   // mixed: an upgrade rolling out (2 old, 1 new)
+    { name: 'returns', instances: 3, versions: ['1.3.0', '1.4.0', '1.5.0'] },    // mixed: every instance on its own version
     { name: 'inventory', instances: 2 },
     { name: 'customers', instances: 6 },                                         // more instances than a card lists
-    { name: 'events-gateway', instances: 16 },                                   // many instances
-    { name: 'billing', instances: 2 },
+    { name: 'events-gateway', instances: 16, versions: ['2.2.0'] },              // mixed: one instance left behind (1 old, 15 new)
+    { name: 'billing', instances: 2, versions: ['1.9.0', '1.9.0'] },            // not mixed: an older version, but the same on all instances
     { name: 'notifications', instances: 1 },
     { name: 'catalog', instances: 4 },
     { name: 'pricing', instances: 2 },
-    { name: 'returns', instances: 1 },
     { name: 'loyalty', instances: 1 },
     { name: 'search-indexer', instances: 3 },
     { name: 'fraud-detection', instances: 2 },

@@ -16,6 +16,36 @@ export interface AppEntry {
   nodes: AppNode[];
 }
 
+/** A version the instances of an application run, and how many of them run it. */
+export interface VersionCount {
+  version: string;
+  instances: number;
+}
+
+/**
+ * The plugin versions an application's instances run, newest first, when they differ (e.g. while an upgrade rolls out);
+ * otherwise empty. Only the instances of one application are compared, not applications with each other or with the console.
+ */
+export function mixedVersions(app: AppEntry): VersionCount[] {
+  const counts = new Map<string, number>();
+  for (const node of app.nodes) {
+    if (node.version) counts.set(node.version, (counts.get(node.version) ?? 0) + 1);
+  }
+  if (counts.size < 2) return [];
+  return [...counts].map(([version, instances]) => ({ version, instances })).sort((a, b) => compareVersions(b.version, a.version));
+}
+
+/** Compares versions like 1.10.0 and 1.9.2 part by part, as numbers where they are numbers. */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(/[.-]/), pb = b.split(/[.-]/);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const x = pa[i] ?? '', y = pb[i] ?? '';
+    const diff = /^\d+$/.test(x) && /^\d+$/.test(y) ? Number(x) - Number(y) : x.localeCompare(y);
+    if (diff) return diff;
+  }
+  return 0;
+}
+
 /** How often the list of applications is refreshed, so new and stopped applications show up by themselves. */
 const REFRESH_MS = 5000;
 
