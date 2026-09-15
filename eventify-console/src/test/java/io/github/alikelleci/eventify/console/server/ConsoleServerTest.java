@@ -153,7 +153,7 @@ class ConsoleServerTest {
 
   private ConsoleConnector connect(String applicationId, String nodeId, BiFunction<String, byte[], Reply> handler) {
     NodeInfo info = new NodeInfo(applicationId, nodeId, "localhost", "test", ConsoleProtocol.VERSION);
-    ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), info, (route, data) -> {
+    ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data) -> {
       calls.computeIfAbsent(nodeId, id -> new AtomicInteger()).incrementAndGet();
       return handler.apply(route, data);
     });

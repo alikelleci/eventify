@@ -4,7 +4,8 @@ package io.github.alikelleci.eventify.console.protocol;
  * How an application and the console talk to each other.
  *
  * <p>The application connects to the console over RSocket (on WebSocket) at {@link #RSOCKET_PATH} and sends a
- * {@link NodeInfo} as the setup data. From then on the console sends requests to the application:
+ * {@link NodeInfo} as the setup data, and the console's application token as the setup metadata (UTF-8 text, empty
+ * without a token). From then on the console sends requests to the application:
  * <ul>
  *   <li>request metadata: the {@link Route} name, as UTF-8 text</li>
  *   <li>request data: the JSON of the route's request (see {@link Route})</li>

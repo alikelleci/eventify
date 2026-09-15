@@ -17,18 +17,21 @@ import java.net.URI;
 public class EventifyConsolePlugin implements EventifyPlugin {
 
   private final URI url;
+  private final String token;
   private EventifyService queryService;
   private ConsoleConnector connector;
 
   /**
-   * @param url the console's address, as opened in the browser, e.g. {@code http://eventify-console:8080}
+   * @param url   the console's address, as opened in the browser, e.g. {@code http://eventify-console:8080}
+   * @param token the console's application token; only needed when the console is started with one
    */
   @Builder
-  private EventifyConsolePlugin(String url) {
+  private EventifyConsolePlugin(String url, String token) {
     if (url == null || url.isBlank()) {
       throw new IllegalArgumentException("The Eventify Console url is required");
     }
     this.url = URI.create(url.trim());
+    this.token = token;
   }
 
   @Override
@@ -48,7 +51,7 @@ public class EventifyConsolePlugin implements EventifyPlugin {
 
     queryService = new EventifyService(eventify);
     ConsoleRequestHandler handler = new ConsoleRequestHandler(queryService, eventify.getObjectMapper());
-    connector = new ConsoleConnector(url, nodeInfo, handler::handle);
+    connector = new ConsoleConnector(url, token, nodeInfo, handler::handle);
     connector.start();
   }
 

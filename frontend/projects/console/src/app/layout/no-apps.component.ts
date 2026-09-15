@@ -32,6 +32,7 @@ export class NoAppsComponent {
     .streamsConfig(props)
     .registerPlugin(EventifyConsolePlugin.builder()
         .url("${location.origin}")
+        .token(System.getenv("EVENTIFY_CONSOLE_TOKEN")) // only when the console requires a token
         .build())
     .build();`;
 }

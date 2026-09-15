@@ -44,7 +44,7 @@ class ConsoleConnectorReconnectTest {
     console = startConsole(port);
 
     NodeInfo info = new NodeInfo("reconnect-test", "reconnect-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
-    connector = new ConsoleConnector(URI.create("http://localhost:" + port), info,
+    connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
         (route, data) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
     connector.start();
     await().atMost(Duration.ofSeconds(10)).until(() -> connector.isConnected() && setups.get() == 1);
@@ -68,7 +68,7 @@ class ConsoleConnectorReconnectTest {
     console = startConsole(port);
 
     NodeInfo info = new NodeInfo("reject-test", "reject-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
-    connector = new ConsoleConnector(URI.create("http://localhost:" + port), info,
+    connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
         (route, data) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
     connector.start();
 

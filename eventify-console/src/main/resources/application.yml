@@ -5,3 +5,4 @@ spring:
 eventify:
   console:
     request-timeout: 60s
+    # app-token: the secret applications send when they connect (EVENTIFY_CONSOLE_APPTOKEN)

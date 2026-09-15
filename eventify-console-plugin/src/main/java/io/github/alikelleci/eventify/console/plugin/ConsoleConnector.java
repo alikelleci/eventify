@@ -20,6 +20,7 @@ import reactor.util.retry.Retry;
 
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.function.BiFunction;
 
@@ -39,7 +40,7 @@ public class ConsoleConnector {
   private static final Duration MAX_BACKOFF = Duration.ofSeconds(30);
 
   /**
-   * RSocket doesn't confirm that the console accepted a connection: a rejection (e.g. an unsupported protocol version)
+   * RSocket doesn't confirm that the console accepted a connection: a rejection (e.g. a wrong token)
    * arrives as the connection closing right after it opened. A connection still open after this long was accepted.
    */
   private static final Duration ACCEPTED_AFTER = Duration.ofSeconds(1);
@@ -48,6 +49,7 @@ public class ConsoleConnector {
   static final int FRAGMENT_SIZE = 16 * 1024;
 
   private final URI uri;
+  private final String token;
   private final NodeInfo nodeInfo;
   private final BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler;
   private final ObjectMapper protocolMapper = new ObjectMapper();
@@ -63,11 +65,13 @@ public class ConsoleConnector {
 
   /**
    * @param consoleUrl the console's address, as opened in the browser, e.g. {@code http://eventify-console:8080}
+   * @param token      the console's application token, or {@code null} when the console doesn't require one
    * @param nodeInfo   what this instance tells the console about itself
    * @param handler    answers a request: route name and request data in, reply out
    */
-  public ConsoleConnector(URI consoleUrl, NodeInfo nodeInfo, BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler) {
+  public ConsoleConnector(URI consoleUrl, String token, NodeInfo nodeInfo, BiFunction<String, byte[], ConsoleRequestHandler.Reply> handler) {
     this.uri = rsocketUri(consoleUrl);
+    this.token = token;
     this.nodeInfo = nodeInfo;
     this.handler = handler;
   }
@@ -98,7 +102,9 @@ public class ConsoleConnector {
 
   private void connect(Duration delay) {
     Mono<RSocket> connect = RSocketConnector.create()
-        .setupPayload(Mono.fromCallable(() -> DefaultPayload.create(protocolMapper.writeValueAsBytes(nodeInfo))))
+        .setupPayload(Mono.fromCallable(() -> DefaultPayload.create(
+            protocolMapper.writeValueAsBytes(nodeInfo),
+            token == null ? new byte[0] : token.getBytes(StandardCharsets.UTF_8))))
         .dataMimeType(ConsoleProtocol.DATA_MIME_TYPE)
         .metadataMimeType(ConsoleProtocol.METADATA_MIME_TYPE)
         .keepAlive(KEEPALIVE_INTERVAL, KEEPALIVE_MAX_LIFETIME)

@@ -69,6 +69,7 @@ If the console refuses the application, for example because it doesn't support t
 | Method | Required | Description |
 |---|---|---|
 | `url(String)` | Yes | The console's address, e.g. `http://eventify-console:8080`. Use `https://` when the console is served over TLS. |
+| `token(String)` | When the console requires it | The console's application token (see [Security](#security)). Read it from the environment, e.g. `System.getenv("EVENTIFY_CONSOLE_TOKEN")`, rather than putting it in code. |
 
 ### Spring Boot
 
@@ -106,6 +107,7 @@ The console is a Spring Boot application, so it can be configured with environme
 |---|---|---|
 | `SERVER_PORT` | `8080` | The port for the UI, the API and the connections from the applications. |
 | `EVENTIFY_CONSOLE_REQUESTTIMEOUT` | `60s` | How long to wait for an application to answer. Reading commands from Kafka can take a while. |
+| `EVENTIFY_CONSOLE_APPTOKEN` | – | The secret applications must send to connect. See [Security](#security). |
 
 ## Running more than one console
 
@@ -115,6 +117,36 @@ Within an environment, run a single console instance. It keeps the connected app
 
 ## Security
 
-The console does not implement authentication yet. Do not expose it publicly. Place it behind a reverse proxy or load balancer that handles authentication, and only allow your applications to reach its `/rsocket` endpoint.
+### Login
 
-Anyone who can reach the console can see the events of the connected applications and retry commands.
+The console has no login of its own. Do not expose it publicly: put it behind a load balancer or proxy that handles login, for example an AWS Application Load Balancer with OIDC authentication, or oauth2-proxy.
+
+Your applications connect to the console too, and they can't log in like a person. Give them an address of the console that doesn't go through that login, such as its internal address in your network:
+
+```java
+EventifyConsolePlugin.builder()
+    .url("http://eventify-console.internal:8080")
+    .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))
+    .build()
+```
+
+If applications have to use the same address as people, whoever manages the login needs to make an exception for the path `/rsocket`, which is where applications connect.
+
+Anyone who gets past the login can see the events of the connected applications and retry commands.
+
+### Application token
+
+Without a token, any client that can reach the console can connect as an application, and could show made-up data or receive retries. To prevent that, start the console with a secret token, and give every application the same token:
+
+```bash
+docker run -p 8080:8080 -e EVENTIFY_CONSOLE_APPTOKEN=... ghcr.io/alikelleci/eventify-console:latest
+```
+
+```java
+EventifyConsolePlugin.builder()
+    .url("http://eventify-console:8080")
+    .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))
+    .build()
+```
+
+The console refuses applications without the right token; they log the reason and try again every 30 seconds. Without `EVENTIFY_CONSOLE_APPTOKEN`, the console accepts every application and logs a warning at startup.
