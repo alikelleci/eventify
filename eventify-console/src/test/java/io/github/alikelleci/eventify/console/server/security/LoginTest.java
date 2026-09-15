@@ -88,6 +88,17 @@ class LoginTest {
   }
 
   @Test
+  void behindAProxyTheLoginUsesTheAddressThePersonOpened() {
+    String location = http().get().uri("/oauth2/authorization/sso")
+        .header("X-Forwarded-Proto", "https")
+        .header("X-Forwarded-Host", "eventify-console.example.com")
+        .exchange()
+        .expectStatus().isFound()
+        .returnResult(Void.class).getResponseHeaders().getLocation().toString();
+    assertThat(location).contains("redirect_uri=https://eventify-console.example.com/login/oauth2/code/sso");
+  }
+
+  @Test
   void aLoggedInPersonSeesTheirNameAndCanUseTheApi() {
     loggedIn().get().uri("/api/session").exchange()
         .expectStatus().isOk()
