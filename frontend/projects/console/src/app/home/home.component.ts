@@ -66,7 +66,7 @@ export class HomeComponent {
     return app.name === this.backend.activeApp()?.name;
   }
 
-  /** The versions its instances run, when they differ (e.g. during a rolling deploy). */
+  /** The Eventify versions its instances run, when they differ (e.g. while an upgrade rolls out). */
   versions(app: AppEntry): string[] {
     const versions = [...new Set(app.nodes.map(node => node.version).filter((v): v is string => !!v))];
     return versions.length > 1 ? versions : [];

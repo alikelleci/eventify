@@ -70,7 +70,7 @@
               }
               @if (versions(app).length) {
                 <span class="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 dark:bg-amber-950 dark:text-amber-300" [title]="'Versions: ' + versions(app).join(', ')">
-                  <i class="pi pi-exclamation-triangle text-[9px]"></i>{{ versions(app).length }} versions
+                  <i class="pi pi-exclamation-triangle text-[9px]"></i>Mixed versions ({{ versions(app).length }})
                 </span>
               }
             </div>
