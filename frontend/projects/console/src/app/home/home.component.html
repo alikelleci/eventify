@@ -57,6 +57,9 @@
               @if (isActive(app)) {
                 <span class="shrink-0 rounded bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-700 dark:bg-primary-950 dark:text-primary-300">Selected</span>
               }
+              <!-- What a click does: search in this application -->
+              <span class="sr-only">Search in {{ app.name }}</span>
+              <i aria-hidden="true" class="pi pi-arrow-right shrink-0 text-xs text-primary-500 opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"></i>
             </div>
 
             <div class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 pl-4 text-xs">
@@ -88,10 +91,6 @@
                 <span class="pt-1.5 text-xs text-surface-400">+{{ plural(app.nodes.length - maxInstances, 'more instance') }}</span>
               }
             }
-
-            <span class="mt-auto flex items-center gap-1.5 pt-3 text-xs font-medium text-surface-500 transition-colors group-hover:text-primary-600 dark:text-surface-400 dark:group-hover:text-primary-400">
-              <i class="pi pi-search text-[10px]"></i> Search in {{ app.name }}
-            </span>
           </button>
         } @empty {
           <div class="col-span-full rounded-xl border border-dashed border-surface-300 px-4 py-10 text-center text-sm text-surface-400 dark:border-surface-700">
