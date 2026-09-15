@@ -6,28 +6,13 @@ Explore aggregates, replay their state at any point in history, inspect event pa
 
 The console runs as its own Docker container. Your applications connect to it: they show up by themselves as soon as they start, and they don't need to open a port.
 
-## How it works
-
-```
-Browser ──HTTP──▶ Eventify Console (Docker) ◀──RSocket── your application instances
-```
-
-- Every application instance opens a connection to the console (RSocket over WebSocket) and tells it who it is.
-- The browser only talks to the console. The console passes each request on to an instance of the chosen application, over that instance's own connection.
-- Queries about an aggregate are answered by the instance that owns it. When the console asks another instance, that instance names the owner, and the console asks the owner instead.
-
-Because the applications open the connection:
-
-- the applications don't need to be reachable from the console or from the browser;
-- there is no list of application URLs to maintain: new applications and instances appear automatically.
-
 ## Running the console
 
 ```bash
 docker run -p 8080:8080 ghcr.io/alikelleci/eventify-console:latest
 ```
 
-The console is then available at `http://localhost:8080/console/`. Until an application connects, it shows how to connect one.
+The console is available at `http://localhost:8080/console/`.
 
 ## Connecting an application
 
