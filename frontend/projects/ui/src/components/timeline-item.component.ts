@@ -42,14 +42,15 @@ export class TimelineItemComponent {
 
   lineClass = computed(() => {
     const hidden = this.first() && this.last();
-    const positionClasses = hidden ? 'hidden' : 
-      (this.first() ? 'top-1/2 ' : 'top-0 ') + (this.last() ? 'bottom-1/2' : 'bottom-0');
-    
+    // Line connects to the dot, stops at dot (not extending past)
+    const positionClasses = hidden ? 'hidden' :
+      (this.first() ? 'top-1/2 bottom-0' : 'top-0 bottom-1/2');
+
     // Green line if this is selected (line coming into it) or in the highlighted connector chain (older items)
     const colorClasses = this.selected() || this.highlightedConnector()
       ? 'bg-emerald-500'
       : 'bg-surface-200 dark:bg-surface-700';
-    
+
     return `${positionClasses} ${colorClasses}`;
   });
 
@@ -58,12 +59,13 @@ export class TimelineItemComponent {
       ? 'border-surface-0 dark:border-surface-900 group-hover:border-surface-50 dark:group-hover:border-surface-800'
       : 'border-surface-0 dark:border-surface-900';
 
-    // Failed commands always stay red
+    // Failed commands: always red, with red ring when selected
     if (this.tone() === 'failure') {
-      return `bg-red-500 ${baseBorder}`;
+      const ringClasses = this.selected() ? 'ring-1 ring-red-500' : '';
+      return `bg-red-500 ${baseBorder} ${ringClasses}`;
     }
 
-    // Selected item: emerald dot with ring (only place ring appears)
+    // Selected item: emerald dot with ring
     if (this.selected()) {
       return `bg-emerald-500 border-emerald-50 dark:border-emerald-950 ring-1 ring-emerald-500`;
     }
