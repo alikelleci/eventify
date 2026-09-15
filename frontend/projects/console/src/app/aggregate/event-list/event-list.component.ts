@@ -55,11 +55,9 @@ export class EventListComponent implements OnInit {
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) this.load(this.nextCursor());
   }
 
-  /** Highlight events in the flow: all from top down to and including older events below selected */
+  /** Highlight older events (those below the selected one) */
   isHighlightedConnector(index: number): boolean {
-    const sel = this.selectedIndex();
-    // Highlight all items except the selected one (selected has its own flag)
-    return sel !== -1 && index !== sel;
+    return this.selectedIndex() !== -1 && index > this.selectedIndex();
   }
 
   @HostListener('window:keydown', ['$event'])
