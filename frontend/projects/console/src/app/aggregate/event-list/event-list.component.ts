@@ -1,4 +1,4 @@
-import { Component, DestroyRef, ElementRef, HostListener, OnInit, inject, input, output, signal, computed } from '@angular/core';
+import { Component, DestroyRef, ElementRef, HostListener, OnInit, inject, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY } from 'rxjs';
@@ -39,12 +39,6 @@ export class EventListComponent implements OnInit {
   loading = signal(true);
   loadingMore = signal(false);
 
-  selectedIndex = computed(() => {
-    const sel = this.selected();
-    if (!sel) return -1;
-    return this.events().indexOf(sel as EventMessage);
-  });
-
   ngOnInit() {
     this.load(null);
   }
@@ -53,11 +47,6 @@ export class EventListComponent implements OnInit {
     const el = this.host.nativeElement;
     if (!this.nextCursor() || this.loadingMore()) return;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 100) this.load(this.nextCursor());
-  }
-
-  /** Highlight older events (those below the selected one) */
-  isHighlightedConnector(index: number): boolean {
-    return this.selectedIndex() !== -1 && index > this.selectedIndex();
   }
 
   @HostListener('window:keydown', ['$event'])

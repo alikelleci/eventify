@@ -8,10 +8,9 @@
     <span class="text-sm">No commands found for this aggregate</span>
   </div>
 } @else {
-  @for (command of commands(); track command.id; let idx = $index) {
-    <app-timeline-item [tone]="tone(command)" [selected]="selected() === command"
-                       [highlightedConnector]="isHighlightedConnector(idx)"
-                       [first]="$first" [last]="$last"
+  @for (command of commands(); track command.id) {
+    <!-- The dot shows the outcome: green succeeded, red failed -->
+    <app-timeline-item [tone]="tone(command)" [selected]="selected() === command" [first]="$first" [last]="$last"
                        (click)="select.emit(command)">
       <div class="flex flex-col flex-1 min-w-0">
         <div class="flex items-center gap-2 h-[22px]">

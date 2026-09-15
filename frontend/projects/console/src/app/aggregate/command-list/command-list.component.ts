@@ -1,4 +1,4 @@
-import { Component, DestroyRef, HostListener, OnInit, inject, input, output, signal, computed } from '@angular/core';
+import { Component, DestroyRef, HostListener, OnInit, inject, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { catchError, EMPTY } from 'rxjs';
@@ -36,12 +36,6 @@ export class CommandListComponent implements OnInit {
   commands = signal<CommandMessage[]>([]);
   loading = signal(true);
 
-  selectedIndex = computed(() => {
-    const sel = this.selected();
-    if (!sel) return -1;
-    return this.commands().indexOf(sel as CommandMessage);
-  });
-
   ngOnInit() {
     const startedAt = Date.now();
     this.svc.getCommands(this.aggregateId()).pipe(
@@ -57,11 +51,6 @@ export class CommandListComponent implements OnInit {
       this.loaded.emit(page.commands);
       afterMinLoading(startedAt, () => this.loading.set(false));
     });
-  }
-
-  /** Highlight older commands (those below the selected one) */
-  isHighlightedConnector(index: number): boolean {
-    return this.selectedIndex() !== -1 && index > this.selectedIndex();
   }
 
   @HostListener('window:keydown', ['$event'])
