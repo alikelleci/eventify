@@ -4,7 +4,7 @@ import { DOCS_URL, GITHUB_URL } from '@eventify/ui/links';
 import { AggregateReplayComponent } from './showcase/aggregate-replay.component';
 import { CommandTraceComponent } from './showcase/command-trace.component';
 import { ConsoleScreenComponent } from './showcase/console-screen.component';
-import { GetStartedComponent, SetupHub, SetupStep } from '../shared/get-started.component';
+import { GetStartedComponent, SetupStep } from '../shared/get-started.component';
 
 /** The Eventify Console page: a real screen of the console, the event timeline and the commands of one order, and how to run it. */
 @Component({
@@ -48,7 +48,6 @@ export class ConsoleComponent {
     .build();`,
     },
   ];
-  readonly hub: SetupHub = { label: 'Eventify Console', icon: 'pi-bolt' };
 
   openDocs() {
     window.open(this.docsUrl, '_blank', 'noopener');

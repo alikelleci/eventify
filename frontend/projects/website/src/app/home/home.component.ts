@@ -5,7 +5,7 @@ import { DOCS_HOME_URL, GITHUB_URL } from '@eventify/ui/links';
 import { ConsoleScreenComponent } from '../console/showcase/console-screen.component';
 import { FeatureStoryComponent } from './feature-story.component';
 import { highlightJava } from '../shared/java-highlight';
-import { GetStartedComponent, SetupHub, SetupStep } from '../shared/get-started.component';
+import { GetStartedComponent, SetupStep } from '../shared/get-started.component';
 
 interface CodeSample {
   label: string;
@@ -114,7 +114,6 @@ export class HomeComponent {
 eventify.start();`,
     },
   ];
-  readonly hub: SetupHub = { label: 'Kafka', icon: 'pi-server' };
 
   openDocs() {
     window.open(this.docsUrl, '_blank', 'noopener');

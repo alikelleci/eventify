@@ -1,8 +1,10 @@
-import {Component, inject} from '@angular/core';
+import {Component, computed, inject} from '@angular/core';
 import {ButtonModule} from 'primeng/button';
 import {TagModule} from 'primeng/tag';
 import {SearchService} from '../services/search.service';
 import {DOCS_URL} from '@eventify/ui/links';
+import {BackendService} from '@eventify/ui/services/backend.service';
+import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
 
 interface Feature {
   icon: string;
@@ -15,11 +17,22 @@ interface Feature {
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [ButtonModule, TagModule],
+  imports: [ButtonModule, TagModule, ConnectedAppsComponent],
   host: { class: 'block h-full' },
 })
 export class HomeComponent {
   readonly search = inject(SearchService);
+  private readonly backend = inject(BackendService);
+
+  /** The applications connected right now, each with its number of instances. */
+  readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
+    name: app.name,
+    note: app.nodes.length === 1 ? '1 instance' : `${app.nodes.length} instances`,
+  })));
+  readonly connectedLabel = computed(() => {
+    const count = this.backend.apps().length;
+    return count === 1 ? '1 application connected' : `${count} applications connected`;
+  });
 
   readonly docsUrl = DOCS_URL;
 
