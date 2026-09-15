@@ -176,6 +176,29 @@ const APPS: AppEntry[] = [
   { name: 'payments', nodes: [
     { nodeId: 'payments.7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f:0', hostname: 'payments-7b9c6-k4j8w', version: '1.0.0', connectedAt: new Date(NOW - 7_200_000).toISOString() },
   ] },
+  // TEMP: many more applications, to preview the home dashboard with a long list. Remove this block afterwards.
+  ...[
+    { name: 'shipping', instances: 3, versions: ['1.4.0', '1.4.0', '1.5.0'] },   // mixed versions (rolling deploy)
+    { name: 'inventory', instances: 0 },                                         // offline
+    { name: 'customers', instances: 6 },                                         // more instances than a card lists
+    { name: 'billing', instances: 2 },
+    { name: 'notifications', instances: 1 },
+    { name: 'catalog', instances: 4 },
+    { name: 'pricing', instances: 2 },
+    { name: 'returns', instances: 1 },
+    { name: 'loyalty', instances: 1 },
+    { name: 'search-indexer', instances: 3 },
+    { name: 'fraud-detection', instances: 2 },
+    { name: 'warehouse-management-service-with-a-very-long-name', instances: 1 }, // truncation
+  ].map(({ name, instances, versions }): AppEntry => ({
+    name,
+    nodes: Array.from({ length: instances }, (_, i) => ({
+      nodeId: `${name}.${crypto.randomUUID()}:0`,
+      hostname: `${name}-6c8d9-${(i + 10).toString(36)}x${i}q`,
+      version: versions?.[i] ?? '2.3.1',
+      connectedAt: new Date(NOW - (i + 1) * 1_700_000 - name.length * 60_000).toISOString(),
+    })),
+  })),
 ];
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
