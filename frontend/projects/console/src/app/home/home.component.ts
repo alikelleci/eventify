@@ -1,35 +1,31 @@
 import {Component, DestroyRef, computed, inject, signal} from '@angular/core';
-import {SearchService} from '../services/search.service';
+import {DatePipe} from '@angular/common';
+import {DrawerModule} from 'primeng/drawer';
 import {AppEntry, AppNode, BackendService} from '@eventify/ui/services/backend.service';
 import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
 
-/** A card lists at most this many instances; the rest are counted. */
-const MAX_INSTANCES = 3;
 /** From this many applications on, a filter helps to find one. */
 const FILTER_FROM = 7;
 
 /**
- * The console's start page: a live overview of the applications connected to it and their instances.
- * Picking an application makes it the one the header searches in.
+ * The console's start page: the applications connected to it, live. The console with its applications is the centre;
+ * below it a simple card per application, which opens a drawer with its instances.
  */
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [ConnectedAppsComponent],
+  imports: [DatePipe, DrawerModule, ConnectedAppsComponent],
   host: { class: 'block h-full' },
   styles: `
-    .home-stage { background: var(--p-surface-50) radial-gradient(var(--p-surface-200) 1px, transparent 1px) 0 0 / 14px 14px; }
+    .home-stage { background: var(--p-surface-50) radial-gradient(var(--p-surface-200) 1px, transparent 1px) 0 0 / 16px 16px; }
     @media (prefers-color-scheme: dark) {
-      .home-stage { background: var(--p-surface-950) radial-gradient(var(--p-surface-800) 1px, transparent 1px) 0 0 / 14px 14px; }
+      .home-stage { background: var(--p-surface-950) radial-gradient(var(--p-surface-800) 1px, transparent 1px) 0 0 / 16px 16px; }
     }
   `,
 })
 export class HomeComponent {
-  private readonly search = inject(SearchService);
   readonly backend = inject(BackendService);
-
-  readonly maxInstances = MAX_INSTANCES;
 
   /** Ticks every half minute, so "connected 5 min ago" stays true without a new list. */
   private readonly now = signal(Date.now());
@@ -43,22 +39,28 @@ export class HomeComponent {
 
   readonly instanceCount = computed(() => this.backend.apps().reduce((sum, app) => sum + app.nodes.length, 0));
   readonly offlineCount = computed(() => this.backend.apps().filter(app => app.nodes.length === 0).length);
+  readonly mixedCount = computed(() => this.backend.apps().filter(app => this.versions(app).length > 0).length);
 
-  /** The picture at the top, each application with its number of instances. */
+  /** The picture in the centre, each application with its number of instances. */
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
     name: app.name,
     note: app.nodes.length ? this.plural(app.nodes.length, 'instance') : 'offline',
+    offline: app.nodes.length === 0,
   })));
+
+  /** The application in the drawer, by name: the list is refreshed every few seconds with new objects. */
+  private readonly detailName = signal<string | null>(null);
+  readonly detail = computed(() => this.backend.apps().find(app => app.name === this.detailName()) ?? null);
+  readonly drawerVisible = signal(false);
 
   constructor() {
     const timer = setInterval(() => this.now.set(Date.now()), 30_000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
   }
 
-  /** Makes the application the one to search in, and puts the cursor in the search box. */
-  open(app: AppEntry) {
-    this.backend.setActiveApp(app);
-    this.search.focusSearch();
+  showDetail(app: AppEntry) {
+    this.detailName.set(app.name);
+    this.drawerVisible.set(true);
   }
 
   // By name: the list is refreshed every few seconds with new objects.
@@ -66,24 +68,28 @@ export class HomeComponent {
     return app.name === this.backend.activeApp()?.name;
   }
 
-  /** The Eventify versions its instances run, when they differ (e.g. while an upgrade rolls out). */
+  /** The versions its instances run, when they differ (e.g. while an upgrade rolls out). */
   versions(app: AppEntry): string[] {
     const versions = [...new Set(app.nodes.map(node => node.version).filter((v): v is string => !!v))];
     return versions.length > 1 ? versions : [];
   }
+
+  /** One dot per instance on a card, at most this many. */
+  readonly maxDots = 8;
 
   /** The instance's host name, or the start of its id when it didn't send one. */
   instanceName(node: AppNode): string {
     return node.hostname ?? node.nodeId.split(':')[0];
   }
 
+  /** How long ago the instance connected to this console (the console records the moment; a reconnect starts it over). */
   connectedFor(node: AppNode): string {
     const minutes = Math.floor((this.now() - Date.parse(node.connectedAt)) / 60_000);
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes} min`;
+    if (minutes < 1) return 'connected just now';
+    if (minutes < 60) return `connected ${minutes} min ago`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} h`;
-    return this.plural(Math.floor(hours / 24), 'day');
+    if (hours < 24) return `connected ${hours} h ago`;
+    return `connected ${this.plural(Math.floor(hours / 24), 'day')} ago`;
   }
 
   plural(count: number, word: string): string {
