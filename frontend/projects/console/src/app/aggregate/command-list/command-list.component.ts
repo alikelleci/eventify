@@ -59,9 +59,11 @@ export class CommandListComponent implements OnInit {
     });
   }
 
-  /** Highlight older commands (those with greater index, appearing below the selected one) */
+  /** Highlight commands in the flow: all from top down to and including older commands below selected */
   isHighlightedConnector(index: number): boolean {
-    return this.selectedIndex() !== -1 && index > this.selectedIndex();
+    const sel = this.selectedIndex();
+    // Highlight all items except the selected one (selected has its own flag)
+    return sel !== -1 && index !== sel;
   }
 
   @HostListener('window:keydown', ['$event'])
