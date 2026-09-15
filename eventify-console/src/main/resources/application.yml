@@ -1,9 +1,6 @@
 spring:
   application:
     name: eventify-console
-  autoconfigure:
-    # The console has no users of its own: people log in with the identity provider (eventify.console.oidc).
-    exclude: org.springframework.boot.security.autoconfigure.ReactiveUserDetailsServiceAutoConfiguration
 
 server:
   # Behind a proxy that terminates TLS, the login redirects must use the address the browser used.
