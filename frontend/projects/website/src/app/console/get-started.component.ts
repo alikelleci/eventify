@@ -120,11 +120,6 @@ const STEPS: SetupStep[] = [
             }
           </div>
         </div>
-
-        <figcaption class="mt-8 text-center">
-          <span class="block text-base font-semibold text-surface-900 dark:text-surface-0">Your applications show up by themselves</span>
-          <span class="mt-1.5 block text-sm leading-relaxed text-surface-500 dark:text-surface-400">Start an application and it's in the console. No ports to open, nothing else to configure.</span>
-        </figcaption>
       </figure>
     </div>
   `,
