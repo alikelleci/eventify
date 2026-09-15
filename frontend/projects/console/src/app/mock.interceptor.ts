@@ -179,7 +179,7 @@ const APPS: AppEntry[] = [
   // TEMP: many more applications, to preview the home dashboard with a long list. Remove this block afterwards.
   ...[
     { name: 'shipping', instances: 3, versions: ['1.4.0', '1.4.0', '1.5.0'] },   // mixed versions (rolling deploy)
-    { name: 'inventory', instances: 0 },                                         // offline
+    { name: 'inventory', instances: 2 },
     { name: 'customers', instances: 6 },                                         // more instances than a card lists
     { name: 'events-gateway', instances: 16 },                                   // many instances
     { name: 'billing', instances: 2 },

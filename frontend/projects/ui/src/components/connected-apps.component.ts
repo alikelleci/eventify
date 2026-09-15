@@ -21,10 +21,9 @@ const MAX_BOXES = 4;
   host: { class: 'block', 'aria-hidden': 'true' },
   template: `
     <div class="flex flex-col items-center">
-      <!-- Dark like the console's header, so it stands apart from the applications -->
-      <div class="flex items-center gap-2.5 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 shadow-lg shadow-slate-900/20">
-        <i class="pi pi-bolt text-lg text-primary-400"></i>
-        <span class="text-sm font-semibold text-white">Eventify <span class="font-normal text-slate-300">Console</span></span>
+      <div class="flex items-center gap-3 rounded-xl border border-primary-300 bg-primary-50 px-4 py-3 shadow-[0_0_0_4px_color-mix(in_srgb,var(--p-primary-500)_12%,transparent)] dark:border-primary-700 dark:bg-primary-950">
+        <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-500 text-white"><i class="pi pi-bolt text-sm"></i></span>
+        <span class="text-sm font-semibold text-surface-900 dark:text-surface-0">Eventify Console</span>
       </div>
 
       <div class="relative h-14 w-full">
