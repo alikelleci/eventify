@@ -28,8 +28,6 @@ export class TimelineItemComponent {
   selected = input(false);
   /** Whether this older event (below selected) should have its line and dot highlighted. */
   highlightedConnector = input(false);
-  /** Whether the next item in the list is selected. */
-  nextItemSelected = input(false);
   filled = input(false);
   /** Clickable rows get a hover background and pointer. */
   interactive = input(true);
