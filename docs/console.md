@@ -65,17 +65,22 @@ The console can be configured with following environment variables:
 
 ## Security
 
-Two things protect the console: people log in with your identity provider, and applications prove who they are with a token. Configure both in production. Without them, the console logs a warning at startup.
+The console supports two authentication methods:
+
+- **User authentication** through an OpenID Connect identity provider.
+- **Application authentication** using a token.
+
+For production, configure both methods. If either is not configured, the console will show a warning at startup.
 
 ### Login
 
-The console supports login with any OpenID Connect identity provider, such as Keycloak, Microsoft Entra ID, Okta or Google.
+The console supports any OpenID Connect identity provider, such as Keycloak, Microsoft Entra ID, Okta, or Google.
 
-1. Register the console as a client at your identity provider, with this redirect URI:
+1. Register the console as a client with your identity provider using this redirect URI:
    ```
    https://<console address>/login/oauth2/code/sso
    ```
-2. Start the console with the provider and the client's credentials:
+2. Start the console with the provider and client credentials:
    ```bash
    docker run -p 8080:8080 \
      -e EVENTIFY_CONSOLE_OIDC_ISSUERURI=https://login.example.com/realms/ops \
@@ -86,12 +91,14 @@ The console supports login with any OpenID Connect identity provider, such as Ke
 
 ### Application token
 
-Without a token, any client that can reach the console can connect as an application. To prevent this, start the console with a secret token:
+The application token prevents unauthorized clients from connecting to the console.
 
+Start the console with a token:
 ```bash
 docker run -p 8080:8080 -e EVENTIFY_CONSOLE_APPTOKEN=... ghcr.io/alikelleci/eventify-console:latest
 ```
 
+Configure the same token in the Eventify client:
 ```java
 EventifyConsolePlugin.builder()
     .url("http://eventify-console:8080")
