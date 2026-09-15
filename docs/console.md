@@ -60,7 +60,9 @@ eventify.start();
 
 The application appears in the console under its `application.id`. All instances with the same `application.id` are one application.
 
-When the console is unreachable, or the connection drops, the plugin keeps reconnecting in the background. Your application keeps running normally either way.
+When the console is unreachable, or the connection drops (for example while the console is redeployed), the plugin keeps reconnecting in the background, waiting up to 30 seconds between attempts. Your application keeps running normally either way.
+
+If the console refuses the application, for example because it doesn't support the application's protocol version yet, the plugin logs the reason once and tries again every 30 seconds.
 
 ### Plugin options
 
