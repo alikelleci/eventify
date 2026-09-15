@@ -9,6 +9,7 @@ import { CommandMessage, EventMessage } from '@eventify/ui/models';
 import { ListSkeletonComponent } from '@eventify/ui/components/skeletons/list-skeleton.component';
 import { TimelineItemComponent } from '@eventify/ui/components/timeline-item.component';
 import { afterMinLoading } from '@eventify/ui/loading-timing';
+import { errorDetail } from '@eventify/ui/errors';
 
 /** Loads and shows an aggregate's events, newest first, with more loaded on scroll. */
 @Component({
@@ -66,7 +67,7 @@ export class EventListComponent implements OnInit {
     this.svc.getEvents(this.aggregateId(), cursor).pipe(
       takeUntilDestroyed(this.destroyRef),
       catchError(err => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: err.status === 404 ? 'Aggregate not found.' : 'Failed to load events.' });
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: err.status === 404 ? 'Aggregate not found.' : errorDetail(err, 'Failed to load events.') });
         if (firstPage) this.loaded.emit([]);
         flag.set(false);
         return EMPTY;

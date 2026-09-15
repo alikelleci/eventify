@@ -54,14 +54,14 @@
     </div>
   </section>
 
-  <!-- Get started: the two ways to run the console, each with a small diagram, and the docs for how -->
+  <!-- Get started: how the console and the applications fit together, each with a small diagram, and the docs for how -->
   <section #getStarted class="scroll-mt-4 border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
         <div class="max-w-2xl">
-          <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Deploy how you need</h2>
+          <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Up and running in minutes</h2>
           <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-            Run it embedded in your app for zero extra infrastructure, or standalone with Docker to inspect everything from one place.
+            Run the console with Docker and add the plugin to your applications. They connect to the console by themselves, from wherever they run.
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-x-6 gap-y-4">
@@ -74,34 +74,37 @@
       </div>
 
       <div class="mt-12 grid gap-6 lg:grid-cols-2">
-        <!-- Embedded: the browser opens the console on the application itself -->
+        <!-- The plugin: the application connects to the console, not the other way around -->
         <div class="flex flex-col overflow-hidden rounded-2xl border border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
           <div class="m-2 flex h-52 items-center justify-center rounded-xl bg-surface-50 bg-[radial-gradient(var(--p-surface-200)_1px,transparent_1px)] bg-size-[14px_14px] px-6 dark:bg-surface-950 dark:bg-[radial-gradient(var(--p-surface-800)_1px,transparent_1px)]" aria-hidden="true">
             <div class="flex items-center gap-3">
-              <div class="flex flex-col items-center gap-1.5 text-surface-400">
-                <i class="pi pi-desktop text-lg"></i><span class="text-[11px]">browser</span>
-              </div>
-              <span class="h-px w-8 border-t border-dashed border-surface-300 dark:border-surface-600"></span>
               <div class="rounded-xl border border-surface-200 bg-surface-0 shadow-[0_12px_32px_-16px_rgba(15,23,42,0.3)] dark:border-surface-700 dark:bg-surface-900 w-48">
                 <div class="flex items-center gap-2 border-b border-surface-100 px-3 py-2 text-[11px] font-medium text-surface-500 dark:border-surface-800 dark:text-surface-400"><i class="pi pi-server text-[10px]"></i>your application</div>
                 <div class="flex flex-wrap gap-1.5 p-3">
                   <span class="rounded-md bg-surface-100 px-2 py-1 text-xs font-medium text-surface-700 dark:bg-surface-800 dark:text-surface-200">Eventify</span>
-                  <span class="rounded-md bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-200 dark:bg-primary-950 dark:text-primary-300 dark:ring-primary-900">Console</span>
+                  <span class="rounded-md bg-primary-50 px-2 py-1 text-xs font-medium text-primary-700 ring-1 ring-primary-200 dark:bg-primary-950 dark:text-primary-300 dark:ring-primary-900">Plugin</span>
                 </div>
+              </div>
+              <div class="flex items-center text-surface-300 dark:text-surface-600">
+                <span class="h-px w-8 border-t border-dashed border-surface-300 dark:border-surface-600"></span>
+                <i class="pi pi-angle-right -ml-1 text-xs"></i>
+              </div>
+              <div class="flex flex-col items-center gap-1.5 text-surface-400">
+                <i class="pi pi-box text-lg"></i><span class="text-[11px]">console</span>
               </div>
             </div>
           </div>
           <div class="px-6 pt-4 pb-7 sm:px-7">
-            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Embedded</h3>
-            <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">Ship the console with your app, zero extra infrastructure needed.</p>
+            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Your applications connect</h3>
+            <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">Add the plugin, and your application connects to the console on startup.</p>
             <ul class="mt-4 space-y-2 text-sm text-surface-600 dark:text-surface-300">
-              <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Add in minutes to your app</span></li>
-              <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Inspect events directly from your server</span></li>
+              <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>No port to open in your application</span></li>
+              <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>New applications show up automatically</span></li>
             </ul>
           </div>
         </div>
 
-        <!-- Standalone: the console runs in its own container and connects to the applications -->
+        <!-- The console: its own container, with all the applications connected to it -->
         <div class="flex flex-col overflow-hidden rounded-2xl border border-surface-200 bg-surface-0 dark:border-surface-800 dark:bg-surface-900">
           <div class="m-2 flex h-52 items-center justify-center rounded-xl bg-surface-50 bg-[radial-gradient(var(--p-surface-200)_1px,transparent_1px)] bg-size-[14px_14px] px-6 dark:bg-surface-950 dark:bg-[radial-gradient(var(--p-surface-800)_1px,transparent_1px)]" aria-hidden="true">
             <div class="flex items-center gap-2 sm:gap-3">
@@ -124,7 +127,7 @@
             </div>
           </div>
           <div class="px-6 pt-4 pb-7 sm:px-7">
-            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">Standalone</h3>
+            <h3 class="text-lg font-semibold text-surface-900 dark:text-surface-0">One console</h3>
             <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">One dashboard for your entire event-sourced ecosystem.</p>
             <ul class="mt-4 space-y-2 text-sm text-surface-600 dark:text-surface-300">
               <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>See events from all your services</span></li>

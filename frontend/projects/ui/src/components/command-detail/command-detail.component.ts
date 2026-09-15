@@ -17,6 +17,7 @@ import { copyToClipboard } from '../../clipboard';
 import { formatPayload, metadataEntries } from '../../payload';
 import { EventDetailComponent } from '../event-detail/event-detail.component';
 import { TimelineItemComponent } from '../timeline-item.component';
+import { errorDetail } from '../../errors';
 
 @Component({
   selector: 'app-command-detail',
@@ -93,10 +94,10 @@ export class CommandDetailComponent {
     this.retrying.set(true);
     this.svc.retryCommand(cmd.aggregateId, cmd.id, cmd).pipe(
       takeUntilDestroyed(this.destroyRef),
-      catchError(() => {
+      catchError(err => {
         afterMinLoading(startedAt, () => {
           this.retrying.set(false);
-          this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to retry command.' });
+          this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to retry command.') });
         });
         return EMPTY;
       }),

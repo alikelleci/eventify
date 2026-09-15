@@ -13,7 +13,7 @@ import { NoAppsComponent } from './no-apps.component';
     <div class="flex flex-col h-dvh bg-surface-0 dark:bg-surface-900 text-surface-900 dark:text-surface-100">
       <app-header class="shrink-0" />
       <main class="flex-1 overflow-hidden">
-        @if (backend.unconfigured()) {
+        @if (backend.noApps()) {
           <app-no-apps />
         } @else {
           <router-outlet />

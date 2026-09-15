@@ -54,6 +54,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -306,6 +307,11 @@ public class Eventify {
       this.streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, CustomRocksDbConfig.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
+
+      // A unique name for this instance, not an address: nothing listens on it. Kafka Streams shares it with the
+      // other instances, so each one can tell which instance owns a key (used by the console to route queries).
+      String applicationId = this.streamsConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG, "eventify");
+      this.streamsConfig.putIfAbsent(StreamsConfig.APPLICATION_SERVER_CONFIG, applicationId + "." + UUID.randomUUID() + ":0");
 
 //    ArrayList<String> interceptors = new ArrayList<>();
 //    interceptors.add(CommonProducerInterceptor.class.getName());

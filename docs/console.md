@@ -4,65 +4,73 @@ Eventify Console is an operations-focused UI for inspecting and troubleshooting 
 
 Explore aggregates, replay their state at any point in history, inspect event payloads and state diffs, trace commands through correlation and causation, and retry failed commands — all from a single interface.
 
-Available both embedded in your application or as a standalone Docker deployment for centralized operations.
+The console runs as its own Docker container. Your applications connect to it: they show up by themselves as soon as they start, and they don't need to open a port.
 
-It consists of two optional modules:
+## How it works
 
-- `eventify-console-server` — embeds an HTTP server into your application that exposes the API and serves the UI
-- `eventify-console-ui` — the Angular UI, bundled as a jar and served by the console server
+```
+Browser ──HTTP──▶ Eventify Console (Docker) ◀──RSocket── your application instances
+```
 
-Both are opt-in. Include them only if you want the console.
+- Every application instance opens a connection to the console (RSocket over WebSocket) and tells it who it is.
+- The browser only talks to the console. The console passes each request on to an instance of the chosen application, over that instance's own connection.
+- Queries about an aggregate are answered by the instance that owns it. When the console asks another instance, that instance names the owner, and the console asks the owner instead.
 
-## Installation
+Because the applications open the connection:
 
-Add both modules to your project:
+- the applications don't need to be reachable from the console or from the browser;
+- there is no list of application URLs to maintain: new applications and instances appear automatically.
+
+## Running the console
+
+```bash
+docker run -p 8080:8080 ghcr.io/alikelleci/eventify-console:latest
+```
+
+The console is then available at `http://localhost:8080/console/`. Until an application connects, it shows how to connect one.
+
+## Connecting an application
+
+Add the plugin to your application:
 
 ```xml
 <dependency>
     <groupId>io.github.alikelleci</groupId>
-    <artifactId>eventify-console-server</artifactId>
-    <version>x.y.z</version>
-</dependency>
-<dependency>
-    <groupId>io.github.alikelleci</groupId>
-    <artifactId>eventify-console-ui</artifactId>
+    <artifactId>eventify-console-plugin</artifactId>
     <version>x.y.z</version>
 </dependency>
 ```
 
-## Configuration
-
-The console server binds to the host and port declared in `application.server`. This property serves two purposes: it tells Kafka Streams where this node can be reached for inter-node state queries, and it determines the address the console server listens on.
+Register it with the console's address, the same one you open in the browser:
 
 ```java
 Properties props = new Properties();
 props.put(StreamsConfig.APPLICATION_ID_CONFIG, "my-app");
 props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-props.put(StreamsConfig.APPLICATION_SERVER_CONFIG, "localhost:8085");
 
 Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerPlugin(EventifyConsolePlugin.builder().build())
+    .registerPlugin(EventifyConsolePlugin.builder()
+        .url("http://eventify-console:8080")
+        .build())
     .build();
 
 eventify.start();
 ```
 
-Once started, the console is available at:
+The application appears in the console under its `application.id`. All instances with the same `application.id` are one application.
 
-```
-http://localhost:8085/console/
-```
+When the console is unreachable, or the connection drops, the plugin keeps reconnecting in the background. Your application keeps running normally either way.
 
 ### Plugin options
 
 | Method | Required | Description |
 |---|---|---|
-| `allowedOrigins(String)` | No | CORS allowed origins. Defaults to `*`. |
+| `url(String)` | Yes | The console's address, e.g. `http://eventify-console:8080`. Use `https://` when the console is served over TLS. |
 
-## Spring Boot Integration
+### Spring Boot
 
-When using the Spring Boot starter, the console plugin is registered automatically if `eventify-console-server` is on the classpath. No explicit plugin registration is needed — only `application.server` must be set.
+With the Spring Boot starter, register the plugin on your `Eventify` bean, the same way:
 
 ```java
 @Bean
@@ -70,51 +78,41 @@ public Eventify eventify() {
     Properties props = new Properties();
     props.put(StreamsConfig.APPLICATION_ID_CONFIG, "my-app");
     props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    props.put(StreamsConfig.APPLICATION_SERVER_CONFIG, "localhost:8085");
 
     return Eventify.builder()
         .streamsConfig(props)
+        .registerPlugin(EventifyConsolePlugin.builder()
+            .url("http://eventify-console:8080")
+            .build())
         .build();
 }
 ```
 
-## Deployment Modes
+The console's address usually differs per environment, so you'll typically read it from your own application configuration.
 
-### Embedded
+## `application.server`
 
-The UI is served directly by your application. Each application gets its own console at its own host and port. This is the default mode when the jars are on the classpath.
+Eventify sets Kafka Streams' `application.server` to a unique name for each instance, like `my-app.3f2a9c1e-7b4d-4c1a-9f0e-5d8a2b6c1e44:0`. It is not an address: nothing listens on it. Kafka Streams shares it between the instances, so every instance knows which one owns an aggregate.
 
-### Standalone Docker
+If you set `application.server` yourself, for example for your own interactive queries, Eventify keeps your value and the console uses it as the instance's name. It must be unique per instance.
 
-For a centralized view across multiple applications, a standalone Docker image is available. It serves the same UI but allows you to configure multiple application URLs and switch between them.
+## Configuring the console
 
-```bash
-docker run -p 8080:80 \
-  -v /path/to/config.yaml:/etc/eventify/config.yaml \
-  ghcr.io/alikelleci/eventify-console:latest
-```
+The console is a Spring Boot application, so it can be configured with environment variables:
 
-The console is then available at `http://localhost:8080/console/`.
+| Variable | Default | Description |
+|---|---|---|
+| `SERVER_PORT` | `8080` | The port for the UI, the API and the connections from the applications. |
+| `EVENTIFY_CONSOLE_REQUESTTIMEOUT` | `60s` | How long to wait for an application to answer. Reading commands from Kafka can take a while. |
 
-#### config.yaml
+## Running more than one console
 
-```yaml
-eventify:
-  apps:
-    - name: My App 1
-      url: http://localhost:8085
-    - name: My App 2
-      url: http://localhost:8086
-```
+Run one console per environment (for example one for test, one for production), and point the applications of that environment at it.
 
-The console runs in your browser and calls these URLs directly, so:
-
-- each URL must be reachable from the machine where the browser runs, not only from inside the container;
-- the applications must allow the console's origin through CORS (`allowedOrigins`, which defaults to `*`);
-- when the console is served over HTTPS, the application URLs must use HTTPS as well, or the browser blocks the calls.
-
-The config file location can be changed with the `EVENTIFY_CONFIG` environment variable. Without a config file, the console shows how to configure one.
+Within an environment, run a single console instance. It keeps the connected applications in memory; after a restart, the applications connect again within seconds.
 
 ## Security
 
-The console server does not implement authentication. For production deployments, do not expose the console port publicly. Place it behind a reverse proxy or load balancer that handles authentication.
+The console does not implement authentication yet. Do not expose it publicly. Place it behind a reverse proxy or load balancer that handles authentication, and only allow your applications to reach its `/rsocket` endpoint.
+
+Anyone who can reach the console can see the events of the connected applications and retry commands.

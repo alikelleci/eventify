@@ -1,9 +1,8 @@
 import { Component, ElementRef, HostListener, ViewChild, inject, signal } from '@angular/core';
-import { BackendService } from '@eventify/ui/services/backend.service';
-import { AppEntry } from '@eventify/ui/services/config.service';
+import { AppEntry, BackendService } from '@eventify/ui/services/backend.service';
 
 /**
- * Picks the application to inspect in standalone mode. The dropdown looks and works like the recent searches:
+ * Picks the application to inspect, from the ones connected to the console. The dropdown looks and works like the recent searches:
  * the same panel, the border marks the active app, and the arrow keys move through the list.
  */
 @Component({
@@ -24,16 +23,18 @@ import { AppEntry } from '@eventify/ui/services/config.service';
            class="absolute top-full right-0 mt-1 min-w-full w-64 bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
         <div class="px-3 py-2 text-xs font-medium text-surface-400 uppercase tracking-widest border-b border-surface-100 dark:border-surface-800">Applications</div>
         <div class="max-h-64 overflow-y-auto">
-          @for (app of backend.apps(); track app.url) {
+          @for (app of backend.apps(); track app.name) {
             <!-- min-h-10: the same height as a recent search, whose remove button makes that row taller -->
-            <div role="option" [attr.aria-selected]="app === backend.activeApp()"
+            <div role="option" [attr.aria-selected]="isActive(app)"
                  class="flex items-center gap-2 min-h-10 px-3 py-2 border-l-2 cursor-pointer transition-colors"
-                 [class]="rowClass(app, $index)" [title]="app.url"
+                 [class]="rowClass(app, $index)" [title]="instancesLabel(app)"
                  (mouseenter)="highlightedIndex.set($index)"
                  (mousedown)="$event.preventDefault(); select(app)">
               <i class="pi pi-server text-surface-400 text-xs shrink-0"></i>
-              <span class="text-sm truncate"
-                    [class]="app === backend.activeApp() ? 'text-primary-600 dark:text-primary-400' : 'text-surface-900 dark:text-surface-100'">{{ app.name }}</span>
+              <span class="flex-1 text-sm truncate"
+                    [class]="isActive(app) ? 'text-primary-600 dark:text-primary-400' : 'text-surface-900 dark:text-surface-100'">{{ app.name }}</span>
+              <!-- The instances connected right now; none while the application restarts -->
+              <span class="text-xs shrink-0" [class]="app.nodes.length ? 'text-surface-400' : 'text-orange-500'">{{ app.nodes.length || 'offline' }}</span>
             </div>
           }
         </div>
@@ -99,10 +100,20 @@ export class AppSwitcherComponent {
 
   // The green border and text mark the active app; grey marks the highlighted row, also on the active app.
   rowClass(app: AppEntry, index: number): string {
-    const current = app === this.backend.activeApp();
+    const current = this.isActive(app);
     const highlighted = index === this.highlightedIndex();
     return (current ? 'border-primary-500 ' : 'border-transparent ')
       + (highlighted ? 'bg-surface-100 dark:bg-surface-800' : current ? 'bg-primary-50 dark:bg-primary-950' : '');
+  }
+
+  // By name: the list is refreshed every few seconds with new objects.
+  isActive(app: AppEntry): boolean {
+    return app.name === this.backend.activeApp()?.name;
+  }
+
+  instancesLabel(app: AppEntry): string {
+    const count = app.nodes.length;
+    return count === 0 ? 'No instances connected' : count === 1 ? '1 instance connected' : `${count} instances connected`;
   }
 
   select(app: AppEntry | undefined) {

@@ -6,7 +6,7 @@
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "cd frontend && npx ng serve console --port 4301"
+        "cd frontend && npx ng serve console --configuration mock --port 4301"
       ],
       "port": 4301
     },

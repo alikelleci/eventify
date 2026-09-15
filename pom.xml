@@ -14,9 +14,10 @@
     <url>https://github.com/alikelleci/eventify</url>
 
     <modules>
-        <module>eventify-console-ui</module>
         <module>eventify-core</module>
-        <module>eventify-console-server</module>
+        <module>eventify-console-protocol</module>
+        <module>eventify-console-plugin</module>
+        <module>eventify-console</module>
         <module>eventify-spring-boot-starter</module>
     </modules>
 
@@ -128,6 +129,10 @@
                             <publishingServerId>central</publishingServerId>
                             <autoPublish>true</autoPublish>
                             <waitUntil>published</waitUntil>
+                            <!-- The console is an application, released as a Docker image -->
+                            <excludeArtifacts>
+                                <artifact>eventify-console</artifact>
+                            </excludeArtifacts>
                         </configuration>
                     </plugin>
                 </plugins>

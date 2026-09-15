@@ -1,0 +1,28 @@
+package io.github.alikelleci.eventify.console.protocol;
+
+/**
+ * How an application and the console talk to each other.
+ *
+ * <p>The application connects to the console over RSocket (on WebSocket) at {@link #RSOCKET_PATH} and sends a
+ * {@link NodeInfo} as the setup data. From then on the console sends requests to the application:
+ * <ul>
+ *   <li>request metadata: the {@link Route} name, as UTF-8 text</li>
+ *   <li>request data: the JSON of the route's request (see {@link Route})</li>
+ *   <li>response metadata: the JSON of a {@link ReplyHeader}</li>
+ *   <li>response data: the JSON body, only when the status is {@link ReplyHeader.Status#OK}</li>
+ * </ul>
+ * The console passes the response body to the browser as it is: it never needs the application's classes.
+ */
+public final class ConsoleProtocol {
+
+  /** Raised when the messages change in a way older consoles or applications can't handle. */
+  public static final int VERSION = 1;
+
+  public static final String RSOCKET_PATH = "/rsocket";
+
+  public static final String DATA_MIME_TYPE = "application/json";
+  public static final String METADATA_MIME_TYPE = "text/plain";
+
+  private ConsoleProtocol() {
+  }
+}

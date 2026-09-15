@@ -63,7 +63,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: docker build -f frontend/projects/console/docker/Dockerfile -t eventify-console frontend
+        run: docker build -f eventify-console/Dockerfile -t eventify-console .
 
       - name: Publish image
         run: |

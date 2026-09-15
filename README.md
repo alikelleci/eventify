@@ -84,7 +84,7 @@ See the [Getting Started guide](https://alikelleci.github.io/eventify/docs/getti
 | [Advanced Features](https://alikelleci.github.io/eventify/docs/advanced/) | Snapshotting and event upcasting |
 | [Testing](https://alikelleci.github.io/eventify/docs/testing/) | Testing without a Kafka broker |
 | [Annotation Reference](https://alikelleci.github.io/eventify/docs/annotation-reference/) | All annotations at a glance |
-| [Eventify Console](https://alikelleci.github.io/eventify/docs/console/) | Installation, deployment modes and security |
+| [Eventify Console](https://alikelleci.github.io/eventify/docs/console/) | Running the console, connecting applications and security |
 
 ---
 
@@ -94,9 +94,9 @@ See the [Getting Started guide](https://alikelleci.github.io/eventify/docs/getti
 |---|---|
 | `eventify-core` | The framework |
 | `eventify-spring-boot-starter` | Spring Boot auto-configuration: registers handler beans and starts Eventify with the application |
-| `eventify-console-server` | Optional: embeds the console's HTTP server and API into your application |
-| `eventify-console-ui` | Optional: the console UI, served by the console server |
-| `ghcr.io/alikelleci/eventify-console` | Optional: the standalone console as a Docker image, for multiple applications |
+| `eventify-console-plugin` | Optional: connects your application to the Eventify Console |
+| `eventify-console-protocol` | The messages between the plugin and the console (used by both) |
+| `ghcr.io/alikelleci/eventify-console` | Optional: the Eventify Console as a Docker image, for all your applications |
 
 ---
 

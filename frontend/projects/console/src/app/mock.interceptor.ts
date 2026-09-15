@@ -1,6 +1,7 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { of, delay } from 'rxjs';
 import { AggregateState, CommandMessage, CommandsPage, EventDetail, EventMessage, EventsPage } from '@eventify/ui/models';
+import { AppEntry } from '@eventify/ui/services/backend.service';
 
 /**
  * Example data for development: the history of an order, as commands with their outcome and the events they produced.
@@ -166,10 +167,22 @@ function historyOf(aggregateId: string): History {
 
 const respond = (body: unknown, ms: number) => of(new HttpResponse({ status: 200, body })).pipe(delay(ms));
 
-export const mockInterceptor: HttpInterceptorFn = (req, next) => {
-  if (!req.url.includes('/api/aggregates/')) return next(req);
+/** Two example applications, as connected to the console. The same example data answers for both. */
+const APPS: AppEntry[] = [
+  { name: 'orders', nodes: [
+    { nodeId: 'orders.3f2a9c1e-7b4d-4c1a-9f0e-5d8a2b6c1e44:0', hostname: 'orders-5d8f7-x2k4q', version: '1.0.0', connectedAt: new Date(NOW - 3_600_000).toISOString() },
+    { nodeId: 'orders.b81e44d2-1c3f-4e8a-a2b7-9d6c5e4f3a21:0', hostname: 'orders-5d8f7-p9m2z', version: '1.0.0', connectedAt: new Date(NOW - 3_500_000).toISOString() },
+  ] },
+  { name: 'payments', nodes: [
+    { nodeId: 'payments.7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f:0', hostname: 'payments-7b9c6-k4j8w', version: '1.0.0', connectedAt: new Date(NOW - 7_200_000).toISOString() },
+  ] },
+];
 
-  const aggregateId = decodeURIComponent(req.url.match(/\/api\/aggregates\/([^/?]+)/)?.[1] ?? '');
+export const mockInterceptor: HttpInterceptorFn = (req, next) => {
+  if (req.url.endsWith('/api/apps')) return respond(APPS, 100);
+  if (!req.url.includes('/api/apps/') || !req.url.includes('/aggregates/')) return next(req);
+
+  const aggregateId = decodeURIComponent(req.url.match(/\/aggregates\/([^/?]+)/)?.[1] ?? '');
   const { commands, events, states } = historyOf(aggregateId);
 
   // Retrying only sends the command to Kafka, so it's fast. The retried command itself isn't added to the example data.

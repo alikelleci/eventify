@@ -6,7 +6,7 @@ import { environment } from '../environments/environment';
 import { mockInterceptor } from './mock.interceptor';
 import { provideEventifyTheme } from '@eventify/ui/theme';
 import { routes } from './app.routes';
-import { ConfigService } from '@eventify/ui/services/config.service';
+import { BackendService } from '@eventify/ui/services/backend.service';
 
 export const appConfig: ApplicationConfig = {
   providers: [
@@ -17,8 +17,9 @@ export const appConfig: ApplicationConfig = {
     provideAnimationsAsync(),
     {
       provide: APP_INITIALIZER,
-      useFactory: (cfg: ConfigService) => () => cfg.load(),
-      deps: [ConfigService],
+      // The connected applications, before the first page shows: an aggregate link then opens in the right application.
+      useFactory: (backend: BackendService) => () => backend.load(),
+      deps: [BackendService],
       multi: true,
     },
     provideEventifyTheme(),

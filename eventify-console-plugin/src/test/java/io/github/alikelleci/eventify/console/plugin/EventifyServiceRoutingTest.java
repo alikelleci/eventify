@@ -1,0 +1,134 @@
+package io.github.alikelleci.eventify.console.plugin;
+
+import io.github.alikelleci.eventify.console.plugin.EventifyService.ApiResult;
+import io.github.alikelleci.eventify.console.plugin.item.ItemCommand.CreateItem;
+import io.github.alikelleci.eventify.console.plugin.item.ItemHandler;
+import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.KafkaContainer;
+
+import java.nio.file.Path;
+import java.time.Duration;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.stream.IntStream;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+/**
+ * Two instances of one application on a real broker. The instances have no address, only the name Eventify puts in
+ * {@code application.server}; an instance that doesn't own an aggregate must name the one that does.
+ */
+@Testcontainers
+class EventifyServiceRoutingTest {
+
+  private static final String APPLICATION_ID = "routing-test";
+
+  @Container
+  static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
+
+  @TempDir
+  Path stateDir;
+
+  private Eventify first;
+  private Eventify second;
+
+  @AfterEach
+  void tearDown() {
+    if (first != null) first.stop();
+    if (second != null) second.stop();
+  }
+
+  @Test
+  void anInstanceThatDoesNotOwnAnAggregateNamesTheOwner() throws Exception {
+    // Co-partitioned source topics, with a partition for each instance.
+    try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
+      admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
+    }
+
+    first = start("first");
+    second = start("second");
+    assertThat(first.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG))
+        .matches(APPLICATION_ID + "\\.[0-9a-f-]{36}:0");
+
+    await().atMost(Duration.ofSeconds(60)).until(() ->
+        first.getKafkaStreams().state() == KafkaStreams.State.RUNNING
+            && second.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
+
+    List<String> aggregateIds = IntStream.range(0, 20).mapToObj(i -> "item-" + i).toList();
+    try (KafkaProducer<String, Command> producer = new KafkaProducer<>(
+        Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()), new StringSerializer(), new JsonSerializer<>())) {
+      for (String id : aggregateIds) {
+        Command command = Command.builder().payload(CreateItem.builder().id(id).name("Item " + id).build()).build();
+        producer.send(new ProducerRecord<>("commands.item", id, command)).get();
+      }
+    }
+
+    EventifyService firstService = new EventifyService(first);
+    EventifyService secondService = new EventifyService(second);
+    String firstId = EventifyService.nodeId(EventifyService.hostInfo(first));
+    String secondId = EventifyService.nodeId(EventifyService.hostInfo(second));
+    Set<String> owners = new HashSet<>();
+
+    try {
+      for (String id : aggregateIds) {
+        await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
+          ApiResult<EventifyService.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
+          ApiResult<EventifyService.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
+
+          // Exactly one answers with the event; the other names it as the owner.
+          if (fromFirst instanceof ApiResult.Ok<EventifyService.EventsPage> ok) {
+            assertThat(ok.value().events()).hasSize(1);
+            assertThat(fromSecond).isEqualTo(new ApiResult.NotOwner<>(firstId));
+            owners.add(firstId);
+          } else {
+            assertThat(fromSecond).isInstanceOf(ApiResult.Ok.class);
+            assertThat(((ApiResult.Ok<EventifyService.EventsPage>) fromSecond).value().events()).hasSize(1);
+            assertThat(fromFirst).isEqualTo(new ApiResult.NotOwner<>(secondId));
+            owners.add(secondId);
+          }
+        });
+      }
+    } finally {
+      firstService.close();
+      secondService.close();
+    }
+
+    // With two partitions, both instances own some of the aggregates.
+    assertThat(owners).containsExactlyInAnyOrder(firstId, secondId);
+  }
+
+  private Eventify start(String name) {
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, APPLICATION_ID);
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.resolve(name).toString());
+    properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
+
+    Eventify eventify = Eventify.builder()
+        .streamsConfig(properties)
+        .registerHandler(new ItemHandler())
+        .build();
+    eventify.start();
+    return eventify;
+  }
+}

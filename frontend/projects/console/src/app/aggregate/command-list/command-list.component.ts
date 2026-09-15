@@ -8,6 +8,7 @@ import { EventifyService } from '@eventify/ui/services/eventify.service';
 import { CommandMessage, EventMessage } from '@eventify/ui/models';
 import { ListSkeletonComponent } from '@eventify/ui/components/skeletons/list-skeleton.component';
 import { afterMinLoading } from '@eventify/ui/loading-timing';
+import { errorDetail } from '@eventify/ui/errors';
 import { TimelineItemComponent, TimelineTone } from '@eventify/ui/components/timeline-item.component';
 
 /** Loads and shows an aggregate's commands with their outcome. Commands are polled from Kafka, so this is slow. */
@@ -39,8 +40,8 @@ export class CommandListComponent implements OnInit {
     const startedAt = Date.now();
     this.svc.getCommands(this.aggregateId()).pipe(
       takeUntilDestroyed(this.destroyRef),
-      catchError(() => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Failed to load commands.' });
+      catchError(err => {
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load commands.') });
         this.loaded.emit([]);
         this.loading.set(false);
         return EMPTY;

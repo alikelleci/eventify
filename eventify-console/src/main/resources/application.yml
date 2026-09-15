@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: eventify-console
+
+eventify:
+  console:
+    # The folder with the built UI. In the Docker image: /app/ui.
+    ui-path: ./ui
+    request-timeout: 60s

@@ -12,23 +12,23 @@ export class EventifyService {
   getEvents(aggregateId: string, cursor?: string | null, limit = 50): Observable<EventsPage> {
     let params = new HttpParams().set('limit', limit);
     if (cursor) params = params.set('cursor', cursor);
-    return this.http.get<EventsPage>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/events`, { params });
+    return this.http.get<EventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events`, { params });
   }
 
   getEventDetail(aggregateId: string, eventId: string): Observable<EventDetail> {
-    return this.http.get<EventDetail>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/events/${encodeURIComponent(eventId)}`);
+    return this.http.get<EventDetail>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/${encodeURIComponent(eventId)}`);
   }
 
   getEventsByCorrelation(aggregateId: string, correlationId: string): Observable<CorrelatedEventsPage> {
-    return this.http.get<CorrelatedEventsPage>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/events/by-correlation/${encodeURIComponent(correlationId)}`);
+    return this.http.get<CorrelatedEventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/by-correlation/${encodeURIComponent(correlationId)}`);
   }
 
   getCommands(aggregateId: string, limit = 500): Observable<CommandsPage> {
     const params = new HttpParams().set('limit', limit);
-    return this.http.get<CommandsPage>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/commands`, { params });
+    return this.http.get<CommandsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/commands`, { params });
   }
 
   retryCommand(aggregateId: string, commandId: string, command: CommandMessage): Observable<void> {
-    return this.http.post<void>(`${this.backend.baseUrl()}/api/aggregates/${encodeURIComponent(aggregateId)}/commands/${encodeURIComponent(commandId)}/retry`, command);
+    return this.http.post<void>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/commands/${encodeURIComponent(commandId)}/retry`, command);
   }
 }

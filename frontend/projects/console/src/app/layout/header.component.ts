@@ -17,18 +17,18 @@ import { HeaderSearchComponent } from './header-search.component';
         <span class="text-lg tracking-tight"><span class="font-semibold text-white">Eventify</span><span class="font-light text-slate-300 ml-1.5">Console</span></span>
       </a>
 
-      <!-- Without configured applications there is nothing to search -->
-      @if (!backend.unconfigured()) {
+      <!-- Without connected applications there is nothing to search -->
+      @if (!backend.noApps()) {
         <app-header-search class="hidden sm:block ml-auto w-80" />
       }
 
-      @if (!backend.isEmbedded() && backend.apps().length > 0) {
+      @if (backend.apps().length > 0) {
         <app-app-switcher class="ml-auto sm:ml-0 w-44" />
       }
     </header>
 
     <!-- On mobile the search gets its own white bar below the header -->
-    @if (!backend.unconfigured()) {
+    @if (!backend.noApps()) {
       <div class="sm:hidden px-4 py-3 border-b border-surface-200 dark:border-surface-800">
         <app-header-search variant="light" />
       </div>
