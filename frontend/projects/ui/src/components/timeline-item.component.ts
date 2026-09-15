@@ -42,16 +42,16 @@ export class TimelineItemComponent {
 
   lineClass = computed(() => {
     const hidden = this.first() && this.last();
-    // Line connects to the dot, stops at dot (not extending past)
+    // Line goes from dot downward (not from above). Last item has no line below it.
     const positionClasses = hidden ? 'hidden' :
-      (this.first() ? 'top-1/2 bottom-0' : 'top-0 bottom-1/2');
+      (this.last() ? '' : 'top-1/2 bottom-0');
 
-    // Green line if this is selected (line coming into it) or in the highlighted connector chain (older items)
+    // Green line if this is selected (line going down from it) or in the highlighted connector chain (older items)
     const colorClasses = this.selected() || this.highlightedConnector()
       ? 'bg-emerald-500'
       : 'bg-surface-200 dark:bg-surface-700';
 
-    return `${positionClasses} ${colorClasses}`;
+    return `${positionClasses} ${colorClasses}`.trim();
   });
 
   dotClass = computed(() => {
