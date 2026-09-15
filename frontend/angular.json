@@ -77,16 +77,11 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
-            },
-            "mock": {
-              "optimization": false,
-              "extractLicenses": false,
               "sourceMap": true,
               "fileReplacements": [
                 {
                   "replace": "projects/console/src/environments/environment.ts",
-                  "with": "projects/console/src/environments/environment.mock.ts"
+                  "with": "projects/console/src/environments/environment.development.ts"
                 }
               ]
             }
@@ -100,11 +95,7 @@
               "buildTarget": "console:build:production"
             },
             "development": {
-              "buildTarget": "console:build:development",
-              "proxyConfig": "projects/console/proxy.conf.json"
-            },
-            "mock": {
-              "buildTarget": "console:build:mock"
+              "buildTarget": "console:build:development"
             }
           },
           "defaultConfiguration": "development"
