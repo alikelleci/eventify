@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.console.server;
+package io.github.alikelleci.eventify.console.server.node;
 
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.rsocket.RSocket;
@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * The application instances connected right now. An instance is here exactly as long as its connection is open, so
@@ -60,15 +59,8 @@ public class NodeRegistry {
     return candidates.get(Math.floorMod(roundRobin.getAndIncrement(), candidates.size()));
   }
 
-  public List<ApplicationView> applications() {
-    return nodes.values().stream()
-        .collect(Collectors.groupingBy(ConnectedNode::applicationId))
-        .entrySet().stream()
-        .map(entry -> new ApplicationView(entry.getKey(), entry.getValue().stream()
-            .sorted(Comparator.comparing(ConnectedNode::nodeId))
-            .map(node -> new ApplicationView.NodeView(node.nodeId(), node.info().hostname(), node.info().version(), node.connectedAt()))
-            .toList()))
-        .sorted(Comparator.comparing(ApplicationView::name))
-        .toList();
+  /** All connected instances. */
+  public List<ConnectedNode> nodes() {
+    return List.copyOf(nodes.values());
   }
 }

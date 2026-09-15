@@ -1,9 +1,10 @@
-package io.github.alikelleci.eventify.console.server;
+package io.github.alikelleci.eventify.console.server.ui;
 
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.core.io.Resource;
+import io.github.alikelleci.eventify.console.server.ConsoleProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.reactive.function.server.RouterFunction;
 import org.springframework.web.reactive.function.server.RouterFunctions;

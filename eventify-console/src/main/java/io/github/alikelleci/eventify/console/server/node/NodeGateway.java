@@ -1,9 +1,10 @@
-package io.github.alikelleci.eventify.console.server;
+package io.github.alikelleci.eventify.console.server.node;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
+import io.github.alikelleci.eventify.console.server.ConsoleProperties;
 import io.rsocket.Payload;
 import io.rsocket.util.DefaultPayload;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.console.server;
+package io.github.alikelleci.eventify.console.server.node;
 
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 
