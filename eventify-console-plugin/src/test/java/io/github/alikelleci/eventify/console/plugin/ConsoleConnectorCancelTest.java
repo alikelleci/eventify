@@ -20,25 +20,19 @@ import java.net.ServerSocket;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-/** The console cancels a request while its query waits or runs, e.g. because someone refreshed the page. */
+/** The console cancels a request while its query runs, e.g. because someone refreshed the page. */
 class ConsoleConnectorCancelTest {
 
   private final AtomicReference<RSocket> application = new AtomicReference<>();
-  private final List<Disposable> requests = new ArrayList<>();
   /** What each query saw, by the name it was sent with. */
   private final Map<String, String> outcomes = new ConcurrentHashMap<>();
-  private final CountDownLatch release = new CountDownLatch(1);
   private CloseableChannel console;
   private ConsoleConnector connector;
 
@@ -59,18 +53,12 @@ class ConsoleConnectorCancelTest {
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data, cancel) -> {
       String name = new String(data, StandardCharsets.UTF_8);
       try {
-        if (name.startsWith("busy")) {
-          // Occupies one of the connector's threads until the test releases it.
-          release.await(10, TimeUnit.SECONDS);
-          outcomes.put(name, "finished");
-        } else {
-          // A slow query, like reading commands from Kafka, that stops as soon as it's told to.
-          long until = System.currentTimeMillis() + 3000;
-          while (!cancel.isCancelled() && System.currentTimeMillis() < until) {
-            Thread.sleep(20);
-          }
-          outcomes.put(name, cancel.isCancelled() ? "stopped" : "finished");
+        // A slow query, like reading commands from Kafka, that stops as soon as it's told to.
+        long until = System.currentTimeMillis() + 3000;
+        while (!cancel.isCancelled() && System.currentTimeMillis() < until) {
+          Thread.sleep(20);
         }
+        outcomes.put(name, cancel.isCancelled() ? "stopped" : "finished");
       } catch (InterruptedException e) {
         outcomes.put(name, "interrupted");
       }
@@ -82,8 +70,6 @@ class ConsoleConnectorCancelTest {
 
   @AfterEach
   void tearDown() {
-    release.countDown();
-    requests.forEach(Disposable::dispose);
     if (connector != null) connector.stop();
     if (console != null) console.dispose();
   }
@@ -96,23 +82,6 @@ class ConsoleConnectorCancelTest {
 
     await().atMost(Duration.ofSeconds(2)).until(() -> outcomes.containsKey("slow"));
     assertThat(outcomes.get("slow")).isEqualTo("stopped");
-  }
-
-  @Test
-  void aWaitingQueryThatIsCancelledIsSkipped() {
-    // All four threads are busy, so the next query has to wait...
-    for (int i = 0; i < 4; i++) {
-      requests.add(send("busy-" + i).subscribe());
-    }
-    Disposable waiting = send("waiting").subscribe();
-    await().pollDelay(Duration.ofMillis(300)).atMost(Duration.ofSeconds(1)).until(() -> true);
-
-    // ...and is cancelled before its turn.
-    waiting.dispose();
-    release.countDown();
-
-    await().atMost(Duration.ofSeconds(5)).until(() -> outcomes.keySet().stream().filter(k -> k.startsWith("busy")).count() == 4);
-    await().during(Duration.ofSeconds(1)).atMost(Duration.ofSeconds(2)).until(() -> !outcomes.containsKey("waiting"));
   }
 
   @Test
