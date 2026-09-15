@@ -54,32 +54,33 @@ export class TimelineItemComponent {
   });
 
   dotClass = computed(() => {
-    // Failed commands always keep red, even when highlighted (preserve failure status visibility)
+    const baseBorder = this.interactive()
+      ? 'border-surface-0 dark:border-surface-900 group-hover:border-surface-50 dark:group-hover:border-surface-800'
+      : 'border-surface-0 dark:border-surface-900';
+
+    // Failed commands always stay red
     if (this.tone() === 'failure') {
-      const border = this.highlightedConnector() 
-        ? 'border-surface-0 dark:border-surface-900'
-        : this.interactive() 
-        ? 'border-surface-0 dark:border-surface-900 group-hover:border-surface-50 dark:group-hover:border-surface-800'
-        : 'border-surface-0 dark:border-surface-900';
-      return `bg-red-500 ${border}`;
+      return `bg-red-500 ${baseBorder}`;
     }
 
-    // Selected item or highlighted connector (non-failure) turns emerald
-    if (this.selected() || this.highlightedConnector()) {
-      return 'bg-emerald-500 border-emerald-50 dark:border-emerald-950 ring-1 ring-emerald-500';
+    // Selected item: emerald dot with ring (only place ring appears)
+    if (this.selected()) {
+      return `bg-emerald-500 border-emerald-50 dark:border-emerald-950 ring-1 ring-emerald-500`;
     }
 
-    // Default colors by tone
+    // Highlighted items (older items in flow): emerald for success/neutral, no ring
+    if (this.highlightedConnector()) {
+      return `bg-emerald-500 ${baseBorder}`;
+    }
+
+    // Default colors by tone (not selected, not highlighted)
     const [fill, ring] = {
       neutral: ['bg-surface-300 dark:bg-surface-600', ''],
       success: ['bg-emerald-500', 'ring-emerald-500'],
       failure: ['bg-red-500', 'ring-red-500'],
       placeholder: ['bg-surface-200 dark:bg-surface-700', ''],
     }[this.tone()];
-    
-    // The dot's border matches the row background
-    const border = this.interactive() ? 'border-surface-0 dark:border-surface-900 group-hover:border-surface-50 dark:group-hover:border-surface-800'
-      : 'border-surface-0 dark:border-surface-900';
-    return `${fill} ${border}`;
+
+    return `${fill} ${baseBorder}${ring ? ' ring-1 ' + ring : ''}`;
   });
 }
