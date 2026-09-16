@@ -15,6 +15,9 @@ export interface StatusLabel {
   tone: StatusTone;
 }
 
+/** How long the mouse rests on a status before its tooltip shows: moving past it shows nothing. */
+export const TOOLTIP_DELAY_MS = 400;
+
 /** Worst first: which instance speaks for the application. */
 const TONES: StatusTone[] = ['error', 'busy', 'unknown', 'ok'];
 
@@ -41,13 +44,22 @@ export function instanceLabel(status: InstanceStatus | null): string {
 /** The state of an application: the one of its instance worst off. */
 export function appState(instances: { status: InstanceStatus | null }[]): StatusLabel {
   if (instances.length === 0) return { text: 'No instances', tone: 'unknown' };
-  return instances.map(instance => instanceState(instance.status))
-    .reduce((worst, label) => TONES.indexOf(label.tone) < TONES.indexOf(worst.tone) ? label : worst);
+  return worst(instances.map(instance => instanceState(instance.status)));
 }
 
-/** The instances worst off first, so a problem isn't buried among the running ones. */
-export function worstFirst<T extends { status: InstanceStatus | null }>(instances: T[]): T[] {
-  return [...instances].sort((a, b) => TONES.indexOf(instanceState(a.status).tone) - TONES.indexOf(instanceState(b.status).tone));
+/** The one worst off: an error before busy, busy before unknown, unknown before running. At least one is needed. */
+export function worst<T extends { tone: StatusTone }>(labels: T[]): T {
+  return labels.reduce((worst, label) => TONES.indexOf(label.tone) < TONES.indexOf(worst.tone) ? label : worst);
+}
+
+/**
+ * The instances numbered 1, 2, 3 in that order, from the one connected longest. An instance keeps its number while it
+ * stays connected; one that restarts comes last.
+ */
+export function numbered<T extends { nodeId: string; connectedAt: string }>(instances: T[]): { number: number; instance: T }[] {
+  return [...instances]
+    .sort((a, b) => a.connectedAt.localeCompare(b.connectedAt) || a.nodeId.localeCompare(b.nodeId))
+    .map((instance, index) => ({ number: index + 1, instance }));
 }
 
 /** The colour of a status dot: green running, amber busy, red wrong, grey unknown. */

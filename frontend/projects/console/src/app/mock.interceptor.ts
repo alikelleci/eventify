@@ -194,7 +194,8 @@ const APPS: MockApp[] = [
     { name: 'loyalty', instances: 1 },
     { name: 'search-indexer', instances: 3 },
     { name: 'fraud-detection', instances: 2 },
-    { name: 'warehouse-management-service-with-a-very-long-name', instances: 1 }, // truncation
+    { name: 'customer-notification-preferences-and-consent-management-service', instances: 2 },       // a long name that wraps in the tooltip of "+N more"
+    { name: 'warehouse-management-service-with-a-very-long-name', instances: 3 }, // a long name cut off on its home card
   ].map(({ name, instances, versions }): MockApp => ({
     name,
     nodes: Array.from({ length: instances }, (_, i) => ({
@@ -209,14 +210,18 @@ const APPS: MockApp[] = [
 /** The example applications with how each instance is doing, as /api/apps reports them. */
 function apps(): AppEntry[] {
   const running: InstanceStatus = { state: 'RUNNING', stateForMs: 3_600_000, restoring: false };
-  // A few different situations, per application and instance; the rest is running.
+  // Every state shows up somewhere, per application and instance; the rest is running. On the home page, the two with an
+  // error and the first busy one get a card; the other busy ones make "+N more" amber.
   const situations: Record<string, (InstanceStatus | null)[]> = {
+    returns: [running, { state: 'ERROR', stateForMs: 2_700_000, restoring: false }],                     // error on 1 of 3
+    'warehouse-management-service-with-a-very-long-name': [running, running, { state: 'NOT_RUNNING', stateForMs: 95_000, restoring: false }],
     payments: [{ state: 'REBALANCING', stateForMs: 224_000, restoring: false }],
     shipping: [{ state: 'REBALANCING', stateForMs: 1_500_000, restoring: true }, { state: 'REBALANCING', stateForMs: 4_000, restoring: false }],
-    returns: [{ state: 'ERROR', stateForMs: 180_000, restoring: false }],
-    customers: [running, running, running, running, running, null],   // one instance doesn't answer
+    catalog: [running, running, running, { state: 'CREATED', stateForMs: 12_000, restoring: false }],     // one just starting
+    customers: [running, running, running, running, running, null],                                     // one doesn't answer
   };
-  return APPS.map(app => ({
+  // By name, as the console sorts them.
+  return [...APPS].sort((a, b) => a.name.localeCompare(b.name)).map(app => ({
     ...app,
     nodes: app.nodes.map((node, i) => {
       const situation = situations[app.name];

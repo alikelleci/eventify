@@ -1,7 +1,8 @@
 import { Component, ElementRef, HostListener, ViewChild, computed, effect, inject, signal, viewChildren } from '@angular/core';
 import { TooltipModule, Tooltip } from 'primeng/tooltip';
 import { AppEntry, BackendService } from '@eventify/ui/services/backend.service';
-import { appState, dotClass, instanceLabel, instanceState, worstFirst } from '@eventify/ui/status';
+import { InstanceListComponent } from '@eventify/ui/components/instance-list.component';
+import { TOOLTIP_DELAY_MS, appState, dotClass } from '@eventify/ui/status';
 
 /** From this many applications on, the dropdown has a filter at the top. */
 const FILTER_FROM = 7;
@@ -15,7 +16,7 @@ const FILTER_FROM = 7;
 @Component({
   selector: 'app-app-switcher',
   standalone: true,
-  imports: [TooltipModule],
+  imports: [TooltipModule, InstanceListComponent],
   host: { class: 'relative block', '(focusout)': 'onFocusout($event)' },
   template: `
     <button #button type="button" aria-haspopup="listbox" [attr.aria-expanded]="open()" aria-controls="app-switcher-list"
@@ -49,7 +50,7 @@ const FILTER_FROM = 7;
             <div role="option" [attr.aria-selected]="isActive(app)" [attr.aria-label]="app.name + ', ' + state.text + ', ' + instancesLabel(app)"
                  class="flex items-center gap-2.5 px-3 py-2 border-l-2 cursor-pointer transition-colors"
                  [class]="rowClass(app, $index)"
-                 [pTooltip]="instances" tooltipEvent="focus" tooltipPosition="left" tooltipStyleClass="max-w-none"
+                 [pTooltip]="instances" tooltipEvent="focus" tooltipPosition="left" tooltipStyleClass="max-w-none" [showDelay]="tooltipDelay"
                  (mouseenter)="highlightedIndex.set($index)"
                  (mousedown)="$event.preventDefault(); select(app)">
               <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(state.tone)"></span>
@@ -57,19 +58,7 @@ const FILTER_FROM = 7;
                     [class]="isActive(app) ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-surface-900 dark:text-surface-100'">{{ app.name }}</span>
               <span class="ml-auto pl-2 shrink-0 text-xs tabular-nums text-surface-400">{{ instancesLabel(app) }}</span>
             </div>
-            <ng-template #instances>
-              <div class="flex flex-col gap-1 text-xs">
-                @for (node of worstFirst(app.nodes); track node.nodeId) {
-                  <div class="flex items-center gap-2 whitespace-nowrap">
-                    <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(instanceState(node.status).tone)"></span>
-                    <span class="font-medium">{{ node.hostname ?? node.nodeId }}</span>
-                    <span class="ml-auto pl-4 opacity-80">{{ instanceLabel(node.status) }}</span>
-                  </div>
-                } @empty {
-                  <div>No instances connected</div>
-                }
-              </div>
-            </ng-template>
+            <ng-template #instances><app-instance-list [instances]="app.nodes" /></ng-template>
           } @empty {
             <div class="px-3 py-6 text-center text-sm text-surface-400">No applications match “{{ query() }}”</div>
           }
@@ -82,9 +71,6 @@ export class AppSwitcherComponent {
   readonly backend = inject(BackendService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   readonly appState = appState;
-  readonly instanceState = instanceState;
-  readonly instanceLabel = instanceLabel;
-  readonly worstFirst = worstFirst;
   readonly dotClass = dotClass;
 
   /** "1 instance", "3 instances". */
@@ -94,6 +80,9 @@ export class AppSwitcherComponent {
 
   /** The chosen application as last refreshed: activeApp() only changes when another one is picked. */
   readonly activeState = computed(() => appState(this.backend.apps().find(app => app.name === this.backend.activeApp()?.name)?.nodes ?? []));
+
+  /** Moving over the list shows no tooltips on the way, only where the mouse or the arrow keys stop. */
+  readonly tooltipDelay = TOOLTIP_DELAY_MS;
 
   /** The rows' tooltips, in the order of the rows. */
   private readonly tooltips = viewChildren(Tooltip);

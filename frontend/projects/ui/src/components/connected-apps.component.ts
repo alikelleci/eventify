@@ -1,12 +1,24 @@
 import { Component, computed, input } from '@angular/core';
-import { StatusTone, dotClass } from '../status';
+import { TooltipModule } from 'primeng/tooltip';
+import { AppNode } from '../services/backend.service';
+import { InstanceListComponent } from './instance-list.component';
+import { StatusTone, TOOLTIP_DELAY_MS, dotClass, worst } from '../status';
 
 /** An application in the picture, with a short note under its name, e.g. its number of instances. */
 export interface ConnectedApp {
   name: string;
   note?: string;
-  /** How it is doing, as the colour of its dot. Without one, the dot is green. */
-  tone?: StatusTone;
+  /** How it is doing, as the colour of its dot. */
+  tone: StatusTone;
+  /** Its instances, listed with how each is doing on hover. */
+  instances: AppNode[];
+}
+
+/** A box in the picture: one application, or the rest of them together. */
+interface Box extends Omit<ConnectedApp, 'instances'> {
+  instances?: AppNode[];
+  /** For the box of the rest: the applications in it. */
+  rest?: ConnectedApp[];
 }
 
 /** At most this many boxes; with more applications the last box counts the rest. */
@@ -22,6 +34,7 @@ const problem = (app: ConnectedApp) => app.tone === 'error' ? 0 : app.tone === '
 @Component({
   selector: 'app-connected-apps',
   standalone: true,
+  imports: [TooltipModule, InstanceListComponent],
   host: { class: 'block', 'aria-hidden': 'true' },
   template: `
     <div class="flex flex-col items-center">
@@ -41,13 +54,29 @@ const problem = (app: ConnectedApp) => app.tone === 'error' ? 0 : app.tone === '
 
       <div class="grid w-full gap-2" [style.grid-template-columns]="'repeat(' + boxes().length + ', minmax(0, 1fr))'">
         @for (box of boxes(); track box.name) {
-          <div class="flex min-w-0 flex-col items-center rounded-lg border border-surface-200 bg-surface-0 px-2 py-2 dark:border-surface-700 dark:bg-surface-900">
+          <div class="flex min-w-0 flex-col items-center rounded-lg border border-surface-200 bg-surface-0 px-2 py-2 dark:border-surface-700 dark:bg-surface-900"
+               [pTooltip]="box.rest ? rest : instances" tooltipPosition="bottom" tooltipStyleClass="max-w-96" [showDelay]="tooltipDelay">
             <span class="flex max-w-full items-center gap-1.5">
               <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(box.tone)"></span>
               <span class="truncate text-xs font-medium text-surface-700 dark:text-surface-200">{{ box.name }}</span>
             </span>
             @if (box.note) { <span class="mt-0.5 text-[10px] text-surface-400">{{ box.note }}</span> }
           </div>
+          <!-- An application's instances, the same list as in the application switcher -->
+          <ng-template #instances><app-instance-list [instances]="box.instances ?? []" /></ng-template>
+          <!-- The applications in the box of the rest, each with its state -->
+          <ng-template #rest>
+            <div class="flex flex-col gap-1 text-xs">
+              @for (app of box.rest; track app.name) {
+                <!-- A long name wraps, so the tooltip doesn't grow wider than the screen -->
+                <div class="flex items-start gap-2">
+                  <span class="mt-1 h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(app.tone)"></span>
+                  <span class="min-w-0 break-words font-medium">{{ app.name }}</span>
+                  <span class="ml-auto shrink-0 whitespace-nowrap pl-6 opacity-80">{{ app.note }}</span>
+                </div>
+              }
+            </div>
+          </ng-template>
         }
       </div>
     </div>
@@ -63,21 +92,21 @@ export class ConnectedAppsComponent {
 
   /**
    * The applications with a problem get a box first, errors before busy ones; the others keep their order. The rest share
-   * one box, which is never red or amber itself: a colour always belongs to one application. When problems don't all fit,
-   * that box turns grey and says how many of its applications need attention.
+   * one box, in the colour of the one worst off, like an application in the switcher; hovering it lists them in their
+   * usual order, as the switcher does. Hovering an application's own box lists its instances.
    */
-  readonly boxes = computed<ConnectedApp[]>(() => {
-    const apps = [...this.apps()].sort((a, b) => problem(a) - problem(b));
-    if (apps.length <= MAX_BOXES) return apps;
-    const rest = apps.slice(MAX_BOXES - 1);
-    const needAttention = rest.filter(app => problem(app) < 2).length;
-    return [...apps.slice(0, MAX_BOXES - 1), needAttention
-      ? { name: `+${rest.length} more`, note: `${needAttention} need attention`, tone: 'unknown' }
-      : { name: `+${rest.length} more`, note: 'applications' }];
+  readonly boxes = computed<Box[]>(() => {
+    const apps = this.apps();
+    const ordered = [...apps].sort((a, b) => problem(a) - problem(b));
+    if (apps.length <= MAX_BOXES) return ordered;
+    const shown = ordered.slice(0, MAX_BOXES - 1);
+    const rest = apps.filter(app => !shown.includes(app));
+    return [...shown, { name: `+${rest.length} more`, note: 'applications', tone: worst(rest).tone, rest }];
   });
 
-  /** The same colours as the application switcher. */
+  /** The same colours and tooltip delay as the application switcher. */
   readonly dotClass = dotClass;
+  readonly tooltipDelay = TOOLTIP_DELAY_MS;
 
   /** From the centre of each box, curving up to the console in the middle. */
   readonly paths = computed(() => {

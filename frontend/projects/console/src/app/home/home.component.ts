@@ -40,7 +40,7 @@ export class HomeComponent {
   /** The picture in the centre, each application with its number of instances. */
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => {
     const state = appState(app.nodes);
-    return { name: app.name, note: state.text, tone: state.tone };
+    return { name: app.name, note: state.text, tone: state.tone, instances: app.nodes };
   }));
 
 }
