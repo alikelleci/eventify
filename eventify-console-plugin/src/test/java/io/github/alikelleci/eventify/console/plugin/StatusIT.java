@@ -35,15 +35,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * The status an instance reports, against a real broker: the state it is in and how long, the commands still waiting,
- * and the state stores it restores after its local state is gone.
+ * The status an instance reports, against a real broker: the state it is in and how long, and the state stores it
+ * restores after its local state is gone.
  */
 @Testcontainers
 class StatusIT {
@@ -73,7 +72,7 @@ class StatusIT {
   }
 
   @Test
-  @DisplayName("A running instance reports its state, how long it has been in it, and an empty queue")
+  @DisplayName("A running instance reports its state, how long it has been in it, and nothing to restore")
   void runningInstance() {
     eventify = start("status-running", "running");
     awaitRunning();
@@ -82,27 +81,6 @@ class StatusIT {
     assertThat(status.state()).isEqualTo("RUNNING");
     assertThat(status.stateForMs()).isPositive();
     assertThat(status.restore()).isNull();
-    // Nothing to do: the number is known (so the metric is found) and zero.
-    await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> assertThat(status().commandsInQueue()).isZero());
-  }
-
-  @Test
-  @DisplayName("Commands waiting are counted, and the count drops to zero once they are handled")
-  void commandsInQueue() throws Exception {
-    // Written before the application starts, so they are all waiting when it does.
-    send(IntStream.range(0, 20_000).mapToObj(i -> "queued-" + i).toList());
-
-    eventify = start("status-queue", "queue");
-    awaitRunning();
-
-    // While it is catching up the commands are counted, and once it is done the count is zero.
-    AtomicLong highest = new AtomicLong();
-    await().atMost(Duration.ofSeconds(120)).pollInterval(Duration.ofMillis(50)).untilAsserted(() -> {
-      Long queue = status().commandsInQueue();
-      if (queue != null) highest.updateAndGet(seen -> Math.max(seen, queue));
-      assertThat(queue).isZero();
-    });
-    assertThat(highest.get()).isPositive();
   }
 
   @Test
@@ -110,8 +88,10 @@ class StatusIT {
   void restoresAfterLosingItsLocalState() throws Exception {
     eventify = start("status-restore", "first-run");
     awaitRunning();
-    send(IntStream.range(0, 300).mapToObj(i -> "restored-" + i).toList());
-    await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> assertThat(status().commandsInQueue()).isZero());
+    List<String> ids = IntStream.range(0, 300).mapToObj(i -> "restored-" + i).toList();
+    send(ids);
+    // Every command has been handled, so the stores have something to restore.
+    await().atMost(Duration.ofSeconds(60)).until(() -> ids.stream().allMatch(this::hasEvents));
     eventify.stop();
 
     // Started again with an empty state directory: the stores are read back from their changelogs.
@@ -127,6 +107,11 @@ class StatusIT {
     ApiResult<InstanceStatus> result = service.getStatus();
     assertThat(result).isInstanceOf(ApiResult.Ok.class);
     return ((ApiResult.Ok<InstanceStatus>) result).value();
+  }
+
+  private boolean hasEvents(String aggregateId) {
+    return service.getEvents(aggregateId, null, 1) instanceof ApiResult.Ok<EventifyService.EventsPage> ok
+        && !ok.value().events().isEmpty();
   }
 
   private void awaitRunning() {

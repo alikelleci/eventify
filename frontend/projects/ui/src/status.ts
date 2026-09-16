@@ -7,8 +7,6 @@ export interface AppStatus {
   stateForMs: number;
   /** How many instances are in that state; fewer than `answered` means only some of them are. */
   inState: number;
-  /** Commands waiting over all instances, or null when none of them could measure it. */
-  commandsInQueue: number | null;
   restore: { restored: number; total: number; percentage: number } | null;
   /** The instances connected right now, and how many of them answered. */
   instances: number;
@@ -46,16 +44,6 @@ function some(status: AppStatus): string {
   return status.inState > 0 && status.inState < status.answered ? ` (${status.inState} of ${status.answered})` : '';
 }
 
-/**
- * The commands waiting, when that number means something: while an application is rebalancing or restoring, partitions
- * are moving and the number is too low. "≥" when not every connected instance answered, so it is only part of the total.
- */
-export function queueLabel(status: AppStatus | undefined | null): string | null {
-  if (!status || status.state !== 'RUNNING' || status.commandsInQueue == null) return null;
-  const partial = status.answered < status.instances ? '≥' : '';
-  return `${partial}${compact(status.commandsInQueue)} in queue`;
-}
-
 /** 40s, 4 min, 2 h, 3 days. */
 export function duration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
@@ -66,15 +54,4 @@ export function duration(ms: number): string {
   if (hours < 24) return `${hours} h`;
   const days = Math.floor(hours / 24);
   return `${days} ${days === 1 ? 'day' : 'days'}`;
-}
-
-/** 934, 1.2k, 15k, 1.4M: the order of magnitude is what matters. */
-export function compact(count: number): string {
-  if (count < 1000) return String(count);
-  if (count < 1_000_000) {
-    const thousands = count / 1000;
-    return `${thousands < 10 ? thousands.toFixed(1) : Math.round(thousands)}k`;
-  }
-  const millions = count / 1_000_000;
-  return `${millions < 10 ? millions.toFixed(1) : Math.round(millions)}M`;
 }

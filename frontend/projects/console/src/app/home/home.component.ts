@@ -1,6 +1,6 @@
 import {Component, computed, inject} from '@angular/core';
 import {BackendService} from '@eventify/ui/services/backend.service';
-import {compact, statusLabel} from '@eventify/ui/status';
+import {statusLabel} from '@eventify/ui/status';
 import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
 
 /**
@@ -30,17 +30,10 @@ export class HomeComponent {
     .map(app => statusLabel(this.backend.statusOf(app.name)))
     .filter(label => label.tone === 'busy' || label.tone === 'error'));
 
-  /** The commands waiting over all applications that could measure it. */
-  private readonly commandsInQueue = computed(() => this.backend.apps()
-    .map(app => this.backend.statusOf(app.name)?.commandsInQueue)
-    .filter((count): count is number => count != null)
-    .reduce((sum, count) => sum + count, 0));
-
   /** The totals in the top row; the applications that need attention are coloured once there are any. */
   readonly stats = computed(() => [
     { label: 'Applications', value: String(this.backend.apps().length), warn: false },
     { label: 'Instances', value: String(this.instanceCount()), warn: false },
-    { label: 'Commands in queue', value: compact(this.commandsInQueue()), warn: false },
     { label: 'Need attention', value: String(this.busy().length), warn: true },
   ]);
 

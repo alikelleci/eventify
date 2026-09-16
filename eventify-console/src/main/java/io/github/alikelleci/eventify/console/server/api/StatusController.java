@@ -72,7 +72,7 @@ public class StatusController {
 
   private static ApplicationStatusView combine(String application, int instances, List<InstanceStatus> answers) {
     if (answers.isEmpty()) {
-      return new ApplicationStatusView(application, null, 0, 0, null, null, instances, 0);
+      return new ApplicationStatusView(application, null, 0, 0, null, instances, 0);
     }
 
     String state = answers.stream()
@@ -86,17 +86,13 @@ public class StatusController {
         .max().orElse(0);
     int inState = (int) answers.stream().filter(answer -> answer.state().equals(state)).count();
 
-    Long commandsInQueue = answers.stream().anyMatch(answer -> answer.commandsInQueue() != null)
-        ? answers.stream().filter(answer -> answer.commandsInQueue() != null).mapToLong(InstanceStatus::commandsInQueue).sum()
-        : null;
-
     long restored = answers.stream().filter(answer -> answer.restore() != null).mapToLong(answer -> answer.restore().restored()).sum();
     long total = answers.stream().filter(answer -> answer.restore() != null).mapToLong(answer -> answer.restore().total()).sum();
     ApplicationStatusView.Restore restore = total > 0
         ? new ApplicationStatusView.Restore(restored, total, (int) (restored * 100 / total))
         : null;
 
-    return new ApplicationStatusView(application, state, stateForMs, inState, commandsInQueue, restore, instances, answers.size());
+    return new ApplicationStatusView(application, state, stateForMs, inState, restore, instances, answers.size());
   }
 
   /** Lower is worse off; an unknown state is treated as the worst, so it can't hide behind a running one. */

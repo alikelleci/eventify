@@ -213,7 +213,6 @@ function statuses() {
       name: app.name,
       state: instances === 0 ? null : state,
       stateForMs: i === 2 ? 224_000 : 9_000,
-      commandsInQueue: state === 'RUNNING' ? (i * 137) % 2200 : null,
       restore,
       // "returns" has only one instance in error, to show that a state can be about some instances only.
       inState: state === 'ERROR' && instances > 1 ? 1 : instances,
