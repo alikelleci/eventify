@@ -113,12 +113,13 @@ class AggregateIdMismatchTest {
   void aStateWithAnotherAggregateIdIsNotStoredAsThatAggregatesSnapshot() {
     send("ad", Increment.builder().id("ad").stateId("ad").build());
     send("ada", Increment.builder().id("ada").stateId("ada").build());
-    send("ada", Increment.builder().id("ada").stateId("ad").build()); // the handler gives "ada" the id "ad"
-    send("ada", Increment.builder().id("ada").stateId("ada").build()); // loads "ada" at version 2: would snapshot it as "ad"
+    send("ada", Increment.builder().id("ada").stateId("ad").build()); // the handler gives "ada" the id "ad": rejected, not stored
+    send("ada", Increment.builder().id("ada").stateId("ada").build()); // "ada" is still at version 1, and goes on
 
     assertThat(results.readValuesToList())
         .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(Metadata.RESULT))
-        .containsExactly("ad success", "ada success", "ada success", "ada failure");
+        .containsExactly("ad success", "ada success", "ada failure", "ada success");
+    assertThat(IteratorUtils.toList(eventStore.all())).hasSize(3);
     assertThat(snapshotStore.get("ad")).isNull();
     assertThat(snapshotStore.get("ada")).isNull();
 

@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResul
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateReplay;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -54,31 +55,36 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     String key = fixedKeyRecord.key();
     Command command = fixedKeyRecord.value();
 
+    // Everything that can reject the command, user code included. Nothing of the command is stored yet: a failure
+    // leaves the aggregate as it was.
+    List<Event> events;
     try {
-      // Execute command
-      List<Event> events = executeCommand(key, command);
-
-      // Return if no events
-      if (CollectionUtils.isEmpty(events)) {
-        return;
-      }
-
-      // Forward success
-      context.forward(fixedKeyRecord.withValue(Success.builder()
-          .command(command)
-          .events(events)
-          .build()));
-
+      events = executeCommand(key, command);
     } catch (Exception e) {
-      // Log failure
       logFailure(e);
 
-      // Forward failure
       context.forward(fixedKeyRecord.withValue(Failure.builder()
           .command(command)
           .cause(ExceptionUtils.getRootCauseMessage(e))
           .build()));
+      return;
     }
+
+    if (CollectionUtils.isEmpty(events)) {
+      return;
+    }
+
+    // Not caught: a failure from here on is not the command's, and must not be committed as its failure. It fails
+    // the task, and exactly-once aborts the transaction with all that was written for this command.
+    for (Event event : events) {
+      saveEvent(event);
+    }
+
+    // Runs the topology after it on this call: the sends to the result and event topics.
+    context.forward(fixedKeyRecord.withValue(Success.builder()
+        .command(command)
+        .events(events)
+        .build()));
   }
 
   @Override
@@ -86,6 +92,10 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   }
 
+  /**
+   * Handles the command and returns its events, without storing them: {@link #process} stores them once the command
+   * is accepted.
+   */
   protected List<Event> executeCommand(String aggregateId, Command command) {
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
@@ -102,12 +112,20 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AggregateState state = loadAggregate(aggregateId);
     List<Event> events = inOrder(aggregateId, commandHandler.apply(state, command));
 
-    // Save events
-    for (Event event : events) {
-      saveEvent(event);
-    }
+    // Stored, an event is replayed at every load: one its event sourcing handler can't apply would make every next
+    // command of this aggregate fail. Applied now, it fails this command instead, before it is stored.
+    applyEvents(state, events);
 
     return events;
+  }
+
+  private void applyEvents(AggregateState state, List<Event> events) {
+    for (Event event : events) {
+      EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+      if (handler != null) {
+        state = handler.apply(state, event);
+      }
+    }
   }
 
   /**
