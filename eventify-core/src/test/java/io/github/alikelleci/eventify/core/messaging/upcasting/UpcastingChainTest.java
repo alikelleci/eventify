@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core.messaging.upcasting;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
+import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.Revision;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
@@ -13,7 +14,10 @@ import io.github.alikelleci.eventify.core.support.serialization.json.util.Jackso
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.common.errors.SerializationException;
+import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.Test;
+
+import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -144,8 +148,19 @@ class UpcastingChainTest {
   }
 
   @Test
-  void twoUpcastersForTheSameTypeAndRevisionAreRefused() {
+  void twoUpcastersForTheSameTypeAndRevisionAreRefusedBySerde() {
     assertThatThrownBy(() -> new JsonDeserializer<>(Event.class).registerUpcaster(new TwoForRevision1()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
+  }
+
+  @Test
+  void twoUpcastersForTheSameTypeAndRevisionAreRefusedByEventify() {
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "upcasting-chain-test");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(properties).registerHandler(new TwoForRevision1()).build())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
   }

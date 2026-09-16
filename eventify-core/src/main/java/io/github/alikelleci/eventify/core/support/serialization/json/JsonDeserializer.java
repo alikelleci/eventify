@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.core.messaging.upcasting.exceptions.UpcastingException;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
-import io.github.alikelleci.eventify.core.util.AnnotationUtils;
+import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
@@ -15,7 +15,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Deserializer;
 
-import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -123,13 +122,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
   }
 
   public JsonDeserializer<T> registerUpcaster(Object handler) {
-    AnnotationUtils.findAnnotatedMethods(handler.getClass(), Upcast.class)
-        .forEach(method -> addUpcaster(handler, method));
-
+    HandlerUtils.registerUpcasters(upcasters, handler);
     return this;
-  }
-
-  private void addUpcaster(Object listener, Method method) {
-    Upcaster.register(upcasters, listener, method);
   }
 }

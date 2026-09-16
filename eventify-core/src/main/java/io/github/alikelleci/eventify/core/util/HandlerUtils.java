@@ -12,6 +12,7 @@ import io.github.alikelleci.eventify.core.messaging.resulthandling.annotations.H
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import lombok.experimental.UtilityClass;
+import org.apache.commons.collections4.MultiValuedMap;
 
 import java.lang.reflect.Method;
 
@@ -31,8 +32,16 @@ public class HandlerUtils {
     AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(eventify, handler, method));
 
+    registerUpcasters(eventify.getUpcasters(), handler);
+  }
+
+  /**
+   * Adds the {@link Upcast} methods of a handler to the upcasters. Also for upcasters outside Eventify, e.g. a
+   * {@code JsonSerde} that reads the events for a projection.
+   */
+  public void registerUpcasters(MultiValuedMap<String, Upcaster> upcasters, Object handler) {
     AnnotationUtils.findAnnotatedMethods(handler.getClass(), Upcast.class)
-        .forEach(method -> addUpcaster(eventify, handler, method));
+        .forEach(method -> addUpcaster(upcasters, handler, method));
   }
 
 
@@ -64,7 +73,17 @@ public class HandlerUtils {
     }
   }
 
-  private void addUpcaster(Eventify eventify, Object listener, Method method) {
-    Upcaster.register(eventify.getUpcasters(), listener, method);
+  /** One upcaster per type and revision: with two, the chain would take one of them, depending on the order they were registered in. */
+  private void addUpcaster(MultiValuedMap<String, Upcaster> upcasters, Object listener, Method method) {
+    if (method.getParameterCount() == 1) {
+      Upcast upcast = method.getAnnotation(Upcast.class);
+      upcasters.get(upcast.type()).stream()
+          .filter(existing -> existing.getMethod().getAnnotation(Upcast.class).revision() == upcast.revision())
+          .findFirst()
+          .ifPresent(existing -> {
+            throw new IllegalStateException("Two upcasters for " + upcast.type() + " revision " + upcast.revision() + ": " + existing.getMethod() + " and " + method);
+          });
+      upcasters.put(upcast.type(), new Upcaster(listener, method));
+    }
   }
 }
