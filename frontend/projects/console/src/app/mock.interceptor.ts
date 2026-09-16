@@ -202,7 +202,29 @@ const APPS: AppEntry[] = [
   })),
 ];
 
+/** How the example applications are doing, as /api/status reports it. */
+function statuses() {
+  return APPS.map((app, i) => {
+    const instances = app.nodes.length;
+    // A few different situations: one restoring, one rebalancing, one in error, the rest running.
+    const state = i === 1 ? 'REBALANCING' : i === 2 ? 'REBALANCING' : i === 3 ? 'ERROR' : 'RUNNING';
+    const restore = i === 1 ? { restored: 64_000, total: 100_000, percentage: 64 } : null;
+    return {
+      name: app.name,
+      state: instances === 0 ? null : state,
+      stateForMs: i === 2 ? 224_000 : 9_000,
+      commandsInQueue: state === 'RUNNING' ? (i * 137) % 2200 : null,
+      restore,
+      // "returns" has only one instance in error, to show that a state can be about some instances only.
+      inState: state === 'ERROR' && instances > 1 ? 1 : instances,
+      instances,
+      answered: instances,
+    };
+  });
+}
+
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
+  if (req.url.endsWith('/api/status')) return respond(statuses(), 80);
   if (req.url.endsWith('/api/apps')) return respond(APPS, 100);
   if (req.url.endsWith('/api/session')) return respond({ loginEnabled: false, user: null, appTokenRequired: false }, 50);
   if (!req.url.includes('/api/apps/') || !req.url.includes('/aggregates/')) return next(req);

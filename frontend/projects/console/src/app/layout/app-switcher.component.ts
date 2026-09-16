@@ -1,6 +1,6 @@
 import { Component, ElementRef, HostListener, ViewChild, computed, inject, signal } from '@angular/core';
-import { TooltipModule } from 'primeng/tooltip';
-import { AppEntry, BackendService, mixedVersions } from '@eventify/ui/services/backend.service';
+import { AppEntry, BackendService } from '@eventify/ui/services/backend.service';
+import { statusLabel } from '@eventify/ui/status';
 
 /** From this many applications on, the dropdown has a filter at the top. */
 const FILTER_FROM = 7;
@@ -13,13 +13,13 @@ const FILTER_FROM = 7;
 @Component({
   selector: 'app-app-switcher',
   standalone: true,
-  imports: [TooltipModule],
   host: { class: 'relative block', '(focusout)': 'onFocusout($event)' },
   template: `
     <button #button type="button" aria-haspopup="listbox" [attr.aria-expanded]="open()" aria-controls="app-switcher-list"
             class="flex items-center gap-2 h-8 w-full pl-3 pr-2.5 rounded border text-sm text-slate-100 transition-colors cursor-pointer outline-none focus-visible:border-slate-500 focus-visible:bg-slate-700/60"
             [class]="open() ? 'border-slate-500 bg-slate-700/60' : 'border-slate-700 bg-slate-800 hover:border-slate-600'"
             (click)="toggle()" (keydown)="onKeydown($event)">
+      <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(statusLabel(backend.statusOf(backend.activeApp()?.name)).tone)"></span>
       <span class="flex-1 text-left truncate">{{ backend.activeApp()?.name }}</span>
       <i class="pi pi-chevron-down text-xs text-slate-400 transition-transform" [class.rotate-180]="open()"></i>
     </button>
@@ -39,25 +39,23 @@ const FILTER_FROM = 7;
 
         <div id="app-switcher-list" role="listbox" aria-label="Applications" class="max-h-80 overflow-y-auto">
           @for (app of filtered(); track app.name) {
-            @let versions = mixedVersions(app);
             <!-- Two lines: the name, and below it the instances; a warning on the right when the instances run different versions -->
             <div role="option" [attr.aria-selected]="isActive(app)"
                  class="flex items-center gap-3 px-3 py-2 border-l-2 cursor-pointer transition-colors"
                  [class]="rowClass(app, $index)"
                  (mouseenter)="highlightedIndex.set($index)"
                  (mousedown)="$event.preventDefault(); select(app)">
+              @let status = backend.statusOf(app.name);
+              @let label = statusLabel(status);
               <div class="min-w-0 flex-1">
                 <div class="text-sm truncate"
                      [class]="isActive(app) ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-surface-900 dark:text-surface-100'">{{ app.name }}</div>
-                <!-- Red while no instance is connected, e.g. while the application restarts -->
-                <div class="mt-0.5 flex items-center gap-1.5 text-xs" [class]="app.nodes.length ? 'text-surface-400' : 'text-red-500'">
-                  <span class="h-1.5 w-1.5 rounded-full" [class]="app.nodes.length ? 'bg-primary-400' : 'bg-red-500'"></span>{{ instancesLabel(app) }}
+                <!-- The size of the application, and how it is doing when that is anything but running -->
+                <div class="mt-0.5 flex items-center gap-1.5 text-xs" [class]="toneClass(label.tone)">
+                  <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(label.tone)"></span>
+                  <span class="truncate">{{ label.tone === 'ok' ? instancesLabel(app) : label.text }}</span>
                 </div>
               </div>
-              @if (versions.length) {
-                <i class="pi pi-exclamation-triangle shrink-0 text-base text-amber-500"
-                   pTooltip="Mixed versions detected" tooltipPosition="left" aria-label="Mixed versions detected"></i>
-              }
             </div>
           } @empty {
             <div class="px-3 py-6 text-center text-sm text-surface-400">No applications match “{{ query() }}”</div>
@@ -70,7 +68,24 @@ const FILTER_FROM = 7;
 export class AppSwitcherComponent {
   readonly backend = inject(BackendService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
-  readonly mixedVersions = mixedVersions;
+  readonly statusLabel = statusLabel;
+
+  /** Green when running, amber while it is busy (rebalancing, restoring), red when something is wrong. */
+  instancesLabel(app: AppEntry): string {
+    const count = app.nodes.length;
+    return count === 0 ? 'no instances' : count === 1 ? '1 instance' : `${count} instances`;
+  }
+
+  toneClass(tone: string): string {
+    return tone === 'ok' ? 'text-surface-400'
+      : tone === 'busy' ? 'text-amber-600 dark:text-amber-400'
+      : tone === 'error' ? 'text-red-600 dark:text-red-400'
+      : 'text-surface-400';
+  }
+
+  dotClass(tone: string): string {
+    return tone === 'ok' ? 'bg-primary-500' : tone === 'busy' ? 'bg-amber-500' : tone === 'error' ? 'bg-red-500' : 'bg-surface-300 dark:bg-surface-600';
+  }
 
   @ViewChild('button') button!: ElementRef<HTMLButtonElement>;
   @ViewChild('filter') filterInput?: ElementRef<HTMLInputElement>;
@@ -151,18 +166,13 @@ export class AppSwitcherComponent {
   rowClass(app: AppEntry, index: number): string {
     const current = this.isActive(app);
     const highlighted = index === this.highlightedIndex();
-    return (current ? 'border-primary-500 ' : 'border-transparent ')
+    return (current ? 'border-l-primary-500 ' : 'border-l-transparent ')
       + (highlighted ? 'bg-surface-100 dark:bg-surface-800' : current ? 'bg-primary-50 dark:bg-primary-950' : '');
   }
 
   // By name: the list is refreshed every few seconds with new objects.
   isActive(app: AppEntry): boolean {
     return app.name === this.backend.activeApp()?.name;
-  }
-
-  instancesLabel(app: AppEntry): string {
-    const count = app.nodes.length;
-    return count === 0 ? 'Offline' : count === 1 ? '1 instance' : `${count} instances`;
   }
 
   select(app: AppEntry | undefined) {

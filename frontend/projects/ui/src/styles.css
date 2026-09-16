@@ -1,8 +1,12 @@
 /* Shared by the console and the website: Tailwind, PrimeUI, icons and the base styles of the shared components. */
 /* No automatic class detection: Tailwind would scan from the directory ng runs in, which misses files when that's a
    project folder. Each app lists its own sources (its code and ui) in its styles.css instead. */
+/* The order of the cascade layers, ours and PrimeNG's: a layer that isn't named here would come last and win.
+   PrimeNG sits before Tailwind's utilities, so classes like text-xl beat the theme's own rules (e.g. the icon size). */
+@layer theme, base, primeng, components, utilities;
+
 @import "tailwindcss" source(none);
-@import "primeicons/primeicons.css";
+@import "primeicons/primeicons.css" layer(base);
 @import "jsondiffpatch/formatters/styles/html.css";
 
 @plugin "tailwindcss-primeui";

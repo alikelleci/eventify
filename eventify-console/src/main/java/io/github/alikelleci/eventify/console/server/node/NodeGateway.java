@@ -100,6 +100,11 @@ public class NodeGateway {
     return node != null && node.applicationId().equals(applicationId) ? node : null;
   }
 
+  /** Asks one instance directly, for requests that are about the instance itself (e.g. {@link Route#STATUS}). */
+  public Mono<Reply> sendTo(ConnectedNode node, Route route, byte[] data) {
+    return request(node, route, data);
+  }
+
   private Mono<Reply> request(ConnectedNode node, Route route, byte[] data) {
     Payload request = DefaultPayload.create(data, route.name().getBytes(StandardCharsets.UTF_8));
     return node.rsocket().requestResponse(request)

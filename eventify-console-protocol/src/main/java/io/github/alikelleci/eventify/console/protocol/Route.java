@@ -14,7 +14,9 @@ public enum Route {
   /** {@link Requests.Commands} */
   COMMANDS(false),
   /** The command to retry, as JSON. */
-  RETRY_COMMAND(false);
+  RETRY_COMMAND(false),
+  /** No request data; answered with {@link InstanceStatus}. Every instance answers for itself. */
+  STATUS(false);
 
   private final boolean ownerRouted;
 

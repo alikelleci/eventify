@@ -3,10 +3,12 @@ package io.github.alikelleci.eventify.console.plugin;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.HostInfo;
 
 import java.net.InetAddress;
@@ -19,6 +21,8 @@ public class EventifyConsolePlugin implements EventifyPlugin {
   private final URI url;
   private final String token;
   private EventifyService queryService;
+  /** Follows the state changes and restorations, so the status can be answered without asking Kafka. */
+  private final StatusTracker statusTracker = new StatusTracker();
   private ConsoleConnector connector;
 
   /**
@@ -49,10 +53,20 @@ public class EventifyConsolePlugin implements EventifyPlugin {
         EventifyConsolePlugin.class.getPackage().getImplementationVersion(),
         ConsoleProtocol.VERSION);
 
-    queryService = new EventifyService(eventify);
+    queryService = new EventifyService(eventify, statusTracker);
     ConsoleRequestHandler handler = new ConsoleRequestHandler(queryService, eventify.getObjectMapper());
     connector = new ConsoleConnector(url, token, nodeInfo, handler::handle);
     connector.start();
+  }
+
+  @Override
+  public StateListener stateListener() {
+    return statusTracker;
+  }
+
+  @Override
+  public StateRestoreListener stateRestoreListener() {
+    return statusTracker;
   }
 
   @Override

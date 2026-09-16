@@ -67,6 +67,7 @@ public class ConsoleRequestHandler {
           yield toReply(service.getCommands(requireAggregateId(request.aggregateId()), clampLimit(request.limit(), MAX_PAGE_SIZE), cancel));
         }
         case RETRY_COMMAND -> toReply(service.retryCommand(eventifyMapper.readValue(data, Command.class)));
+        case STATUS -> toReply(service.getStatus());
       };
     } catch (BadRequestException e) {
       return Reply.of(ReplyHeader.badRequest(e.getMessage()));

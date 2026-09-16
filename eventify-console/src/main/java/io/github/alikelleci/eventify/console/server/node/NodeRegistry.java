@@ -59,6 +59,14 @@ public class NodeRegistry {
     return candidates.get(Math.floorMod(roundRobin.getAndIncrement(), candidates.size()));
   }
 
+  /** The connected instances of one application. */
+  public List<ConnectedNode> nodesOf(String applicationId) {
+    return nodes.values().stream()
+        .filter(node -> node.applicationId().equals(applicationId))
+        .sorted(Comparator.comparing(ConnectedNode::nodeId))
+        .toList();
+  }
+
   /** All connected instances. */
   public List<ConnectedNode> nodes() {
     return List.copyOf(nodes.values());

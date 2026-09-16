@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.console.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
@@ -19,6 +20,8 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.Metric;
+import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.Serdes;
@@ -69,12 +72,20 @@ public class EventifyService {
   }
 
   private final Eventify eventify;
+  private final StatusTracker statusTracker;
   private final HostInfo thisHost;
   private final ObjectMapper objectMapper;
   private final Producer<String, Command> producer;
 
+
+  /** Without a tracker of its own: the status then only says what Kafka Streams can tell right now. */
   public EventifyService(Eventify eventify) {
+    this(eventify, new StatusTracker());
+  }
+
+  public EventifyService(Eventify eventify, StatusTracker statusTracker) {
     this.eventify = eventify;
+    this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();
     this.thisHost = hostInfo(eventify);
 
@@ -87,6 +98,52 @@ public class EventifyService {
     Properties producerProps = new Properties();
     producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     this.producer = new KafkaProducer<>(producerProps, new StringSerializer(), new JsonSerializer<>(objectMapper));
+  }
+
+  /**
+   * How this instance is doing: its Kafka Streams state, how long it has been in it, what it is restoring, and how many
+   * commands are waiting.
+   * Everything is read from what Kafka Streams already keeps in memory: no calls to Kafka, and not on the stream threads.
+   */
+  public ApiResult<InstanceStatus> getStatus() {
+    KafkaStreams streams = eventify.getKafkaStreams();
+    if (streams == null) {
+      return new ApiResult.Unavailable<>("Eventify is not started");
+    }
+
+    return new ApiResult.Ok<>(new InstanceStatus(
+        streams.state().name(), statusTracker.stateForMs(), commandsInQueue(streams), statusTracker.restore()));
+  }
+
+  /**
+   * The commands waiting on this instance's command topics: the lag of the consumer that reads them, as it was at its
+   * last fetch. {@code null} while there is nothing to measure, e.g. before the first fetch.
+   */
+  private Long commandsInQueue(KafkaStreams streams) {
+    Set<String> commandTopics = eventify.getCommandTopics();
+    if (commandTopics.isEmpty()) {
+      return 0L;
+    }
+
+    double lag = 0;
+    boolean measured = false;
+    for (Map.Entry<MetricName, ? extends Metric> entry : streams.metrics().entrySet()) {
+      MetricName metric = entry.getKey();
+      if (!"records-lag".equals(metric.name()) || !"consumer-fetch-manager-metrics".equals(metric.group())) {
+        continue;
+      }
+      String topic = metric.tags().get("topic");
+      // The restore consumer reads the changelogs, not the commands.
+      String clientId = metric.tags().getOrDefault("client-id", "");
+      if (topic == null || !commandTopics.contains(topic) || clientId.contains("restore-consumer")) {
+        continue;
+      }
+      if (entry.getValue().metricValue() instanceof Number value && !Double.isNaN(value.doubleValue())) {
+        lag += value.doubleValue();
+        measured = true;
+      }
+    }
+    return measured ? (long) lag : null;
   }
 
   public void close() {

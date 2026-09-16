@@ -1,10 +1,11 @@
 import {Component, computed, inject} from '@angular/core';
-import {BackendService, mixedVersions} from '@eventify/ui/services/backend.service';
+import {BackendService} from '@eventify/ui/services/backend.service';
+import {compact, statusLabel} from '@eventify/ui/status';
 import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
 
 /**
- * The console's start page: the totals, and the applications connected to it, live.
- * Picking an application, with its instances and versions, happens in the header's application switcher.
+ * The console's start page: the totals, and the applications connected to it, live, with how each one is doing.
+ * Picking an application happens in the header's application switcher, which shows the same status per application.
  */
 @Component({
   selector: 'app-home',
@@ -23,23 +24,31 @@ export class HomeComponent {
   readonly backend = inject(BackendService);
 
   readonly instanceCount = computed(() => this.backend.apps().reduce((sum, app) => sum + app.nodes.length, 0));
-  readonly mixedCount = computed(() => this.backend.apps().filter(app => mixedVersions(app).length > 0).length);
 
-  /** The totals in the top row; mixed versions is coloured once there are any. */
+  /** The applications that are not simply running: rebalancing, restoring, or in error. */
+  private readonly busy = computed(() => this.backend.apps()
+    .map(app => statusLabel(this.backend.statusOf(app.name)))
+    .filter(label => label.tone === 'busy' || label.tone === 'error'));
+
+  /** The commands waiting over all applications that could measure it. */
+  private readonly commandsInQueue = computed(() => this.backend.apps()
+    .map(app => this.backend.statusOf(app.name)?.commandsInQueue)
+    .filter((count): count is number => count != null)
+    .reduce((sum, count) => sum + count, 0));
+
+  /** The totals in the top row; the applications that need attention are coloured once there are any. */
   readonly stats = computed(() => [
-    { label: 'Applications', value: this.backend.apps().length, warn: false },
-    { label: 'Instances', value: this.instanceCount(), warn: false },
-    { label: 'Mixed versions', value: this.mixedCount(), warn: true },
+    { label: 'Applications', value: String(this.backend.apps().length), warn: false },
+    { label: 'Instances', value: String(this.instanceCount()), warn: false },
+    { label: 'Commands in queue', value: compact(this.commandsInQueue()), warn: false },
+    { label: 'Need attention', value: String(this.busy().length), warn: true },
   ]);
 
   /** The picture in the centre, each application with its number of instances. */
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
     name: app.name,
-    note: app.nodes.length ? this.plural(app.nodes.length, 'instance') : 'offline',
-    offline: app.nodes.length === 0,
+    note: statusLabel(this.backend.statusOf(app.name)).text,
+    offline: statusLabel(this.backend.statusOf(app.name)).tone === 'error',
   })));
 
-  private plural(count: number, word: string): string {
-    return `${count} ${word}${count === 1 ? '' : 's'}`;
-  }
 }

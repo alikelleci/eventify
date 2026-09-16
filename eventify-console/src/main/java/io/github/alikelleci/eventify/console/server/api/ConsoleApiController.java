@@ -2,9 +2,7 @@ package io.github.alikelleci.eventify.console.server.api;
 
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.Route;
-import io.github.alikelleci.eventify.console.server.node.ConnectedNode;
 import io.github.alikelleci.eventify.console.server.node.NodeGateway;
-import io.github.alikelleci.eventify.console.server.node.NodeRegistry;
 import io.github.alikelleci.eventify.console.server.node.Reply;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,32 +19,15 @@ import reactor.core.publisher.Mono;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Comparator;
-import java.util.List;
-import java.util.stream.Collectors;
 
-/** The API the console UI uses. Everything below /api/apps/{app} is answered by an instance of that application. */
+/** Queries about one aggregate: every one of them is answered by an instance of the application it belongs to. */
 @RestController
 @RequestMapping("/api/apps")
 @RequiredArgsConstructor
 public class ConsoleApiController {
 
-  private final NodeRegistry registry;
   private final NodeGateway gateway;
   private final JsonMapper jsonMapper;
-
-  @GetMapping
-  public List<ApplicationView> applications() {
-    return registry.nodes().stream()
-        .collect(Collectors.groupingBy(ConnectedNode::applicationId))
-        .entrySet().stream()
-        .map(entry -> new ApplicationView(entry.getKey(), entry.getValue().stream()
-            .sorted(Comparator.comparing(ConnectedNode::nodeId))
-            .map(node -> new ApplicationView.NodeView(node.nodeId(), node.info().hostname(), node.info().version(), node.connectedAt()))
-            .toList()))
-        .sorted(Comparator.comparing(ApplicationView::name))
-        .toList();
-  }
 
   @GetMapping("/{app}/aggregates/{aggregateId}/events")
   public Mono<ResponseEntity<byte[]>> events(@PathVariable String app, @PathVariable String aggregateId,

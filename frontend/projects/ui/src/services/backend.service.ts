@@ -1,6 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { catchError, of, switchMap, timer } from 'rxjs';
+import { catchError, filter, fromEvent, merge, of, switchMap, timer } from 'rxjs';
+import { AppStatus } from '../status';
 
 /** An instance of an application, connected to the console right now. */
 export interface AppNode {
@@ -16,38 +17,10 @@ export interface AppEntry {
   nodes: AppNode[];
 }
 
-/** A version the instances of an application run, and how many of them run it. */
-export interface VersionCount {
-  version: string;
-  instances: number;
-}
-
-/**
- * The plugin versions an application's instances run, newest first, when they differ (e.g. while an upgrade rolls out);
- * otherwise empty. Only the instances of one application are compared, not applications with each other or with the console.
- */
-export function mixedVersions(app: AppEntry): VersionCount[] {
-  const counts = new Map<string, number>();
-  for (const node of app.nodes) {
-    if (node.version) counts.set(node.version, (counts.get(node.version) ?? 0) + 1);
-  }
-  if (counts.size < 2) return [];
-  return [...counts].map(([version, instances]) => ({ version, instances })).sort((a, b) => compareVersions(b.version, a.version));
-}
-
-/** Compares versions like 1.10.0 and 1.9.2 part by part, as numbers where they are numbers. */
-function compareVersions(a: string, b: string): number {
-  const pa = a.split(/[.-]/), pb = b.split(/[.-]/);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const x = pa[i] ?? '', y = pb[i] ?? '';
-    const diff = /^\d+$/.test(x) && /^\d+$/.test(y) ? Number(x) - Number(y) : x.localeCompare(y);
-    if (diff) return diff;
-  }
-  return 0;
-}
-
 /** How often the list of applications is refreshed, so new and stopped applications show up by themselves. */
 const REFRESH_MS = 5000;
+/** How often the applications are asked how they are doing. Only while the page is in view. */
+const STATUS_MS = 5000;
 
 @Injectable({ providedIn: 'root' })
 export class BackendService {
@@ -57,6 +30,10 @@ export class BackendService {
   private readonly _loaded = signal(false);
   /** The chosen application's name; null until the first list arrives. */
   private readonly _activeName = signal<string | null>(null);
+  private readonly _statuses = signal<Record<string, AppStatus>>({});
+
+  /** How each application is doing, by name. Empty until the first answer arrives. */
+  readonly statuses = this._statuses.asReadonly();
 
   /**
    * The connected applications. The chosen one stays in the list while none of its instances is connected
@@ -80,6 +57,7 @@ export class BackendService {
 
   /** Loads the applications, and keeps them up to date. Resolves once the first list is there. */
   load(): Promise<void> {
+    this.watchStatuses();
     return new Promise<void>(resolve => {
       timer(0, REFRESH_MS).pipe(
         // Keep the last list when the console is briefly unreachable.
@@ -89,6 +67,26 @@ export class BackendService {
         this._loaded.set(true);
         resolve();
       });
+    });
+  }
+
+  /** How this application is doing, if the console knows yet. */
+  statusOf(name: string | null | undefined): AppStatus | undefined {
+    return name ? this._statuses()[name] : undefined;
+  }
+
+  /**
+   * Keeps asking the applications how they are doing, every few seconds while the page is in view. A hidden page
+   * (another tab, or minimised) asks nothing, and asks again as soon as it is shown.
+   */
+  private watchStatuses(): void {
+    const visible = () => document.visibilityState === 'visible';
+    merge(timer(0, STATUS_MS), fromEvent(document, 'visibilitychange')).pipe(
+      filter(visible),
+      // Keep the last answers when the console is briefly unreachable.
+      switchMap(() => this.http.get<AppStatus[]>('/api/status').pipe(catchError(() => of(null)))),
+    ).subscribe(statuses => {
+      if (statuses) this._statuses.set(Object.fromEntries(statuses.map(status => [status.name, status])));
     });
   }
 

@@ -49,10 +49,45 @@ Each handler class is a plain Java object. Eventify inspects each object for ann
 |---|---|---|
 | `streamsConfig(Properties)` | Yes | Kafka Streams configuration. |
 | `registerHandler(Object)` | At least one | Registers a handler class containing annotated methods. |
+| `registerPlugin(EventifyPlugin)` | No | Registers a plugin. See [Plugins](#plugins). |
 | `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
-| `stateListener(StateListener)` | No | Callback invoked on Kafka Streams state transitions. Defaults to a log statement. |
-| `stateRestoreListener(StateRestoreListener)` | No | Callback invoked during state store restoration. Defaults to a logging implementation. |
 | `uncaughtExceptionHandler(StreamsUncaughtExceptionHandler)` | No | Handler for uncaught stream thread exceptions. Defaults to `SHUTDOWN_CLIENT`. |
+
+## Plugins
+
+A plugin runs along with Eventify. It starts and stops with it, and can follow what happens underneath. Everything a plugin can do is on the `EventifyPlugin` interface, and all of it is optional:
+
+```java
+public class MyPlugin implements EventifyPlugin {
+
+    @Override
+    public void onStart(Eventify eventify) { ... }
+
+    @Override
+    public void onStop(Eventify eventify) { ... }
+
+    /** Told when Kafka Streams changes state, e.g. to REBALANCING or ERROR. */
+    @Override
+    public StateListener stateListener() { ... }
+
+    /** Told about the state stores being restored, and how far they are. */
+    @Override
+    public StateRestoreListener stateRestoreListener() { ... }
+}
+```
+
+Register it on the builder:
+
+```java
+Eventify eventify = Eventify.builder()
+    .streamsConfig(props)
+    .registerPlugin(new MyPlugin())
+    .build();
+```
+
+The listeners are called on Kafka Streams' own threads, so keep them short: remember something, don't block. An exception from a plugin is logged and reaches neither Kafka Streams nor the other plugins.
+
+Eventify registers one plugin itself, which logs the state changes and the restoration progress. [Eventify Console](console.md) is a plugin too.
 
 ## Spring Boot Integration
 

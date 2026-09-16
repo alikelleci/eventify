@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandProcessor;
@@ -16,8 +16,8 @@ import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingH
 import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultHandler;
 import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultProcessor;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
+import io.github.alikelleci.eventify.core.plugins.LoggingPlugin;
 import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
-import io.github.alikelleci.eventify.core.support.LoggingStateRestoreListener;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerde;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
@@ -30,6 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -55,6 +56,8 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -70,8 +73,6 @@ public class Eventify {
   private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
 
   private final Properties streamsConfig;
-  private final StateListener stateListener;
-  private final StateRestoreListener stateRestoreListener;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
   private final List<EventifyPlugin> plugins = new ArrayList<>();
@@ -79,14 +80,10 @@ public class Eventify {
   private KafkaStreams kafkaStreams;
 
   protected Eventify(Properties streamsConfig,
-                     StateListener stateListener,
-                     StateRestoreListener stateRestoreListener,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
                      ObjectMapper objectMapper,
                      List<EventifyPlugin> plugins) {
     this.streamsConfig = streamsConfig;
-    this.stateListener = stateListener;
-    this.stateRestoreListener = stateRestoreListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
     this.plugins.addAll(plugins);
@@ -240,12 +237,54 @@ public class Eventify {
     log.info("Eventify shut down complete.");
   }
 
+  /** Kafka Streams takes one listener of each kind, so one listener passes everything on to the plugins that asked. */
   private void setUpListeners() {
-    kafkaStreams.setStateListener(this.stateListener);
-    kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
+    List<StateListener> stateListeners = listenersOf(EventifyPlugin::stateListener);
+    List<StateRestoreListener> restoreListeners = listenersOf(EventifyPlugin::stateRestoreListener);
+
+    kafkaStreams.setStateListener((newState, oldState) ->
+        notifyListeners(stateListeners, "onChange", listener -> listener.onChange(newState, oldState)));
+
+    kafkaStreams.setGlobalStateRestoreListener(new StateRestoreListener() {
+      @Override
+      public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
+        notifyListeners(restoreListeners, "onRestoreStart", listener -> listener.onRestoreStart(topicPartition, storeName, startingOffset, endingOffset));
+      }
+
+      @Override
+      public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
+        notifyListeners(restoreListeners, "onBatchRestored", listener -> listener.onBatchRestored(topicPartition, storeName, batchEndOffset, numRestored));
+      }
+
+      @Override
+      public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
+        notifyListeners(restoreListeners, "onRestoreEnd", listener -> listener.onRestoreEnd(topicPartition, storeName, totalRestored));
+      }
+
+      @Override
+      public void onRestoreSuspended(TopicPartition topicPartition, String storeName, long totalRestored) {
+        notifyListeners(restoreListeners, "onRestoreSuspended", listener -> listener.onRestoreSuspended(topicPartition, storeName, totalRestored));
+      }
+    });
+
     kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 
     Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+  }
+
+  private <T> List<T> listenersOf(Function<EventifyPlugin, T> listener) {
+    return plugins.stream().map(listener).filter(Objects::nonNull).toList();
+  }
+
+  /** Tells every listener, on the thread Kafka Streams called us on. One that throws is logged and skipped. */
+  private static <T> void notifyListeners(List<T> listeners, String hook, Consumer<T> call) {
+    listeners.forEach(listener -> {
+      try {
+        call.accept(listener);
+      } catch (Exception e) {
+        log.warn("Plugin listener {} failed in {}", listener.getClass().getName(), hook, e);
+      }
+    });
   }
 
   public Set<String> getCommandTopics() {
@@ -283,8 +322,6 @@ public class Eventify {
     private final List<EventifyPlugin> plugins = new ArrayList<>();
 
     private Properties streamsConfig;
-    private StateListener stateListener;
-    private StateRestoreListener stateRestoreListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
 
@@ -321,16 +358,6 @@ public class Eventify {
       return this;
     }
 
-    public EventifyBuilder stateListener(StateListener stateListener) {
-      this.stateListener = stateListener;
-      return this;
-    }
-
-    public EventifyBuilder stateRestoreListener(StateRestoreListener stateRestoreListener) {
-      this.stateRestoreListener = stateRestoreListener;
-      return this;
-    }
-
     public EventifyBuilder uncaughtExceptionHandler(StreamsUncaughtExceptionHandler uncaughtExceptionHandler) {
       this.uncaughtExceptionHandler = uncaughtExceptionHandler;
       return this;
@@ -342,15 +369,6 @@ public class Eventify {
     }
 
     public Eventify build() {
-      if (this.stateListener == null) {
-        this.stateListener = (newState, oldState) ->
-            log.info("State changed from {} to {}", oldState, newState);
-      }
-
-      if (this.stateRestoreListener == null) {
-        this.stateRestoreListener = new LoggingStateRestoreListener();
-      }
-
       if (this.uncaughtExceptionHandler == null) {
         this.uncaughtExceptionHandler = throwable ->
             StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
@@ -360,10 +378,11 @@ public class Eventify {
         this.objectMapper = JacksonUtils.enhancedObjectMapper();
       }
 
+      // What happens underneath is logged by a plugin, so it can be seen, replaced or joined by others.
+      this.plugins.add(0, new LoggingPlugin());
+
       Eventify eventify = new Eventify(
           this.streamsConfig,
-          this.stateListener,
-          this.stateRestoreListener,
           this.uncaughtExceptionHandler,
           this.objectMapper,
           this.plugins);
