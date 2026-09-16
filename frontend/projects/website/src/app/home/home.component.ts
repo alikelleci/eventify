@@ -32,9 +32,6 @@ export class HomeComponent {
 
     @HandleCommand
     public OrderEvent handle(PlaceOrder command, Order state) {
-        if (state != null) {
-            throw new ValidationException("Order already exists.");
-        }
         return OrderPlaced.builder()
             .id(command.getId())
             .customer(command.getCustomer())
