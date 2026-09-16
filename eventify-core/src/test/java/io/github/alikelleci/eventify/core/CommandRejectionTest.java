@@ -25,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -83,6 +84,14 @@ class CommandRejectionTest {
     String id;
   }
 
+  /** Its event can be written as JSON once, and not after that. */
+  @Value
+  @Builder
+  public static class Flake implements CounterCommand {
+    @AggregateId
+    String id;
+  }
+
   @Value
   @Builder
   public static class Created implements CounterEvent {
@@ -115,6 +124,22 @@ class CommandRejectionTest {
     }
   }
 
+  @Value
+  @Builder
+  public static class Flaked implements CounterEvent {
+    static final AtomicInteger WRITES = new AtomicInteger();
+
+    @AggregateId
+    String id;
+
+    public String getContent() {
+      if (WRITES.incrementAndGet() > 1) {
+        throw new IllegalStateException("not writable anymore");
+      }
+      return "written";
+    }
+  }
+
   public static class CounterHandler {
     @HandleCommand
     public Object handle(Create command, Counter state) {
@@ -136,6 +161,11 @@ class CommandRejectionTest {
       return Corrupted.builder().id(command.getId()).build();
     }
 
+    @HandleCommand
+    public Object handle(Flake command, Counter state) {
+      return Flaked.builder().id(command.getId()).build();
+    }
+
     @ApplyEvent
     public Counter apply(Created event, Counter state) {
       return Counter.builder().id(event.getId()).value(state != null ? state.getValue() + 1 : 1).build();
@@ -153,6 +183,11 @@ class CommandRejectionTest {
 
     @ApplyEvent
     public Counter apply(Corrupted event, Counter state) {
+      return state;
+    }
+
+    @ApplyEvent
+    public Counter apply(Flaked event, Counter state) {
       return state;
     }
   }
@@ -208,13 +243,28 @@ class CommandRejectionTest {
     assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created");
   }
 
+  /** Found only when stored, it would stop the application, and every instance the command moves to after it. */
+  @Test
+  void anEventThatCannotBeWrittenAsJsonIsNotStored() {
+    send(Create.builder().id("ada").build());
+    send(Corrupt.builder().id("ada").build());
+    send(Create.builder().id("ada").build());
+
+    assertThat(results()).containsExactly(
+        "Create success null",
+        "Corrupt failure IllegalStateException: not writable",
+        "Create success null");
+    assertThat(storedTypes()).containsExactly("Created", "Created");
+  }
+
   /** Not the command's failure: it fails the task, so exactly-once aborts what was written for the command. */
   @Test
   void aFailureAfterTheCommandIsAcceptedIsNotReportedAsItsFailure() {
     send(Create.builder().id("ada").build());
     results.readValuesToList();
+    Flaked.WRITES.set(0);
 
-    assertThatThrownBy(() -> send(Corrupt.builder().id("ada").build())).hasStackTraceContaining("not writable");
+    assertThatThrownBy(() -> send(Flake.builder().id("ada").build())).hasStackTraceContaining("not writable anymore");
     assertThat(results.isEmpty()).isTrue();
   }
 

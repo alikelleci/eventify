@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.messaging.commandhandling;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.common.exceptions.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Failure;
@@ -116,7 +117,21 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     // command of this aggregate fail. Applied now, it fails this command instead, before it is stored.
     applyEvents(state, events);
 
+    // Events are written as JSON when they are stored and sent, after the command is accepted, where a failure stops
+    // the application. Written once now, an event that can't be fails this command instead.
+    for (Event event : events) {
+      writeAsJson(event);
+    }
+
     return events;
+  }
+
+  private void writeAsJson(Event event) {
+    try {
+      eventify.getObjectMapper().writeValueAsBytes(event);
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Event " + event.getType() + " cannot be written as JSON: " + e.getOriginalMessage(), e);
+    }
   }
 
   private void applyEvents(AggregateState state, List<Event> events) {
