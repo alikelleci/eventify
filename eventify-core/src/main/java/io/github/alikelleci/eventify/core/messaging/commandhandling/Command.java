@@ -34,7 +34,7 @@ public class Command implements Message {
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = IdUtils.getAggregateId(getPayload());
-    this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
+    this.id = IdUtils.createCompoundKey(getAggregateId());
 
     getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }

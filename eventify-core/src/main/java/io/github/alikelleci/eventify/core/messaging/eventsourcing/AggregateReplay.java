@@ -13,7 +13,7 @@ import java.util.Map;
  * Rebuilds the state of an aggregate: applies its stored events, in the order they are stored, to a starting state.
  *
  * <p>Events are stored under {@code aggregateId@<ULID>}, so the events of one aggregate are in one key range, in the
- * order they happened. That range can also hold another aggregate's events (see {@link IdUtils#isKeyOf}): those are
+ * order they were handled (see {@link IdUtils#nextEventKey}). That range can also hold another aggregate's events (see {@link IdUtils#isKeyOf}): those are
  * skipped. The version of the state is the number of events applied to it: only events with an event sourcing
  * handler count.
  */

@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateReplay;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
@@ -27,9 +28,11 @@ import java.util.Map;
  */
 class AggregateHistory {
 
+  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
   private final AggregateReplay replay;
 
   AggregateHistory(Map<Class<?>, EventSourcingHandler> eventSourcingHandlers) {
+    this.eventSourcingHandlers = eventSourcingHandlers;
     this.replay = new AggregateReplay(eventSourcingHandlers);
   }
 
@@ -142,16 +145,25 @@ class AggregateHistory {
     boolean[] passed = {false};
     String until = snapshot != null ? snapshot.getEventId() : eventId;
 
-    AggregateReplay.Result result = replay.replay(events, aggregateId, null, until, (current, state, version) -> {
-      if (reached[0] && !passed[0]) {
-        after[0] = versioned(state, version); // the state before the next event is the state after the event
-        passed[0] = true;
+    AggregateReplay.Result result;
+    try {
+      result = replay.replay(events, aggregateId, null, until, (current, state, version) -> {
+        if (reached[0] && !passed[0]) {
+          after[0] = versioned(state, version); // the state before the next event is the state after the event
+          passed[0] = true;
+        }
+        if (current.getId().equals(eventId)) {
+          before[0] = versioned(state, version);
+          reached[0] = true;
+        }
+      });
+    } catch (AggregateInvocationException e) {
+      // With events deleted, the first event left is applied without the state before it, which a handler may refuse.
+      if (snapshot != null && handledEventsUntil(events, aggregateId, snapshot.getEventId()) < snapshot.getVersion()) {
+        return new FromFirst(null, null, false);
       }
-      if (current.getId().equals(eventId)) {
-        before[0] = versioned(state, version);
-        reached[0] = true;
-      }
-    });
+      throw e; // all events are there: the handler itself fails
+    }
     if (!passed[0]) {
       after[0] = result.state();
     }
@@ -159,6 +171,20 @@ class AggregateHistory {
     boolean complete = snapshot == null
         || (result.state() != null && result.state().getVersion() == snapshot.getVersion());
     return new FromFirst(before[0], after[0], complete);
+  }
+
+  /** How many of the aggregate's stored events, up to and including this one, have an event sourcing handler. */
+  private long handledEventsUntil(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String untilEventId) {
+    long count = 0;
+    try (KeyValueIterator<String, Event> iterator = events.range(IdUtils.firstKey(aggregateId), untilEventId)) {
+      while (iterator.hasNext()) {
+        KeyValue<String, Event> entry = iterator.next();
+        if (IdUtils.isKeyOf(aggregateId, entry.key) && eventSourcingHandlers.containsKey(entry.value.getPayload().getClass())) {
+          count++;
+        }
+      }
+    }
+    return count;
   }
 
   private record FromFirst(AggregateState before, AggregateState after, boolean complete) {

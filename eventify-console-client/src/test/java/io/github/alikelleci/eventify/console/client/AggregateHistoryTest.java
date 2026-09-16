@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateReplay;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** The state before and after an event, with and without a snapshot, and with the events before a snapshot deleted. */
 class AggregateHistoryTest {
@@ -30,6 +32,15 @@ class AggregateHistoryTest {
     }
   }
 
+  public static class Started {
+    @AggregateId
+    final String id;
+
+    Started(String id) {
+      this.id = id;
+    }
+  }
+
   public static class Incremented {
     @AggregateId
     final String id;
@@ -39,10 +50,16 @@ class AggregateHistoryTest {
     }
   }
 
+  /** Like most handlers, it needs the state before an event that changes the aggregate: it fails without one. */
   public static class CounterHandler {
     @ApplyEvent
+    public Counter apply(Started event, Counter state) {
+      return new Counter(event.id, 1);
+    }
+
+    @ApplyEvent
     public Counter apply(Incremented event, Counter state) {
-      return new Counter(event.id, state == null ? 1 : state.value + 1);
+      return new Counter(event.id, state.value + 1);
     }
   }
 
@@ -58,8 +75,8 @@ class AggregateHistoryTest {
 
   @BeforeEach
   void storeEvents() {
-    first = store(new Incremented("counter-1"));
-    store(new Incremented("counter-10"));  // another aggregate, stored right before counter-1@...
+    first = store(new Started("counter-1"));
+    store(new Started("counter-10"));  // another aggregate, stored right before counter-1@...
     second = store(new Incremented("counter-1"));
     third = store(new Incremented("counter-1"));
   }
@@ -122,6 +139,15 @@ class AggregateHistoryTest {
     assertThat(detail.previousState()).isNull();
     assertThat(detail.previousStateKnown()).isFalse();
     assertThat(history.stateAt(events, snapshots, "counter-1", second.getId())).isNull();
+  }
+
+  /** A handler that fails with every event still there is an error, not a state unknown because of deleted events. */
+  @Test
+  void aHandlerThatFailsWithAllEventsThereIsNotAnUnknownState() {
+    snapshotAt(third);
+    events.put(first.getId(), Event.builder().payload(new Incremented("counter-1")).build().withId(first.getId())); // no state before it
+
+    assertThatThrownBy(() -> detail(second)).isInstanceOf(AggregateInvocationException.class);
   }
 
   @Test

@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core;
 import io.github.alikelleci.eventify.core.account.Account;
 import io.github.alikelleci.eventify.core.account.AccountMessages.AccountHandler;
 import io.github.alikelleci.eventify.core.account.AccountMessages.Deposit;
+import io.github.alikelleci.eventify.core.account.AccountMessages.Deposited;
 import io.github.alikelleci.eventify.core.account.AccountMessages.DepositEach;
 import io.github.alikelleci.eventify.core.account.AccountMessages.OpenAccount;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
@@ -20,6 +21,7 @@ import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
 
@@ -54,6 +56,50 @@ class SnapshottingTest {
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(2); // the snapshot's event and the last deposit
   }
 
+  /**
+   * A command handled after others, with an older timestamp (a producer's clock behind, a command sent late, or set
+   * explicitly): its event is stored after theirs. Stored by its timestamp, it would come before the snapshot's event,
+   * be skipped by every replay from the snapshot, and be deleted at the next one.
+   */
+  @Test
+  void anEventIsStoredInTheOrderItWasHandledNotByTheCommandsTimestamp() {
+    driver = new TopologyTestDriver(accounts());
+    TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
+    KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
+    KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
+    Instant now = Instant.now();
+
+    send(commands, OpenAccount.builder().id("ada").build(), now);                          // version 1
+    send(commands, Deposit.builder().id("ada").amount(5).build(), now.plusMillis(1));      // version 2
+    send(commands, Deposit.builder().id("ada").amount(7).build(), now.plusMillis(2));      // loads version 2: snapshot
+    send(commands, Deposit.builder().id("ada").amount(100).build(), now.minusSeconds(60)); // version 4, older timestamp
+    send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(3));      // loads version 4: snapshot
+    send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(4));      // version 6
+    send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(5));      // loads version 6: snapshot
+
+    AggregateState snapshot = snapshotStore.get("ada");
+    assertThat(snapshot.getVersion()).isEqualTo(6);
+    assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(114);
+    assertThat(IteratorUtils.toList(eventStore.all()))
+        .extracting(entry -> ((Deposited) entry.value.getPayload()).getAmount())
+        .containsExactly(1, 1); // the snapshot's event and the last deposit
+  }
+
+  @Test
+  void theEventsOfOneCommandAreStoredInTheOrderTheHandlerReturnedThem() {
+    driver = new TopologyTestDriver(accounts());
+    TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
+    KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
+    Instant now = Instant.now();
+
+    send(commands, OpenAccount.builder().id("ada").build(), now);
+    send(commands, DepositEach.builder().id("ada").amounts(List.of(3, 2, 1)).build(), now.minusSeconds(60));
+
+    assertThat(IteratorUtils.toList(eventStore.all()))
+        .extracting(entry -> entry.value.getPayload() instanceof Deposited deposited ? deposited.getAmount() : 0)
+        .containsExactly(0, 3, 2, 1);
+  }
+
   @Test
   void anAggregateIsOnlyStoredFromItsCommandsNotFromItsEventTopic() {
     // The events are stored when the command is handled. Stored again from the event topic, events deleted at a
@@ -62,7 +108,11 @@ class SnapshottingTest {
   }
 
   private static void send(TestInputTopic<String, Command> commands, Object payload) {
-    Command command = Command.builder().payload(payload).build();
+    send(commands, payload, Instant.now());
+  }
+
+  private static void send(TestInputTopic<String, Command> commands, Object payload, Instant timestamp) {
+    Command command = Command.builder().payload(payload).timestamp(timestamp).build();
     commands.pipeInput(command.getAggregateId(), command);
   }
 

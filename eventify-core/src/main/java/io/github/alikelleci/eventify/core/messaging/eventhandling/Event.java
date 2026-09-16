@@ -37,13 +37,21 @@ public class Event implements Message {
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = IdUtils.getAggregateId(getPayload());
-    this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
+    this.id = IdUtils.createCompoundKey(getAggregateId());
 
     this.revision = Optional.ofNullable(AnnotationUtils.findAnnotation(getPayload().getClass(), Revision.class))
         .map(Revision::value)
         .orElse(1);
 
     getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
+  }
+
+  /** This event under another key of the same aggregate. */
+  public Event withId(String id) {
+    if (!IdUtils.isKeyOf(aggregateId, id)) {
+      throw new IllegalArgumentException("Key '" + id + "' is not a key of aggregate '" + aggregateId + "'.");
+    }
+    return new Event(id, timestamp, type, payload, metadata, aggregateId, revision);
   }
 
   public static class EventBuilder {

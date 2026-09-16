@@ -36,7 +36,7 @@ public class AggregateState implements Message {
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = IdUtils.getAggregateId(getPayload());
-    this.id = IdUtils.createCompoundKey(getAggregateId(), getTimestamp());
+    this.id = IdUtils.createCompoundKey(getAggregateId());
 
     this.eventId = eventId;
     this.version = version;

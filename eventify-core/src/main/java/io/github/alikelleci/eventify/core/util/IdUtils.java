@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.util;
 
+import com.github.f4b6a3.ulid.Ulid;
 import com.github.f4b6a3.ulid.UlidCreator;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.exceptions.AggregateIdMissingException;
@@ -7,7 +8,6 @@ import lombok.SneakyThrows;
 import org.apache.commons.lang3.reflect.FieldUtils;
 
 import java.lang.reflect.Field;
-import java.time.Instant;
 
 public class IdUtils {
 
@@ -23,9 +23,29 @@ public class IdUtils {
         .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
   }
 
-  /** The key of a message: {@code aggregateId@ULID}. The keys of one aggregate sort in the order they were created. */
-  public static String createCompoundKey(String aggregateId, Instant timestamp) {
-    return aggregateId + "@" + UlidCreator.getMonotonicUlid(timestamp.toEpochMilli()).toString();
+  /**
+   * A new key of a message: {@code aggregateId@ULID}, with the ULID from this host's clock, not from the message's
+   * timestamp. That is not enough to keep an aggregate's events in order (clocks of hosts differ, and can go back):
+   * events get their keys from {@link #nextEventKey}.
+   */
+  public static String createCompoundKey(String aggregateId) {
+    return firstKey(aggregateId) + UlidCreator.getMonotonicUlid();
+  }
+
+  /**
+   * The key of an aggregate's next event: after its last stored event, whatever this host's clock says.
+   *
+   * @param lastKey the key of the aggregate's last stored event; {@code null} when it has none
+   */
+  public static String nextEventKey(String aggregateId, String lastKey) {
+    Ulid next = UlidCreator.getMonotonicUlid();
+    if (lastKey != null) {
+      Ulid last = Ulid.from(lastKey.substring(firstKey(aggregateId).length()));
+      if (next.compareTo(last) <= 0) {
+        next = last.increment();
+      }
+    }
+    return firstKey(aggregateId) + next;
   }
 
   /** The start of the key range that holds an aggregate's messages. Not every key in the range is the aggregate's: see {@link #isKeyOf}. */

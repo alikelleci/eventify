@@ -93,7 +93,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
     AggregateState state = loadAggregate(aggregateId);
-    List<Event> events = commandHandler.apply(state, command);
+    List<Event> events = inOrder(aggregateId, commandHandler.apply(state, command));
 
     // Save events
     for (Event event : events) {
@@ -101,6 +101,38 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
 
     return events;
+  }
+
+  /**
+   * The events under keys after the aggregate's last stored event, in the order the handler returned them. The store
+   * order is the replay order: it must be the order the events were handled in, not the order of the commands'
+   * timestamps or of the clocks of the hosts that handled them.
+   */
+  private List<Event> inOrder(String aggregateId, List<Event> events) {
+    String lastKey = lastEventKey(aggregateId);
+    List<Event> ordered = new ArrayList<>(events.size());
+    for (Event event : events) {
+      Event keyed = event.withId(IdUtils.nextEventKey(aggregateId, lastKey));
+      ordered.add(keyed);
+      lastKey = keyed.getId();
+    }
+    return ordered;
+  }
+
+  /**
+   * The key of the aggregate's last stored event; {@code null} when it has none. Deleting events at a snapshot keeps
+   * the snapshot's event and the ones after it, so the last key is never deleted.
+   */
+  private String lastEventKey(String aggregateId) {
+    try (KeyValueIterator<String, Event> iterator = eventStore.reverseRange(IdUtils.firstKey(aggregateId), IdUtils.lastKey(aggregateId))) {
+      while (iterator.hasNext()) {
+        String key = iterator.next().key;
+        if (IdUtils.isKeyOf(aggregateId, key)) {
+          return key;
+        }
+      }
+    }
+    return null;
   }
 
   protected AggregateState loadAggregate(String aggregateId) {
