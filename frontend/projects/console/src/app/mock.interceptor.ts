@@ -218,7 +218,7 @@ function apps(): AppEntry[] {
     payments: [{ state: 'REBALANCING', stateForMs: 224_000, restoring: false }],
     shipping: [{ state: 'REBALANCING', stateForMs: 1_500_000, restoring: true }, { state: 'REBALANCING', stateForMs: 4_000, restoring: false }],
     catalog: [running, running, running, { state: 'CREATED', stateForMs: 12_000, restoring: false }],     // one just starting
-    customers: [running, running, running, running, running, null],                                     // one doesn't answer
+    customers: [running, running, running, running, { state: 'PENDING_SHUTDOWN', stateForMs: 6_000, restoring: false }, null], // one stopping, one doesn't answer
   };
   // By name, as the console sorts them.
   return [...APPS].sort((a, b) => a.name.localeCompare(b.name)).map(app => ({

@@ -29,7 +29,8 @@ export function instanceState(status: InstanceStatus | null): StatusLabel {
     case 'RUNNING': return { text: 'Running', tone: 'ok' };
     case 'REBALANCING': return { text: 'Rebalancing', tone: 'busy' };
     case 'CREATED': return { text: 'Starting', tone: 'busy' };
-    case 'PENDING_SHUTDOWN':
+    // Every instance passes through this during a normal deploy: on its way down, not broken.
+    case 'PENDING_SHUTDOWN': return { text: 'Stopping', tone: 'busy' };
     case 'NOT_RUNNING': return { text: 'Stopped', tone: 'error' };
     default: return { text: 'Error', tone: 'error' };
   }
