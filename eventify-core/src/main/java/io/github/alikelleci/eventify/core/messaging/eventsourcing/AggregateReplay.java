@@ -65,10 +65,10 @@ public class AggregateReplay {
   public Result replay(ReadOnlyKeyValueStore<String, Event> eventStore, String aggregateId, AggregateState start,
                        String untilEventId, Listener listener) {
     if (untilEventId != null && !IdUtils.isKeyOf(aggregateId, untilEventId)) {
-      throw new IllegalArgumentException("Event " + untilEventId + " is not an event of aggregate " + aggregateId);
+      throw new IllegalArgumentException("Cannot load aggregate '" + aggregateId + "' up to event '" + untilEventId + "': that event belongs to another aggregate.");
     }
     if (start != null && !IdUtils.isKeyOf(aggregateId, start.getEventId())) {
-      throw new IllegalArgumentException("The starting state is at event " + start.getEventId() + ", not an event of aggregate " + aggregateId);
+      throw new IllegalArgumentException("Cannot load aggregate '" + aggregateId + "': its snapshot points to event '" + start.getEventId() + "', which belongs to another aggregate. The snapshot is damaged.");
     }
 
     AggregateState state = start;
@@ -78,7 +78,7 @@ public class AggregateReplay {
     if (start != null && untilEventId != null) {
       int order = start.getEventId().compareTo(untilEventId);
       if (order > 0) {
-        throw new IllegalArgumentException("The starting state is at event " + start.getEventId() + ", after event " + untilEventId);
+        throw new IllegalArgumentException("Cannot load aggregate '" + aggregateId + "' up to event '" + untilEventId + "': its snapshot is already past that event.");
       }
       if (order == 0) {
         // Nothing to apply. Not a range: its start would come after its end.
