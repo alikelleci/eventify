@@ -68,6 +68,8 @@ export class EventDetailComponent {
       if (!ev) { this.loading.set(false); return; }
       const startedAt = Date.now();
       this.loading.set(true);
+      // Data that is there right away (the website's example screen) shows without a skeleton flashing by.
+      let answeredAtOnce = true;
       this.request = this.svc.getEventDetail(ev.aggregateId, ev.id).pipe(
         takeUntilDestroyed(this.destroyRef),
         catchError(err => {
@@ -77,8 +79,13 @@ export class EventDetailComponent {
         }),
       ).subscribe(detail => {
         this.detail.set(detail);
-        afterMinLoading(startedAt, () => { if (this.eventId() === id) this.finishLoading(); });
+        if (answeredAtOnce) {
+          this.finishLoading();
+        } else {
+          afterMinLoading(startedAt, () => { if (this.eventId() === id) this.finishLoading(); });
+        }
       });
+      answeredAtOnce = false;
     });
   }
 
