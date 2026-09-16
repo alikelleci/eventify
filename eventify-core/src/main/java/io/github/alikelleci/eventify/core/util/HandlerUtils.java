@@ -65,9 +65,6 @@ public class HandlerUtils {
   }
 
   private void addUpcaster(Eventify eventify, Object listener, Method method) {
-    if (method.getParameterCount() == 1) {
-      String type = method.getAnnotation(Upcast.class).type();
-      eventify.getUpcasters().put(type, new Upcaster(listener, method));
-    }
+    Upcaster.register(eventify.getUpcasters(), listener, method);
   }
 }

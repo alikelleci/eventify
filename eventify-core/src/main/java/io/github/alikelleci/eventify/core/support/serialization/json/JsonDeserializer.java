@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
+import io.github.alikelleci.eventify.core.messaging.upcasting.exceptions.UpcastingException;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import org.apache.commons.collections4.CollectionUtils;
@@ -17,10 +18,9 @@ import org.apache.kafka.common.serialization.Deserializer;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class JsonDeserializer<T> implements Deserializer<T> {
 
@@ -86,26 +86,40 @@ public class JsonDeserializer<T> implements Deserializer<T> {
       return jsonNode;
     }
 
-    AtomicInteger revision = new AtomicInteger(1);
+    int storedRevision = jsonNode.path("revision").asInt(1);
+    int revision = storedRevision;
+    JsonNode payload = jsonNode.get("payload");
 
-    Optional.ofNullable(jsonNode.get("revision"))
-        .map(JsonNode::intValue)
-        .ifPresent(revision::set);
+    // Each upcaster takes the payload as the one before it left it: whether it changed the node it was given, or
+    // returned a new one. The tree is parsed for this read only, so changing it in place is safe.
+    List<Upcaster> chain = upCasters.stream()
+        .sorted(Comparator.comparingInt(JsonDeserializer::revisionOf))
+        .toList();
+    for (Upcaster upcaster : chain) {
+      if (revisionOf(upcaster) != revision) {
+        continue;
+      }
+      JsonNode upcasted = upcaster.apply(payload);
+      if (upcasted == null) {
+        break; // no upcasting from here: the payload stays at this revision
+      }
+      if (!(upcasted instanceof ObjectNode)) {
+        throw new UpcastingException("Upcaster " + upcaster.getMethod() + " must return a JSON object, but returned: " + upcasted.getNodeType());
+      }
+      ((ObjectNode) upcasted).put("@class", className); // restore original typeInfo in case its changed
+      payload = upcasted;
+      revision++;
+    }
 
-    JsonNode payload = this.objectMapper.convertValue(jsonNode.get("payload"), JsonNode.class);
-
-    upCasters.stream()
-        .sorted(Comparator.comparingInt(handler -> handler.getMethod().getAnnotation(Upcast.class).revision()))
-        .filter(handler -> handler.getMethod().getAnnotation(Upcast.class).revision() == revision.get())
-        .map(handler -> handler.apply(payload))
-        .filter(Objects::nonNull)
-        .forEach(upcastedPayload -> {
-          ((ObjectNode) upcastedPayload).put("@class", className); // restore original typeInfo in case its changed
-          ((ObjectNode) jsonNode).set("payload", upcastedPayload);
-          ((ObjectNode) jsonNode).put("revision", revision.incrementAndGet());
-        });
-
+    if (revision != storedRevision) {
+      ((ObjectNode) jsonNode).set("payload", payload);
+      ((ObjectNode) jsonNode).put("revision", revision);
+    }
     return jsonNode;
+  }
+
+  private static int revisionOf(Upcaster upcaster) {
+    return upcaster.getMethod().getAnnotation(Upcast.class).revision();
   }
 
   public JsonDeserializer<T> registerUpcaster(Object handler) {
@@ -116,9 +130,6 @@ public class JsonDeserializer<T> implements Deserializer<T> {
   }
 
   private void addUpcaster(Object listener, Method method) {
-    if (method.getParameterCount() == 1) {
-      String type = method.getAnnotation(Upcast.class).type();
-      upcasters.put(type, new Upcaster(listener, method));
-    }
+    Upcaster.register(upcasters, listener, method);
   }
 }
