@@ -208,7 +208,7 @@ function apps(): AppEntry[] {
     const instances = app.nodes.length;
     // A few different situations: one rebalancing for a while, one restoring on some instances, one in error, the rest running.
     const state = i === 1 ? 'REBALANCING' : i === 2 ? 'REBALANCING' : i === 3 ? 'ERROR' : 'RUNNING';
-    const restore = i === 2 ? { restored: 64_000, total: 100_000, percentage: 64, instances: 1 } : null;
+    const restore = i === 2 ? { percentage: 64, instances: 1 } : null;
     return {
       ...app,
       status: {

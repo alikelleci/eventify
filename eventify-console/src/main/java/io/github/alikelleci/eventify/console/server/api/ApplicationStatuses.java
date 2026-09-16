@@ -18,6 +18,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * How the connected applications are doing. Every instance is asked for its own status; the answers are combined into
@@ -90,12 +91,16 @@ public class ApplicationStatuses {
         .max().orElse(0);
     int inState = (int) answers.stream().filter(answer -> answer.state().equals(state)).count();
 
-    List<InstanceStatus.Restore> restores = answers.stream().map(InstanceStatus::restore).filter(restore -> restore != null).toList();
-    long restored = restores.stream().mapToLong(InstanceStatus.Restore::restored).sum();
-    long total = restores.stream().mapToLong(InstanceStatus.Restore::total).sum();
-    ApplicationStatusView.Restore restore = total > 0
-        ? new ApplicationStatusView.Restore(restored, total, (int) (restored * 100 / total), restores.size())
-        : null;
+    // The slowest instance: the application is only fully back when it is. Not the sum over the instances, which drops
+    // each time one of them finishes, as the ones left are the slower ones.
+    List<InstanceStatus.Restore> restores = answers.stream().map(InstanceStatus::restore).filter(Objects::nonNull).toList();
+    ApplicationStatusView.Restore restore = restores.stream()
+        .mapToInt(InstanceStatus.Restore::percentage)
+        .min()
+        .stream()
+        .mapToObj(percentage -> new ApplicationStatusView.Restore(percentage, restores.size()))
+        .findFirst()
+        .orElse(null);
 
     return new ApplicationStatusView(state, stateForMs, inState, restore, answers.size());
   }

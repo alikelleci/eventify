@@ -1,6 +1,6 @@
 import {Component, computed, inject} from '@angular/core';
 import {BackendService} from '@eventify/ui/services/backend.service';
-import {statusLabel} from '@eventify/ui/status';
+import {stateLabel, statusLabel} from '@eventify/ui/status';
 import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
 
 /**
@@ -40,7 +40,7 @@ export class HomeComponent {
   /** The picture in the centre, each application with its number of instances. */
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
     name: app.name,
-    note: statusLabel(app.status).text,
+    note: stateLabel(app.status).text,
     offline: statusLabel(app.status).tone === 'error',
   })));
 

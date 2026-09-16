@@ -82,6 +82,11 @@ public class EventifyService {
     this.objectMapper = eventify.getObjectMapper();
     this.thisHost = hostInfo(eventify);
 
+    if (thisHost.equals(HostInfo.unavailable())) {
+      log.warn("'{}' is not configured, running in single-node mode. Multi-node routing is disabled.",
+          StreamsConfig.APPLICATION_SERVER_CONFIG);
+    }
+
     String bootstrapServers = eventify.getStreamsConfig().getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
     Properties producerProps = new Properties();
     producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
@@ -105,9 +110,14 @@ public class EventifyService {
     producer.close();
   }
 
-  /** This instance's {@code application.server}: its unique name, which Eventify always sets. */
+  /**
+   * This instance's {@code application.server}, or {@link HostInfo#unavailable()} if it isn't set. Eventify always sets
+   * it; the fallback keeps the service safe when it is used without it.
+   */
   static HostInfo hostInfo(Eventify eventify) {
-    return HostInfo.buildFromEndpoint(eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG));
+    String applicationServer = eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
+    HostInfo hostInfo = HostInfo.buildFromEndpoint(applicationServer);
+    return hostInfo != null ? hostInfo : HostInfo.unavailable();
   }
 
   /** How instances refer to each other: {@link #hostInfo(Eventify)} as {@code host:port}. */
@@ -446,6 +456,10 @@ public class EventifyService {
       return new ApiResult.Unavailable<>("Kafka Streams is not running");
     }
 
+    if (thisHost.equals(HostInfo.unavailable())) {
+      return null;
+    }
+
     KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
     if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
       log.warn("Metadata unavailable for aggregate {}", aggregateId);
@@ -464,6 +478,9 @@ public class EventifyService {
     KafkaStreams streams = eventify.getKafkaStreams();
     if (streams.state() != KafkaStreams.State.RUNNING) {
       return false;
+    }
+    if (thisHost.equals(HostInfo.unavailable())) {
+      return true;
     }
     KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
     return metadata != null && thisHost.equals(metadata.activeHost());

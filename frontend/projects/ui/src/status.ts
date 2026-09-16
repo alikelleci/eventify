@@ -6,8 +6,8 @@ export interface AppStatus {
   stateForMs: number;
   /** How many instances are in that state; fewer than `answered` means only some of them are. */
   inState: number;
-  /** What is being restored over all instances, and on how many of them. */
-  restore: { restored: number; total: number; percentage: number; instances: number } | null;
+  /** How far the slowest instance restoring is, and how many instances are restoring. */
+  restore: { percentage: number; instances: number } | null;
   /** How many instances answered. */
   answered: number;
 }
@@ -38,6 +38,21 @@ export function statusLabel(status: AppStatus | undefined | null): { text: strin
     default:
       // How long it has been wrong matters: seconds means a restart, hours means nobody noticed.
       return { text: `Error${lasting(status)}${ofSome}`, tone: 'error' };
+  }
+}
+
+/** Only the state, without numbers: for where there is no room for more, like the cards on the home page. */
+export function stateLabel(status: AppStatus | undefined | null): { text: string; tone: StatusTone } {
+  const { tone } = statusLabel(status);
+  if (!status || !status.state) return { text: 'No status', tone };
+  if (status.restore) return { text: 'Restoring', tone };
+  switch (status.state) {
+    case 'RUNNING': return { text: 'Running', tone };
+    case 'REBALANCING': return { text: 'Rebalancing', tone };
+    case 'CREATED': return { text: 'Starting', tone };
+    case 'PENDING_SHUTDOWN':
+    case 'NOT_RUNNING': return { text: 'Stopped', tone };
+    default: return { text: 'Error', tone };
   }
 }
 

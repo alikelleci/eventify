@@ -5,14 +5,17 @@ import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
 import lombok.Builder;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.StateRestoreListener;
+import org.apache.kafka.streams.state.HostInfo;
 
 import java.net.InetAddress;
 import java.net.URI;
 
 /** Connects the application to the Eventify Console, so it can be inspected there. */
+@Slf4j
 public class EventifyConsolePlugin implements EventifyPlugin {
 
   private final URI url;
@@ -37,9 +40,15 @@ public class EventifyConsolePlugin implements EventifyPlugin {
 
   @Override
   public void onStart(Eventify eventify) {
+    HostInfo hostInfo = EventifyService.hostInfo(eventify);
+    if (hostInfo.equals(HostInfo.unavailable())) {
+      log.warn("Not connecting to the Eventify Console: '{}' is not set.", StreamsConfig.APPLICATION_SERVER_CONFIG);
+      return;
+    }
+
     NodeInfo nodeInfo = new NodeInfo(
         eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_ID_CONFIG),
-        EventifyService.nodeId(EventifyService.hostInfo(eventify)),
+        EventifyService.nodeId(hostInfo),
         hostname(),
         EventifyConsolePlugin.class.getPackage().getImplementationVersion(),
         ConsoleProtocol.VERSION);

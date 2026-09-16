@@ -32,6 +32,8 @@ class ConsoleServerTest {
   @Value("${local.server.port}")
   int port;
 
+  private static final String RUNNING = "{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restore\":null}";
+
   WebTestClient client;
   final List<ConsoleConnector> connectors = new ArrayList<>();
   /** Requests per instance, by node id. Not the status requests: listing the applications asks for those. */
@@ -142,11 +144,13 @@ class ConsoleServerTest {
 
   @Test
   void theApplicationsAreListedWithTheStatusOfTheirInstancesCombined() {
-    // One instance is rebalancing and restoring, the other is running.
-    connect("status", "status.a:0", ok("{\"state\":\"REBALANCING\",\"stateForMs\":240000,"
+    // Two instances are rebalancing and restoring, a third is running.
+    connect("status", "status.a:0", status("{\"state\":\"REBALANCING\",\"stateForMs\":240000,"
         + "\"restore\":{\"restored\":60,\"total\":100,\"percentage\":60}}"));
-    connect("status", "status.b:0", ok("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restore\":null}"));
-    awaitInstances("status", 2);
+    connect("status", "status.b:0", status("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restore\":null}"));
+    connect("status", "status.c:0", status("{\"state\":\"REBALANCING\",\"stateForMs\":30000,"
+        + "\"restore\":{\"restored\":900,\"total\":1000,\"percentage\":90}}"));
+    awaitInstances("status", 3);
 
     // The status is kept for a moment, so it can still be from before both instances were connected.
     await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> client.get().uri("/api/apps").exchange()
@@ -154,15 +158,15 @@ class ConsoleServerTest {
         .expectBody()
         .jsonPath("$[?(@.name == 'status')].status.state").isEqualTo("REBALANCING")   // the one worst off wins
         .jsonPath("$[?(@.name == 'status')].status.stateForMs").isEqualTo(240000)     // and for as long as it has been
-        .jsonPath("$[?(@.name == 'status')].status.inState").isEqualTo(1)             // only one of the two
-        .jsonPath("$[?(@.name == 'status')].status.restore.percentage").isEqualTo(60)
-        .jsonPath("$[?(@.name == 'status')].status.restore.instances").isEqualTo(1)
-        .jsonPath("$[?(@.name == 'status')].status.answered").isEqualTo(2));          // every instance was asked
+        .jsonPath("$[?(@.name == 'status')].status.inState").isEqualTo(2)             // two of the three
+        .jsonPath("$[?(@.name == 'status')].status.restore.percentage").isEqualTo(60) // the slowest, not the sum (87%)
+        .jsonPath("$[?(@.name == 'status')].status.restore.instances").isEqualTo(2)
+        .jsonPath("$[?(@.name == 'status')].status.answered").isEqualTo(3));          // every instance was asked
   }
 
   @Test
   void anInstanceThatDoesNotAnswerLeavesTheStatusIncomplete() {
-    connect("partial", "partial.a:0", ok("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restore\":null}"));
+    connect("partial", "partial.a:0", status("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restore\":null}"));
     connect("partial", "partial.b:0", (route, data, cancel) -> new Reply(ReplyHeader.unavailable("busy"), new byte[0]));
     awaitInstances("partial", 2);
 
@@ -210,7 +214,14 @@ class ConsoleServerTest {
             .value(value -> assertThat(count == 0 ? String.valueOf(value) : value.toString()).isEqualTo(count == 0 ? "[]" : "[" + count + "]")));
   }
 
+  /** Answers every request with this JSON; asked for its status, it is simply running. */
   private static ConsoleConnector.Handler ok(String json) {
+    return (route, data, cancel) -> new Reply(ReplyHeader.ok(),
+        (route.equals(Route.STATUS.name()) ? RUNNING : json).getBytes(StandardCharsets.UTF_8));
+  }
+
+  /** Answers every request, the status included, with this status. */
+  private static ConsoleConnector.Handler status(String json) {
     return (route, data, cancel) -> new Reply(ReplyHeader.ok(), json.getBytes(StandardCharsets.UTF_8));
   }
 
