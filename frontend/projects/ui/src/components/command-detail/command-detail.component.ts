@@ -43,6 +43,8 @@ export class CommandDetailComponent {
   readonly metadata = computed(() => metadataEntries(this.command()?.metadata));
 
   producedEvents = signal<EventMessage[] | null>(null);
+  /** Newest first, like the aggregate's events list; the backend returns them oldest first. */
+  readonly producedEventsNewestFirst = computed(() => [...(this.producedEvents() ?? [])].reverse());
   loading = signal(false);
   /** Emits once the selected item has finished loading (successfully or not). */
   loaded = output<void>();
