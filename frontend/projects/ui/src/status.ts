@@ -36,10 +36,16 @@ export function instanceState(status: InstanceStatus | null): StatusLabel {
   }
 }
 
-/** "Error for 3 min": the state of one instance, with how long it has lasted. Running needs no duration. */
+/** From this long on, a state says how long it has lasted: before that, the state itself says enough. */
+const SHOW_DURATION_FROM_MS = 60_000;
+
+/**
+ * "Error for 3 min": the state of one instance, with how long it has lasted once that is a minute or more. Running
+ * needs no duration.
+ */
 export function instanceLabel(status: InstanceStatus | null): string {
   const { text, tone } = instanceState(status);
-  return status && tone !== 'ok' ? `${text} for ${duration(status.stateForMs)}` : text;
+  return status && tone !== 'ok' && status.stateForMs >= SHOW_DURATION_FROM_MS ? `${text} for ${duration(status.stateForMs)}` : text;
 }
 
 /** The state of an application: the one of its instance worst off. */
