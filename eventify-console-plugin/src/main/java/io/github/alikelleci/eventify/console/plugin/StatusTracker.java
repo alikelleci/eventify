@@ -41,6 +41,7 @@ public class StatusTracker implements StateListener, StateRestoreListener {
     restoring.add(topicPartition);
   }
 
+  /** Required by Kafka Streams, but not needed here: only whether something is restored matters, not how far. */
   @Override
   public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
   }
