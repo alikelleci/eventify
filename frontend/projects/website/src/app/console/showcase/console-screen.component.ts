@@ -81,6 +81,8 @@ const EXAMPLE_API: Partial<EventifyService> = {
       event: ORDER.events[index],
       state: ORDER.states.get(eventId) ?? null,
       previousState: older ? ORDER.states.get(older.id) ?? null : null,
+      stateKnown: true,
+      previousStateKnown: true,
     };
     return of(detail);
   },

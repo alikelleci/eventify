@@ -64,7 +64,13 @@ class ConsoleService {
 
   record CommandsPage(List<Command> commands) {}
   record EventsPage(List<Event> events, String nextCursor) {}
-  record EventDetail(Event event, AggregateState state, AggregateState previousState) {}
+  /**
+   * An event with the state after and before it. A state is {@code null} when there is none, or when it is unknown:
+   * {@code stateKnown} and {@code previousStateKnown} tell which. A state is unknown when the events before it were
+   * deleted at a snapshot.
+   */
+  record EventDetail(Event event, AggregateState state, AggregateState previousState,
+                     boolean stateKnown, boolean previousStateKnown) {}
   record CorrelatedEventsPage(List<Event> events) {}
 
   /** The outcome of a query, as the console is told it, with the answer when it's {@link ReplyHeader.Status#OK}. */

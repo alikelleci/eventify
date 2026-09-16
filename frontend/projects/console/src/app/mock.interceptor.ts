@@ -261,7 +261,7 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
       const index = events.findIndex(e => e.id === eventId);
       if (index === -1) return of(new HttpResponse({ status: 404, body: 'Not Found' }));
       const older = events[index + 1];
-      const detail: EventDetail = { event: events[index], state: states[eventId] ?? null, previousState: older ? states[older.id] : null };
+      const detail: EventDetail = { event: events[index], state: states[eventId] ?? null, previousState: older ? states[older.id] : null, stateKnown: true, previousStateKnown: true };
       return respond(detail, 300);
     }
 

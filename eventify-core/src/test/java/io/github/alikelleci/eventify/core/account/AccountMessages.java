@@ -8,6 +8,8 @@ import jakarta.validation.ValidationException;
 import lombok.Builder;
 import lombok.Value;
 
+import java.util.List;
+
 public class AccountMessages {
 
   @TopicInfo("commands.account")
@@ -31,6 +33,15 @@ public class AccountMessages {
     @AggregateId
     String id;
     int amount;
+  }
+
+  /** Several deposits in one command: one event each. */
+  @Value
+  @Builder
+  public static class DepositEach implements AccountCommand {
+    @AggregateId
+    String id;
+    List<Integer> amounts;
   }
 
   @Value
@@ -60,6 +71,14 @@ public class AccountMessages {
     public AccountEvent handle(Deposit command, Account state) {
       if (state == null) throw new ValidationException("Account does not exist.");
       return Deposited.builder().id(command.getId()).amount(command.getAmount()).build();
+    }
+
+    @HandleCommand
+    public List<AccountEvent> handle(DepositEach command, Account state) {
+      if (state == null) throw new ValidationException("Account does not exist.");
+      return command.getAmounts().stream()
+          .map(amount -> (AccountEvent) Deposited.builder().id(command.getId()).amount(amount).build())
+          .toList();
     }
 
     @ApplyEvent

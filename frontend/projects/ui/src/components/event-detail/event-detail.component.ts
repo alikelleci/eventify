@@ -53,6 +53,11 @@ export class EventDetailComponent {
   // The two sides of the diff. Without a state on one side it compares with an empty object.
   readonly diffCurrent = computed(() => cleanPayload(this.detail()?.state?.payload ?? {}));
   readonly diffPrevious = computed(() => cleanPayload(this.detail()?.previousState?.payload ?? {}));
+  // A diff needs both sides known: an unknown state isn't an empty one.
+  readonly canDiff = computed(() => {
+    const d = this.detail();
+    return !!d && d.stateKnown && d.previousStateKnown && !!(d.state || d.previousState);
+  });
 
   private request?: Subscription;
 
@@ -78,7 +83,8 @@ export class EventDetailComponent {
           return EMPTY;
         }),
       ).subscribe(detail => {
-        this.detail.set(detail);
+        // Applications on an older console client don't tell whether a state is known: it always was.
+        this.detail.set({ ...detail, stateKnown: detail.stateKnown ?? true, previousStateKnown: detail.previousStateKnown ?? true });
         if (answeredAtOnce) {
           this.finishLoading();
         } else {

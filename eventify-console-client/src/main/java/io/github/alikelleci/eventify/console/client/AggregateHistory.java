@@ -78,7 +78,7 @@ class AggregateHistory {
 
   /**
    * The state after the event, or the current state when {@code eventId} is {@code null}; {@code null} when there is
-   * none, or the event isn't there.
+   * none, the event isn't there, or the state at it is unknown because earlier events were deleted.
    */
   AggregateState stateAt(ReadOnlyKeyValueStore<String, Event> events, ReadOnlyKeyValueStore<String, AggregateState> snapshots,
                          String aggregateId, String eventId) {
@@ -86,11 +86,12 @@ class AggregateHistory {
       return null;
     }
     AggregateState snapshot = snapshots.get(aggregateId);
-    // A snapshot after the event can't be the start: replay from the first event.
-    if (snapshot != null && eventId != null && snapshot.getEventId().compareTo(eventId) > 0) {
-      snapshot = null;
+    if (snapshot == null || eventId == null || snapshot.getEventId().compareTo(eventId) <= 0) {
+      return replay.replay(events, aggregateId, snapshot, eventId).state();
     }
-    return replay.replay(events, aggregateId, snapshot, eventId).state();
+    // A snapshot after the event can't be the start: replay from the first event.
+    FromFirst fromFirst = replayFromFirst(events, aggregateId, snapshot, eventId);
+    return fromFirst.complete() ? fromFirst.after() : null;
   }
 
   /** The event with the state before and after it; {@code null} when the event isn't there. */
@@ -102,38 +103,72 @@ class AggregateHistory {
     }
 
     AggregateState snapshot = snapshots.get(aggregateId);
-    int order = snapshot != null ? snapshot.getEventId().compareTo(eventId) : 1;
-
-    if (order < 0) {
+    if (snapshot != null && snapshot.getEventId().compareTo(eventId) < 0) {
       // The snapshot is before the event: start there. The state before the event is seen on the way.
-      return replayThrough(events, aggregateId, snapshot, event);
+      AggregateState[] before = {snapshot};
+      AggregateReplay.Result result = replay.replay(events, aggregateId, snapshot, eventId, (current, state, version) -> {
+        if (current.getId().equals(eventId)) {
+          before[0] = versioned(state, version);
+        }
+      });
+      return known(event, result.state(), before[0]);
     }
 
     // No snapshot before the event: from the first event.
-    ConsoleService.EventDetail detail = replayThrough(events, aggregateId, null, event);
-    if (order > 0) {
-      return detail;
+    FromFirst fromFirst = replayFromFirst(events, aggregateId, snapshot, eventId);
+    if (fromFirst.complete()) {
+      return known(event, fromFirst.after(), fromFirst.before());
     }
-
-    // The snapshot is the state after this very event. The replay only agrees with it when every earlier event is
-    // still there; if they were deleted at this snapshot, it applied fewer events. Then the snapshot is the state,
-    // and the state before it is unknown.
-    long replayed = detail.state() != null ? detail.state().getVersion() : 0;
-    if (replayed != snapshot.getVersion()) {
-      return new ConsoleService.EventDetail(event, snapshot.withVersion(snapshot.getVersion()), null);
+    if (snapshot.getEventId().equals(eventId)) {
+      // The snapshot is the state after this very event; what came before it is gone.
+      return new ConsoleService.EventDetail(event, snapshot, null, true, false);
     }
-    return detail;
+    return new ConsoleService.EventDetail(event, null, null, false, false);
   }
 
-  /** Replays from {@code start} through the event, remembering the state right before it. */
-  private ConsoleService.EventDetail replayThrough(ReadOnlyKeyValueStore<String, Event> events, String aggregateId,
-                                                    AggregateState start, Event event) {
-    AggregateState[] before = {start};
-    AggregateReplay.Result result = replay.replay(events, aggregateId, start, event.getId(), (current, state, version) -> {
-      if (current.getId().equals(event.getId())) {
-        before[0] = state != null ? state.withVersion(version) : null;
+  /**
+   * The state before and after the event, replayed from the first event. With a snapshot, the replay goes on to the
+   * snapshot's event: only when it reaches the snapshot's version are all events before the snapshot still there. When
+   * some were deleted ({@code @EnableSnapshotting(deleteEvents = true)}), they are the first ones: the replay started
+   * too late, and its states are wrong.
+   *
+   * @param snapshot the snapshot, at or after the event; {@code null} when there is none
+   */
+  private FromFirst replayFromFirst(ReadOnlyKeyValueStore<String, Event> events, String aggregateId,
+                                    AggregateState snapshot, String eventId) {
+    AggregateState[] before = {null};
+    AggregateState[] after = {null};
+    boolean[] reached = {false};
+    boolean[] passed = {false};
+    String until = snapshot != null ? snapshot.getEventId() : eventId;
+
+    AggregateReplay.Result result = replay.replay(events, aggregateId, null, until, (current, state, version) -> {
+      if (reached[0] && !passed[0]) {
+        after[0] = versioned(state, version); // the state before the next event is the state after the event
+        passed[0] = true;
+      }
+      if (current.getId().equals(eventId)) {
+        before[0] = versioned(state, version);
+        reached[0] = true;
       }
     });
-    return new ConsoleService.EventDetail(event, result.state(), before[0]);
+    if (!passed[0]) {
+      after[0] = result.state();
+    }
+
+    boolean complete = snapshot == null
+        || (result.state() != null && result.state().getVersion() == snapshot.getVersion());
+    return new FromFirst(before[0], after[0], complete);
+  }
+
+  private record FromFirst(AggregateState before, AggregateState after, boolean complete) {
+  }
+
+  private static ConsoleService.EventDetail known(Event event, AggregateState state, AggregateState previousState) {
+    return new ConsoleService.EventDetail(event, state, previousState, true, true);
+  }
+
+  private static AggregateState versioned(AggregateState state, long version) {
+    return state != null ? state.withVersion(version) : null;
   }
 }

@@ -102,7 +102,37 @@ class AggregateHistoryTest {
 
     // The snapshot is the state after this event; what came before it is gone, so the state before it is unknown.
     assertValue(detail.state(), 2, 2);
+    assertThat(detail.stateKnown()).isTrue();
     assertThat(detail.previousState()).isNull();
+    assertThat(detail.previousStateKnown()).isFalse();
+  }
+
+  /** The first events were deleted at an earlier snapshot, a later one replaced it, and an event before it is still there. */
+  @Test
+  void anEventBeforeTheSnapshotWithTheFirstEventsDeletedIsUnknown() {
+    snapshotAt(third);
+    events.delete(first.getId());
+
+    ConsoleService.EventDetail detail = detail(second);
+
+    // Replayed from the first event there is, it would be the state after one event: 1 instead of 2.
+    assertThat(detail.event()).isEqualTo(second);
+    assertThat(detail.state()).isNull();
+    assertThat(detail.stateKnown()).isFalse();
+    assertThat(detail.previousState()).isNull();
+    assertThat(detail.previousStateKnown()).isFalse();
+    assertThat(history.stateAt(events, snapshots, "counter-1", second.getId())).isNull();
+  }
+
+  @Test
+  void anEventBeforeTheSnapshotHasTheStateBeforeTheNextEvent() {
+    Event fourth = store(new Incremented("counter-1"));
+    snapshotAt(fourth);
+
+    assertDetail(first, 0, 1);
+    assertDetail(second, 1, 2);
+    assertDetail(fourth, 3, 4);
+    assertValue(history.stateAt(events, snapshots, "counter-1", first.getId()), 1, 1);
   }
 
   @Test
@@ -169,6 +199,8 @@ class AggregateHistoryTest {
   private void assertDetail(Event event, int before, int after) {
     ConsoleService.EventDetail detail = detail(event);
     assertThat(detail.event()).isEqualTo(event);
+    assertThat(detail.stateKnown()).isTrue();
+    assertThat(detail.previousStateKnown()).isTrue();
     if (before == 0) {
       assertThat(detail.previousState()).isNull();
     } else {

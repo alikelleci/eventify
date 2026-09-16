@@ -45,4 +45,8 @@ export interface EventDetail {
   event: EventMessage;
   state: AggregateState | null;
   previousState: AggregateState | null;
+  /** False when the state after the event can't be rebuilt: the events before it were deleted at a snapshot. */
+  stateKnown: boolean;
+  /** False when the state before the event can't be rebuilt, for the same reason. A known null state is no state. */
+  previousStateKnown: boolean;
 }

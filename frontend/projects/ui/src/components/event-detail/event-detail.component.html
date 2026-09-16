@@ -94,7 +94,10 @@
     }
     @if (activeTab() === 'state') {
       <div class="relative group">
-        @if (showDiff()) {
+        @if (!d.stateKnown) {
+          <!-- The events before this one were deleted at a snapshot: the state after it can't be rebuilt. -->
+          <pre class="bg-surface-100 dark:bg-surface-800 text-surface-400 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono">// State unknown: the events before this one were deleted when a snapshot was taken</pre>
+        } @else if (showDiff() && canDiff()) {
           <!-- Without a state on one side, the diff compares with an empty object:
                all green when there was no state before this event, all red when there is none after it -->
           <pre class="bg-surface-100 dark:bg-surface-800 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono"
@@ -107,7 +110,7 @@
           <pre class="bg-surface-100 dark:bg-surface-800 text-surface-400 rounded-lg px-4 py-3 text-xs leading-relaxed overflow-auto max-h-72 font-mono">// No state</pre>
         }
         <div class="absolute top-1.5 right-1.5 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          @if (d.state || d.previousState) {
+          @if (canDiff()) {
             <p-button [text]="true" [rounded]="true" [severity]="showDiff() ? 'primary' : 'secondary'"
               icon="pi pi-arrow-right-arrow-left" size="small" styleClass="!w-[6.5rem]"
               [label]="showDiff() ? 'Hide diff' : 'Show diff'"
@@ -121,6 +124,9 @@
           }
         </div>
       </div>
+      @if (d.stateKnown && !d.previousStateKnown) {
+        <p class="mt-2 text-xs text-surface-400">No diff: the state before this event is unknown, because the events before it were deleted when a snapshot was taken.</p>
+      }
     }
   </div>
 }
