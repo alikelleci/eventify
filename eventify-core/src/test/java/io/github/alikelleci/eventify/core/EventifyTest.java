@@ -63,6 +63,10 @@ class EventifyTest {
         .registerHandler(new OrderEventSourcingHandler());
   }
 
+  static Command buildPlaceOrderCommandFor(String aggregateId) {
+    return buildPlaceOrderCommand(aggregateId);
+  }
+
   static TestInputTopic<String, Command> commandsTopic(TopologyTestDriver driver) {
     return driver.createInputTopic(
         OrderCommand.class.getAnnotation(TopicInfo.class).value(),

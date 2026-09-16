@@ -41,9 +41,12 @@ public class InstanceStatuses {
       .expireAfterWrite(KEEP)
       .buildAsync();
 
-  /** The status of one instance, unless it was asked a moment ago; empty when it doesn't answer. */
+  /**
+   * The status of one instance, unless it was asked a moment ago; empty when it doesn't answer. Pages asking at the same
+   * time wait for the same answer, so one that stops waiting (e.g. it refreshed) must not cancel it for the others.
+   */
   public Mono<Optional<InstanceStatus>> of(ConnectedNode node) {
-    return Mono.fromFuture(() -> cache.get(node.nodeId(), (key, executor) -> ask(node).toFuture()));
+    return Mono.fromFuture(() -> cache.get(node.nodeId(), (key, executor) -> ask(node).toFuture()), true);
   }
 
   private Mono<Optional<InstanceStatus>> ask(ConnectedNode node) {

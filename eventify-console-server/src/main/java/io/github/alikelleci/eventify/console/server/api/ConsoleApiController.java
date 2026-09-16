@@ -61,8 +61,11 @@ public class ConsoleApiController {
         .map(ConsoleApiController::toResponse);
   }
 
-  /** The body is the command as the UI received it; the console passes it on without reading it. */
-  @PostMapping("/{app}/commands/retry")
+  /**
+   * The body is the command as the UI received it; the console passes it on without reading it. Only as JSON: a web
+   * page elsewhere can't send that to the console without the browser asking the console first, which it refuses.
+   */
+  @PostMapping(value = "/{app}/commands/retry", consumes = MediaType.APPLICATION_JSON_VALUE)
   public Mono<ResponseEntity<byte[]>> retryCommand(@PathVariable String app, @RequestBody byte[] command) {
     return gateway.sendToAny(app, Route.RETRY_COMMAND, command).map(ConsoleApiController::toResponse);
   }

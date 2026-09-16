@@ -4,8 +4,8 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateReplay;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -13,6 +13,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
+import io.github.alikelleci.eventify.core.util.IdUtils;
+import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
@@ -28,12 +30,14 @@ import java.util.concurrent.atomic.AtomicLong;
 public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
 
   private final Eventify eventify;
+  private final AggregateReplay aggregateReplay;
   private FixedKeyProcessorContext<String, CommandResult> context;
   private KeyValueStore<String, Event> eventStore;
   private KeyValueStore<String, AggregateState> snapshotStore;
 
   public CommandProcessor(Eventify eventify) {
     this.eventify = eventify;
+    this.aggregateReplay = new AggregateReplay(eventify.getEventSourcingHandlers());
   }
 
   @Override
@@ -102,54 +106,24 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   protected AggregateState loadAggregate(String aggregateId) {
     Instant startTime = Instant.now();
 
-    AtomicLong sequence = new AtomicLong(0);
-    AtomicLong counter = new AtomicLong(0);
-
-    String from = aggregateId + "@";
-    String to = aggregateId + "@~";
-
-    AggregateState state = loadFromSnapshot(aggregateId);
-    if (state != null) {
-      log.debug("Snapshot found: {}", state);
-      from = state.getEventId() + "\0"; // Start after the snapshot event
-      sequence.set(state.getVersion());
+    AggregateState snapshot = loadFromSnapshot(aggregateId);
+    if (snapshot != null) {
+      log.debug("Snapshot found: {}", snapshot);
     }
 
     log.debug("Loading aggregate state by applying events...");
-
-    try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
-      while (iterator.hasNext()) {
-        Event event = iterator.next().value;
-        EventSourcingHandler eventSourcingHandler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
-        if (eventSourcingHandler != null) {
-          log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
-          state = eventSourcingHandler.apply(state, event);
-
-          sequence.incrementAndGet();
-          counter.incrementAndGet();
-        }
-      }
-    }
-
-    state = Optional.ofNullable(state)
-        .map(aggr -> AggregateState.builder()
-            .timestamp(aggr.getTimestamp())
-            .payload(aggr.getPayload())
-            .metadata(aggr.getMetadata())
-            .eventId(aggr.getEventId())
-            .version(sequence.get())
-            .build())
-        .orElse(null);
+    AggregateReplay.Result replay = aggregateReplay.replay(eventStore, aggregateId, snapshot, null);
+    AggregateState state = replay.state();
 
     Instant endTime = Instant.now();
     Duration duration = Duration.between(startTime, endTime);
 
-    log.debug("Number of events applied: {}", counter.get());
+    log.debug("Number of events applied: {}", replay.applied());
     log.debug("Aggregate state reconstructed in {} ms ({} sec): {}", duration.toMillis(), duration.toSeconds(), state);
 
     // Save snapshot if needed
     Optional.ofNullable(state)
-        .filter(s -> counter.get() > 0)
+        .filter(s -> replay.applied() > 0)
         .filter(s -> s.getSnapshotThreshold() > 0)
         .filter(s -> s.getVersion() % s.getSnapshotThreshold() == 0)
         .ifPresent(s -> {
@@ -181,16 +155,19 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   protected void deleteEvents(AggregateState state) {
     AtomicLong counter = new AtomicLong(0);
 
-    String from = state.getAggregateId() + "@";
+    String from = IdUtils.firstKey(state.getAggregateId());
     String to = state.getEventId();
 
     try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
       while (iterator.hasNext()) {
-        Event event = iterator.next().value;
-        if (event.getId().equals(to)) {
+        KeyValue<String, Event> entry = iterator.next();
+        if (entry.key.equals(to)) {
           break; // keep the snapshot event itself
         }
-        eventStore.delete(event.getId());
+        if (!IdUtils.isKeyOf(state.getAggregateId(), entry.key)) {
+          continue; // another aggregate's event in the range: never ours to delete
+        }
+        eventStore.delete(entry.key);
         counter.incrementAndGet();
       }
     }

@@ -73,7 +73,8 @@ export class CommandListComponent implements OnInit {
     return r === 'success' ? 'success' : r === 'failure' ? 'failure' : 'neutral';
   }
 
+  /** Retried from the console: it names the command it retries. */
   isRetry(command: CommandMessage): boolean {
-    return command.metadata['retry'] === 'true';
+    return !!command.metadata['$retryOf'];
   }
 }

@@ -3,7 +3,10 @@ package io.github.alikelleci.eventify.console.plugin;
 import io.github.alikelleci.eventify.console.plugin.EventifyService.Result;
 import io.github.alikelleci.eventify.console.plugin.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.plugin.item.ItemHandler;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -139,6 +142,25 @@ class EventifyServiceRoutingIT {
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() ->
           assertThat(service.getCommands(id, 50, new CancelSignal()).value())
               .satisfies(page -> assertThat(page.commands()).isNotEmpty()));
+
+      // Retried from the console: a new command, with its own correlation id, pointing to the one it retries.
+      Command original = service.getCommands(id, 50, new CancelSignal()).value().commands().get(0);
+      byte[] json = first.getObjectMapper().writeValueAsBytes(original);
+      assertThat(service.retryCommand(json)).isEqualTo(Result.ok(null));
+      await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
+        List<Command> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
+        assertThat(commands).hasSize(2);
+        Command retry = commands.get(0); // newest first
+        assertThat(retry.getMetadata()).containsEntry(EventifyService.RETRY_OF, original.getId()).doesNotContainKey(Metadata.REPLY_TO);
+        assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isNotEqualTo(original.getMetadata().getCorrelationId());
+        assertThat(retry.getMetadata()).containsEntry(Metadata.RESULT, "success");
+      });
+
+      // Only a command this application handles: the JSON names the class to create.
+      ObjectNode foreign = (ObjectNode) first.getObjectMapper().readTree(json);
+      ((ObjectNode) foreign.get("payload")).put("@class", "java.lang.ProcessBuilder");
+      assertThat(service.retryCommand(first.getObjectMapper().writeValueAsBytes(foreign)).header().status())
+          .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
 
       // Someone refreshed the page: the read stops instead of reading the topic.
       CancelSignal refreshed = new CancelSignal();

@@ -121,6 +121,20 @@ class ConsoleServerTest {
   }
 
   @Test
+  void aRetryOnlyAcceptsJson() {
+    connect("retry-json", "retry-json.a:0", ok("{}"));
+    awaitInstances("retry-json", 1);
+
+    // What a form on another web page can send without the browser asking the console first.
+    client.post().uri("/api/apps/retry-json/commands/retry")
+        .header("Content-Type", "text/plain")
+        .bodyValue("{\"payload\":{}}")
+        .exchange()
+        .expectStatus().isEqualTo(415);
+    assertThat(calls("retry-json.a:0")).isZero();
+  }
+
+  @Test
   void largeRepliesArriveComplete() {
     String large = "{\"text\":\"" + "x".repeat(2_000_000) + "\"}";
     connect("large", "large.a:0", ok(large));

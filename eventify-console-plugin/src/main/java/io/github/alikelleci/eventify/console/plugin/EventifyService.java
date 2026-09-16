@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.console.plugin;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
@@ -8,13 +9,11 @@ import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -23,6 +22,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -33,18 +33,15 @@ import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.state.HostInfo;
-import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -56,6 +53,14 @@ class EventifyService {
 
   private static final String EVENT_STORE = "event-store";
   private static final String SNAPSHOT_STORE = "snapshot-store";
+
+  /** On a command retried from the console: the id of the command it retries. */
+  static final String RETRY_OF = "$retryOf";
+
+  /** How far back the commands are read. */
+  private static final Duration COMMANDS_LOOKBACK = Duration.ofDays(7);
+  /** Reading the commands stops after this long, so a read that can't finish doesn't keep a query thread. */
+  private static final Duration MAX_COMMANDS_READ = Duration.ofSeconds(60);
 
   record CommandsPage(List<Command> commands) {}
   record EventsPage(List<Event> events, String nextCursor) {}
@@ -81,6 +86,10 @@ class EventifyService {
       return new Result<>(ReplyHeader.unavailable(reason), null);
     }
 
+    static <T> Result<T> badRequest(String reason) {
+      return new Result<>(ReplyHeader.badRequest(reason), null);
+    }
+
     boolean isOk() {
       return header.status() == ReplyHeader.Status.OK;
     }
@@ -91,12 +100,14 @@ class EventifyService {
   private final HostInfo thisHost;
   private final ObjectMapper objectMapper;
   private final Producer<String, Command> producer;
+  private final AggregateHistory history;
 
   EventifyService(Eventify eventify, StatusTracker statusTracker) {
     this.eventify = eventify;
     this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();
     this.thisHost = hostInfo(eventify);
+    this.history = new AggregateHistory(eventify.getEventSourcingHandlers());
     this.producer = new KafkaProducer<>(producerConfig(eventify), new StringSerializer(), new JsonSerializer<>(objectMapper));
   }
 
@@ -154,14 +165,35 @@ class EventifyService {
     return eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-console-" + purpose;
   }
 
-  Result<Void> retryCommand(Command original) {
+  /**
+   * Sends the command again, as a new command: with its own id and correlation id, so the events it produces are its
+   * own, and {@link #RETRY_OF} pointing to the command it retries.
+   *
+   * @param json the command as the console received it. Only a command this application handles is accepted, checked
+   *             before it is read: the JSON names the class to create.
+   */
+  Result<Void> retryCommand(byte[] json) {
+    Command original;
+    try {
+      JsonNode tree = objectMapper.readTree(json);
+      String type = tree.path("payload").path("@class").asText(null);
+      boolean handled = type != null && eventify.getCommandHandlers().keySet().stream()
+          .anyMatch(commandClass -> commandClass.getName().equals(type));
+      if (!handled) {
+        return Result.badRequest("Not a command of this application: " + type);
+      }
+      original = objectMapper.treeToValue(tree, Command.class);
+    } catch (Exception e) {
+      log.warn("Failed to read the command to retry", e);
+      return Result.badRequest("Unreadable command");
+    }
+
     Metadata retryMetadata = Metadata.builder()
         .putAll(original.getMetadata())
-        .put("retry", "true")
-        .put("source", "console")
-        .put("description", "Retried via Eventify Console")
+        .put(RETRY_OF, original.getId())
         .build();
     retryMetadata.remove(REPLY_TO);
+    retryMetadata.remove(CORRELATION_ID);
 
     Command retryCommand = Command.builder()
         .payload(original.getPayload())
@@ -197,53 +229,23 @@ class EventifyService {
 
     List<Command> results = new ArrayList<>();
     JsonDeserializer<Command> commandDeserializer = new JsonDeserializer<>(Command.class, objectMapper);
+    Instant deadline = Instant.now().plus(MAX_COMMANDS_READ);
 
     // Closed in reverse order: the wakeup is unregistered before the consumer closes.
-    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerConfig(eventify), new StringDeserializer(), new StringDeserializer());
+    try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(consumerConfig(eventify), new StringDeserializer(), new ByteArrayDeserializer());
          AutoCloseable stopOnCancel = cancel.onCancel(consumer::wakeup)) {
       for (String topic : resultTopics) {
         try {
-          List<TopicPartition> allPartitions = consumer.partitionsFor(topic).stream()
-              .map(pi -> new TopicPartition(topic, pi.partition()))
-              .toList();
-
-          if (allPartitions.isEmpty()) continue;
-
-          int numPartitions = allPartitions.size();
-          int partition = Utils.toPositive(Utils.murmur2(aggregateId.getBytes(java.nio.charset.StandardCharsets.UTF_8))) % numPartitions;
-          TopicPartition tp = new TopicPartition(topic, partition);
-
-          consumer.assign(Collections.singletonList(tp));
-
-          long lookbackMs = Instant.now().minus(7, ChronoUnit.DAYS).toEpochMilli();
-          OffsetAndTimestamp offsetAndTimestamp = consumer.offsetsForTimes(Map.of(tp, lookbackMs)).get(tp);
-          long startOffset = offsetAndTimestamp != null ? offsetAndTimestamp.offset() : 0L;
-          consumer.seek(tp, startOffset);
-
-          Map<TopicPartition, Long> endOffsets = consumer.endOffsets(Collections.singletonList(tp));
-          long endOffset = endOffsets.getOrDefault(tp, 0L);
-          if (startOffset >= endOffset) continue;
-
-          boolean done = false;
-          while (!done) {
-            ConsumerRecords<String, String> records = consumer.poll(Duration.ofSeconds(3));
-            if (records.isEmpty()) break;
-            for (ConsumerRecord<String, String> record : records) {
-              if (record.offset() >= endOffset) { done = true; break; }
-              if (!aggregateId.equals(record.key())) continue;
-              if (record.value() == null) continue;
-              try {
-                Command command = commandDeserializer.deserialize(topic, record.value().getBytes());
-                if (command != null) results.add(command);
-              } catch (Exception e) {
-                log.warn("Failed to deserialize command record on topic {}", topic, e);
-              }
-            }
-          }
+          readCommands(consumer, topic, aggregateId, commandDeserializer, deadline, results);
         } catch (WakeupException e) {
           throw e;
+        } catch (CommandsReadTimeout e) {
+          log.warn("Reading the commands of aggregate {} took longer than {}", aggregateId, MAX_COMMANDS_READ);
+          return Result.unavailable("Reading the commands took too long");
         } catch (Exception e) {
-          log.warn("Failed to query command result topic {}", topic, e);
+          // Not an empty list: that would look like the aggregate has no commands.
+          log.warn("Failed to read commands of aggregate {} from topic {}", aggregateId, topic, e);
+          return Result.unavailable("Failed to read commands from topic " + topic + ": " + e.getMessage());
         }
       }
     } catch (WakeupException e) {
@@ -259,24 +261,62 @@ class EventifyService {
     return Result.ok(new CommandsPage(limited));
   }
 
+  /**
+   * Adds the aggregate's commands of the last {@link #COMMANDS_LOOKBACK} from one result topic: from the partition its
+   * key is written to, up to the end of that partition when the read starts.
+   */
+  private static void readCommands(KafkaConsumer<String, byte[]> consumer, String topic, String aggregateId,
+                                   JsonDeserializer<Command> commandDeserializer, Instant deadline, List<Command> results) {
+    int numPartitions = consumer.partitionsFor(topic).size();
+    if (numPartitions == 0) {
+      return;
+    }
+    // The partition the default partitioner picks for this key, as Eventify writes the results.
+    int partition = Utils.toPositive(Utils.murmur2(aggregateId.getBytes(StandardCharsets.UTF_8))) % numPartitions;
+    TopicPartition tp = new TopicPartition(topic, partition);
+    consumer.assign(List.of(tp));
+
+    long endOffset = consumer.endOffsets(List.of(tp)).getOrDefault(tp, 0L);
+    long since = Instant.now().minus(COMMANDS_LOOKBACK).toEpochMilli();
+    OffsetAndTimestamp first = consumer.offsetsForTimes(Map.of(tp, since)).get(tp);
+    // None: every record is older than the lookback, so there is nothing to read.
+    long startOffset = first != null ? first.offset() : endOffset;
+    if (startOffset >= endOffset) {
+      return;
+    }
+    consumer.seek(tp, startOffset);
+
+    // Until the position passes the end, not until a poll comes back empty: a slow poll isn't the end, and the last
+    // offsets can be transaction markers, which are never returned as records.
+    while (consumer.position(tp) < endOffset) {
+      if (Instant.now().isAfter(deadline)) {
+        throw new CommandsReadTimeout();
+      }
+      for (ConsumerRecord<String, byte[]> record : consumer.poll(Duration.ofSeconds(1))) {
+        if (record.offset() >= endOffset || !aggregateId.equals(record.key()) || record.value() == null) {
+          continue;
+        }
+        try {
+          Command command = commandDeserializer.deserialize(topic, record.value());
+          if (command != null) {
+            results.add(command);
+          }
+        } catch (Exception e) {
+          log.warn("Failed to deserialize command record on topic {} at offset {}", topic, record.offset(), e);
+        }
+      }
+    }
+  }
+
+  private static class CommandsReadTimeout extends RuntimeException {
+  }
+
   Result<CorrelatedEventsPage> getEventsByCorrelation(String aggregateId, String correlationId) {
     Result<CorrelatedEventsPage> routing = checkRouting(aggregateId);
     if (routing != null) return routing;
 
     try {
-      ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
-          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
-
-      List<Event> events = new ArrayList<>();
-      try (KeyValueIterator<String, Event> it = store.range(aggregateId + "@", aggregateId + "@~")) {
-        while (it.hasNext()) {
-          Event event = it.next().value;
-          if (correlationId.equals(event.getMetadata().get(CORRELATION_ID))) {
-            events.add(event);
-          }
-        }
-      }
-      return Result.ok(new CorrelatedEventsPage(events));
+      return Result.ok(new CorrelatedEventsPage(history.eventsByCorrelation(eventStore(), aggregateId, correlationId)));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
@@ -293,26 +333,7 @@ class EventifyService {
     }
 
     try {
-      ReadOnlyKeyValueStore<String, Event> store = eventify.getKafkaStreams()
-          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
-
-      String from = aggregateId + "@";
-      String to = cursor != null ? aggregateId + "@" + cursor + "\0" : aggregateId + "@~";
-
-      List<Event> events = new ArrayList<>();
-      try (KeyValueIterator<String, Event> it = store.reverseRange(from, to)) {
-        while (it.hasNext() && events.size() <= limit) {
-          events.add(it.next().value);
-        }
-      }
-
-      String nextCursor = null;
-      if (events.size() > limit) {
-        Event extra = events.remove(events.size() - 1);
-        nextCursor = extra.getId().substring(aggregateId.length() + 1);
-      }
-
-      return Result.ok(new EventsPage(events, nextCursor));
+      return Result.ok(history.events(eventStore(), aggregateId, cursor, limit));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
@@ -329,68 +350,11 @@ class EventifyService {
     }
 
     try {
-      ReadOnlyKeyValueStore<String, AggregateState> snapshotStore = eventify.getKafkaStreams()
-          .store(StoreQueryParameters.fromNameAndType(SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()));
-      ReadOnlyKeyValueStore<String, Event> eventStore = eventify.getKafkaStreams()
-          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
-
-      Event targetEvent = eventStore.get(eventId);
-      if (targetEvent == null) {
-        if (!isLocallyAuthoritative(aggregateId)) {
-          log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
-          return Result.unavailable("Ownership changed during query");
-        }
-        return Result.notFound();
+      EventDetail detail = history.eventDetail(eventStore(), snapshotStore(), aggregateId, eventId);
+      if (detail == null) {
+        return notFound(aggregateId);
       }
-
-      String from = aggregateId + "@";
-      String to = eventId;
-
-      AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
-          .filter(snap -> snap.getEventId().compareTo(to) < 0)
-          .orElse(null);
-
-      if (state != null) {
-        from = state.getEventId() + "\0";
-      }
-
-      long version = state != null ? state.getVersion() : 0;
-
-      AggregateState previousState = state;
-      long previousVersion = version;
-
-      try (KeyValueIterator<String, Event> it = eventStore.range(from, to)) {
-        while (it.hasNext()) {
-          Event event = it.next().value;
-          if (event.getId().equals(eventId)) {
-            previousState = state;
-            previousVersion = version;
-          }
-          EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
-          if (handler != null) {
-            state = handler.apply(state, event);
-            version++;
-          }
-        }
-      }
-
-      AggregateState currentState = state == null ? null : AggregateState.builder()
-          .timestamp(state.getTimestamp())
-          .payload(state.getPayload())
-          .metadata(state.getMetadata())
-          .eventId(state.getEventId())
-          .version(version)
-          .build();
-
-      AggregateState previousStateResult = previousState == null ? null : AggregateState.builder()
-          .timestamp(previousState.getTimestamp())
-          .payload(previousState.getPayload())
-          .metadata(previousState.getMetadata())
-          .eventId(previousState.getEventId())
-          .version(previousVersion)
-          .build();
-
-      return Result.ok(new EventDetail(targetEvent, currentState, previousStateResult));
+      return Result.ok(detail);
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
@@ -407,51 +371,10 @@ class EventifyService {
     }
 
     try {
-      ReadOnlyKeyValueStore<String, AggregateState> snapshotStore = eventify.getKafkaStreams()
-          .store(StoreQueryParameters.fromNameAndType(SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()));
-      ReadOnlyKeyValueStore<String, Event> eventStore = eventify.getKafkaStreams()
-          .store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
-
-      String from = aggregateId + "@";
-      String to = eventId != null ? eventId : aggregateId + "@~";
-
-      AggregateState state = Optional.ofNullable(snapshotStore.get(aggregateId))
-          .filter(snap -> eventId == null || snap.getEventId().compareTo(to) <= 0)
-          .orElse(null);
-
-      if (state != null) {
-        from = state.getEventId() + "\0";
-      }
-
-      long version = state != null ? state.getVersion() : 0;
-
-      try (KeyValueIterator<String, Event> it = eventStore.range(from, to)) {
-        while (it.hasNext()) {
-          Event event = it.next().value;
-          EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
-          if (handler != null) {
-            state = handler.apply(state, event);
-            version++;
-          }
-        }
-      }
-
+      AggregateState state = history.stateAt(eventStore(), snapshotStore(), aggregateId, eventId);
       if (state == null) {
-        if (!isLocallyAuthoritative(aggregateId)) {
-          log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
-          return Result.unavailable("Ownership changed during query");
-        }
-        return Result.notFound();
+        return notFound(aggregateId);
       }
-
-      state = AggregateState.builder()
-          .timestamp(state.getTimestamp())
-          .payload(state.getPayload())
-          .metadata(state.getMetadata())
-          .eventId(state.getEventId())
-          .version(version)
-          .build();
-
       return Result.ok(state);
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
@@ -460,6 +383,23 @@ class EventifyService {
       log.error("Unexpected error querying state for aggregate {}", aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
+  }
+
+  private ReadOnlyKeyValueStore<String, Event> eventStore() {
+    return eventify.getKafkaStreams().store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
+  }
+
+  private ReadOnlyKeyValueStore<String, AggregateState> snapshotStore() {
+    return eventify.getKafkaStreams().store(StoreQueryParameters.fromNameAndType(SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()));
+  }
+
+  /** Nothing found; unless this instance stopped owning the aggregate during the query, and simply no longer has it. */
+  private <T> Result<T> notFound(String aggregateId) {
+    if (!isLocallyAuthoritative(aggregateId)) {
+      log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
+      return Result.unavailable("Ownership changed during query");
+    }
+    return Result.notFound();
   }
 
   /**

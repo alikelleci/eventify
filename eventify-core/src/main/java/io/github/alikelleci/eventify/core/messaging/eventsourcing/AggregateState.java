@@ -64,6 +64,17 @@ public class AggregateState implements Message {
   }
 
 
+  /** This state, at the given version. */
+  public AggregateState withVersion(long version) {
+    return AggregateState.builder()
+        .timestamp(timestamp)
+        .payload(payload)
+        .metadata(metadata)
+        .eventId(eventId)
+        .version(version)
+        .build();
+  }
+
   @Transient
   public int getSnapshotThreshold() {
     return Optional.ofNullable(getPayload())

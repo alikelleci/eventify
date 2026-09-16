@@ -90,9 +90,11 @@ function buildHistory(orderId: string, steps: Step[]): History {
     const time = NOW - step.minutesAgo * 60_000;
     // Each command has its own correlation ID, also a retry, so a failed command never shows events.
     const correlationId = fakeUuid(index + 1);
-    const metadata: Record<string, string> = step.retried
+    // A retry names the command it retries: the last one of the same type before it.
+    const retried = [...commands].reverse().find(command => command.type === step.command);
+    const metadata: Record<string, string> = step.retried && retried
       // Resubmitted from the console: marked like EventifyService.retryCommand does, without $replyTo.
-      ? { '$correlationId': correlationId, 'retry': 'true', 'source': 'console', 'description': 'Retried via Eventify Console' }
+      ? { '$correlationId': correlationId, '$retryOf': retried.id }
       : { '$correlationId': correlationId, '$replyTo': REPLY_TO };
 
     commands.push({

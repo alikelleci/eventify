@@ -6,7 +6,7 @@ import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.Route;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.core.util.IdUtils;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -46,21 +46,23 @@ class ConsoleRequestHandler {
         }
         case EVENT_DETAIL -> {
           Requests.EventDetail request = read(data, Requests.EventDetail.class);
-          yield toReply(service.getEventDetail(requireAggregateId(request.aggregateId()), request.eventId()));
+          String aggregateId = requireAggregateId(request.aggregateId());
+          yield toReply(service.getEventDetail(aggregateId, requireEventOf(aggregateId, request.eventId())));
         }
         case EVENTS_BY_CORRELATION -> {
           Requests.EventsByCorrelation request = read(data, Requests.EventsByCorrelation.class);
-          yield toReply(service.getEventsByCorrelation(requireAggregateId(request.aggregateId()), request.correlationId()));
+          yield toReply(service.getEventsByCorrelation(requireAggregateId(request.aggregateId()), require("correlationId", request.correlationId())));
         }
         case STATE -> {
           Requests.State request = read(data, Requests.State.class);
-          yield toReply(service.getState(requireAggregateId(request.aggregateId()), request.eventId()));
+          String aggregateId = requireAggregateId(request.aggregateId());
+          yield toReply(service.getState(aggregateId, request.eventId() == null ? null : requireEventOf(aggregateId, request.eventId())));
         }
         case COMMANDS -> {
           Requests.Commands request = read(data, Requests.Commands.class);
           yield toReply(service.getCommands(requireAggregateId(request.aggregateId()), clampLimit(request.limit(), MAX_PAGE_SIZE), cancel));
         }
-        case RETRY_COMMAND -> toReply(service.retryCommand(eventifyMapper.readValue(data, Command.class)));
+        case RETRY_COMMAND -> toReply(service.retryCommand(data));
         case STATUS -> toReply(service.getStatus());
       };
     } catch (BadRequestException e) {
@@ -80,10 +82,25 @@ class ConsoleRequestHandler {
 
   /** Every query is about one aggregate; without its id there is nothing to look up. */
   private static String requireAggregateId(String aggregateId) {
-    if (aggregateId == null || aggregateId.isBlank()) {
-      throw new BadRequestException("aggregateId is required");
+    return require("aggregateId", aggregateId);
+  }
+
+  /**
+   * An event of this aggregate. Its id starts with the aggregate id: another aggregate's event would make a replay
+   * apply every event stored between the two.
+   */
+  private static String requireEventOf(String aggregateId, String eventId) {
+    if (!IdUtils.isKeyOf(aggregateId, require("eventId", eventId))) {
+      throw new BadRequestException("Event " + eventId + " is not an event of aggregate " + aggregateId);
     }
-    return aggregateId;
+    return eventId;
+  }
+
+  private static String require(String name, String value) {
+    if (value == null || value.isBlank()) {
+      throw new BadRequestException(name + " is required");
+    }
+    return value;
   }
 
   /** The header as it is; the answer as JSON, only when there is one. */

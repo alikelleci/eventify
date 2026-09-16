@@ -9,7 +9,7 @@
       } @else if (result() === 'failure') {
         <p-tag value="failure" severity="danger" styleClass="shrink-0" />
       }
-      @if (cmd.metadata['retry'] === 'true') {
+      @if (cmd.metadata['$retryOf']) {
         <p-tag value="retried" severity="warn" styleClass="shrink-0" />
       }
     </div>
