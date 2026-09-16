@@ -1,0 +1,298 @@
+package io.github.alikelleci.eventify.core;
+
+import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
+import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
+import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
+import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import lombok.Builder;
+import lombok.Value;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.KafkaContainer;
+
+import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * What a failing command leaves behind under exactly-once, against a real broker: what is committed, as every
+ * {@code read_committed} consumer and the restored state stores see it, and what was only sent.
+ *
+ * <p>A failure after something of the command was written must reach Kafka Streams, so the transaction is aborted. A
+ * failure that is caught is committed, with everything written before it.
+ */
+@Testcontainers
+class CommandTransactionIT {
+
+  @Container
+  static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
+
+  @AggregateRoot
+  @Value
+  @Builder(toBuilder = true)
+  public static class Order {
+    @AggregateId
+    String id;
+  }
+
+  @TopicInfo("orders")
+  public interface OrderCommand {
+  }
+
+  @TopicInfo("orders.events")
+  public interface OrderEvent {
+  }
+
+  /** Scenario 1: returns a valid event and an {@link EventWithoutTopic}. */
+  @Value
+  @Builder
+  public static class EmitEventWithoutTopic implements OrderCommand {
+    @AggregateId
+    String id;
+  }
+
+  /** Scenario 2: returns an {@link EventThatFailsWhenSent}. */
+  @Value
+  @Builder
+  public static class EmitEventThatFailsWhenSent implements OrderCommand {
+    @AggregateId
+    String id;
+  }
+
+  /** A valid event, with a topic. */
+  @Value
+  @Builder
+  public static class OrderPlaced implements OrderEvent {
+    @AggregateId
+    String id;
+  }
+
+  /** A user mistake: no {@code @TopicInfo}, so it has no topic to be sent to. */
+  @Value
+  @Builder
+  public static class EventWithoutTopic {
+    @AggregateId
+    String id;
+  }
+
+  /**
+   * An event that can be written as JSON, except the {@link #FAIL_ON_WRITE}th time. Set to the last write, which is
+   * when it is sent to its topic, it fails after the event is stored and the command's result is sent.
+   */
+  @Value
+  @Builder
+  public static class EventThatFailsWhenSent implements OrderEvent {
+    static final AtomicInteger TIMES_WRITTEN = new AtomicInteger();
+    static volatile int FAIL_ON_WRITE = Integer.MAX_VALUE;
+
+    @AggregateId
+    String id;
+
+    public String getContent() {
+      if (TIMES_WRITTEN.incrementAndGet() == FAIL_ON_WRITE) {
+        throw new IllegalStateException("cannot be written this time");
+      }
+      return "content";
+    }
+  }
+
+  public static class OrderHandler {
+    @HandleCommand
+    public Object handle(EmitEventWithoutTopic command, Order state) {
+      return List.of(OrderPlaced.builder().id(command.getId()).build(), EventWithoutTopic.builder().id(command.getId()).build());
+    }
+
+    @HandleCommand
+    public Object handle(EmitEventThatFailsWhenSent command, Order state) {
+      return EventThatFailsWhenSent.builder().id(command.getId()).build();
+    }
+
+    @ApplyEvent
+    public Order apply(OrderPlaced event, Order state) {
+      return Order.builder().id(event.getId()).build();
+    }
+
+    @ApplyEvent
+    public Order apply(EventWithoutTopic event, Order state) {
+      return state;
+    }
+
+    @ApplyEvent
+    public Order apply(EventThatFailsWhenSent event, Order state) {
+      return Order.builder().id(event.getId()).build();
+    }
+  }
+
+  @TempDir
+  Path stateDir;
+
+  private Eventify eventify;
+
+  @BeforeAll
+  static void createTopics() throws Exception {
+    try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
+      admin.createTopics(List.of(
+          new NewTopic("orders", 1, (short) 1),
+          new NewTopic("orders.results", 1, (short) 1),
+          new NewTopic("orders.events", 1, (short) 1))).all().get();
+    }
+  }
+
+  @AfterEach
+  void tearDown() {
+    if (eventify != null) eventify.stop();
+  }
+
+  /** Scenario 1: the first event is valid, the second has no topic. The command fails, and none of it is stored or sent. */
+  @Test
+  void aCommandWithAnEventWithoutATopicLeavesNothingBehind() {
+    eventify = start("orders-event-without-topic");
+    send(EmitEventWithoutTopic.builder().id("order-1").build());
+    await("the command's result", () -> !committed("orders.results", "order-1").isEmpty());
+
+    report("order-1", "orders-event-without-topic");
+    assertThat(committed("orders.results", "order-1")).as("committed results").containsExactly("failure");
+    assertThat(committed("orders.events", "order-1")).as("committed events").isEmpty();
+    assertThat(committed("orders-event-without-topic-event-store-changelog", "order-1")).as("committed event store").isEmpty();
+  }
+
+  /**
+   * Scenario 2: the command is accepted, its event is stored and its result sent; then sending the event fails. Nothing
+   * of the command is committed: what was sent is aborted, mostly before it even reached the broker.
+   */
+  @Test
+  void aFailureAfterTheCommandIsAcceptedIsAborted() {
+    eventify = start("orders-event-fails-when-sent");
+
+    // First a command that succeeds, to count how often its event is written as JSON: the last time is when it is sent.
+    EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
+    send(EmitEventThatFailsWhenSent.builder().id("order-counting-writes").build());
+    await("the counting command's result", () -> !committed("orders.results", "order-counting-writes").isEmpty());
+    int writesPerCommand = EventThatFailsWhenSent.TIMES_WRITTEN.get();
+
+    // The same command again, now failing on that last write.
+    EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
+    EventThatFailsWhenSent.FAIL_ON_WRITE = writesPerCommand;
+    try {
+      send(EmitEventThatFailsWhenSent.builder().id("order-2").build());
+      await("the command to fail or to be handled", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+          || !committed("orders.results", "order-2").isEmpty());
+    } finally {
+      EventThatFailsWhenSent.FAIL_ON_WRITE = Integer.MAX_VALUE;
+    }
+
+    report("order-2", "orders-event-fails-when-sent");
+    assertThat(committed("orders.results", "order-2")).as("committed results").isEmpty();
+    assertThat(committed("orders.events", "order-2")).as("committed events").isEmpty();
+    assertThat(committed("orders-event-fails-when-sent-event-store-changelog", "order-2")).as("committed event store").isEmpty();
+  }
+
+  private void report(String aggregateId, String applicationId) {
+    System.out.println("TX " + aggregateId + " (" + eventify.getKafkaStreams().state() + ")");
+    for (String topic : List.of("orders.results", "orders.events", applicationId + "-event-store-changelog")) {
+      System.out.println("TX   " + topic + ": sent " + sent(topic, aggregateId) + ", committed " + committed(topic, aggregateId));
+    }
+  }
+
+  private Eventify start(String applicationId) {
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
+    properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
+    Eventify instance = Eventify.builder().streamsConfig(properties).registerHandler(new OrderHandler()).build();
+    instance.start();
+    await("Eventify to run", () -> instance.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
+    return instance;
+  }
+
+  private static void send(Object payload) {
+    Command command = Command.builder().payload(payload).build();
+    try (KafkaProducer<String, Command> producer = new KafkaProducer<>(
+        Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()), new StringSerializer(), new JsonSerializer<>())) {
+      producer.send(new ProducerRecord<>("orders", command.getAggregateId(), command));
+    }
+  }
+
+  /** What a {@code read_committed} consumer sees: for results, "success" or "failure"; otherwise the record key. */
+  private static List<String> committed(String topic, String aggregateId) {
+    return read(topic, aggregateId, "read_committed");
+  }
+
+  /** Everything that was sent, also in transactions that were aborted. */
+  private static List<String> sent(String topic, String aggregateId) {
+    return read(topic, aggregateId, "read_uncommitted");
+  }
+
+  private static List<String> read(String topic, String aggregateId, String isolation) {
+    List<String> found = new ArrayList<>();
+    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(Map.of(
+        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
+        ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolation,
+        ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false), new StringDeserializer(), new StringDeserializer())) {
+      if (consumer.partitionsFor(topic).isEmpty()) {
+        return found;
+      }
+      TopicPartition partition = new TopicPartition(topic, 0);
+      consumer.assign(List.of(partition));
+      consumer.seekToBeginning(List.of(partition));
+      long end = consumer.endOffsets(List.of(partition)).get(partition);
+      while (consumer.position(partition) < end) {
+        for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(500))) {
+          if (record.offset() < end && record.key() != null && record.key().startsWith(aggregateId)) {
+            found.add(topic.endsWith(".results") ? result(record.value()) : record.key());
+          }
+        }
+      }
+    }
+    return found;
+  }
+
+  private static String result(String json) {
+    return json.contains("\"$result\":\"failure\"") ? "failure" : json.contains("\"$result\":\"success\"") ? "success" : json;
+  }
+
+  private static void await(String what, BooleanSupplier condition) {
+    Instant deadline = Instant.now().plusSeconds(90);
+    while (!condition.getAsBoolean()) {
+      if (Instant.now().isAfter(deadline)) {
+        throw new AssertionError("Timed out waiting for " + what);
+      }
+      try {
+        Thread.sleep(200);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError(e);
+      }
+    }
+  }
+}
