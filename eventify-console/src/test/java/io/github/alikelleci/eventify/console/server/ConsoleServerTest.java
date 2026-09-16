@@ -141,6 +141,45 @@ class ConsoleServerTest {
   }
 
   @Test
+  void theStatusOfTheInstancesIsCombinedPerApplication() {
+    // One instance is rebalancing and restoring, the other is running with commands waiting.
+    connect("status", "status.a:0", ok("{\"state\":\"REBALANCING\",\"stateForMs\":240000,\"commandsInQueue\":null,"
+        + "\"restore\":{\"restored\":60,\"total\":100,\"percentage\":60}}"));
+    connect("status", "status.b:0", ok("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"commandsInQueue\":1200,\"restore\":null}"));
+    awaitInstances("status", 2);
+
+    client.get().uri("/api/status").exchange()
+        .expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$[?(@.name == 'status')].state").isEqualTo("REBALANCING")   // the one worst off wins
+        .jsonPath("$[?(@.name == 'status')].stateForMs").isEqualTo(240000)     // and for as long as it has been
+        .jsonPath("$[?(@.name == 'status')].inState").isEqualTo(1)             // only one of the two
+        .jsonPath("$[?(@.name == 'status')].commandsInQueue").isEqualTo(1200)  // summed over the instances
+        .jsonPath("$[?(@.name == 'status')].restore.percentage").isEqualTo(60)
+        .jsonPath("$[?(@.name == 'status')].instances").isEqualTo(2)
+        .jsonPath("$[?(@.name == 'status')].answered").isEqualTo(2);
+
+    // Every instance was asked for its own status.
+    assertThat(calls("status.a:0")).isPositive();
+    assertThat(calls("status.b:0")).isPositive();
+  }
+
+  @Test
+  void anInstanceThatDoesNotAnswerLeavesTheStatusIncomplete() {
+    connect("partial", "partial.a:0", ok("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"commandsInQueue\":40,\"restore\":null}"));
+    connect("partial", "partial.b:0", (route, data, cancel) -> new Reply(ReplyHeader.unavailable("busy"), new byte[0]));
+    awaitInstances("partial", 2);
+
+    client.get().uri("/api/status").exchange()
+        .expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$[?(@.name == 'partial')].state").isEqualTo("RUNNING")
+        .jsonPath("$[?(@.name == 'partial')].commandsInQueue").isEqualTo(40)  // only what the one that answered has
+        .jsonPath("$[?(@.name == 'partial')].instances").isEqualTo(2)
+        .jsonPath("$[?(@.name == 'partial')].answered").isEqualTo(1);
+  }
+
+  @Test
   void theUiIsServedForItsPages() {
     // No UI folder in this test: the redirect still works, and an unknown asset is a 404.
     client.get().uri("/").exchange()

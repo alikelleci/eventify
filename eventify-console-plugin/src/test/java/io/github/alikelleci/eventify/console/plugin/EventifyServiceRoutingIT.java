@@ -40,7 +40,7 @@ import static org.awaitility.Awaitility.await;
  * {@code application.server}; an instance that doesn't own an aggregate must name the one that does.
  */
 @Testcontainers
-class EventifyServiceRoutingTest {
+class EventifyServiceRoutingIT {
 
   private static final String APPLICATION_ID = "routing-test";
 
