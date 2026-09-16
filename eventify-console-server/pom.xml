@@ -11,8 +11,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>eventify-console</artifactId>
-    <name>eventify-console</name>
+    <artifactId>eventify-console-server</artifactId>
+    <name>eventify-console-server</name>
     <description>The Eventify Console: applications connect to it, and it serves the UI. Released as a Docker image.</description>
 
     <properties>

@@ -17,7 +17,7 @@
         <module>eventify-core</module>
         <module>eventify-console-protocol</module>
         <module>eventify-console-plugin</module>
-        <module>eventify-console</module>
+        <module>eventify-console-server</module>
         <module>eventify-spring-boot-starter</module>
     </modules>
 
@@ -145,7 +145,7 @@
                             <waitUntil>published</waitUntil>
                             <!-- The console is an application, released as a Docker image -->
                             <excludeArtifacts>
-                                <artifact>eventify-console</artifact>
+                                <artifact>eventify-console-server</artifact>
                             </excludeArtifacts>
                         </configuration>
                     </plugin>
