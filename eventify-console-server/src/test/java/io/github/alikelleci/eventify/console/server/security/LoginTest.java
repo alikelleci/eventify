@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.server.node.NodeRegistry;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +33,7 @@ import static org.springframework.security.test.web.reactive.server.SecurityMock
 
 /** A console with login: people must log in with the identity provider, applications still connect without. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DisplayName("Login")
 class LoginTest {
 
   /** Just enough of an identity provider for the console to start: its discovery document. */
@@ -70,12 +72,14 @@ class LoginTest {
   }
 
   @Test
+  @DisplayName("Should require a login for the API")
   void theApiNeedsALogin() {
     http().get().uri("/api/apps").exchange()
         .expectStatus().isUnauthorized();
   }
 
   @Test
+  @DisplayName("Should send the browser to the identity provider for the UI")
   void theUiSendsTheBrowserToTheIdentityProvider() {
     http().get().uri("/console/").exchange()
         .expectStatus().isFound()
@@ -88,6 +92,7 @@ class LoginTest {
   }
 
   @Test
+  @DisplayName("Should use the address the person opened for the login when behind a proxy")
   void behindAProxyTheLoginUsesTheAddressThePersonOpened() {
     String location = http().get().uri("/oauth2/authorization/sso")
         .header("X-Forwarded-Proto", "https")
@@ -99,6 +104,7 @@ class LoginTest {
   }
 
   @Test
+  @DisplayName("Should show a logged-in person their name and let them use the API")
   void aLoggedInPersonSeesTheirNameAndCanUseTheApi() {
     loggedIn().get().uri("/api/session").exchange()
         .expectStatus().isOk()
@@ -111,6 +117,7 @@ class LoginTest {
   }
 
   @Test
+  @DisplayName("Should require the CSRF token to retry a command")
   void aRetryNeedsTheCsrfToken() {
     loggedIn().post().uri("/api/apps/orders/commands/retry")
         .header("Content-Type", "application/json").bodyValue("{}")
@@ -125,6 +132,7 @@ class LoginTest {
   }
 
   @Test
+  @DisplayName("Should let applications connect without a login")
   void applicationsConnectWithoutALogin() {
     NodeInfo info = new NodeInfo("login-test", "login-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
     ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,

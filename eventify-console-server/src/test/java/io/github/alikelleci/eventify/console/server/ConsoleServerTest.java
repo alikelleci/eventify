@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.console.protocol.Route;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -28,6 +29,7 @@ import static org.awaitility.Awaitility.await;
 
 /** The console against the real connector the applications use, with fake answers instead of Kafka Streams. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DisplayName("Console server")
 class ConsoleServerTest {
 
   @Value("${local.server.port}")
@@ -55,6 +57,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should list connected instances per application")
   void connectedInstancesAreListedPerApplication() {
     connect("listing", "listing.a:0", ok("{}"));
     connect("listing", "listing.b:0", ok("{}"));
@@ -67,6 +70,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should send a query to the owning instance after a redirect")
   void aQueryGoesToTheOwnerAfterARedirect() {
     connect("redirect", "redirect.a:0", notOwner("redirect.b:0"));
     connect("redirect", "redirect.b:0", ok("{\"events\":[],\"nextCursor\":null}"));
@@ -83,6 +87,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should answer 'try again' when the owning instance is not connected")
   void anOwnerThatIsNotConnectedMeansTryAgain() {
     connect("rebalance", "rebalance.a:0", notOwner("rebalance.gone:0"));
     awaitInstances("rebalance", 1);
@@ -92,6 +97,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should send a query for any instance to exactly one instance")
   void aQueryForAnyInstanceGoesToExactlyOne() {
     connect("any", "any.a:0", ok("{\"commands\":[]}"));
     connect("any", "any.b:0", ok("{\"commands\":[]}"));
@@ -103,6 +109,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should pass a retried command on without reading it")
   void aRetryPassesTheCommandOnUnread() {
     Map<String, String> received = new ConcurrentHashMap<>();
     connect("retry", "retry.a:0", (route, data, cancel) -> {
@@ -121,6 +128,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should only accept a retried command as JSON")
   void aRetryOnlyAcceptsJson() {
     connect("retry-json", "retry-json.a:0", ok("{}"));
     awaitInstances("retry-json", 1);
@@ -135,6 +143,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should deliver large replies completely")
   void largeRepliesArriveComplete() {
     String large = "{\"text\":\"" + "x".repeat(2_000_000) + "\"}";
     connect("large", "large.a:0", ok(large));
@@ -147,6 +156,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should remove an instance that stops")
   void anInstanceThatStopsIsRemoved() {
     ConsoleConnector connector = connect("stopping", "stopping.a:0", ok("{}"));
     awaitInstances("stopping", 1);
@@ -158,6 +168,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should list the applications with the status of each instance")
   void theApplicationsAreListedWithTheStatusOfEachInstance() {
     connect("status", "status.a:0", status("{\"state\":\"REBALANCING\",\"stateForMs\":240000,\"restoring\":true}"));
     connect("status", "status.b:0", status("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restoring\":false}"));
@@ -178,6 +189,7 @@ class ConsoleServerTest {
   }
 
   @Test
+  @DisplayName("Should serve the UI for its pages")
   void theUiIsServedForItsPages() {
     // No UI folder in this test: the redirect still works, and an unknown asset is a 404.
     client.get().uri("/").exchange()

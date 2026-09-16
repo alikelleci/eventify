@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core;
 import io.github.alikelleci.eventify.core.order.OrderCommandHandler;
 import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
 import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -12,12 +13,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("Stopping Eventify")
 class EventifyStopTest {
 
   @TempDir
   Path stateDir;
 
   @Test
+  @DisplayName("Should stop plugins once, also when Kafka Streams stopped by itself")
   void pluginsAreStoppedOnceAlsoWhenKafkaStreamsStoppedByItself() {
     AtomicInteger stops = new AtomicInteger();
     Properties properties = new Properties();
@@ -46,6 +49,7 @@ class EventifyStopTest {
   }
 
   @Test
+  @DisplayName("Should still stop the other plugins when one fails to stop")
   void aPluginThatFailsToStopDoesNotKeepTheOthersRunning() {
     AtomicInteger stops = new AtomicInteger();
     Properties properties = new Properties();

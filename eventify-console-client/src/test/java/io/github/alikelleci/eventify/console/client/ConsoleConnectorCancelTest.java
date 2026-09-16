@@ -15,6 +15,7 @@ import io.rsocket.transport.netty.server.WebsocketServerTransport;
 import io.rsocket.util.DefaultPayload;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
@@ -31,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /** The console cancels a request while its query runs, e.g. because someone refreshed the page. */
+@DisplayName("Console connector: cancelling requests")
 class ConsoleConnectorCancelTest {
 
   private final AtomicReference<RSocket> application = new AtomicReference<>();
@@ -78,6 +80,7 @@ class ConsoleConnectorCancelTest {
   }
 
   @Test
+  @DisplayName("Should tell a running query to stop, without interrupting its thread")
   void aRunningQueryIsToldToStopAndNotInterrupted() {
     Disposable request = send("slow").subscribe();
     await().pollDelay(Duration.ofMillis(300)).atMost(Duration.ofSeconds(1)).until(() -> true);
@@ -88,6 +91,7 @@ class ConsoleConnectorCancelTest {
   }
 
   @Test
+  @DisplayName("Should not affect another request when one is cancelled")
   void cancellingOneRequestDoesNotAffectAnother() {
     Disposable cancelled = send("tab-1").subscribe();
     Mono<String> other = send("tab-2").map(payload -> payload.getDataUtf8());

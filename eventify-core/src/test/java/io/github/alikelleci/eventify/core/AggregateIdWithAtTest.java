@@ -20,6 +20,7 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -33,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * under aggregateId@ULID, so the keys of the second start with the keys' prefix of the first: each aggregate must
  * still only see, and delete, its own events.
  */
+@DisplayName("Aggregate ids that start with another id and '@'")
 class AggregateIdWithAtTest {
 
   private TopologyTestDriver driver;
@@ -43,6 +45,7 @@ class AggregateIdWithAtTest {
   }
 
   @Test
+  @DisplayName("Should not load the events of an aggregate whose id starts with its id and '@'")
   void anAggregateDoesNotLoadTheEventsOfAnAggregateWhoseIdStartsWithItsIdAndAt() {
     driver = new TopologyTestDriver(EventifyTest.baseBuilder().build().topology());
     TestInputTopic<String, Command> commands = EventifyTest.commandsTopic(driver);
@@ -58,6 +61,7 @@ class AggregateIdWithAtTest {
   }
 
   @Test
+  @DisplayName("Should only delete the aggregate's own events at a snapshot")
   void aSnapshotThatDeletesEventsOnlyDeletesTheAggregatesOwnEvents() {
     driver = new TopologyTestDriver(accounts());
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());

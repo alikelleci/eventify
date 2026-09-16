@@ -11,6 +11,7 @@ import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
 import io.github.alikelleci.eventify.core.order.OrderEventSourcingHandler;
 import io.github.alikelleci.eventify.core.support.InMemoryStore;
 import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+@DisplayName("Aggregate replay")
 class AggregateReplayTest {
 
   private final InMemoryStore<Event> eventStore = new InMemoryStore<>();
@@ -36,6 +38,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should apply the aggregate's events in order")
   void appliesTheEventsOfTheAggregateInOrder() {
     store(placed("order-1"));
     store(placed("order-10")); // sorts right before order-1@...
@@ -52,6 +55,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should start after the starting state and continue its version")
   void startsAfterTheStartingStateAndContinuesItsVersion() {
     store(placed("order-1"));
     Event confirmed = store(confirmed("order-1"));
@@ -66,6 +70,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should stop after the given event")
   void stopsAfterTheGivenEvent() {
     store(placed("order-1"));
     Event confirmed = store(confirmed("order-1"));
@@ -79,6 +84,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should return the starting state when it is at the given event")
   void aStartingStateAtTheGivenEventIsTheAnswer() {
     store(placed("order-1"));
     Event confirmed = store(confirmed("order-1"));
@@ -92,6 +98,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should refuse a replay that would apply the wrong events")
   void refusesAReplayThatWouldApplyTheWrongEvents() {
     Event placed = store(placed("order-1"));
     Event confirmed = store(confirmed("order-1"));
@@ -107,6 +114,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should not apply the events of an aggregate whose id starts with this id and '@'")
   void theEventsOfAnAggregateWhoseIdStartsWithThisIdAndAtAreNotApplied() {
     store(placed("ada"));
     store(placed("ada@example.com")); // key "ada@example.com@ULID": in the key range of "ada"
@@ -124,6 +132,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should pass events without a handler to the listener without counting them")
   void eventsWithoutAHandlerAreSeenButNotCounted() {
     store(placed("order-1"));
     store(Event.builder().payload(new OrderViewed("order-1")).build());
@@ -139,6 +148,7 @@ class AggregateReplayTest {
   }
 
   @Test
+  @DisplayName("Should have no state without events or after the aggregate was removed")
   void noEventsOrARemovedAggregateIsNoState() {
     assertThat(replay.replay(eventStore, "order-1", null, null)).isEqualTo(new AggregateReplay.Result(null, 0));
 

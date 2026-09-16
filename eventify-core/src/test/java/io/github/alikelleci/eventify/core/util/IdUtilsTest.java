@@ -1,10 +1,12 @@
 package io.github.alikelleci.eventify.core.util;
 
 import com.github.f4b6a3.ulid.Ulid;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@DisplayName("Id utils")
 class IdUtilsTest {
 
   @Test
@@ -27,6 +29,7 @@ class IdUtilsTest {
 
   /** A last key from a clock ahead of this one (another host's, or before this clock went back). */
   @Test
+  @DisplayName("Should give the next event key after the last key, whatever this clock says")
   void theNextEventKeyIsAfterTheLastKeyWhateverThisClockSays() {
     String lastKey = IdUtils.firstKey("ada") + Ulid.fast().toString().replaceFirst("^.", "7"); // far in the future
 

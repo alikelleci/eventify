@@ -19,6 +19,7 @@ import org.apache.kafka.streams.TopologyDescription;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -28,6 +29,7 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** When snapshots are taken and events deleted, for an aggregate with a snapshot at every second event that deletes the events before it. */
+@DisplayName("Snapshotting and event order")
 class SnapshottingTest {
 
   private TopologyTestDriver driver;
@@ -38,6 +40,7 @@ class SnapshottingTest {
   }
 
   @Test
+  @DisplayName("Should take a snapshot when a command with several events steps over the threshold")
   void aCommandWithSeveralEventsDoesNotStepOverTheSnapshot() {
     driver = new TopologyTestDriver(accounts());
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
@@ -62,6 +65,7 @@ class SnapshottingTest {
    * be skipped by every replay from the snapshot, and be deleted at the next one.
    */
   @Test
+  @DisplayName("Should store events in the order they were handled, not by the command's timestamp")
   void anEventIsStoredInTheOrderItWasHandledNotByTheCommandsTimestamp() {
     driver = new TopologyTestDriver(accounts());
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
@@ -86,6 +90,7 @@ class SnapshottingTest {
   }
 
   @Test
+  @DisplayName("Should store the events of one command in the order the handler returned them")
   void theEventsOfOneCommandAreStoredInTheOrderTheHandlerReturnedThem() {
     driver = new TopologyTestDriver(accounts());
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
@@ -101,6 +106,7 @@ class SnapshottingTest {
   }
 
   @Test
+  @DisplayName("Should only store events from commands, not from the event topic")
   void anAggregateIsOnlyStoredFromItsCommandsNotFromItsEventTopic() {
     // The events are stored when the command is handled. Stored again from the event topic, events deleted at a
     // snapshot in the meantime would come back.

@@ -22,6 +22,7 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
@@ -34,6 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * A command is rejected before any of its events is stored, also when the mistake is in an event: nothing of it is
  * stored or sent, and the aggregate goes on as it was. What fails after the command is accepted is not its failure.
  */
+@DisplayName("Command rejection")
 class CommandRejectionTest {
 
   @Value
@@ -217,6 +219,7 @@ class CommandRejectionTest {
 
   /** Stored, the event would be replayed at every load, and every next command of the aggregate would fail. */
   @Test
+  @DisplayName("Should fail the command and store nothing when an event cannot be applied")
   void anEventItsHandlerCannotApplyIsNotStored() {
     send(Create.builder().id("ada").build());
     send(Break.builder().id("ada").build());
@@ -232,6 +235,7 @@ class CommandRejectionTest {
 
   /** Its topic was only looked up when sending it: the event was stored, and the command reported both as done and as failed. */
   @Test
+  @DisplayName("Should fail the command and store nothing when an event has no @TopicInfo")
   void anEventWithoutATopicIsNotStored() {
     send(Create.builder().id("ada").build());
     send(Misplace.builder().id("ada").build());
@@ -245,6 +249,7 @@ class CommandRejectionTest {
 
   /** Found only when stored, it would stop the application, and every instance the command moves to after it. */
   @Test
+  @DisplayName("Should fail the command and store nothing when an event cannot be written as JSON")
   void anEventThatCannotBeWrittenAsJsonIsNotStored() {
     send(Create.builder().id("ada").build());
     send(Corrupt.builder().id("ada").build());
@@ -259,6 +264,7 @@ class CommandRejectionTest {
 
   /** Not the command's failure: it fails the task, so exactly-once aborts what was written for the command. */
   @Test
+  @DisplayName("Should not report a failure after the command was accepted as the command's failure")
   void aFailureAfterTheCommandIsAcceptedIsNotReportedAsItsFailure() {
     send(Create.builder().id("ada").build());
     results.readValuesToList();

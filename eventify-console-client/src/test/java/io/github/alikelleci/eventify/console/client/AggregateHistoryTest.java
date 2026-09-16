@@ -12,6 +12,7 @@ import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.Ap
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
@@ -20,6 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** The state before and after an event, with and without a snapshot, and with the events before a snapshot deleted. */
+@DisplayName("Aggregate history (console time travel)")
 class AggregateHistoryTest {
 
   @AggregateRoot
@@ -75,7 +77,7 @@ class AggregateHistoryTest {
 
   /** An aggregate whose handlers change the state they are given, and return it. */
   @AggregateRoot
-  public static class Tally {
+  public static class MutableCounter {
     @AggregateId
     String id;
     int value;
@@ -89,35 +91,35 @@ class AggregateHistoryTest {
     }
   }
 
-  public static class TallyStarted {
+  public static class MutableCounterStarted {
     @AggregateId
     final String id;
 
-    TallyStarted(String id) {
+    MutableCounterStarted(String id) {
       this.id = id;
     }
   }
 
-  public static class TallyIncremented {
+  public static class MutableCounterIncremented {
     @AggregateId
     final String id;
 
-    TallyIncremented(String id) {
+    MutableCounterIncremented(String id) {
       this.id = id;
     }
   }
 
-  public static class TallyHandler {
+  public static class MutableCounterHandler {
     @ApplyEvent
-    public Tally apply(TallyStarted event, Tally state) {
-      Tally tally = new Tally();
-      tally.id = event.id;
-      tally.value = 1;
-      return tally;
+    public MutableCounter apply(MutableCounterStarted event, MutableCounter state) {
+      MutableCounter counter = new MutableCounter();
+      counter.id = event.id;
+      counter.value = 1;
+      return counter;
     }
 
     @ApplyEvent
-    public Tally apply(TallyIncremented event, Tally state) {
+    public MutableCounter apply(MutableCounterIncremented event, MutableCounter state) {
       state.value++;
       return state;
     }
@@ -142,12 +144,14 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should give the state before and after an event")
   void theStateBeforeAndAfterAnEvent() {
     assertDetail(second, 1, 2);
     assertDetail(third, 2, 3);
   }
 
   @Test
+  @DisplayName("Should have no state before the first event")
   void beforeTheFirstEventThereIsNoState() {
     ConsoleService.EventDetail detail = detail(first);
 
@@ -156,6 +160,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should replay an event after the snapshot from the snapshot")
   void anEventAfterTheSnapshotStartsFromTheSnapshot() {
     snapshotAt(second);
     events.delete(first.getId()); // proves the snapshot is used: without it, the replay would miss this event
@@ -164,6 +169,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should give the states at the snapshot's own event when all events are kept")
   void theSnapshotsOwnEventWithAllEventsKept() {
     snapshotAt(second);
 
@@ -171,6 +177,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should give the snapshot as the state at its own event, and an unknown state before it, when earlier events were deleted")
   void theSnapshotsOwnEventWithTheEventsBeforeItDeleted() {
     snapshotAt(second);
     events.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
@@ -186,6 +193,7 @@ class AggregateHistoryTest {
 
   /** The first events were deleted at an earlier snapshot, a later one replaced it, and an event before it is still there. */
   @Test
+  @DisplayName("Should report the states of an event before the snapshot as unknown when the first events were deleted")
   void anEventBeforeTheSnapshotWithTheFirstEventsDeletedIsUnknown() {
     snapshotAt(third);
     events.delete(first.getId());
@@ -203,6 +211,7 @@ class AggregateHistoryTest {
 
   /** A handler that fails with every event still there is an error, not a state unknown because of deleted events. */
   @Test
+  @DisplayName("Should fail, not report an unknown state, when a handler fails while all events are there")
   void aHandlerThatFailsWithAllEventsThereIsNotAnUnknownState() {
     snapshotAt(third);
     events.put(first.getId(), Event.builder().payload(new Incremented("counter-1")).build().withId(first.getId())); // no state before it
@@ -211,6 +220,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should give an event before the snapshot the state before the next event")
   void anEventBeforeTheSnapshotHasTheStateBeforeTheNextEvent() {
     Event fourth = store(new Incremented("counter-1"));
     snapshotAt(fourth);
@@ -222,6 +232,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should replay an event before the snapshot from the first event")
   void anEventBeforeTheSnapshotIsReplayedFromTheFirstEvent() {
     snapshotAt(third);
 
@@ -229,6 +240,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should not find an event that is not stored")
   void anEventThatIsNotThereIsNotFound() {
     snapshotAt(second);
     events.delete(first.getId());
@@ -238,6 +250,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should give the state at an event, and the current state")
   void theStateAtAnEvent() {
     snapshotAt(second);
     events.delete(first.getId());
@@ -249,6 +262,7 @@ class AggregateHistoryTest {
 
   /** "counter-1@x": its keys ("counter-1@x@ULID") are in the key range of "counter-1". */
   @Test
+  @DisplayName("Should not show the events of an aggregate whose id starts with this id and '@'")
   void theEventsOfAnAggregateWhoseIdStartsWithThisIdAndAtAreNotThisAggregates() {
     Event foreign = store(new Incremented("counter-1@x"));
     Event foreignBeforeUlids = store(new Incremented("counter-1@-x")); // "-" sorts before every ULID
@@ -263,6 +277,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should page the events newest first")
   void theEventsArePagedNewestFirst() {
     store(new Incremented("counter-1@x")); // in the range, not on a page
 
@@ -276,6 +291,7 @@ class AggregateHistoryTest {
   }
 
   @Test
+  @DisplayName("Should give the state at an event before the snapshot")
   void theStateAtAnEventBeforeTheSnapshot() {
     snapshotAt(third);
 
@@ -284,25 +300,27 @@ class AggregateHistoryTest {
 
   /** Each state is the state at its own event, not the state the handlers after it made of the same object. */
   @Test
+  @DisplayName("Should keep earlier states unchanged when a handler changes the state it is given")
   void aHandlerThatChangesTheStateItIsGivenDoesNotChangeTheStatesBeforeIt() {
-    store(new TallyStarted("tally-1"));
-    Event incremented = store(new TallyIncremented("tally-1"));
-    Event incrementedAgain = store(new TallyIncremented("tally-1"));
+    store(new MutableCounterStarted("mutable-counter-1"));
+    Event incremented = store(new MutableCounterIncremented("mutable-counter-1"));
+    Event incrementedAgain = store(new MutableCounterIncremented("mutable-counter-1"));
 
-    ConsoleService.EventDetail detail = history.eventDetail(events, snapshots, "tally-1", incremented.getId());
+    ConsoleService.EventDetail detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getId());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
 
     // With a snapshot after the event, the replay goes on past it.
-    snapshots.put("tally-1", replay.replay(events, "tally-1", null, incrementedAgain.getId()).state());
-    detail = history.eventDetail(events, snapshots, "tally-1", incremented.getId());
+    snapshots.put("mutable-counter-1", replay.replay(events, "mutable-counter-1", null, incrementedAgain.getId()).state());
+    detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getId());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
-    assertValue(history.stateAt(events, snapshots, "tally-1", incremented.getId()), 2, 2);
+    assertValue(history.stateAt(events, snapshots, "mutable-counter-1", incremented.getId()), 2, 2);
   }
 
   /** The states are sent to the console as the JSON objects they are, as before: not as text. */
   @Test
+  @DisplayName("Should send the states as JSON objects, not as text")
   void theStatesAreWrittenAsJsonObjects() throws Exception {
     JsonNode json = eventify.getObjectMapper().readTree(eventify.getObjectMapper().writeValueAsString(detail(second)));
 
@@ -359,6 +377,6 @@ class AggregateHistoryTest {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "history-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).registerHandler(new TallyHandler()).build();
+    return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).registerHandler(new MutableCounterHandler()).build();
   }
 }

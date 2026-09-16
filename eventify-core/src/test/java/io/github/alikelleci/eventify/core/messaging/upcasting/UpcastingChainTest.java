@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Properties;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** A stored event is upcast by every upcaster from its revision on, each one taking the payload the one before it left. */
+@DisplayName("Upcasting chain")
 class UpcastingChainTest {
 
   private static final String TYPE = "io.github.alikelleci.eventify.core.messaging.upcasting.UpcastingChainTest$Renamed";
@@ -72,6 +74,7 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should give each upcaster the result of the one before it, when upcasters return new nodes")
   void upcastersThatReturnNewNodesEachGetTheOneBeforeTheirResult() {
     Event event = read(storedAtRevision1(), new ReturningNewNodes());
 
@@ -80,6 +83,7 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should give the same result when upcasters change the node in place")
   void upcastersThatChangeTheNodeInPlaceGiveTheSameResult() {
     Event event = read(storedAtRevision1(), new ChangingInPlace());
 
@@ -88,6 +92,7 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should only apply the upcasters from the revision an event was stored at")
   void anEventStoredAtALaterRevisionOnlyGetsTheUpcastersFromThere() {
     String stored = storedAtRevision1()
         .replace("\"name\":\"Ada Lovelace\"", "\"fullName\":\"Ada Lovelace\"")
@@ -113,6 +118,7 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should stop the chain at its revision when an upcaster returns null")
   void anUpcasterReturningNullStopsTheChainAtItsRevision() {
     Event event = read(storedAtRevision1(), new StoppingAtRevision2());
 
@@ -128,6 +134,7 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should fail when an upcaster does not return a JSON object")
   void anUpcasterMustReturnAnObject() {
     assertThatThrownBy(() -> read(storedAtRevision1(), new ReturningText()))
         .isInstanceOf(SerializationException.class)
@@ -148,6 +155,7 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should refuse two upcasters for the same type and revision in a serde")
   void twoUpcastersForTheSameTypeAndRevisionAreRefusedBySerde() {
     assertThatThrownBy(() -> new JsonDeserializer<>(Event.class).registerUpcaster(new TwoForRevision1()))
         .isInstanceOf(IllegalStateException.class)
@@ -155,6 +163,7 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should refuse two upcasters for the same type and revision in Eventify")
   void twoUpcastersForTheSameTypeAndRevisionAreRefusedByEventify() {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "upcasting-chain-test");

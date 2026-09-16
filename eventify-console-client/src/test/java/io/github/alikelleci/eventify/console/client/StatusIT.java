@@ -45,6 +45,7 @@ import static org.awaitility.Awaitility.await;
  * restores after its local state is gone.
  */
 @Testcontainers
+@DisplayName("Instance status (real broker)")
 class StatusIT {
 
   @Container

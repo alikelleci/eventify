@@ -20,6 +20,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
@@ -43,6 +44,7 @@ import static org.awaitility.Awaitility.await;
  * {@code application.server}; an instance that doesn't own an aggregate must name the one that does.
  */
 @Testcontainers
+@DisplayName("Console service routing (two instances, real broker)")
 class ConsoleServiceRoutingIT {
 
   private static final String APPLICATION_ID = "routing-test";
@@ -71,6 +73,7 @@ class ConsoleServiceRoutingIT {
   }
 
   @Test
+  @DisplayName("Should name the owning instance when asked about an aggregate it does not own")
   void anInstanceThatDoesNotOwnAnAggregateNamesTheOwner() throws Exception {
     first = start(APPLICATION_ID, "first");
     second = start(APPLICATION_ID, "second");
@@ -126,6 +129,7 @@ class ConsoleServiceRoutingIT {
 
   /** An application with only a command handler and an event sourcing handler shows its commands. */
   @Test
+  @DisplayName("Should read an aggregate's commands, and stop reading when cancelled")
   void theCommandsAreReadAndACancelledReadStops() throws Exception {
     first = start("commands-test", "commands");
     await().atMost(Duration.ofSeconds(60)).until(() -> first.getKafkaStreams().state() == KafkaStreams.State.RUNNING);

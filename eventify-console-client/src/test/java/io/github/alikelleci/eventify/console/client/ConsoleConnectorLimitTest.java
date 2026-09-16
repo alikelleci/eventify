@@ -12,6 +12,7 @@ import io.rsocket.transport.netty.server.WebsocketServerTransport;
 import io.rsocket.util.DefaultPayload;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -32,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /** The console sends more requests than the application should handle at once: the application protects itself. */
+@DisplayName("Console connector: request limits")
 class ConsoleConnectorLimitTest {
 
   private final AtomicReference<RSocket> application = new AtomicReference<>();
@@ -80,6 +82,7 @@ class ConsoleConnectorLimitTest {
   }
 
   @Test
+  @DisplayName("Should never run more queries at once than the limit")
   void neverMoreQueriesRunAtOnceThanTheLimit() {
     int requests = MAX_RUNNING_QUERIES + 16;
     sendAll(requests);
@@ -94,6 +97,7 @@ class ConsoleConnectorLimitTest {
   }
 
   @Test
+  @DisplayName("Should refuse requests beyond the waiting limit as busy")
   void requestsBeyondTheWaitingLimitAreRefusedAsBusy() {
     int refused = 6;
     int requests = MAX_RUNNING_QUERIES + MAX_WAITING_QUERIES + refused;

@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
 import io.github.alikelleci.eventify.console.server.node.ConnectedNode;
 import io.github.alikelleci.eventify.console.server.node.NodeGateway;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
@@ -27,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+@DisplayName("Instance statuses")
 class InstanceStatusesTest {
 
   private final NodeGateway gateway = mock(NodeGateway.class);
@@ -35,6 +37,7 @@ class InstanceStatusesTest {
       new NodeInfo("app", "app.a:0", "localhost", "test", ConsoleProtocol.VERSION), null, Instant.now());
 
   @Test
+  @DisplayName("Should not cancel the answer for another page when one page stops waiting")
   void aPageThatStopsWaitingDoesNotCancelTheAnswerForAnother() throws Exception {
     AtomicInteger asked = new AtomicInteger();
     byte[] running = "{\"state\":\"RUNNING\",\"stateForMs\":1,\"restoring\":false}".getBytes(StandardCharsets.UTF_8);

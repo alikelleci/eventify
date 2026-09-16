@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -12,11 +13,13 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** The console's Kafka clients connect the way the application does, e.g. to a cluster that needs a login. */
+@DisplayName("Console Kafka client configuration")
 class KafkaClientConfigTest {
 
   private final Eventify eventify = Eventify.builder().streamsConfig(streamsConfig()).build();
 
   @Test
+  @DisplayName("Should give the retry producer the application's security and producer settings")
   void theRetryProducerUsesTheApplicationsSecurityAndProducerSettings() {
     Map<String, Object> config = ConsoleService.producerConfig(eventify);
 
@@ -31,6 +34,7 @@ class KafkaClientConfigTest {
   }
 
   @Test
+  @DisplayName("Should give the commands consumer the application's security and consumer settings")
   void theCommandsConsumerUsesTheApplicationsSecurityAndConsumerSettings() {
     Map<String, Object> config = ConsoleService.consumerConfig(eventify);
 

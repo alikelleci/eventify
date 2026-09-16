@@ -11,6 +11,7 @@ import io.rsocket.exceptions.RejectedSetupException;
 import io.rsocket.transport.netty.server.CloseableChannel;
 import io.rsocket.transport.netty.server.WebsocketServerTransport;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /** How the connector behaves when the console goes away, comes back, or refuses it. */
+@DisplayName("Console connector: reconnecting")
 class ConsoleConnectorReconnectTest {
 
   private final AtomicInteger setups = new AtomicInteger();
@@ -40,6 +42,7 @@ class ConsoleConnectorReconnectTest {
   }
 
   @Test
+  @DisplayName("Should reconnect when the console comes back")
   void reconnectsWhenTheConsoleComesBack() throws Exception {
     int port = freePort();
     console = startConsole(port);
@@ -63,6 +66,7 @@ class ConsoleConnectorReconnectTest {
   }
 
   @Test
+  @DisplayName("Should try again slowly when the console rejects the instance")
   void aRejectedInstanceTriesAgainSlowly() throws Exception {
     int port = freePort();
     rejecting = true;

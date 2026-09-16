@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,7 @@ import static org.awaitility.Awaitility.await;
 
 /** A console started with an application token only accepts applications that send it. */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "eventify.console.app-token=secret")
+@DisplayName("Application token")
 class ApplicationTokenTest {
 
   @Value("${local.server.port}")
@@ -36,6 +38,7 @@ class ApplicationTokenTest {
   }
 
   @Test
+  @DisplayName("Should accept an application that sends the token")
   void anApplicationWithTheTokenConnects() {
     connect("token-ok.a:0", "secret");
 
@@ -43,6 +46,7 @@ class ApplicationTokenTest {
   }
 
   @Test
+  @DisplayName("Should reject an application with a wrong or missing token")
   void anApplicationWithAWrongOrNoTokenIsRejected() {
     connect("token-wrong.a:0", "guess");
     connect("token-missing.a:0", null);

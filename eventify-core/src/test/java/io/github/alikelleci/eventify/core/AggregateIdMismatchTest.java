@@ -24,6 +24,7 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -32,6 +33,7 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** An aggregate is only ever loaded and stored under its own id: not under the record key of another, nor the id a handler returns. */
+@DisplayName("Aggregate id mismatch")
 class AggregateIdMismatchTest {
 
   @Value
@@ -110,6 +112,7 @@ class AggregateIdMismatchTest {
   }
 
   @Test
+  @DisplayName("Should reject a state with another aggregate id, and never store it as that aggregate's snapshot")
   void aStateWithAnotherAggregateIdIsNotStoredAsThatAggregatesSnapshot() {
     send("ad", Increment.builder().id("ad").stateId("ad").build());
     send("ada", Increment.builder().id("ada").stateId("ada").build());
@@ -129,6 +132,7 @@ class AggregateIdMismatchTest {
   }
 
   @Test
+  @DisplayName("Should not handle a command whose record key is another aggregate id")
   void aCommandUnderAnotherRecordKeyIsNotHandled() {
     send("ada", Increment.builder().id("ada").stateId("ada").build());
     send("ada", Increment.builder().id("bob").stateId("bob").build()); // record key "ada", command for "bob"
