@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.messaging.commandhandling;
 
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.common.exceptions.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
@@ -9,6 +10,7 @@ import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
@@ -89,6 +91,11 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return new ArrayList<>();
+    }
+
+    // The aggregate is loaded by the record key: another key would hand the handler the state of another aggregate.
+    if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
+      throw new AggregateIdMismatchException("Record key does not match the aggregate identifier of command " + command.getType() + ". Expected " + command.getAggregateId() + ", but was " + aggregateId);
     }
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());

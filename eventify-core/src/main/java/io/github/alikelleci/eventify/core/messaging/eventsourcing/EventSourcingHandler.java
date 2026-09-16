@@ -2,10 +2,12 @@ package io.github.alikelleci.eventify.core.messaging.eventsourcing;
 
 import io.github.alikelleci.eventify.core.common.CommonParameterResolver;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
+import io.github.alikelleci.eventify.core.common.exceptions.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.exceptions.AggregateInvocationException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
@@ -59,12 +61,18 @@ public class EventSourcingHandler implements BiFunction<AggregateState, Event, A
       return null;
     }
 
-    return AggregateState.builder()
+    AggregateState state = AggregateState.builder()
         .timestamp(event.getTimestamp())
         .payload(result)
         .metadata(event.getMetadata())
         .eventId(event.getId())
         .build();
+
+    // The state is stored as the snapshot of its own aggregate id: another id would overwrite that aggregate's snapshot.
+    if (!StringUtils.equals(state.getAggregateId(), event.getAggregateId())) {
+      throw new AggregateIdMismatchException("Aggregate identifier does not match for state " + state.getType() + " after event " + event.getType() + ". Expected " + event.getAggregateId() + ", but was " + state.getAggregateId());
+    }
+    return state;
   }
 
 }
