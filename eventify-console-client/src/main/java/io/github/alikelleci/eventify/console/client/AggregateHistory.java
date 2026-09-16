@@ -36,10 +36,10 @@ class AggregateHistory {
   /**
    * A page of the aggregate's events, newest first.
    *
-   * @param cursor where the page starts: the {@link EventifyService.EventsPage#nextCursor()} of the page before it, or
+   * @param cursor where the page starts: the {@link ConsoleService.EventsPage#nextCursor()} of the page before it, or
    *               {@code null} for the newest events
    */
-  EventifyService.EventsPage events(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String cursor, int limit) {
+  ConsoleService.EventsPage events(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String cursor, int limit) {
     String from = IdUtils.firstKey(aggregateId);
     String to = cursor != null ? IdUtils.firstKey(aggregateId) + cursor + "\0" : IdUtils.lastKey(aggregateId); // the cursor's event included
 
@@ -59,7 +59,7 @@ class AggregateHistory {
       Event first = page.remove(page.size() - 1);
       nextCursor = first.getId().substring(IdUtils.firstKey(aggregateId).length());
     }
-    return new EventifyService.EventsPage(page, nextCursor);
+    return new ConsoleService.EventsPage(page, nextCursor);
   }
 
   /** The aggregate's events with this correlation id, oldest first: the events one command produced. */
@@ -94,7 +94,7 @@ class AggregateHistory {
   }
 
   /** The event with the state before and after it; {@code null} when the event isn't there. */
-  EventifyService.EventDetail eventDetail(ReadOnlyKeyValueStore<String, Event> events, ReadOnlyKeyValueStore<String, AggregateState> snapshots,
+  ConsoleService.EventDetail eventDetail(ReadOnlyKeyValueStore<String, Event> events, ReadOnlyKeyValueStore<String, AggregateState> snapshots,
                                           String aggregateId, String eventId) {
     Event event = events.get(eventId);
     if (event == null) {
@@ -110,7 +110,7 @@ class AggregateHistory {
     }
 
     // No snapshot before the event: from the first event.
-    EventifyService.EventDetail detail = replayThrough(events, aggregateId, null, event);
+    ConsoleService.EventDetail detail = replayThrough(events, aggregateId, null, event);
     if (order > 0) {
       return detail;
     }
@@ -120,13 +120,13 @@ class AggregateHistory {
     // and the state before it is unknown.
     long replayed = detail.state() != null ? detail.state().getVersion() : 0;
     if (replayed != snapshot.getVersion()) {
-      return new EventifyService.EventDetail(event, snapshot.withVersion(snapshot.getVersion()), null);
+      return new ConsoleService.EventDetail(event, snapshot.withVersion(snapshot.getVersion()), null);
     }
     return detail;
   }
 
   /** Replays from {@code start} through the event, remembering the state right before it. */
-  private EventifyService.EventDetail replayThrough(ReadOnlyKeyValueStore<String, Event> events, String aggregateId,
+  private ConsoleService.EventDetail replayThrough(ReadOnlyKeyValueStore<String, Event> events, String aggregateId,
                                                     AggregateState start, Event event) {
     AggregateState[] before = {start};
     AggregateReplay.Result result = replay.replay(events, aggregateId, start, event.getId(), (current, state, version) -> {
@@ -134,6 +134,6 @@ class AggregateHistory {
         before[0] = state != null ? state.withVersion(version) : null;
       }
     });
-    return new EventifyService.EventDetail(event, result.state(), before[0]);
+    return new ConsoleService.EventDetail(event, result.state(), before[0]);
   }
 }

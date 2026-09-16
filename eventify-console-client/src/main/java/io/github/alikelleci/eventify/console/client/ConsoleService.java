@@ -49,7 +49,7 @@ import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 
 @Slf4j
-class EventifyService {
+class ConsoleService {
 
   private static final String EVENT_STORE = "event-store";
   private static final String SNAPSHOT_STORE = "snapshot-store";
@@ -102,7 +102,7 @@ class EventifyService {
   private final Producer<String, Command> producer;
   private final AggregateHistory history;
 
-  EventifyService(Eventify eventify, StatusTracker statusTracker) {
+  ConsoleService(Eventify eventify, StatusTracker statusTracker) {
     this.eventify = eventify;
     this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();

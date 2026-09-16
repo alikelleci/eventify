@@ -198,7 +198,7 @@ public class ConsoleConnector {
     }
 
     // When the console cancels a request (someone refreshed the page, or the console stopped), the query gets the
-    // signal: a query that hasn't started is skipped, a running one can stop cleanly (see EventifyService.getCommands).
+    // signal: a query that hasn't started is skipped, a running one can stop cleanly (see ConsoleService.getCommands).
     // The thread is never interrupted: that would break a Kafka consumer halfway a poll or close.
     CancelSignal cancel = new CancelSignal();
     ThreadPoolExecutor executor = this.executor;

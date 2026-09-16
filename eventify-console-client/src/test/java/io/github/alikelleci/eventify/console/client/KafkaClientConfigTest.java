@@ -18,7 +18,7 @@ class KafkaClientConfigTest {
 
   @Test
   void theRetryProducerUsesTheApplicationsSecurityAndProducerSettings() {
-    Map<String, Object> config = EventifyService.producerConfig(eventify);
+    Map<String, Object> config = ConsoleService.producerConfig(eventify);
 
     assertThat(config)
         .containsEntry("security.protocol", "SASL_SSL")
@@ -32,7 +32,7 @@ class KafkaClientConfigTest {
 
   @Test
   void theCommandsConsumerUsesTheApplicationsSecurityAndConsumerSettings() {
-    Map<String, Object> config = EventifyService.consumerConfig(eventify);
+    Map<String, Object> config = ConsoleService.consumerConfig(eventify);
 
     assertThat(config)
         .containsEntry("security.protocol", "SASL_SSL")

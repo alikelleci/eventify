@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.console.client;
 
-import io.github.alikelleci.eventify.console.client.EventifyService.Result;
+import io.github.alikelleci.eventify.console.client.ConsoleService.Result;
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.client.item.ItemHandler;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -43,7 +43,7 @@ import static org.awaitility.Awaitility.await;
  * {@code application.server}; an instance that doesn't own an aggregate must name the one that does.
  */
 @Testcontainers
-class EventifyServiceRoutingIT {
+class ConsoleServiceRoutingIT {
 
   private static final String APPLICATION_ID = "routing-test";
 
@@ -90,17 +90,17 @@ class EventifyServiceRoutingIT {
       }
     }
 
-    EventifyService firstService = new EventifyService(first, new StatusTracker());
-    EventifyService secondService = new EventifyService(second, new StatusTracker());
-    String firstId = EventifyService.nodeId(EventifyService.hostInfo(first));
-    String secondId = EventifyService.nodeId(EventifyService.hostInfo(second));
+    ConsoleService firstService = new ConsoleService(first, new StatusTracker());
+    ConsoleService secondService = new ConsoleService(second, new StatusTracker());
+    String firstId = ConsoleService.nodeId(ConsoleService.hostInfo(first));
+    String secondId = ConsoleService.nodeId(ConsoleService.hostInfo(second));
     Set<String> owners = new HashSet<>();
 
     try {
       for (String id : aggregateIds) {
         await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
-          Result<EventifyService.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
-          Result<EventifyService.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
+          Result<ConsoleService.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
+          Result<ConsoleService.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
 
           // Exactly one answers with the event; the other names it as the owner.
           if (fromFirst.isOk()) {
@@ -137,7 +137,7 @@ class EventifyServiceRoutingIT {
       producer.send(new ProducerRecord<>("commands.item", id, command)).get();
     }
 
-    EventifyService service = new EventifyService(first, new StatusTracker());
+    ConsoleService service = new ConsoleService(first, new StatusTracker());
     try {
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() ->
           assertThat(service.getCommands(id, 50, new CancelSignal()).value())
@@ -151,7 +151,7 @@ class EventifyServiceRoutingIT {
         List<Command> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
         assertThat(commands).hasSize(2);
         Command retry = commands.get(0); // newest first
-        assertThat(retry.getMetadata()).containsEntry(EventifyService.RETRY_OF, original.getId()).doesNotContainKey(Metadata.REPLY_TO);
+        assertThat(retry.getMetadata()).containsEntry(ConsoleService.RETRY_OF, original.getId()).doesNotContainKey(Metadata.REPLY_TO);
         assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isNotEqualTo(original.getMetadata().getCorrelationId());
         assertThat(retry.getMetadata()).containsEntry(Metadata.RESULT, "success");
       });

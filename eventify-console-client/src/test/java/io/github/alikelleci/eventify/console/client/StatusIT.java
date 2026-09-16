@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.console.client;
 
-import io.github.alikelleci.eventify.console.client.EventifyService.Result;
+import io.github.alikelleci.eventify.console.client.ConsoleService.Result;
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.client.item.ItemHandler;
 import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
@@ -54,7 +54,7 @@ class StatusIT {
   Path stateDir;
 
   private Eventify eventify;
-  private EventifyService service;
+  private ConsoleService service;
   private final StatusTracker tracker = new StatusTracker();
   private final AtomicInteger restoresStarted = new AtomicInteger();
 
@@ -110,7 +110,7 @@ class StatusIT {
   }
 
   private boolean hasEvents(String aggregateId) {
-    Result<EventifyService.EventsPage> result = service.getEvents(aggregateId, null, 1);
+    Result<ConsoleService.EventsPage> result = service.getEvents(aggregateId, null, 1);
     return result.isOk() && !result.value().events().isEmpty();
   }
 
@@ -175,7 +175,7 @@ class StatusIT {
         .build();
     instance.start();
     if (service != null) service.close();
-    service = new EventifyService(instance, tracker);
+    service = new ConsoleService(instance, tracker);
     return instance;
   }
 }

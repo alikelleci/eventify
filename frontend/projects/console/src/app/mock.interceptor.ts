@@ -93,7 +93,7 @@ function buildHistory(orderId: string, steps: Step[]): History {
     // A retry names the command it retries: the last one of the same type before it.
     const retried = [...commands].reverse().find(command => command.type === step.command);
     const metadata: Record<string, string> = step.retried && retried
-      // Resubmitted from the console: marked like EventifyService.retryCommand does, without $replyTo.
+      // Resubmitted from the console: marked like ConsoleService.retryCommand does, without $replyTo.
       ? { '$correlationId': correlationId, '$retryOf': retried.id }
       : { '$correlationId': correlationId, '$replyTo': REPLY_TO };
 

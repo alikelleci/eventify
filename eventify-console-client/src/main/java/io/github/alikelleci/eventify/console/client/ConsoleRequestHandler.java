@@ -11,21 +11,21 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 
-/** Answers the console's requests with {@link EventifyService}. Blocking: call it off the network threads. */
+/** Answers the console's requests with {@link ConsoleService}. Blocking: call it off the network threads. */
 @Slf4j
 class ConsoleRequestHandler {
 
   static final int DEFAULT_PAGE_SIZE = 50;
   static final int MAX_PAGE_SIZE = 500;
 
-  private final EventifyService service;
+  private final ConsoleService service;
   /** Eventify's own mapper, for the events and commands: the console shows them as the application writes them. */
   private final ObjectMapper eventifyMapper;
   /** For the protocol's own messages. */
   private final ObjectMapper protocolMapper = new ObjectMapper()
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-  ConsoleRequestHandler(EventifyService service, ObjectMapper eventifyMapper) {
+  ConsoleRequestHandler(ConsoleService service, ObjectMapper eventifyMapper) {
     this.service = service;
     this.eventifyMapper = eventifyMapper;
   }
@@ -104,7 +104,7 @@ class ConsoleRequestHandler {
   }
 
   /** The header as it is; the answer as JSON, only when there is one. */
-  private Reply toReply(EventifyService.Result<?> result) throws IOException {
+  private Reply toReply(ConsoleService.Result<?> result) throws IOException {
     if (!result.isOk() || result.value() == null) {
       return Reply.of(result.header());
     }

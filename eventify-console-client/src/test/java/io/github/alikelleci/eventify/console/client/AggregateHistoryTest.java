@@ -72,7 +72,7 @@ class AggregateHistoryTest {
 
   @Test
   void beforeTheFirstEventThereIsNoState() {
-    EventifyService.EventDetail detail = detail(first);
+    ConsoleService.EventDetail detail = detail(first);
 
     assertThat(detail.previousState()).isNull();
     assertValue(detail.state(), 1, 1);
@@ -98,7 +98,7 @@ class AggregateHistoryTest {
     snapshotAt(second);
     events.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
 
-    EventifyService.EventDetail detail = detail(second);
+    ConsoleService.EventDetail detail = detail(second);
 
     // The snapshot is the state after this event; what came before it is gone, so the state before it is unknown.
     assertValue(detail.state(), 2, 2);
@@ -150,11 +150,11 @@ class AggregateHistoryTest {
   void theEventsArePagedNewestFirst() {
     store(new Incremented("counter-1@x")); // in the range, not on a page
 
-    EventifyService.EventsPage page = history.events(events, "counter-1", null, 2);
+    ConsoleService.EventsPage page = history.events(events, "counter-1", null, 2);
     assertThat(page.events()).containsExactly(third, second);
     assertThat(page.nextCursor()).isEqualTo(first.getId().substring("counter-1@".length()));
 
-    EventifyService.EventsPage next = history.events(events, "counter-1", page.nextCursor(), 2);
+    ConsoleService.EventsPage next = history.events(events, "counter-1", page.nextCursor(), 2);
     assertThat(next.events()).containsExactly(first);
     assertThat(next.nextCursor()).isNull();
   }
@@ -167,7 +167,7 @@ class AggregateHistoryTest {
   }
 
   private void assertDetail(Event event, int before, int after) {
-    EventifyService.EventDetail detail = detail(event);
+    ConsoleService.EventDetail detail = detail(event);
     assertThat(detail.event()).isEqualTo(event);
     if (before == 0) {
       assertThat(detail.previousState()).isNull();
@@ -183,7 +183,7 @@ class AggregateHistoryTest {
     assertThat(state.getVersion()).isEqualTo(version);
   }
 
-  private EventifyService.EventDetail detail(Event event) {
+  private ConsoleService.EventDetail detail(Event event) {
     return history.eventDetail(events, snapshots, "counter-1", event.getId());
   }
 

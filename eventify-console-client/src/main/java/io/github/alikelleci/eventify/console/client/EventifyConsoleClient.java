@@ -17,7 +17,7 @@ public class EventifyConsoleClient implements EventifyPlugin {
 
   private final URI url;
   private final String token;
-  private EventifyService queryService;
+  private ConsoleService consoleService;
   /** Follows the state changes and restorations, so the status can be answered without asking Kafka. */
   private final StatusTracker statusTracker = new StatusTracker();
   private ConsoleConnector connector;
@@ -39,13 +39,13 @@ public class EventifyConsoleClient implements EventifyPlugin {
   public void onStart(Eventify eventify) {
     NodeInfo nodeInfo = new NodeInfo(
         eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_ID_CONFIG),
-        EventifyService.nodeId(EventifyService.hostInfo(eventify)),
+        ConsoleService.nodeId(ConsoleService.hostInfo(eventify)),
         hostname(),
         EventifyConsoleClient.class.getPackage().getImplementationVersion(),
         ConsoleProtocol.VERSION);
 
-    queryService = new EventifyService(eventify, statusTracker);
-    ConsoleRequestHandler handler = new ConsoleRequestHandler(queryService, eventify.getObjectMapper());
+    consoleService = new ConsoleService(eventify, statusTracker);
+    ConsoleRequestHandler handler = new ConsoleRequestHandler(consoleService, eventify.getObjectMapper());
     connector = new ConsoleConnector(url, token, nodeInfo, handler::handle);
     connector.start();
   }
@@ -66,9 +66,9 @@ public class EventifyConsoleClient implements EventifyPlugin {
       connector.stop();
       connector = null;
     }
-    if (queryService != null) {
-      queryService.close();
-      queryService = null;
+    if (consoleService != null) {
+      consoleService.close();
+      consoleService = null;
     }
   }
 
