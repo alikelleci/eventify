@@ -77,11 +77,9 @@ export function dotClass(tone: StatusTone | undefined): string {
     : 'bg-primary-500';
 }
 
-/** 40s, 4 min, 2 h, 3 days. */
-export function duration(ms: number): string {
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
+/** 4 min, 2 h, 3 days: only used from a minute on. */
+function duration(ms: number): string {
+  const minutes = Math.floor(ms / 60_000);
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours} h`;

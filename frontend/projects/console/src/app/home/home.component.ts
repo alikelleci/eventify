@@ -25,16 +25,18 @@ export class HomeComponent {
 
   readonly instanceCount = computed(() => this.backend.apps().reduce((sum, app) => sum + app.nodes.length, 0));
 
-  /** The applications that are not simply running: rebalancing, restoring, or in error, from the moment it happens. */
-  private readonly needAttention = computed(() => this.backend.apps()
-    .map(app => appState(app.nodes).tone)
-    .filter(tone => tone === 'busy' || tone === 'error'));
+  /** The state of each application: the one of its instance worst off. */
+  private readonly tones = computed(() => this.backend.apps().map(app => appState(app.nodes).tone));
 
-  /** The totals in the top row; the applications that need attention are coloured once there are any. */
+  /**
+   * The totals in the top row. Each application with a problem counts once, under its worst state: errors (error,
+   * stopped) or warnings (rebalancing, restoring, starting, stopping, no answer). Coloured once there are any.
+   */
   readonly stats = computed(() => [
-    { label: 'Applications', value: String(this.backend.apps().length), warn: false },
-    { label: 'Instances', value: String(this.instanceCount()), warn: false },
-    { label: 'Need attention', value: String(this.needAttention().length), warn: true },
+    { label: 'Applications', value: this.backend.apps().length, color: null },
+    { label: 'Instances', value: this.instanceCount(), color: null },
+    { label: 'Errors', value: this.tones().filter(tone => tone === 'error').length, color: 'text-red-500' },
+    { label: 'Warnings', value: this.tones().filter(tone => tone === 'busy' || tone === 'unknown').length, color: 'text-amber-500' },
   ]);
 
   /** The picture in the centre, each application with its number of instances. */
