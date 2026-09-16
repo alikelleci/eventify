@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
@@ -67,9 +68,9 @@ class ConsoleService {
   /**
    * An event with the state after and before it. A state is {@code null} when there is none, or when it is unknown:
    * {@code stateKnown} and {@code previousStateKnown} tell which. A state is unknown when the events before it were
-   * deleted at a snapshot.
+   * deleted at a snapshot. The states are {@link AggregateState}s as JSON, see {@link AggregateHistory}.
    */
-  record EventDetail(Event event, AggregateState state, AggregateState previousState,
+  record EventDetail(Event event, RawValue state, RawValue previousState,
                      boolean stateKnown, boolean previousStateKnown) {}
   record CorrelatedEventsPage(List<Event> events) {}
 
@@ -113,7 +114,7 @@ class ConsoleService {
     this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();
     this.thisHost = hostInfo(eventify);
-    this.history = new AggregateHistory(eventify.getEventSourcingHandlers());
+    this.history = new AggregateHistory(eventify.getEventSourcingHandlers(), objectMapper);
     this.producer = new KafkaProducer<>(producerConfig(eventify), new StringSerializer(), new JsonSerializer<>(objectMapper));
   }
 
@@ -370,14 +371,15 @@ class ConsoleService {
     }
   }
 
-  Result<AggregateState> getState(String aggregateId, String eventId) {
-    Result<AggregateState> routing = checkRouting(aggregateId);
+  /** The {@link AggregateState} as JSON, see {@link AggregateHistory}. */
+  Result<RawValue> getState(String aggregateId, String eventId) {
+    Result<RawValue> routing = checkRouting(aggregateId);
     if (routing != null) {
       return routing;
     }
 
     try {
-      AggregateState state = history.stateAt(eventStore(), snapshotStore(), aggregateId, eventId);
+      RawValue state = history.stateAt(eventStore(), snapshotStore(), aggregateId, eventId);
       if (state == null) {
         return notFound(aggregateId);
       }

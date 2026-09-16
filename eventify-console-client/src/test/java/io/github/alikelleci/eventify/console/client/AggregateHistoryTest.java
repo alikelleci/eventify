@@ -1,5 +1,7 @@
 package io.github.alikelleci.eventify.console.client;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
@@ -29,6 +31,14 @@ class AggregateHistoryTest {
     Counter(String id, int value) {
       this.id = id;
       this.value = value;
+    }
+
+    public String getId() {
+      return id;
+    }
+
+    public int getValue() {
+      return value;
     }
   }
 
@@ -63,8 +73,58 @@ class AggregateHistoryTest {
     }
   }
 
+  /** An aggregate whose handlers change the state they are given, and return it. */
+  @AggregateRoot
+  public static class Tally {
+    @AggregateId
+    String id;
+    int value;
+
+    public String getId() {
+      return id;
+    }
+
+    public int getValue() {
+      return value;
+    }
+  }
+
+  public static class TallyStarted {
+    @AggregateId
+    final String id;
+
+    TallyStarted(String id) {
+      this.id = id;
+    }
+  }
+
+  public static class TallyIncremented {
+    @AggregateId
+    final String id;
+
+    TallyIncremented(String id) {
+      this.id = id;
+    }
+  }
+
+  public static class TallyHandler {
+    @ApplyEvent
+    public Tally apply(TallyStarted event, Tally state) {
+      Tally tally = new Tally();
+      tally.id = event.id;
+      tally.value = 1;
+      return tally;
+    }
+
+    @ApplyEvent
+    public Tally apply(TallyIncremented event, Tally state) {
+      state.value++;
+      return state;
+    }
+  }
+
   private final Eventify eventify = eventify();
-  private final AggregateHistory history = new AggregateHistory(eventify.getEventSourcingHandlers());
+  private final AggregateHistory history = new AggregateHistory(eventify.getEventSourcingHandlers(), eventify.getObjectMapper());
   private final AggregateReplay replay = new AggregateReplay(eventify.getEventSourcingHandlers());
   private final InMemoryStore<Event> events = new InMemoryStore<>();
   private final InMemoryStore<AggregateState> snapshots = new InMemoryStore<>();
@@ -222,6 +282,36 @@ class AggregateHistoryTest {
     assertValue(history.stateAt(events, snapshots, "counter-1", second.getId()), 2, 2);
   }
 
+  /** Each state is the state at its own event, not the state the handlers after it made of the same object. */
+  @Test
+  void aHandlerThatChangesTheStateItIsGivenDoesNotChangeTheStatesBeforeIt() {
+    store(new TallyStarted("tally-1"));
+    Event incremented = store(new TallyIncremented("tally-1"));
+    Event incrementedAgain = store(new TallyIncremented("tally-1"));
+
+    ConsoleService.EventDetail detail = history.eventDetail(events, snapshots, "tally-1", incremented.getId());
+    assertValue(detail.previousState(), 1, 1);
+    assertValue(detail.state(), 2, 2);
+
+    // With a snapshot after the event, the replay goes on past it.
+    snapshots.put("tally-1", replay.replay(events, "tally-1", null, incrementedAgain.getId()).state());
+    detail = history.eventDetail(events, snapshots, "tally-1", incremented.getId());
+    assertValue(detail.previousState(), 1, 1);
+    assertValue(detail.state(), 2, 2);
+    assertValue(history.stateAt(events, snapshots, "tally-1", incremented.getId()), 2, 2);
+  }
+
+  /** The states are sent to the console as the JSON objects they are, as before: not as text. */
+  @Test
+  void theStatesAreWrittenAsJsonObjects() throws Exception {
+    JsonNode json = eventify.getObjectMapper().readTree(eventify.getObjectMapper().writeValueAsString(detail(second)));
+
+    assertThat(json.get("state").isObject()).isTrue();
+    assertThat(json.at("/state/payload/value").asInt()).isEqualTo(2);
+    assertThat(json.at("/state/version").asLong()).isEqualTo(2);
+    assertThat(json.at("/previousState/payload/value").asInt()).isEqualTo(1);
+  }
+
   private void assertDetail(Event event, int before, int after) {
     ConsoleService.EventDetail detail = detail(event);
     assertThat(detail.event()).isEqualTo(event);
@@ -235,10 +325,19 @@ class AggregateHistoryTest {
     assertValue(detail.state(), after, after);
   }
 
-  private static void assertValue(AggregateState state, int value, long version) {
+  private void assertValue(RawValue state, int value, long version) {
     assertThat(state).isNotNull();
-    assertThat(((Counter) state.getPayload()).value).isEqualTo(value);
-    assertThat(state.getVersion()).isEqualTo(version);
+    JsonNode json = read(state);
+    assertThat(json.at("/payload/value").asInt()).isEqualTo(value);
+    assertThat(json.get("version").asLong()).isEqualTo(version);
+  }
+
+  private JsonNode read(RawValue state) {
+    try {
+      return eventify.getObjectMapper().readTree(state.rawValue().toString());
+    } catch (Exception e) {
+      throw new AssertionError(e);
+    }
   }
 
   private ConsoleService.EventDetail detail(Event event) {
@@ -260,6 +359,6 @@ class AggregateHistoryTest {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "history-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).build();
+    return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).registerHandler(new TallyHandler()).build();
   }
 }
