@@ -41,7 +41,7 @@ export class HomeComponent {
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
     name: app.name,
     note: stateLabel(app.status).text,
-    offline: statusLabel(app.status).tone === 'error',
+    tone: stateLabel(app.status).tone,
   })));
 
 }

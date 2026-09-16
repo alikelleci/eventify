@@ -1,11 +1,12 @@
 import { Component, computed, input } from '@angular/core';
+import { StatusTone } from '../status';
 
 /** An application in the picture, with a short note under its name, e.g. its number of instances. */
 export interface ConnectedApp {
   name: string;
   note?: string;
-  /** No instance connected right now: its dot turns red. */
-  offline?: boolean;
+  /** How it is doing, as the colour of its dot. Without one, the dot is green. */
+  tone?: StatusTone;
 }
 
 /** At most this many boxes; with more applications the last box counts the rest. */
@@ -39,7 +40,7 @@ const MAX_BOXES = 4;
         @for (box of boxes(); track box.name) {
           <div class="flex min-w-0 flex-col items-center rounded-lg border border-surface-200 bg-surface-0 px-2 py-2 dark:border-surface-700 dark:bg-surface-900">
             <span class="flex max-w-full items-center gap-1.5">
-              <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="box.offline ? 'bg-red-500' : 'bg-primary-500'"></span>
+              <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(box.tone)"></span>
               <span class="truncate text-xs font-medium text-surface-700 dark:text-surface-200">{{ box.name }}</span>
             </span>
             @if (box.note) { <span class="mt-0.5 text-[10px] text-surface-400">{{ box.note }}</span> }
@@ -63,6 +64,11 @@ export class ConnectedAppsComponent {
     const rest = apps.length - (MAX_BOXES - 1);
     return [...apps.slice(0, MAX_BOXES - 1), { name: `+${rest} more`, note: 'applications' }];
   });
+
+  /** The same colours as the application switcher: green running, amber busy, red wrong, grey unknown. */
+  dotClass(tone: StatusTone | undefined): string {
+    return tone === 'busy' ? 'bg-amber-500' : tone === 'error' ? 'bg-red-500' : tone === 'unknown' ? 'bg-surface-300 dark:bg-surface-600' : 'bg-primary-500';
+  }
 
   /** From the centre of each box, curving up to the console in the middle. */
   readonly paths = computed(() => {
