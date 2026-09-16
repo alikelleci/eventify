@@ -13,23 +13,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** The applications connected to the console right now, with their instances and how they are doing. */
+/** The applications connected to the console right now, with their instances and how each one is doing. */
 @RestController
 @RequestMapping("/api/apps")
 @RequiredArgsConstructor
 public class ApplicationsController {
 
   private final NodeRegistry registry;
-  private final ApplicationStatuses statuses;
+  private final InstanceStatuses statuses;
 
   @GetMapping
   public Mono<List<ApplicationView>> applications() {
     return Flux.fromIterable(registry.nodes().stream().collect(Collectors.groupingBy(ConnectedNode::applicationId)).entrySet())
-        .flatMap(entry -> statuses.of(entry.getKey(), entry.getValue())
-            .map(status -> new ApplicationView(entry.getKey(), entry.getValue().stream()
-                .sorted(Comparator.comparing(ConnectedNode::nodeId))
-                .map(node -> new ApplicationView.NodeView(node.nodeId(), node.info().hostname(), node.info().version(), node.connectedAt()))
-                .toList(), status)))
+        .flatMap(entry -> Flux.fromIterable(entry.getValue())
+            .flatMapSequential(node -> statuses.of(node).map(status ->
+                new ApplicationView.NodeView(node.nodeId(), node.info().hostname(), node.info().version(), node.connectedAt(), status.orElse(null))))
+            .collectSortedList(Comparator.comparing(ApplicationView.NodeView::nodeId))
+            .map(nodes -> new ApplicationView(entry.getKey(), nodes)))
         .collectSortedList(Comparator.comparing(ApplicationView::name));
   }
 }

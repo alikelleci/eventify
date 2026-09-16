@@ -1,5 +1,5 @@
 import { Component, computed, input } from '@angular/core';
-import { StatusTone } from '../status';
+import { StatusTone, dotClass } from '../status';
 
 /** An application in the picture, with a short note under its name, e.g. its number of instances. */
 export interface ConnectedApp {
@@ -11,6 +11,9 @@ export interface ConnectedApp {
 
 /** At most this many boxes; with more applications the last box counts the rest. */
 const MAX_BOXES = 4;
+
+/** 0 for an error, 1 for busy, 2 for anything else: the order the boxes are given out in. */
+const problem = (app: ConnectedApp) => app.tone === 'error' ? 0 : app.tone === 'busy' ? 1 : 2;
 
 /**
  * The Eventify Console with the applications connected to it: dashes flow along a line from each application up to the console.
@@ -58,20 +61,23 @@ const MAX_BOXES = 4;
 export class ConnectedAppsComponent {
   apps = input.required<ConnectedApp[]>();
 
+  /**
+   * The applications with a problem get a box first, errors before busy ones; the others keep their order. The rest share
+   * one box, which is never red or amber itself: a colour always belongs to one application. When problems don't all fit,
+   * that box turns grey and says how many of its applications need attention.
+   */
   readonly boxes = computed<ConnectedApp[]>(() => {
-    const apps = this.apps();
+    const apps = [...this.apps()].sort((a, b) => problem(a) - problem(b));
     if (apps.length <= MAX_BOXES) return apps;
-    const rest = apps.length - (MAX_BOXES - 1);
-    // The rest in one box, coloured like the one worst off, so a problem doesn't hide behind it.
-    const hidden = apps.slice(MAX_BOXES - 1).map(app => app.tone);
-    const tone = hidden.includes('error') ? 'error' : hidden.includes('busy') ? 'busy' : undefined;
-    return [...apps.slice(0, MAX_BOXES - 1), { name: `+${rest} more`, note: 'applications', tone }];
+    const rest = apps.slice(MAX_BOXES - 1);
+    const needAttention = rest.filter(app => problem(app) < 2).length;
+    return [...apps.slice(0, MAX_BOXES - 1), needAttention
+      ? { name: `+${rest.length} more`, note: `${needAttention} need attention`, tone: 'unknown' }
+      : { name: `+${rest.length} more`, note: 'applications' }];
   });
 
-  /** The same colours as the application switcher: green running, amber busy, red wrong, grey unknown. */
-  dotClass(tone: StatusTone | undefined): string {
-    return tone === 'busy' ? 'bg-amber-500' : tone === 'error' ? 'bg-red-500' : tone === 'unknown' ? 'bg-surface-300 dark:bg-surface-600' : 'bg-primary-500';
-  }
+  /** The same colours as the application switcher. */
+  readonly dotClass = dotClass;
 
   /** From the centre of each box, curving up to the console in the middle. */
   readonly paths = computed(() => {

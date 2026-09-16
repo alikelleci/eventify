@@ -1,6 +1,6 @@
 import {Component, computed, inject} from '@angular/core';
 import {BackendService} from '@eventify/ui/services/backend.service';
-import {stateLabel, statusLabel} from '@eventify/ui/status';
+import {appState} from '@eventify/ui/status';
 import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
 
 /**
@@ -27,7 +27,7 @@ export class HomeComponent {
 
   /** The applications that are not simply running: rebalancing, restoring, or in error, from the moment it happens. */
   private readonly needAttention = computed(() => this.backend.apps()
-    .map(app => statusLabel(app.status).tone)
+    .map(app => appState(app.nodes).tone)
     .filter(tone => tone === 'busy' || tone === 'error'));
 
   /** The totals in the top row; the applications that need attention are coloured once there are any. */
@@ -38,10 +38,9 @@ export class HomeComponent {
   ]);
 
   /** The picture in the centre, each application with its number of instances. */
-  readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
-    name: app.name,
-    note: stateLabel(app.status).text,
-    tone: stateLabel(app.status).tone,
-  })));
+  readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => {
+    const state = appState(app.nodes);
+    return { name: app.name, note: state.text, tone: state.tone };
+  }));
 
 }

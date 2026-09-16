@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -143,36 +144,23 @@ class ConsoleServerTest {
   }
 
   @Test
-  void theApplicationsAreListedWithTheStatusOfTheirInstancesCombined() {
-    // Two instances are rebalancing and restoring, a third is running.
+  void theApplicationsAreListedWithTheStatusOfEachInstance() {
     connect("status", "status.a:0", status("{\"state\":\"REBALANCING\",\"stateForMs\":240000,\"restoring\":true}"));
     connect("status", "status.b:0", status("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restoring\":false}"));
-    connect("status", "status.c:0", status("{\"state\":\"REBALANCING\",\"stateForMs\":30000,\"restoring\":true}"));
+    connect("status", "status.c:0", (route, data, cancel) -> new Reply(ReplyHeader.unavailable("busy"), new byte[0]));
     awaitInstances("status", 3);
 
-    // The status is kept for a moment, so it can still be from before both instances were connected.
+    // A status is kept for a moment, so it can still be from before the instance answered.
     await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> client.get().uri("/api/apps").exchange()
         .expectStatus().isOk()
         .expectBody()
-        .jsonPath("$[?(@.name == 'status')].status.state").isEqualTo("REBALANCING")   // the one worst off wins
-        .jsonPath("$[?(@.name == 'status')].status.stateForMs").isEqualTo(240000)     // and for as long as it has been
-        .jsonPath("$[?(@.name == 'status')].status.inState").isEqualTo(2)             // two of the three
-        .jsonPath("$[?(@.name == 'status')].status.restoring").isEqualTo(2)
-        .jsonPath("$[?(@.name == 'status')].status.answered").isEqualTo(3));          // every instance was asked
-  }
-
-  @Test
-  void anInstanceThatDoesNotAnswerLeavesTheStatusIncomplete() {
-    connect("partial", "partial.a:0", status("{\"state\":\"RUNNING\",\"stateForMs\":5000,\"restoring\":false}"));
-    connect("partial", "partial.b:0", (route, data, cancel) -> new Reply(ReplyHeader.unavailable("busy"), new byte[0]));
-    awaitInstances("partial", 2);
-
-    await().atMost(Duration.ofSeconds(15)).untilAsserted(() -> client.get().uri("/api/apps").exchange()
-        .expectStatus().isOk()
-        .expectBody()
-        .jsonPath("$[?(@.name == 'partial')].nodes.length()").isEqualTo(2)
-        .jsonPath("$[?(@.name == 'partial')].status.state").isEqualTo("RUNNING")
-        .jsonPath("$[?(@.name == 'partial')].status.answered").isEqualTo(1));
+        .jsonPath("$[?(@.name == 'status')].nodes[0].status.state").isEqualTo("REBALANCING")
+        .jsonPath("$[?(@.name == 'status')].nodes[0].status.stateForMs").isEqualTo(240000)
+        .jsonPath("$[?(@.name == 'status')].nodes[0].status.restoring").isEqualTo(true)
+        .jsonPath("$[?(@.name == 'status')].nodes[1].status.state").isEqualTo("RUNNING")
+        .jsonPath("$[?(@.name == 'status')].nodes[2].nodeId").isEqualTo("status.c:0")
+        .jsonPath("$[?(@.name == 'status')].nodes[2].status")                // didn't answer
+        .value(status -> assertThat(status).asInstanceOf(InstanceOfAssertFactories.LIST).containsExactly((Object) null)));
   }
 
   @Test

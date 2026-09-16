@@ -1,7 +1,7 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, filter, fromEvent, merge, of, switchMap, timer } from 'rxjs';
-import { AppStatus } from '../status';
+import { InstanceStatus } from '../status';
 
 /** An instance of an application, connected to the console right now. */
 export interface AppNode {
@@ -9,14 +9,14 @@ export interface AppNode {
   hostname: string | null;
   version: string | null;
   connectedAt: string;
+  /** How it is doing; null when it didn't answer. */
+  status: InstanceStatus | null;
 }
 
-/** An application: the instances with the same application id, and how it is doing. */
+/** An application: the instances with the same application id. */
 export interface AppEntry {
   name: string;
   nodes: AppNode[];
-  /** Null for the chosen application while none of its instances is connected. */
-  status: AppStatus | null;
 }
 
 /**
@@ -42,7 +42,7 @@ export class BackendService {
     const apps = this._apps();
     const active = this._activeName();
     return active && !apps.some(app => app.name === active)
-      ? [...apps, { name: active, nodes: [], status: null }].sort((a, b) => a.name.localeCompare(b.name))
+      ? [...apps, { name: active, nodes: [] }].sort((a, b) => a.name.localeCompare(b.name))
       : apps;
   });
   /** No application has connected to the console (yet). */
@@ -72,11 +72,6 @@ export class BackendService {
         resolve();
       });
     });
-  }
-
-  /** How this application is doing, if the console knows yet. */
-  statusOf(name: string | null | undefined): AppStatus | undefined {
-    return this.apps().find(app => app.name === name)?.status ?? undefined;
   }
 
   setActiveApp(app: AppEntry): void {

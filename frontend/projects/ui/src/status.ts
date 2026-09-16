@@ -1,72 +1,61 @@
-/** How an application is doing, as /api/apps reports it with each application. */
-export interface AppStatus {
-  /** The Kafka Streams state of the instance worst off, or null when no instance answered. */
-  state: string | null;
-  /** How long the application has been in that state. */
+/** How one instance is doing, as /api/apps reports it with each instance. */
+export interface InstanceStatus {
+  /** The Kafka Streams state: RUNNING, REBALANCING, ERROR, … */
+  state: string;
+  /** How long the instance has been in that state. */
   stateForMs: number;
-  /** How many instances are in that state; fewer than `answered` means only some of them are. */
-  inState: number;
-  /** How many instances are restoring state stores. */
-  restoring: number;
-  /** How many instances answered. */
-  answered: number;
+  /** Whether it is restoring state stores. */
+  restoring: boolean;
 }
 
 export type StatusTone = 'ok' | 'busy' | 'error' | 'unknown';
 
-/** From this long on, a state shows how long it has lasted: a short rebalance or restart is normal, a long one is not. */
-const SHOW_DURATION_FROM_MS = 60_000;
+export interface StatusLabel {
+  text: string;
+  tone: StatusTone;
+}
 
-/**
- * What to show for a status: a short text, and how alarming it is. The tone is there from the start. How many instances
- * it is about is only said where that points somewhere: an error on one instance, or one instance restoring. A
- * rebalance is about all of them.
- */
-export function statusLabel(status: AppStatus | undefined | null): { text: string; tone: StatusTone } {
-  if (!status || !status.state) return { text: 'No status', tone: 'unknown' };
-  if (status.restoring > 0) {
-    return { text: `Restoring${lasting(status)}${some(status.restoring, status.answered)}`, tone: 'busy' };
-  }
+/** Worst first: which instance speaks for the application. */
+const TONES: StatusTone[] = ['error', 'busy', 'unknown', 'ok'];
 
+/** The state of one instance in a word, and how alarming it is; null when it didn't answer. */
+export function instanceState(status: InstanceStatus | null): StatusLabel {
+  if (!status) return { text: 'No answer', tone: 'unknown' };
+  if (status.restoring) return { text: 'Restoring', tone: 'busy' };
   switch (status.state) {
-    case 'RUNNING':
-      return { text: 'Running', tone: 'ok' };
-    case 'REBALANCING':
-      return { text: `Rebalancing${lasting(status)}`, tone: 'busy' };
-    case 'CREATED':
-      return { text: 'Starting', tone: 'busy' };
+    case 'RUNNING': return { text: 'Running', tone: 'ok' };
+    case 'REBALANCING': return { text: 'Rebalancing', tone: 'busy' };
+    case 'CREATED': return { text: 'Starting', tone: 'busy' };
     case 'PENDING_SHUTDOWN':
-    case 'NOT_RUNNING':
-      return { text: `Stopped${lasting(status)}${some(status.inState, status.answered)}`, tone: 'error' };
-    default:
-      // How long it has been wrong matters: seconds means a restart, hours means nobody noticed.
-      return { text: `Error${lasting(status)}${some(status.inState, status.answered)}`, tone: 'error' };
+    case 'NOT_RUNNING': return { text: 'Stopped', tone: 'error' };
+    default: return { text: 'Error', tone: 'error' };
   }
 }
 
-/** Only the state, without numbers: for where there is no room for more, like the cards on the home page. */
-export function stateLabel(status: AppStatus | undefined | null): { text: string; tone: StatusTone } {
-  const { tone } = statusLabel(status);
-  if (!status || !status.state) return { text: 'No status', tone };
-  if (status.restoring > 0) return { text: 'Restoring', tone };
-  switch (status.state) {
-    case 'RUNNING': return { text: 'Running', tone };
-    case 'REBALANCING': return { text: 'Rebalancing', tone };
-    case 'CREATED': return { text: 'Starting', tone };
-    case 'PENDING_SHUTDOWN':
-    case 'NOT_RUNNING': return { text: 'Stopped', tone };
-    default: return { text: 'Error', tone };
-  }
+/** "Error for 3 min": the state of one instance, with how long it has lasted. Running needs no duration. */
+export function instanceLabel(status: InstanceStatus | null): string {
+  const { text, tone } = instanceState(status);
+  return status && tone !== 'ok' ? `${text} for ${duration(status.stateForMs)}` : text;
 }
 
-/** " for 4 min", once the state has lasted long enough to be worth saying. */
-function lasting(status: AppStatus): string {
-  return status.stateForMs >= SHOW_DURATION_FROM_MS ? ` for ${duration(status.stateForMs)}` : '';
+/** The state of an application: the one of its instance worst off. */
+export function appState(instances: { status: InstanceStatus | null }[]): StatusLabel {
+  if (instances.length === 0) return { text: 'No instances', tone: 'unknown' };
+  return instances.map(instance => instanceState(instance.status))
+    .reduce((worst, label) => TONES.indexOf(label.tone) < TONES.indexOf(worst.tone) ? label : worst);
 }
 
-/** "(1 of 3 instances)" when it is about some of the instances only; nothing when it is about every one that answered. */
-function some(count: number, answered: number): string {
-  return count > 0 && count < answered ? ` (${count} of ${answered} instances)` : '';
+/** The instances worst off first, so a problem isn't buried among the running ones. */
+export function worstFirst<T extends { status: InstanceStatus | null }>(instances: T[]): T[] {
+  return [...instances].sort((a, b) => TONES.indexOf(instanceState(a.status).tone) - TONES.indexOf(instanceState(b.status).tone));
+}
+
+/** The colour of a status dot: green running, amber busy, red wrong, grey unknown. */
+export function dotClass(tone: StatusTone | undefined): string {
+  return tone === 'busy' ? 'bg-amber-500'
+    : tone === 'error' ? 'bg-red-500'
+    : tone === 'unknown' ? 'bg-surface-300 dark:bg-surface-600'
+    : 'bg-primary-500';
 }
 
 /** 40s, 4 min, 2 h, 3 days. */
