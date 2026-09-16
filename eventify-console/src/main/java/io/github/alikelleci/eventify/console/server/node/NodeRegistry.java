@@ -49,10 +49,7 @@ public class NodeRegistry {
 
   /** One of the application's instances, a different one each time; {@code null} if none is connected. */
   public ConnectedNode nextNode(String applicationId) {
-    List<ConnectedNode> candidates = nodes.values().stream()
-        .filter(node -> node.applicationId().equals(applicationId))
-        .sorted(Comparator.comparing(ConnectedNode::nodeId))
-        .toList();
+    List<ConnectedNode> candidates = nodesOf(applicationId);
     if (candidates.isEmpty()) {
       return null;
     }

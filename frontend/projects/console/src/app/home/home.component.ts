@@ -25,23 +25,23 @@ export class HomeComponent {
 
   readonly instanceCount = computed(() => this.backend.apps().reduce((sum, app) => sum + app.nodes.length, 0));
 
-  /** The applications that are not simply running: rebalancing, restoring, or in error. */
-  private readonly busy = computed(() => this.backend.apps()
-    .map(app => statusLabel(this.backend.statusOf(app.name)))
-    .filter(label => label.tone === 'busy' || label.tone === 'error'));
+  /** The applications that are not simply running: rebalancing, restoring, or in error, from the moment it happens. */
+  private readonly needAttention = computed(() => this.backend.apps()
+    .map(app => statusLabel(app.status).tone)
+    .filter(tone => tone === 'busy' || tone === 'error'));
 
   /** The totals in the top row; the applications that need attention are coloured once there are any. */
   readonly stats = computed(() => [
     { label: 'Applications', value: String(this.backend.apps().length), warn: false },
     { label: 'Instances', value: String(this.instanceCount()), warn: false },
-    { label: 'Need attention', value: String(this.busy().length), warn: true },
+    { label: 'Need attention', value: String(this.needAttention().length), warn: true },
   ]);
 
   /** The picture in the centre, each application with its number of instances. */
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => ({
     name: app.name,
-    note: statusLabel(this.backend.statusOf(app.name)).text,
-    offline: statusLabel(this.backend.statusOf(app.name)).tone === 'error',
+    note: statusLabel(app.status).text,
+    offline: statusLabel(app.status).tone === 'error',
   })));
 
 }

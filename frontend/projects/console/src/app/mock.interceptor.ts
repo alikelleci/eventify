@@ -168,7 +168,7 @@ function historyOf(aggregateId: string): History {
 const respond = (body: unknown, ms: number) => of(new HttpResponse({ status: 200, body })).pipe(delay(ms));
 
 /** Two example applications, as connected to the console. The same example data answers for both. */
-const APPS: AppEntry[] = [
+const APPS: Omit<AppEntry, 'status'>[] = [
   { name: 'orders', nodes: [
     { nodeId: 'orders.3f2a9c1e-7b4d-4c1a-9f0e-5d8a2b6c1e44:0', hostname: 'orders-5d8f7-x2k4q', version: '1.0.0', connectedAt: new Date(NOW - 3_600_000).toISOString() },
     { nodeId: 'orders.b81e44d2-1c3f-4e8a-a2b7-9d6c5e4f3a21:0', hostname: 'orders-5d8f7-p9m2z', version: '1.0.0', connectedAt: new Date(NOW - 3_500_000).toISOString() },
@@ -191,7 +191,7 @@ const APPS: AppEntry[] = [
     { name: 'search-indexer', instances: 3 },
     { name: 'fraud-detection', instances: 2 },
     { name: 'warehouse-management-service-with-a-very-long-name', instances: 1 }, // truncation
-  ].map(({ name, instances, versions }): AppEntry => ({
+  ].map(({ name, instances, versions }): Omit<AppEntry, 'status'> => ({
     name,
     nodes: Array.from({ length: instances }, (_, i) => ({
       nodeId: `${name}.${crypto.randomUUID()}:0`,
@@ -202,29 +202,29 @@ const APPS: AppEntry[] = [
   })),
 ];
 
-/** How the example applications are doing, as /api/status reports it. */
-function statuses() {
+/** The example applications with how they are doing, as /api/apps reports them. */
+function apps(): AppEntry[] {
   return APPS.map((app, i) => {
     const instances = app.nodes.length;
-    // A few different situations: one restoring, one rebalancing, one in error, the rest running.
+    // A few different situations: one rebalancing for a while, one restoring on some instances, one in error, the rest running.
     const state = i === 1 ? 'REBALANCING' : i === 2 ? 'REBALANCING' : i === 3 ? 'ERROR' : 'RUNNING';
-    const restore = i === 1 ? { restored: 64_000, total: 100_000, percentage: 64 } : null;
+    const restore = i === 2 ? { restored: 64_000, total: 100_000, percentage: 64, instances: 1 } : null;
     return {
-      name: app.name,
-      state: instances === 0 ? null : state,
-      stateForMs: i === 2 ? 224_000 : 9_000,
-      restore,
-      // "returns" has only one instance in error, to show that a state can be about some instances only.
-      inState: state === 'ERROR' && instances > 1 ? 1 : instances,
-      instances,
-      answered: instances,
+      ...app,
+      status: {
+        state: instances === 0 ? null : state,
+        stateForMs: i === 1 ? 224_000 : 9_000,
+        restore,
+        // "returns" has only one instance in error, to show that a state can be about some instances only.
+        inState: state === 'ERROR' && instances > 1 ? 1 : instances,
+        answered: instances,
+      },
     };
   });
 }
 
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
-  if (req.url.endsWith('/api/status')) return respond(statuses(), 80);
-  if (req.url.endsWith('/api/apps')) return respond(APPS, 100);
+  if (req.url.endsWith('/api/apps')) return respond(apps(), 100);
   if (req.url.endsWith('/api/session')) return respond({ loginEnabled: false, user: null, appTokenRequired: false }, 50);
   if (!req.url.includes('/api/apps/') || !req.url.includes('/aggregates/')) return next(req);
 

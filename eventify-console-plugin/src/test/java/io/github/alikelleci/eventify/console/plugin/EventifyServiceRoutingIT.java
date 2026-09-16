@@ -87,8 +87,8 @@ class EventifyServiceRoutingIT {
       }
     }
 
-    EventifyService firstService = new EventifyService(first);
-    EventifyService secondService = new EventifyService(second);
+    EventifyService firstService = new EventifyService(first, new StatusTracker());
+    EventifyService secondService = new EventifyService(second, new StatusTracker());
     String firstId = EventifyService.nodeId(EventifyService.hostInfo(first));
     String secondId = EventifyService.nodeId(EventifyService.hostInfo(second));
     Set<String> owners = new HashSet<>();
@@ -134,7 +134,7 @@ class EventifyServiceRoutingIT {
       producer.send(new ProducerRecord<>("commands.item", id, command)).get();
     }
 
-    EventifyService service = new EventifyService(first);
+    EventifyService service = new EventifyService(first, new StatusTracker());
     try {
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() ->
           assertThat(service.getCommands(id, 50, new CancelSignal()))

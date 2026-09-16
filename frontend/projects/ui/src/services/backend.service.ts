@@ -11,16 +11,19 @@ export interface AppNode {
   connectedAt: string;
 }
 
-/** An application: the instances with the same application id. */
+/** An application: the instances with the same application id, and how it is doing. */
 export interface AppEntry {
   name: string;
   nodes: AppNode[];
+  /** Null for the chosen application while none of its instances is connected. */
+  status: AppStatus | null;
 }
 
-/** How often the list of applications is refreshed, so new and stopped applications show up by themselves. */
+/**
+ * How often the applications are refreshed, so new and stopped applications show up by themselves and their status
+ * stays current. Only while the page is in view.
+ */
 const REFRESH_MS = 5000;
-/** How often the applications are asked how they are doing. Only while the page is in view. */
-const STATUS_MS = 5000;
 
 @Injectable({ providedIn: 'root' })
 export class BackendService {
@@ -30,10 +33,6 @@ export class BackendService {
   private readonly _loaded = signal(false);
   /** The chosen application's name; null until the first list arrives. */
   private readonly _activeName = signal<string | null>(null);
-  private readonly _statuses = signal<Record<string, AppStatus>>({});
-
-  /** How each application is doing, by name. Empty until the first answer arrives. */
-  readonly statuses = this._statuses.asReadonly();
 
   /**
    * The connected applications. The chosen one stays in the list while none of its instances is connected
@@ -43,7 +42,7 @@ export class BackendService {
     const apps = this._apps();
     const active = this._activeName();
     return active && !apps.some(app => app.name === active)
-      ? [...apps, { name: active, nodes: [] }].sort((a, b) => a.name.localeCompare(b.name))
+      ? [...apps, { name: active, nodes: [], status: null }].sort((a, b) => a.name.localeCompare(b.name))
       : apps;
   });
   /** No application has connected to the console (yet). */
@@ -55,11 +54,16 @@ export class BackendService {
   );
   readonly baseUrl = computed(() => `/api/apps/${encodeURIComponent(this.activeApp()?.name ?? '')}`);
 
-  /** Loads the applications, and keeps them up to date. Resolves once the first list is there. */
+  /**
+   * Loads the applications, and keeps them up to date. Resolves once the first list is there. A hidden page (another
+   * tab, or minimised) asks nothing after that, and asks again as soon as it is shown.
+   */
   load(): Promise<void> {
-    this.watchStatuses();
+    const visible = () => document.visibilityState === 'visible';
     return new Promise<void>(resolve => {
-      timer(0, REFRESH_MS).pipe(
+      merge(timer(0, REFRESH_MS), fromEvent(document, 'visibilitychange')).pipe(
+        // The first time always: the console starts once the list is there, also in a tab opened in the background.
+        filter((_, index) => index === 0 || visible()),
         // Keep the last list when the console is briefly unreachable.
         switchMap(() => this.http.get<AppEntry[]>('/api/apps').pipe(catchError(() => of(null)))),
       ).subscribe(apps => {
@@ -72,22 +76,7 @@ export class BackendService {
 
   /** How this application is doing, if the console knows yet. */
   statusOf(name: string | null | undefined): AppStatus | undefined {
-    return name ? this._statuses()[name] : undefined;
-  }
-
-  /**
-   * Keeps asking the applications how they are doing, every few seconds while the page is in view. A hidden page
-   * (another tab, or minimised) asks nothing, and asks again as soon as it is shown.
-   */
-  private watchStatuses(): void {
-    const visible = () => document.visibilityState === 'visible';
-    merge(timer(0, STATUS_MS), fromEvent(document, 'visibilitychange')).pipe(
-      filter(visible),
-      // Keep the last answers when the console is briefly unreachable.
-      switchMap(() => this.http.get<AppStatus[]>('/api/status').pipe(catchError(() => of(null)))),
-    ).subscribe(statuses => {
-      if (statuses) this._statuses.set(Object.fromEntries(statuses.map(status => [status.name, status])));
-    });
+    return this.apps().find(app => app.name === name)?.status ?? undefined;
   }
 
   setActiveApp(app: AppEntry): void {

@@ -347,8 +347,12 @@ public class Eventify {
 
       // A unique name for this instance, not an address: nothing listens on it. Kafka Streams shares it with the
       // other instances, so each one can tell which instance owns a key (used by the console to route queries).
+      // Always set here: two instances with the same name would be taken for one.
       String applicationId = this.streamsConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG, "eventify");
-      this.streamsConfig.putIfAbsent(StreamsConfig.APPLICATION_SERVER_CONFIG, applicationId + "." + UUID.randomUUID() + ":0");
+      Object configured = this.streamsConfig.put(StreamsConfig.APPLICATION_SERVER_CONFIG, applicationId + "." + UUID.randomUUID() + ":0");
+      if (configured != null) {
+        log.warn("'{}' is set by Eventify; the configured value '{}' is not used.", StreamsConfig.APPLICATION_SERVER_CONFIG, configured);
+      }
 
 //    ArrayList<String> interceptors = new ArrayList<>();
 //    interceptors.add(CommonProducerInterceptor.class.getName());
