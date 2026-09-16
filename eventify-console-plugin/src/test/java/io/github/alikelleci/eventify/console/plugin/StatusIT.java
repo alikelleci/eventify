@@ -80,7 +80,7 @@ class StatusIT {
     InstanceStatus status = status();
     assertThat(status.state()).isEqualTo("RUNNING");
     assertThat(status.stateForMs()).isPositive();
-    assertThat(status.restore()).isNull();
+    assertThat(status.restoring()).isFalse();
   }
 
   @Test
@@ -100,7 +100,7 @@ class StatusIT {
     awaitRunning();
 
     assertThat(restoresStarted).hasPositiveValue();
-    assertThat(status().restore()).isNull();  // restoring is over once it runs
+    assertThat(status().restoring()).isFalse();  // restoring is over once it runs
   }
 
   private InstanceStatus status() {

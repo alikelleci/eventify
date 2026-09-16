@@ -94,7 +94,7 @@ public class EventifyService {
   }
 
   /**
-   * How this instance is doing: its Kafka Streams state, how long it has been in it, and what it is restoring.
+   * How this instance is doing: its Kafka Streams state, how long it has been in it, and whether it is restoring.
    * Everything is read from what Kafka Streams already keeps in memory: no calls to Kafka, and not on the stream threads.
    */
   public ApiResult<InstanceStatus> getStatus() {
@@ -103,7 +103,7 @@ public class EventifyService {
       return new ApiResult.Unavailable<>("Eventify is not started");
     }
 
-    return new ApiResult.Ok<>(new InstanceStatus(streams.state().name(), statusTracker.stateForMs(), statusTracker.restore()));
+    return new ApiResult.Ok<>(new InstanceStatus(streams.state().name(), statusTracker.stateForMs(), statusTracker.restoring()));
   }
 
   public void close() {

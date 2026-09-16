@@ -208,13 +208,12 @@ function apps(): AppEntry[] {
     const instances = app.nodes.length;
     // A few different situations: one rebalancing for a while, one restoring on some instances, one in error, the rest running.
     const state = i === 1 ? 'REBALANCING' : i === 2 ? 'REBALANCING' : i === 3 ? 'ERROR' : 'RUNNING';
-    const restore = i === 2 ? { percentage: 64, instances: 1 } : null;
     return {
       ...app,
       status: {
         state: instances === 0 ? null : state,
         stateForMs: i === 1 ? 224_000 : 9_000,
-        restore,
+        restoring: i === 2 ? 1 : 0,
         // "returns" has only one instance in error, to show that a state can be about some instances only.
         inState: state === 'ERROR' && instances > 1 ? 1 : instances,
         answered: instances,

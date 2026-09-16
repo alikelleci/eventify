@@ -6,8 +6,8 @@ export interface AppStatus {
   stateForMs: number;
   /** How many instances are in that state; fewer than `answered` means only some of them are. */
   inState: number;
-  /** How far the slowest instance restoring is, and how many instances are restoring. */
-  restore: { percentage: number; instances: number } | null;
+  /** How many instances are restoring state stores. */
+  restoring: number;
   /** How many instances answered. */
   answered: number;
 }
@@ -17,27 +17,30 @@ export type StatusTone = 'ok' | 'busy' | 'error' | 'unknown';
 /** From this long on, a state shows how long it has lasted: a short rebalance or restart is normal, a long one is not. */
 const SHOW_DURATION_FROM_MS = 60_000;
 
-/** What to show for a status: a short text, and how alarming it is. The tone is there from the start. */
+/**
+ * What to show for a status: a short text, and how alarming it is. The tone is there from the start. How many instances
+ * it is about is only said where that points somewhere: an error on one instance, or one instance restoring. A
+ * rebalance is about all of them.
+ */
 export function statusLabel(status: AppStatus | undefined | null): { text: string; tone: StatusTone } {
   if (!status || !status.state) return { text: 'No status', tone: 'unknown' };
-  if (status.restore) {
-    return { text: `Restoring ${status.restore.percentage}%${some(status.restore.instances, status.answered)}`, tone: 'busy' };
+  if (status.restoring > 0) {
+    return { text: `Restoring${lasting(status)}${some(status.restoring, status.answered)}`, tone: 'busy' };
   }
 
-  const ofSome = some(status.inState, status.answered);
   switch (status.state) {
     case 'RUNNING':
       return { text: 'Running', tone: 'ok' };
     case 'REBALANCING':
-      return { text: `Rebalancing${lasting(status)}${ofSome}`, tone: 'busy' };
+      return { text: `Rebalancing${lasting(status)}`, tone: 'busy' };
     case 'CREATED':
-      return { text: `Starting${ofSome}`, tone: 'busy' };
+      return { text: 'Starting', tone: 'busy' };
     case 'PENDING_SHUTDOWN':
     case 'NOT_RUNNING':
-      return { text: `Stopped${lasting(status)}${ofSome}`, tone: 'error' };
+      return { text: `Stopped${lasting(status)}${some(status.inState, status.answered)}`, tone: 'error' };
     default:
       // How long it has been wrong matters: seconds means a restart, hours means nobody noticed.
-      return { text: `Error${lasting(status)}${ofSome}`, tone: 'error' };
+      return { text: `Error${lasting(status)}${some(status.inState, status.answered)}`, tone: 'error' };
   }
 }
 
@@ -45,7 +48,7 @@ export function statusLabel(status: AppStatus | undefined | null): { text: strin
 export function stateLabel(status: AppStatus | undefined | null): { text: string; tone: StatusTone } {
   const { tone } = statusLabel(status);
   if (!status || !status.state) return { text: 'No status', tone };
-  if (status.restore) return { text: 'Restoring', tone };
+  if (status.restoring > 0) return { text: 'Restoring', tone };
   switch (status.state) {
     case 'RUNNING': return { text: 'Running', tone };
     case 'REBALANCING': return { text: 'Rebalancing', tone };
@@ -61,10 +64,7 @@ function lasting(status: AppStatus): string {
   return status.stateForMs >= SHOW_DURATION_FROM_MS ? ` for ${duration(status.stateForMs)}` : '';
 }
 
-/**
- * A status can be about some of the instances only: "Error (1 of 3 instances)". Nothing when it is about every
- * instance that answered.
- */
+/** "(1 of 3 instances)" when it is about some of the instances only; nothing when it is about every one that answered. */
 function some(count: number, answered: number): string {
   return count > 0 && count < answered ? ` (${count} of ${answered} instances)` : '';
 }

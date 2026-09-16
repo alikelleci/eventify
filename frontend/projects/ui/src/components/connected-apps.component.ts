@@ -62,7 +62,10 @@ export class ConnectedAppsComponent {
     const apps = this.apps();
     if (apps.length <= MAX_BOXES) return apps;
     const rest = apps.length - (MAX_BOXES - 1);
-    return [...apps.slice(0, MAX_BOXES - 1), { name: `+${rest} more`, note: 'applications' }];
+    // The rest in one box, coloured like the one worst off, so a problem doesn't hide behind it.
+    const hidden = apps.slice(MAX_BOXES - 1).map(app => app.tone);
+    const tone = hidden.includes('error') ? 'error' : hidden.includes('busy') ? 'busy' : undefined;
+    return [...apps.slice(0, MAX_BOXES - 1), { name: `+${rest} more`, note: 'applications', tone }];
   });
 
   /** The same colours as the application switcher: green running, amber busy, red wrong, grey unknown. */

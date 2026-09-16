@@ -1,43 +1,58 @@
 package io.github.alikelleci.eventify.console.plugin;
 
-import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
-import io.github.alikelleci.eventify.core.plugins.RestoreProgress;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
+import org.apache.kafka.streams.processor.StateRestoreListener;
+
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Follows what Kafka Streams is doing, so the console can be told at any moment: when the state last changed, and how
- * far the state stores being restored are. Kept here rather than asked for on the spot, because both are only known
- * while they happen, and because asking Kafka for it would cost a round trip.
+ * Follows what Kafka Streams is doing, so the console can be told at any moment: when the state last changed, and
+ * whether state stores are being restored. Kept here rather than asked for on the spot, because both are only known
+ * while they happen.
  */
-public class StatusTracker extends RestoreProgress implements StateListener {
+public class StatusTracker implements StateListener, StateRestoreListener {
 
   /** When the state last changed, on this instance's clock. Starts at the moment the application starts. */
   private volatile long stateSince = System.currentTimeMillis();
+
+  /** The store partitions being restored right now. */
+  private final Set<TopicPartition> restoring = ConcurrentHashMap.newKeySet();
 
   /** How long the instance has been in its current state. */
   public long stateForMs() {
     return System.currentTimeMillis() - stateSince;
   }
 
-  /** What is being restored right now, over all store partitions, or {@code null} when nothing is. */
-  public InstanceStatus.Restore restore() {
-    if (!restoring()) {
-      return null;
-    }
-    long restored = 0;
-    long total = 0;
-    for (Partition partition : partitions().values()) {
-      restored += partition.restored();
-      total += partition.total();
-    }
-    return total > 0 ? new InstanceStatus.Restore(restored, total, (int) (restored * 100 / total)) : null;
+  /** Whether any state store is being restored right now. */
+  public boolean restoring() {
+    return !restoring.isEmpty();
   }
 
   @Override
   public void onChange(KafkaStreams.State newState, KafkaStreams.State oldState) {
     stateSince = System.currentTimeMillis();
-    // A new state starts a new picture: what was restored before no longer counts.
-    clearFinished();
+  }
+
+  @Override
+  public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
+    restoring.add(topicPartition);
+  }
+
+  @Override
+  public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
+  }
+
+  @Override
+  public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
+    restoring.remove(topicPartition);
+  }
+
+  /** The partition moved to another instance: it is no longer restored here. */
+  @Override
+  public void onRestoreSuspended(TopicPartition topicPartition, String storeName, long totalRestored) {
+    restoring.remove(topicPartition);
   }
 }
