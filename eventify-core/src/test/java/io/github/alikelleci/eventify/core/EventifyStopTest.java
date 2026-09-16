@@ -1,0 +1,77 @@
+package io.github.alikelleci.eventify.core;
+
+import io.github.alikelleci.eventify.core.order.OrderCommandHandler;
+import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
+import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+import java.nio.file.Path;
+import java.util.Properties;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class EventifyStopTest {
+
+  @TempDir
+  Path stateDir;
+
+  @Test
+  void pluginsAreStoppedOnceAlsoWhenKafkaStreamsStoppedByItself() {
+    AtomicInteger stops = new AtomicInteger();
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "stop-test");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1");
+    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
+
+    Eventify eventify = Eventify.builder()
+        .streamsConfig(properties)
+        .registerHandler(new OrderCommandHandler())
+        .registerPlugin(new EventifyPlugin() {
+          @Override
+          public void onStop(Eventify eventify) {
+            stops.incrementAndGet();
+          }
+        })
+        .build();
+    eventify.start();
+
+    // Kafka Streams is no longer running, like after an ERROR: Eventify still stops, and the plugins with it.
+    eventify.getKafkaStreams().close();
+    eventify.stop();
+    eventify.stop();
+
+    assertThat(stops).hasValue(1);
+  }
+
+  @Test
+  void aPluginThatFailsToStopDoesNotKeepTheOthersRunning() {
+    AtomicInteger stops = new AtomicInteger();
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "stop-failing-test");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1");
+    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
+
+    Eventify eventify = Eventify.builder()
+        .streamsConfig(properties)
+        .registerHandler(new OrderCommandHandler())
+        .registerPlugin(new EventifyPlugin() {
+          @Override
+          public void onStop(Eventify eventify) {
+            throw new IllegalStateException("fails");
+          }
+        })
+        .registerPlugin(new EventifyPlugin() {
+          @Override
+          public void onStop(Eventify eventify) {
+            stops.incrementAndGet();
+          }
+        })
+        .build();
+    eventify.start();
+    eventify.stop();
+
+    assertThat(stops).hasValue(1);
+  }
+}

@@ -56,6 +56,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -78,6 +79,8 @@ public class Eventify {
   private final List<EventifyPlugin> plugins = new ArrayList<>();
 
   private KafkaStreams kafkaStreams;
+  /** Whether this run is stopped already: {@link #stop()} is called by the application and by the shutdown hook. */
+  private final AtomicBoolean stopped = new AtomicBoolean();
 
   protected Eventify(Properties streamsConfig,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
@@ -220,20 +223,25 @@ public class Eventify {
     }
 
     kafkaStreams = new KafkaStreams(topology, streamsConfig);
+    stopped.set(false);
     setUpListeners();
 
     log.info("Eventify is starting...");
     kafkaStreams.start();
-    plugins.forEach(plugin -> plugin.onStart(this));
+    notifyListeners(plugins, "onStart", plugin -> plugin.onStart(this));
   }
 
+  /**
+   * Closes Kafka Streams and stops the plugins, once. Also after Kafka Streams stopped by itself (e.g. in ERROR): its
+   * resources and the plugins' still need to be released.
+   */
   public void stop() {
-    if (kafkaStreams == null || !kafkaStreams.state().isRunningOrRebalancing()) {
+    if (kafkaStreams == null || !stopped.compareAndSet(false, true)) {
       return;
     }
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofSeconds(60));
-    plugins.forEach(plugin -> plugin.onStop(this));
+    notifyListeners(plugins, "onStop", plugin -> plugin.onStop(this));
     log.info("Eventify shut down complete.");
   }
 
@@ -276,13 +284,13 @@ public class Eventify {
     return plugins.stream().map(listener).filter(Objects::nonNull).toList();
   }
 
-  /** Tells every listener, on the thread Kafka Streams called us on. One that throws is logged and skipped. */
+  /** Tells every listener or plugin, on the calling thread. One that throws is logged and skipped. */
   private static <T> void notifyListeners(List<T> listeners, String hook, Consumer<T> call) {
     listeners.forEach(listener -> {
       try {
         call.accept(listener);
       } catch (Exception e) {
-        log.warn("Plugin listener {} failed in {}", listener.getClass().getName(), hook, e);
+        log.warn("Plugin {} failed in {}", listener.getClass().getName(), hook, e);
       }
     });
   }

@@ -11,13 +11,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RSocketEndpointConfiguration {
 
-  /** WebSocket frames are limited to 64 KB, so larger messages are sent in parts. */
-  private static final int FRAGMENT_SIZE = 16 * 1024;
-
   @Bean
   public NettyRouteProvider rsocketRoute(NodeAcceptor acceptor) {
     var connectionAcceptor = RSocketServer.create(acceptor)
-        .fragment(FRAGMENT_SIZE)
+        .fragment(ConsoleProtocol.FRAGMENT_SIZE)
         .asConnectionAcceptor();
     return routes -> routes.ws(ConsoleProtocol.RSOCKET_PATH, WebsocketRouteTransport.newHandler(connectionAcceptor));
   }

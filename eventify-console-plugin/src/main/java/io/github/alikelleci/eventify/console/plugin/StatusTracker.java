@@ -13,7 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * whether state stores are being restored. Kept here rather than asked for on the spot, because both are only known
  * while they happen.
  */
-public class StatusTracker implements StateListener, StateRestoreListener {
+class StatusTracker implements StateListener, StateRestoreListener {
 
   /** When the state last changed, on this instance's clock. Starts at the moment the application starts. */
   private volatile long stateSince = System.currentTimeMillis();
@@ -22,12 +22,12 @@ public class StatusTracker implements StateListener, StateRestoreListener {
   private final Set<TopicPartition> restoring = ConcurrentHashMap.newKeySet();
 
   /** How long the instance has been in its current state. */
-  public long stateForMs() {
+  long stateForMs() {
     return System.currentTimeMillis() - stateSince;
   }
 
   /** Whether any state store is being restored right now. */
-  public boolean restoring() {
+  boolean restoring() {
     return !restoring.isEmpty();
   }
 

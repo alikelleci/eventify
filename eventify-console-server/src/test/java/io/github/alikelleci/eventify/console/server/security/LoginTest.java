@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.console.server.security;
 
 import com.sun.net.httpserver.HttpServer;
 import io.github.alikelleci.eventify.console.plugin.ConsoleConnector;
-import io.github.alikelleci.eventify.console.plugin.ConsoleRequestHandler.Reply;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
@@ -112,13 +112,13 @@ class LoginTest {
 
   @Test
   void aRetryNeedsTheCsrfToken() {
-    loggedIn().post().uri("/api/apps/orders/aggregates/order-1/commands/order-1@1/retry")
+    loggedIn().post().uri("/api/apps/orders/commands/retry")
         .header("Content-Type", "application/json").bodyValue("{}")
         .exchange()
         .expectStatus().isForbidden();
 
     // With the token it gets past the security checks; no application is connected, so the console can't retry.
-    loggedIn().mutateWith(csrf()).post().uri("/api/apps/orders/aggregates/order-1/commands/order-1@1/retry")
+    loggedIn().mutateWith(csrf()).post().uri("/api/apps/orders/commands/retry")
         .header("Content-Type", "application/json").bodyValue("{}")
         .exchange()
         .expectStatus().isEqualTo(503);

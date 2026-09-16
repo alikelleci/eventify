@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
+import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
@@ -44,29 +45,45 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 
 @Slf4j
-public class EventifyService {
+class EventifyService {
 
   private static final String EVENT_STORE = "event-store";
   private static final String SNAPSHOT_STORE = "snapshot-store";
 
-  public record CommandsPage(List<Command> commands) {}
-  public record EventsPage(List<Event> events, String nextCursor) {}
-  public record EventDetail(Event event, AggregateState state, AggregateState previousState) {}
-  public record CorrelatedEventsPage(List<Event> events) {}
+  record CommandsPage(List<Command> commands) {}
+  record EventsPage(List<Event> events, String nextCursor) {}
+  record EventDetail(Event event, AggregateState state, AggregateState previousState) {}
+  record CorrelatedEventsPage(List<Event> events) {}
 
-  public sealed interface ApiResult<T> {
-    record Ok<T>(T value) implements ApiResult<T> {}
-    record NotFound<T>() implements ApiResult<T> {}
-    /** Another instance owns the aggregate; {@code owner} is its {@code application.server}. */
-    record NotOwner<T>(String owner) implements ApiResult<T> {}
-    record Unavailable<T>(String reason) implements ApiResult<T> {}
+  /** The outcome of a query, as the console is told it, with the answer when it's {@link ReplyHeader.Status#OK}. */
+  record Result<T>(ReplyHeader header, T value) {
+    static <T> Result<T> ok(T value) {
+      return new Result<>(ReplyHeader.ok(), value);
+    }
+
+    static <T> Result<T> notFound() {
+      return new Result<>(ReplyHeader.notFound(), null);
+    }
+
+    /** Another instance owns the aggregate; {@code owner} is its node id. */
+    static <T> Result<T> notOwner(String owner) {
+      return new Result<>(ReplyHeader.notOwner(owner), null);
+    }
+
+    static <T> Result<T> unavailable(String reason) {
+      return new Result<>(ReplyHeader.unavailable(reason), null);
+    }
+
+    boolean isOk() {
+      return header.status() == ReplyHeader.Status.OK;
+    }
   }
 
   private final Eventify eventify;
@@ -75,49 +92,34 @@ public class EventifyService {
   private final ObjectMapper objectMapper;
   private final Producer<String, Command> producer;
 
-
-  public EventifyService(Eventify eventify, StatusTracker statusTracker) {
+  EventifyService(Eventify eventify, StatusTracker statusTracker) {
     this.eventify = eventify;
     this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();
     this.thisHost = hostInfo(eventify);
-
-    if (thisHost.equals(HostInfo.unavailable())) {
-      log.warn("'{}' is not configured, running in single-node mode. Multi-node routing is disabled.",
-          StreamsConfig.APPLICATION_SERVER_CONFIG);
-    }
-
-    String bootstrapServers = eventify.getStreamsConfig().getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
-    Properties producerProps = new Properties();
-    producerProps.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    this.producer = new KafkaProducer<>(producerProps, new StringSerializer(), new JsonSerializer<>(objectMapper));
+    this.producer = new KafkaProducer<>(producerConfig(eventify), new StringSerializer(), new JsonSerializer<>(objectMapper));
   }
 
   /**
    * How this instance is doing: its Kafka Streams state, how long it has been in it, and whether it is restoring.
    * Everything is read from what Kafka Streams already keeps in memory: no calls to Kafka, and not on the stream threads.
    */
-  public ApiResult<InstanceStatus> getStatus() {
+  Result<InstanceStatus> getStatus() {
     KafkaStreams streams = eventify.getKafkaStreams();
     if (streams == null) {
-      return new ApiResult.Unavailable<>("Eventify is not started");
+      return Result.unavailable("Eventify is not started");
     }
 
-    return new ApiResult.Ok<>(new InstanceStatus(streams.state().name(), statusTracker.stateForMs(), statusTracker.restoring()));
+    return Result.ok(new InstanceStatus(streams.state().name(), statusTracker.stateForMs(), statusTracker.restoring()));
   }
 
-  public void close() {
+  void close() {
     producer.close();
   }
 
-  /**
-   * This instance's {@code application.server}, or {@link HostInfo#unavailable()} if it isn't set. Eventify always sets
-   * it; the fallback keeps the service safe when it is used without it.
-   */
+  /** This instance's {@code application.server}, which Eventify always sets. */
   static HostInfo hostInfo(Eventify eventify) {
-    String applicationServer = eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG, "");
-    HostInfo hostInfo = HostInfo.buildFromEndpoint(applicationServer);
-    return hostInfo != null ? hostInfo : HostInfo.unavailable();
+    return HostInfo.buildFromEndpoint(eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG));
   }
 
   /** How instances refer to each other: {@link #hostInfo(Eventify)} as {@code host:port}. */
@@ -125,7 +127,34 @@ public class EventifyService {
     return hostInfo.host() + ":" + hostInfo.port();
   }
 
-  public ApiResult<Void> retryCommand(Command original) {
+  /**
+   * The application's own Kafka client settings (security included, and its {@code producer.} settings), without the
+   * ones Kafka Streams only adds for its exactly-once processing.
+   */
+  static Map<String, Object> producerConfig(Eventify eventify) {
+    Map<String, Object> config = new StreamsConfig(eventify.getStreamsConfig()).getProducerConfigs(clientId(eventify, "producer"));
+    config.remove(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG);
+    config.remove(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG);
+    config.remove(ProducerConfig.LINGER_MS_CONFIG);
+    return config;
+  }
+
+  /** The application's own Kafka client settings (security included, and its {@code consumer.} settings), to read a topic without a group. */
+  static Map<String, Object> consumerConfig(Eventify eventify) {
+    Map<String, Object> config = new StreamsConfig(eventify.getStreamsConfig()).getRestoreConsumerConfigs(clientId(eventify, "commands"));
+    config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+    // Every read seeks to where it starts; this only applies when that offset is no longer there.
+    config.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    config.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
+    config.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 500);
+    return config;
+  }
+
+  private static String clientId(Eventify eventify, String purpose) {
+    return eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-console-" + purpose;
+  }
+
+  Result<Void> retryCommand(Command original) {
     Metadata retryMetadata = Metadata.builder()
         .putAll(original.getMetadata())
         .put("retry", "true")
@@ -147,41 +176,30 @@ public class EventifyService {
       log.info("Retried command {} as {} on topic {}", original.getId(), retryCommand.getId(), commandTopic);
     } catch (Exception e) {
       log.error("Failed to publish retry command for {}", original.getId(), e);
-      return new ApiResult.Unavailable<>("Failed to publish retry command");
+      return Result.unavailable("Failed to publish retry command");
     }
 
-    return new ApiResult.Ok<>(null);
+    return Result.ok(null);
   }
 
   /**
    * Reads the aggregate's commands from the result topics. Every call has its own consumer, so calls never affect each
    * other. When the request is cancelled, only this call's consumer stops, the way Kafka intends: with a wakeup.
    */
-  public ApiResult<CommandsPage> getCommands(String aggregateId, int limit, CancelSignal cancel) {
+  Result<CommandsPage> getCommands(String aggregateId, int limit, CancelSignal cancel) {
     // Eventify writes the result of every handled command to its command topic with .results.
     Set<String> resultTopics = eventify.getCommandTopics().stream()
         .map(topic -> topic.concat(".results"))
         .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {
-      return new ApiResult.Ok<>(new CommandsPage(List.of()));
+      return Result.ok(new CommandsPage(List.of()));
     }
-
-    String bootstrapServers = eventify.getStreamsConfig().getProperty(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG);
-
-    Properties props = new Properties();
-    props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-    props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
-    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
-    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-    props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 500);
 
     List<Command> results = new ArrayList<>();
     JsonDeserializer<Command> commandDeserializer = new JsonDeserializer<>(Command.class, objectMapper);
 
     // Closed in reverse order: the wakeup is unregistered before the consumer closes.
-    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+    try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(consumerConfig(eventify), new StringDeserializer(), new StringDeserializer());
          AutoCloseable stopOnCancel = cancel.onCancel(consumer::wakeup)) {
       for (String topic : resultTopics) {
         try {
@@ -230,19 +248,19 @@ public class EventifyService {
       }
     } catch (WakeupException e) {
       log.debug("Stopped reading commands for aggregate {}: the request was cancelled", aggregateId);
-      return new ApiResult.Unavailable<>("Cancelled");
+      return Result.unavailable("Cancelled");
     } catch (Exception e) {
       log.error("Unexpected error querying commands for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Unexpected error");
+      return Result.unavailable("Unexpected error");
     }
 
     results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
     List<Command> limited = results.size() > limit ? results.subList(0, limit) : results;
-    return new ApiResult.Ok<>(new CommandsPage(limited));
+    return Result.ok(new CommandsPage(limited));
   }
 
-  public ApiResult<CorrelatedEventsPage> getEventsByCorrelation(String aggregateId, String correlationId) {
-    ApiResult<CorrelatedEventsPage> routing = checkRouting(aggregateId);
+  Result<CorrelatedEventsPage> getEventsByCorrelation(String aggregateId, String correlationId) {
+    Result<CorrelatedEventsPage> routing = checkRouting(aggregateId);
     if (routing != null) return routing;
 
     try {
@@ -253,23 +271,23 @@ public class EventifyService {
       try (KeyValueIterator<String, Event> it = store.range(aggregateId + "@", aggregateId + "@~")) {
         while (it.hasNext()) {
           Event event = it.next().value;
-          if (correlationId.equals(event.getMetadata().get("$correlationId"))) {
+          if (correlationId.equals(event.getMetadata().get(CORRELATION_ID))) {
             events.add(event);
           }
         }
       }
-      return new ApiResult.Ok<>(new CorrelatedEventsPage(events));
+      return Result.ok(new CorrelatedEventsPage(events));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Event store not ready");
+      return Result.unavailable("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying correlated events for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Unexpected error");
+      return Result.unavailable("Unexpected error");
     }
   }
 
-  public ApiResult<EventsPage> getEvents(String aggregateId, String cursor, int limit) {
-    ApiResult<EventsPage> routing = checkRouting(aggregateId);
+  Result<EventsPage> getEvents(String aggregateId, String cursor, int limit) {
+    Result<EventsPage> routing = checkRouting(aggregateId);
     if (routing != null) {
       return routing;
     }
@@ -294,18 +312,18 @@ public class EventifyService {
         nextCursor = extra.getId().substring(aggregateId.length() + 1);
       }
 
-      return new ApiResult.Ok<>(new EventsPage(events, nextCursor));
+      return Result.ok(new EventsPage(events, nextCursor));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Event store not ready");
+      return Result.unavailable("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying events for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Unexpected error");
+      return Result.unavailable("Unexpected error");
     }
   }
 
-  public ApiResult<EventDetail> getEventDetail(String aggregateId, String eventId) {
-    ApiResult<EventDetail> routing = checkRouting(aggregateId);
+  Result<EventDetail> getEventDetail(String aggregateId, String eventId) {
+    Result<EventDetail> routing = checkRouting(aggregateId);
     if (routing != null) {
       return routing;
     }
@@ -320,9 +338,9 @@ public class EventifyService {
       if (targetEvent == null) {
         if (!isLocallyAuthoritative(aggregateId)) {
           log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
-          return new ApiResult.Unavailable<>("Ownership changed during query");
+          return Result.unavailable("Ownership changed during query");
         }
-        return new ApiResult.NotFound<>();
+        return Result.notFound();
       }
 
       String from = aggregateId + "@";
@@ -372,18 +390,18 @@ public class EventifyService {
           .version(previousVersion)
           .build();
 
-      return new ApiResult.Ok<>(new EventDetail(targetEvent, currentState, previousStateResult));
+      return Result.ok(new EventDetail(targetEvent, currentState, previousStateResult));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Event store not ready");
+      return Result.unavailable("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying event detail for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Unexpected error");
+      return Result.unavailable("Unexpected error");
     }
   }
 
-  public ApiResult<AggregateState> getState(String aggregateId, String eventId) {
-    ApiResult<AggregateState> routing = checkRouting(aggregateId);
+  Result<AggregateState> getState(String aggregateId, String eventId) {
+    Result<AggregateState> routing = checkRouting(aggregateId);
     if (routing != null) {
       return routing;
     }
@@ -421,9 +439,9 @@ public class EventifyService {
       if (state == null) {
         if (!isLocallyAuthoritative(aggregateId)) {
           log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
-          return new ApiResult.Unavailable<>("Ownership changed during query");
+          return Result.unavailable("Ownership changed during query");
         }
-        return new ApiResult.NotFound<>();
+        return Result.notFound();
       }
 
       state = AggregateState.builder()
@@ -434,13 +452,13 @@ public class EventifyService {
           .version(version)
           .build();
 
-      return new ApiResult.Ok<>(state);
+      return Result.ok(state);
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Event store not ready");
+      return Result.unavailable("Event store not ready");
     } catch (Exception e) {
       log.error("Unexpected error querying state for aggregate {}", aggregateId, e);
-      return new ApiResult.Unavailable<>("Unexpected error");
+      return Result.unavailable("Unexpected error");
     }
   }
 
@@ -448,22 +466,18 @@ public class EventifyService {
    * Returns {@code null} when this instance can answer for the aggregate, or the reason it can't: Kafka Streams isn't
    * running, or another instance owns the aggregate. The console then asks that instance instead.
    */
-  private <T> ApiResult<T> checkRouting(String aggregateId) {
+  private <T> Result<T> checkRouting(String aggregateId) {
     KafkaStreams streams = eventify.getKafkaStreams();
 
     if (streams == null || streams.state() != KafkaStreams.State.RUNNING) {
       log.debug("Kafka Streams is not running");
-      return new ApiResult.Unavailable<>("Kafka Streams is not running");
-    }
-
-    if (thisHost.equals(HostInfo.unavailable())) {
-      return null;
+      return Result.unavailable("Kafka Streams is not running");
     }
 
     KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
     if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
       log.warn("Metadata unavailable for aggregate {}", aggregateId);
-      return new ApiResult.Unavailable<>("Metadata unavailable");
+      return Result.unavailable("Metadata unavailable");
     }
 
     HostInfo activeHost = metadata.activeHost();
@@ -471,16 +485,13 @@ public class EventifyService {
       return null;
     }
 
-    return new ApiResult.NotOwner<>(nodeId(activeHost));
+    return Result.notOwner(nodeId(activeHost));
   }
 
   private boolean isLocallyAuthoritative(String aggregateId) {
     KafkaStreams streams = eventify.getKafkaStreams();
     if (streams.state() != KafkaStreams.State.RUNNING) {
       return false;
-    }
-    if (thisHost.equals(HostInfo.unavailable())) {
-      return true;
     }
     KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
     return metadata != null && thisHost.equals(metadata.activeHost());

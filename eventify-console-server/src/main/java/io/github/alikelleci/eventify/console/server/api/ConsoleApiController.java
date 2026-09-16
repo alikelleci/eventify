@@ -1,9 +1,9 @@
 package io.github.alikelleci.eventify.console.server.api;
 
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.Route;
 import io.github.alikelleci.eventify.console.server.node.NodeGateway;
-import io.github.alikelleci.eventify.console.server.node.Reply;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,7 +20,7 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
 
-/** Queries about one aggregate: every one of them is answered by an instance of the application it belongs to. */
+/** Queries about the aggregates of an application, and commands to retry: answered by an instance of the application. */
 @RestController
 @RequestMapping("/api/apps")
 @RequiredArgsConstructor
@@ -33,42 +33,42 @@ public class ConsoleApiController {
   public Mono<ResponseEntity<byte[]>> events(@PathVariable String app, @PathVariable String aggregateId,
                                              @RequestParam(required = false) String cursor,
                                              @RequestParam(required = false) Integer limit) {
-    return send(app, Route.EVENTS, aggregateId, new Requests.Events(aggregateId, cursor, limit));
+    return toOwner(app, Route.EVENTS, aggregateId, new Requests.Events(aggregateId, cursor, limit));
   }
 
   @GetMapping("/{app}/aggregates/{aggregateId}/events/{eventId}")
   public Mono<ResponseEntity<byte[]>> eventDetail(@PathVariable String app, @PathVariable String aggregateId,
                                                   @PathVariable String eventId) {
-    return send(app, Route.EVENT_DETAIL, aggregateId, new Requests.EventDetail(aggregateId, eventId));
+    return toOwner(app, Route.EVENT_DETAIL, aggregateId, new Requests.EventDetail(aggregateId, eventId));
   }
 
   @GetMapping("/{app}/aggregates/{aggregateId}/events/by-correlation/{correlationId}")
   public Mono<ResponseEntity<byte[]>> eventsByCorrelation(@PathVariable String app, @PathVariable String aggregateId,
                                                           @PathVariable String correlationId) {
-    return send(app, Route.EVENTS_BY_CORRELATION, aggregateId, new Requests.EventsByCorrelation(aggregateId, correlationId));
+    return toOwner(app, Route.EVENTS_BY_CORRELATION, aggregateId, new Requests.EventsByCorrelation(aggregateId, correlationId));
   }
 
   @GetMapping("/{app}/aggregates/{aggregateId}/state")
   public Mono<ResponseEntity<byte[]>> state(@PathVariable String app, @PathVariable String aggregateId,
                                             @RequestParam(required = false) String eventId) {
-    return send(app, Route.STATE, aggregateId, new Requests.State(aggregateId, eventId));
+    return toOwner(app, Route.STATE, aggregateId, new Requests.State(aggregateId, eventId));
   }
 
   @GetMapping("/{app}/aggregates/{aggregateId}/commands")
   public Mono<ResponseEntity<byte[]>> commands(@PathVariable String app, @PathVariable String aggregateId,
                                                @RequestParam(required = false) Integer limit) {
-    return send(app, Route.COMMANDS, aggregateId, new Requests.Commands(aggregateId, limit));
+    return gateway.sendToAny(app, Route.COMMANDS, jsonMapper.writeValueAsBytes(new Requests.Commands(aggregateId, limit)))
+        .map(ConsoleApiController::toResponse);
   }
 
   /** The body is the command as the UI received it; the console passes it on without reading it. */
-  @PostMapping("/{app}/aggregates/{aggregateId}/commands/{commandId}/retry")
-  public Mono<ResponseEntity<byte[]>> retryCommand(@PathVariable String app, @PathVariable String aggregateId,
-                                                   @RequestBody byte[] command) {
-    return gateway.send(app, Route.RETRY_COMMAND, aggregateId, command).map(ConsoleApiController::toResponse);
+  @PostMapping("/{app}/commands/retry")
+  public Mono<ResponseEntity<byte[]>> retryCommand(@PathVariable String app, @RequestBody byte[] command) {
+    return gateway.sendToAny(app, Route.RETRY_COMMAND, command).map(ConsoleApiController::toResponse);
   }
 
-  private Mono<ResponseEntity<byte[]>> send(String app, Route route, String aggregateId, Object request) {
-    return gateway.send(app, route, aggregateId, jsonMapper.writeValueAsBytes(request))
+  private Mono<ResponseEntity<byte[]>> toOwner(String app, Route route, String aggregateId, Object request) {
+    return gateway.sendToOwner(app, route, aggregateId, jsonMapper.writeValueAsBytes(request))
         .map(ConsoleApiController::toResponse);
   }
 

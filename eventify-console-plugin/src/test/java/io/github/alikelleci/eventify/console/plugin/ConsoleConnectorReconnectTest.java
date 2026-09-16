@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console.plugin;
 
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.rsocket.RSocket;
 import io.rsocket.SocketAcceptor;
@@ -45,7 +46,7 @@ class ConsoleConnectorReconnectTest {
 
     NodeInfo info = new NodeInfo("reconnect-test", "reconnect-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
-        (route, data, cancel) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
+        (route, data, cancel) -> Reply.of(ReplyHeader.ok()));
     connector.start();
     await().atMost(Duration.ofSeconds(10)).until(() -> connector.isConnected() && setups.get() == 1);
 
@@ -69,7 +70,7 @@ class ConsoleConnectorReconnectTest {
 
     NodeInfo info = new NodeInfo("reject-test", "reject-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
-        (route, data, cancel) -> ConsoleRequestHandler.Reply.of(ReplyHeader.ok()));
+        (route, data, cancel) -> Reply.of(ReplyHeader.ok()));
     connector.start();
 
     // One attempt, then the next one only after the long delay: not a new connection every second.

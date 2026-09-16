@@ -1,9 +1,12 @@
 package io.github.alikelleci.eventify.console.plugin;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
+import io.github.alikelleci.eventify.console.protocol.RequestHeader;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
 import io.rsocket.SocketAcceptor;
@@ -57,15 +60,15 @@ public class ConsoleConnector {
   static final int MAX_RUNNING_QUERIES = 4;
   static final int MAX_WAITING_QUERIES = 100;
 
-  /** WebSocket frames are limited to 64 KB, so larger replies (a page of events) are sent in parts. */
-  static final int FRAGMENT_SIZE = 16 * 1024;
-
   private final URI uri;
   private final String token;
   private final NodeInfo nodeInfo;
   private final Handler handler;
-  private final ObjectMapper protocolMapper = new ObjectMapper();
-  private final ThreadPoolExecutor executor = queryExecutor();
+  private final ObjectMapper protocolMapper = new ObjectMapper()
+      .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+  /** Created on every start, because a stopped executor can't run anything again. */
+  private volatile ThreadPoolExecutor executor;
 
   private volatile boolean running;
   private volatile Disposable connecting;
@@ -88,6 +91,7 @@ public class ConsoleConnector {
   }
 
   public void start() {
+    executor = queryExecutor();
     running = true;
     connect(Duration.ZERO);
   }
@@ -120,7 +124,7 @@ public class ConsoleConnector {
         .dataMimeType(ConsoleProtocol.DATA_MIME_TYPE)
         .metadataMimeType(ConsoleProtocol.METADATA_MIME_TYPE)
         .keepAlive(KEEPALIVE_INTERVAL, KEEPALIVE_MAX_LIFETIME)
-        .fragment(FRAGMENT_SIZE)
+        .fragment(ConsoleProtocol.FRAGMENT_SIZE)
         .acceptor(SocketAcceptor.forRequestResponse(this::handle))
         .connect(WebsocketClientTransport.create(uri))
         .retryWhen(Retry.backoff(Long.MAX_VALUE, MIN_BACKOFF)
@@ -187,7 +191,7 @@ public class ConsoleConnector {
     String route;
     byte[] data;
     try {
-      route = request.getMetadataUtf8();
+      route = route(request.getMetadata());
       data = toBytes(request.getData());
     } finally {
       request.release();
@@ -197,6 +201,7 @@ public class ConsoleConnector {
     // signal: a query that hasn't started is skipped, a running one can stop cleanly (see EventifyService.getCommands).
     // The thread is never interrupted: that would break a Kafka consumer halfway a poll or close.
     CancelSignal cancel = new CancelSignal();
+    ThreadPoolExecutor executor = this.executor;
     return Mono.defer(() -> Mono.fromFuture(CompletableFuture.supplyAsync(() -> {
           if (cancel.isCancelled()) {
             return null;
@@ -219,7 +224,7 @@ public class ConsoleConnector {
             log.warn("Failed to handle console request for route {}", route, cause);
             reason = "Unexpected error";
           }
-          return Mono.fromCallable(() -> toPayload(ConsoleRequestHandler.Reply.of(ReplyHeader.unavailable(reason))));
+          return Mono.fromCallable(() -> toPayload(Reply.of(ReplyHeader.unavailable(reason))));
         });
   }
 
@@ -227,11 +232,11 @@ public class ConsoleConnector {
   @FunctionalInterface
   public interface Handler {
     /**
-     * @param route  the route name
+     * @param route  the route name, or {@code null} when the request header couldn't be read
      * @param data   the request data
      * @param cancel tells when the console no longer waits for the answer
      */
-    ConsoleRequestHandler.Reply handle(String route, byte[] data, CancelSignal cancel);
+    Reply handle(String route, byte[] data, CancelSignal cancel);
   }
 
   /** Runs the queries: they read state stores and Kafka topics, see {@link #MAX_RUNNING_QUERIES}. */
@@ -247,7 +252,16 @@ public class ConsoleConnector {
     return executor;
   }
 
-  private Payload toPayload(ConsoleRequestHandler.Reply reply) throws Exception {
+  /** The route name from the request header; {@code null} when it can't be read, which the handler answers as a bad request. */
+  private String route(ByteBuffer metadata) {
+    try {
+      return protocolMapper.readValue(toBytes(metadata), RequestHeader.class).route();
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private Payload toPayload(Reply reply) throws Exception {
     return DefaultPayload.create(reply.body(), protocolMapper.writeValueAsBytes(reply.header()));
   }
 

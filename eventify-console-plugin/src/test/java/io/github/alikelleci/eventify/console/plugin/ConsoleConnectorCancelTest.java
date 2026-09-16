@@ -1,8 +1,11 @@
 package io.github.alikelleci.eventify.console.plugin;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
+import io.github.alikelleci.eventify.console.protocol.RequestHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
 import io.rsocket.Payload;
 import io.rsocket.RSocket;
@@ -62,7 +65,7 @@ class ConsoleConnectorCancelTest {
       } catch (InterruptedException e) {
         outcomes.put(name, "interrupted");
       }
-      return new ConsoleRequestHandler.Reply(ReplyHeader.ok(), name.getBytes(StandardCharsets.UTF_8));
+      return new Reply(ReplyHeader.ok(), name.getBytes(StandardCharsets.UTF_8));
     });
     connector.start();
     await().atMost(Duration.ofSeconds(10)).until(() -> connector.isConnected());
@@ -99,6 +102,14 @@ class ConsoleConnectorCancelTest {
 
   private Mono<Payload> send(String name) {
     return application.get().requestResponse(DefaultPayload.create(
-        name.getBytes(StandardCharsets.UTF_8), Route.COMMANDS.name().getBytes(StandardCharsets.UTF_8)));
+        name.getBytes(StandardCharsets.UTF_8), requestHeader(Route.COMMANDS)));
+  }
+
+  static byte[] requestHeader(Route route) {
+    try {
+      return new ObjectMapper().writeValueAsBytes(RequestHeader.of(route));
+    } catch (Exception e) {
+      throw new IllegalStateException(e);
+    }
   }
 }

@@ -96,7 +96,7 @@ export class CommandDetailComponent {
     // Like the skeletons: "Retrying…" stays at least MIN_LOADING_MS, so a fast response doesn't make the button flicker.
     const startedAt = Date.now();
     this.retrying.set(true);
-    this.svc.retryCommand(cmd.aggregateId, cmd.id, cmd).pipe(
+    this.svc.retryCommand(cmd).pipe(
       takeUntilDestroyed(this.destroyRef),
       catchError(err => {
         afterMinLoading(startedAt, () => {

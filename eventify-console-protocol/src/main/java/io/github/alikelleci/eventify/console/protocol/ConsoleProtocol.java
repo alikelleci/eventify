@@ -7,7 +7,7 @@ package io.github.alikelleci.eventify.console.protocol;
  * {@link NodeInfo} as the setup data, and the console's application token as the setup metadata (UTF-8 text, empty
  * without a token). From then on the console sends requests to the application:
  * <ul>
- *   <li>request metadata: the {@link Route} name, as UTF-8 text</li>
+ *   <li>request metadata: the JSON of a {@link RequestHeader}</li>
  *   <li>request data: the JSON of the route's request (see {@link Route})</li>
  *   <li>response metadata: the JSON of a {@link ReplyHeader}</li>
  *   <li>response data: the JSON body, only when the status is {@link ReplyHeader.Status#OK}</li>
@@ -22,7 +22,10 @@ public final class ConsoleProtocol {
   public static final String RSOCKET_PATH = "/rsocket";
 
   public static final String DATA_MIME_TYPE = "application/json";
-  public static final String METADATA_MIME_TYPE = "text/plain";
+  public static final String METADATA_MIME_TYPE = "application/json";
+
+  /** WebSocket frames are limited to 64 KB, so both sides send larger messages (a page of events) in parts of this size. */
+  public static final int FRAGMENT_SIZE = 16 * 1024;
 
   private ConsoleProtocol() {
   }

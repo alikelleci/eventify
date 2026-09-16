@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.console.server;
 
 import io.github.alikelleci.eventify.console.plugin.ConsoleConnector;
-import io.github.alikelleci.eventify.console.plugin.ConsoleRequestHandler.Reply;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
@@ -112,7 +112,7 @@ class ConsoleServerTest {
     awaitInstances("retry", 1);
 
     String command = "{\"id\":\"order-1@1\",\"payload\":{\"@class\":\"com.example.PlaceOrder\"}}";
-    client.post().uri("/api/apps/retry/aggregates/order-1/commands/order-1@1/retry")
+    client.post().uri("/api/apps/retry/commands/retry")
         .header("Content-Type", "application/json")
         .bodyValue(command)
         .exchange()

@@ -1,34 +1,48 @@
 package io.github.alikelleci.eventify.console.protocol;
 
-/** The requests the console sends to an application, with the JSON each one carries. */
+/**
+ * The requests the console sends to an application, with the JSON each one carries.
+ *
+ * <p>A route that answers with a list answers an empty list when there is nothing, e.g. for an aggregate without
+ * events. A route that answers with one thing answers {@link ReplyHeader.Status#NOT_FOUND} when it isn't there.
+ */
 public enum Route {
 
   /** {@link Requests.Events} */
-  EVENTS(true),
+  EVENTS(Target.OWNER),
   /** {@link Requests.EventDetail} */
-  EVENT_DETAIL(true),
+  EVENT_DETAIL(Target.OWNER),
   /** {@link Requests.EventsByCorrelation} */
-  EVENTS_BY_CORRELATION(true),
+  EVENTS_BY_CORRELATION(Target.OWNER),
   /** {@link Requests.State} */
-  STATE(true),
+  STATE(Target.OWNER),
   /** {@link Requests.Commands} */
-  COMMANDS(false),
+  COMMANDS(Target.ANY),
   /** The command to retry, as JSON. */
-  RETRY_COMMAND(false),
-  /** No request data; answered with {@link InstanceStatus}. Every instance answers for itself. */
-  STATUS(false);
+  RETRY_COMMAND(Target.ANY),
+  /** No request data; answered with {@link InstanceStatus}. */
+  STATUS(Target.INSTANCE);
 
-  private final boolean ownerRouted;
-
-  Route(boolean ownerRouted) {
-    this.ownerRouted = ownerRouted;
+  /** Which instance of the application a request goes to. */
+  public enum Target {
+    /**
+     * The instance that owns the aggregate: it reads the local state store. An instance that doesn't own it replies
+     * {@link ReplyHeader.Status#NOT_OWNER}.
+     */
+    OWNER,
+    /** Any one instance: they all give the same answer. */
+    ANY,
+    /** One chosen instance, which answers about itself. */
+    INSTANCE
   }
 
-  /**
-   * Whether only the instance that owns the aggregate can answer (it reads the local state store). An instance that
-   * doesn't own it replies {@link ReplyHeader.Status#NOT_OWNER}. Other routes can be answered by any one instance.
-   */
-  public boolean ownerRouted() {
-    return ownerRouted;
+  private final Target target;
+
+  Route(Target target) {
+    this.target = target;
+  }
+
+  public Target target() {
+    return target;
   }
 }

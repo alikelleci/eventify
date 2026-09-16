@@ -26,7 +26,7 @@ public class ApplicationsController {
   public Mono<List<ApplicationView>> applications() {
     return Flux.fromIterable(registry.nodes().stream().collect(Collectors.groupingBy(ConnectedNode::applicationId)).entrySet())
         .flatMap(entry -> Flux.fromIterable(entry.getValue())
-            .flatMapSequential(node -> statuses.of(node).map(status ->
+            .flatMap(node -> statuses.of(node).map(status ->
                 new ApplicationView.NodeView(node.nodeId(), node.info().hostname(), node.info().version(), node.connectedAt(), status.orElse(null))))
             .collectSortedList(Comparator.comparing(ApplicationView.NodeView::nodeId))
             .map(nodes -> new ApplicationView(entry.getKey(), nodes)))

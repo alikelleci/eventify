@@ -1,7 +1,8 @@
 # The Eventify Console: one jar with the server and the UI.
 # Build from the repository root: docker build -f eventify-console-server/Dockerfile -t eventify-console .
 
-# 1. The jar; the Maven build also builds the UI (frontend/) into it. -am builds the protocol module it depends on.
+# 1. The jar; the Maven build also builds the UI (frontend/) into it. -am also builds the modules it depends on: the
+#    protocol, and the plugin and core its tests use.
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY . .

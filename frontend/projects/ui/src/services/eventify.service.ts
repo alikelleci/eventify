@@ -28,7 +28,7 @@ export class EventifyService {
     return this.http.get<CommandsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/commands`, { params });
   }
 
-  retryCommand(aggregateId: string, commandId: string, command: CommandMessage): Observable<void> {
-    return this.http.post<void>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/commands/${encodeURIComponent(commandId)}/retry`, command);
+  retryCommand(command: CommandMessage): Observable<void> {
+    return this.http.post<void>(`${this.backend.baseUrl()}/commands/retry`, command);
   }
 }

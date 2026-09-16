@@ -28,11 +28,32 @@ public record ConsoleProperties(
                      @DefaultValue({"openid", "profile", "email"}) List<String> scopes) {
   }
 
-  public boolean appTokenRequired() {
-    return appToken != null && !appToken.isBlank();
+  public ConsoleProperties {
+    // Checked when the console starts, not when the first person logs in.
+    if (loginEnabled(oidc)) {
+      if (isBlank(oidc.clientId())) {
+        throw new IllegalArgumentException("eventify.console.oidc.client-id (EVENTIFY_CONSOLE_OIDC_CLIENTID) is required when login is enabled");
+      }
+      if (isBlank(oidc.clientSecret())) {
+        throw new IllegalArgumentException("eventify.console.oidc.client-secret (EVENTIFY_CONSOLE_OIDC_CLIENTSECRET) is required when login is enabled");
+      }
+    }
   }
 
+  public boolean appTokenRequired() {
+    return !isBlank(appToken);
+  }
+
+  /** Login is enabled by an issuer; an empty one (e.g. an empty environment variable) is none. */
   public boolean loginEnabled() {
-    return oidc != null && oidc.issuerUri() != null && !oidc.issuerUri().isBlank();
+    return loginEnabled(oidc);
+  }
+
+  private static boolean loginEnabled(Oidc oidc) {
+    return oidc != null && !isBlank(oidc.issuerUri());
+  }
+
+  private static boolean isBlank(String value) {
+    return value == null || value.isBlank();
   }
 }

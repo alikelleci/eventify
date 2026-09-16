@@ -2,7 +2,9 @@ package io.github.alikelleci.eventify.console.server.node;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
+import io.github.alikelleci.eventify.console.protocol.RequestHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
 import io.github.alikelleci.eventify.console.server.ConsoleProperties;
 import io.rsocket.Payload;
@@ -13,11 +15,10 @@ import reactor.core.publisher.Mono;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 /**
- * Sends a request to an instance of an application.
+ * Sends a request to an instance of an application, to the one its {@link Route.Target} says.
  *
  * <p>Queries about an aggregate can only be answered by the instance that owns it. The console doesn't know which one
  * that is, but every instance does (Kafka Streams tells them): the first instance asked either answers, or replies
@@ -46,12 +47,9 @@ public class NodeGateway {
     this.requestTimeout = properties.requestTimeout();
   }
 
-  public Mono<Reply> send(String applicationId, Route route, String aggregateId, byte[] data) {
-    if (!route.ownerRouted()) {
-      ConnectedNode node = registry.nextNode(applicationId);
-      return node == null ? Mono.just(notConnected(applicationId)) : request(node, route, data);
-    }
-
+  /** To the instance that owns the aggregate, for {@link Route.Target#OWNER} routes. */
+  public Mono<Reply> sendToOwner(String applicationId, Route route, String aggregateId, byte[] data) {
+    requireTarget(route, Route.Target.OWNER);
     OwnerKey key = new OwnerKey(applicationId, aggregateId);
     ConnectedNode first = nodeOf(applicationId, owners.getIfPresent(key));
     if (first == null) {
@@ -100,13 +98,27 @@ public class NodeGateway {
     return node != null && node.applicationId().equals(applicationId) ? node : null;
   }
 
-  /** Asks one instance directly, for requests that are about the instance itself (e.g. {@link Route#STATUS}). */
+  /** To one of the application's instances, a different one each time, for {@link Route.Target#ANY} routes. */
+  public Mono<Reply> sendToAny(String applicationId, Route route, byte[] data) {
+    requireTarget(route, Route.Target.ANY);
+    ConnectedNode node = registry.nextNode(applicationId);
+    return node == null ? Mono.just(notConnected(applicationId)) : request(node, route, data);
+  }
+
+  /** To this instance, for {@link Route.Target#INSTANCE} routes: requests about the instance itself. */
   public Mono<Reply> sendTo(ConnectedNode node, Route route, byte[] data) {
+    requireTarget(route, Route.Target.INSTANCE);
     return request(node, route, data);
   }
 
+  private static void requireTarget(Route route, Route.Target target) {
+    if (route.target() != target) {
+      throw new IllegalArgumentException("Route " + route + " goes to " + route.target() + ", not " + target);
+    }
+  }
+
   private Mono<Reply> request(ConnectedNode node, Route route, byte[] data) {
-    Payload request = DefaultPayload.create(data, route.name().getBytes(StandardCharsets.UTF_8));
+    Payload request = DefaultPayload.create(data, jsonMapper.writeValueAsBytes(RequestHeader.of(route)));
     return node.rsocket().requestResponse(request)
         .timeout(requestTimeout)
         .map(this::toReply)

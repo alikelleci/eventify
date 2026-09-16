@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.console.plugin;
 
-import io.github.alikelleci.eventify.console.plugin.EventifyService.ApiResult;
+import io.github.alikelleci.eventify.console.plugin.EventifyService.Result;
 import io.github.alikelleci.eventify.console.plugin.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.plugin.item.ItemHandler;
 import io.github.alikelleci.eventify.core.Eventify;
@@ -96,18 +96,18 @@ class EventifyServiceRoutingIT {
     try {
       for (String id : aggregateIds) {
         await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
-          ApiResult<EventifyService.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
-          ApiResult<EventifyService.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
+          Result<EventifyService.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
+          Result<EventifyService.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
 
           // Exactly one answers with the event; the other names it as the owner.
-          if (fromFirst instanceof ApiResult.Ok<EventifyService.EventsPage> ok) {
-            assertThat(ok.value().events()).hasSize(1);
-            assertThat(fromSecond).isEqualTo(new ApiResult.NotOwner<>(firstId));
+          if (fromFirst.isOk()) {
+            assertThat(fromFirst.value().events()).hasSize(1);
+            assertThat(fromSecond).isEqualTo(Result.notOwner(firstId));
             owners.add(firstId);
           } else {
-            assertThat(fromSecond).isInstanceOf(ApiResult.Ok.class);
-            assertThat(((ApiResult.Ok<EventifyService.EventsPage>) fromSecond).value().events()).hasSize(1);
-            assertThat(fromFirst).isEqualTo(new ApiResult.NotOwner<>(secondId));
+            assertThat(fromSecond.isOk()).isTrue();
+            assertThat(fromSecond.value().events()).hasSize(1);
+            assertThat(fromFirst).isEqualTo(Result.notOwner(secondId));
             owners.add(secondId);
           }
         });
@@ -137,13 +137,13 @@ class EventifyServiceRoutingIT {
     EventifyService service = new EventifyService(first, new StatusTracker());
     try {
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() ->
-          assertThat(service.getCommands(id, 50, new CancelSignal()))
-              .isInstanceOfSatisfying(ApiResult.Ok.class, ok -> assertThat(((EventifyService.CommandsPage) ok.value()).commands()).isNotEmpty()));
+          assertThat(service.getCommands(id, 50, new CancelSignal()).value())
+              .satisfies(page -> assertThat(page.commands()).isNotEmpty()));
 
       // Someone refreshed the page: the read stops instead of reading the topic.
       CancelSignal refreshed = new CancelSignal();
       refreshed.cancel();
-      assertThat(service.getCommands(id, 50, refreshed)).isEqualTo(new ApiResult.Unavailable<>("Cancelled"));
+      assertThat(service.getCommands(id, 50, refreshed)).isEqualTo(Result.unavailable("Cancelled"));
     } finally {
       service.close();
     }

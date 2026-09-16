@@ -69,7 +69,7 @@ export class EventListComponent implements OnInit {
     this.svc.getEvents(this.aggregateId(), cursor).pipe(
       takeUntilDestroyed(this.destroyRef),
       catchError(err => {
-        this.messageService.add({ severity: 'error', summary: 'Error', detail: err.status === 404 ? 'Aggregate not found.' : errorDetail(err, 'Failed to load events.') });
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load events.') });
         if (firstPage) this.loaded.emit([]);
         flag.set(false);
         return EMPTY;

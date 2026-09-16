@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.console.plugin;
 
-import io.github.alikelleci.eventify.console.plugin.EventifyService.ApiResult;
+import io.github.alikelleci.eventify.console.plugin.EventifyService.Result;
 import io.github.alikelleci.eventify.console.plugin.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.plugin.item.ItemHandler;
 import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
@@ -104,14 +104,14 @@ class StatusIT {
   }
 
   private InstanceStatus status() {
-    ApiResult<InstanceStatus> result = service.getStatus();
-    assertThat(result).isInstanceOf(ApiResult.Ok.class);
-    return ((ApiResult.Ok<InstanceStatus>) result).value();
+    Result<InstanceStatus> result = service.getStatus();
+    assertThat(result.isOk()).isTrue();
+    return result.value();
   }
 
   private boolean hasEvents(String aggregateId) {
-    return service.getEvents(aggregateId, null, 1) instanceof ApiResult.Ok<EventifyService.EventsPage> ok
-        && !ok.value().events().isEmpty();
+    Result<EventifyService.EventsPage> result = service.getEvents(aggregateId, null, 1);
+    return result.isOk() && !result.value().events().isEmpty();
   }
 
   private void awaitRunning() {

@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console.plugin;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.Route;
@@ -12,17 +13,10 @@ import java.io.IOException;
 
 /** Answers the console's requests with {@link EventifyService}. Blocking: call it off the network threads. */
 @Slf4j
-public class ConsoleRequestHandler {
+class ConsoleRequestHandler {
 
-  public static final int DEFAULT_PAGE_SIZE = 50;
-  public static final int MAX_PAGE_SIZE = 500;
-
-  /** The reply to a request: the outcome, and the JSON body when it's {@link ReplyHeader.Status#OK}. */
-  public record Reply(ReplyHeader header, byte[] body) {
-    static Reply of(ReplyHeader header) {
-      return new Reply(header, new byte[0]);
-    }
-  }
+  static final int DEFAULT_PAGE_SIZE = 50;
+  static final int MAX_PAGE_SIZE = 500;
 
   private final EventifyService service;
   /** Eventify's own mapper, for the events and commands: the console shows them as the application writes them. */
@@ -31,15 +25,15 @@ public class ConsoleRequestHandler {
   private final ObjectMapper protocolMapper = new ObjectMapper()
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-  public ConsoleRequestHandler(EventifyService service, ObjectMapper eventifyMapper) {
+  ConsoleRequestHandler(EventifyService service, ObjectMapper eventifyMapper) {
     this.service = service;
     this.eventifyMapper = eventifyMapper;
   }
 
-  public Reply handle(String routeName, byte[] data, CancelSignal cancel) {
+  Reply handle(String routeName, byte[] data, CancelSignal cancel) {
     Route route;
     try {
-      route = Route.valueOf(routeName);
+      route = Route.valueOf(String.valueOf(routeName));
     } catch (IllegalArgumentException e) {
       return Reply.of(ReplyHeader.badRequest("Unknown route: " + routeName));
     }
@@ -92,18 +86,12 @@ public class ConsoleRequestHandler {
     return aggregateId;
   }
 
-  private Reply toReply(EventifyService.ApiResult<?> result) throws IOException {
-    if (result instanceof EventifyService.ApiResult.Ok<?> ok) {
-      byte[] body = ok.value() == null ? new byte[0] : eventifyMapper.writeValueAsBytes(ok.value());
-      return new Reply(ReplyHeader.ok(), body);
-    } else if (result instanceof EventifyService.ApiResult.NotFound<?>) {
-      return Reply.of(ReplyHeader.notFound());
-    } else if (result instanceof EventifyService.ApiResult.NotOwner<?> notOwner) {
-      return Reply.of(ReplyHeader.notOwner(notOwner.owner()));
-    } else if (result instanceof EventifyService.ApiResult.Unavailable<?> unavailable) {
-      return Reply.of(ReplyHeader.unavailable(unavailable.reason()));
+  /** The header as it is; the answer as JSON, only when there is one. */
+  private Reply toReply(EventifyService.Result<?> result) throws IOException {
+    if (!result.isOk() || result.value() == null) {
+      return Reply.of(result.header());
     }
-    throw new IllegalStateException("Unknown result: " + result);
+    return new Reply(result.header(), eventifyMapper.writeValueAsBytes(result.value()));
   }
 
   private static int clampLimit(Integer limit, int defaultValue) {

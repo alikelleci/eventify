@@ -6,11 +6,12 @@ server:
   # Behind a proxy that terminates TLS, the login redirects must use the address the browser used.
   forward-headers-strategy: framework
 
-eventify:
-  console:
-    request-timeout: 60s
-    # app-token:            the secret applications send when they connect (EVENTIFY_CONSOLE_APPTOKEN)
-    # oidc:
-    #   issuer-uri:         the identity provider (EVENTIFY_CONSOLE_OIDC_ISSUERURI)
-    #   client-id:          (EVENTIFY_CONSOLE_OIDC_CLIENTID)
-    #   client-secret:      (EVENTIFY_CONSOLE_OIDC_CLIENTSECRET)
+# The console's own settings, with their defaults in ConsoleProperties:
+# eventify:
+#   console:
+#     request-timeout: 60s    how long to wait for an application to answer (EVENTIFY_CONSOLE_REQUESTTIMEOUT)
+#     app-token:              the secret applications send when they connect (EVENTIFY_CONSOLE_APPTOKEN)
+#     oidc:
+#       issuer-uri:           the identity provider (EVENTIFY_CONSOLE_OIDC_ISSUERURI)
+#       client-id:            (EVENTIFY_CONSOLE_OIDC_CLIENTID)
+#       client-secret:        (EVENTIFY_CONSOLE_OIDC_CLIENTSECRET)

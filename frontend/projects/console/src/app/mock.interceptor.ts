@@ -233,15 +233,12 @@ function apps(): AppEntry[] {
 export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.url.endsWith('/api/apps')) return respond(apps(), 100);
   if (req.url.endsWith('/api/session')) return respond({ loginEnabled: false, user: null, appTokenRequired: false }, 50);
+  // Retrying only sends the command to Kafka, so it's fast. The retried command itself isn't added to the example data.
+  if (req.method === 'POST' && req.url.endsWith('/commands/retry')) return respond(null, 150);
   if (!req.url.includes('/api/apps/') || !req.url.includes('/aggregates/')) return next(req);
 
   const aggregateId = decodeURIComponent(req.url.match(/\/aggregates\/([^/?]+)/)?.[1] ?? '');
   const { commands, events, states } = historyOf(aggregateId);
-
-  // Retrying only sends the command to Kafka, so it's fast. The retried command itself isn't added to the example data.
-  if (req.method === 'POST' && req.url.endsWith('/retry')) {
-    return respond(null, 150);
-  }
 
   if (req.url.includes('/commands')) {
     // Commands are polled from Kafka, which is always slower than reading the event store.

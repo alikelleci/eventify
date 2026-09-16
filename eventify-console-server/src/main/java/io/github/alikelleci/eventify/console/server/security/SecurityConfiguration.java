@@ -3,9 +3,13 @@ package io.github.alikelleci.eventify.console.server.security;
 import io.github.alikelleci.eventify.console.server.ConsoleProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Condition;
+import org.springframework.context.annotation.ConditionContext;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.type.AnnotatedTypeMetadata;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.oauth2.client.oidc.web.server.logout.OidcClientInitiatedServerLogoutSuccessHandler;
@@ -77,7 +81,7 @@ public class SecurityConfiguration {
 
   /** The identity provider, read from its discovery document when the console starts. */
   @Bean
-  @ConditionalOnProperty("eventify.console.oidc.issuer-uri")
+  @Conditional(LoginEnabled.class)
   public ReactiveClientRegistrationRepository clientRegistrations(ConsoleProperties properties) {
     ConsoleProperties.Oidc oidc = properties.oidc();
     ClientRegistration registration = ClientRegistrations.fromIssuerLocation(oidc.issuerUri())
@@ -87,6 +91,16 @@ public class SecurityConfiguration {
         .scope(oidc.scopes())
         .build();
     return new InMemoryReactiveClientRegistrationRepository(registration);
+  }
+
+  /** The same rule as {@link ConsoleProperties#loginEnabled()}, read before the properties are a bean. */
+  static class LoginEnabled implements Condition {
+    @Override
+    public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
+      return Binder.get(context.getEnvironment()).bind("eventify.console", ConsoleProperties.class)
+          .map(ConsoleProperties::loginEnabled)
+          .orElse(false);
+    }
   }
 
   /** Spring only creates the CSRF cookie when something asks for the token; this asks on every request. */

@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console.plugin;
 
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
+import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
 import io.rsocket.RSocket;
@@ -17,7 +18,6 @@ import reactor.core.publisher.Mono;
 
 import java.net.ServerSocket;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -66,7 +66,7 @@ class ConsoleConnectorLimitTest {
       } finally {
         running.decrementAndGet();
       }
-      return new ConsoleRequestHandler.Reply(ReplyHeader.ok(), new byte[0]);
+      return new Reply(ReplyHeader.ok(), new byte[0]);
     });
     connector.start();
     await().atMost(Duration.ofSeconds(10)).until(() -> connector.isConnected());
@@ -111,7 +111,7 @@ class ConsoleConnectorLimitTest {
 
   private void sendAll(int requests) {
     Flux.range(0, requests)
-        .flatMap(i -> application.get().requestResponse(DefaultPayload.create(new byte[0], Route.COMMANDS.name().getBytes(StandardCharsets.UTF_8))), requests)
+        .flatMap(i -> application.get().requestResponse(DefaultPayload.create(new byte[0], ConsoleConnectorCancelTest.requestHeader(Route.COMMANDS))), requests)
         .subscribe(payload -> replies.add(payload.getMetadataUtf8()));
   }
 }
