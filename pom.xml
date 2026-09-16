@@ -16,7 +16,7 @@
     <modules>
         <module>eventify-core</module>
         <module>eventify-console-protocol</module>
-        <module>eventify-console-plugin</module>
+        <module>eventify-console-client</module>
         <module>eventify-console-server</module>
         <module>eventify-spring-boot-starter</module>
     </modules>

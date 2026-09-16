@@ -27,12 +27,12 @@ export class ConsoleComponent {
       code: 'docker run -p 8080:8080 ghcr.io/alikelleci/eventify-console:latest',
     },
     {
-      title: 'Add the plugin',
-      text: 'Add the console plugin to your application.',
+      title: 'Add the client',
+      text: 'Add the console client to your application.',
       label: 'pom.xml', language: 'xml',
       code: `<dependency>
   <groupId>io.github.alikelleci</groupId>
-  <artifactId>eventify-console-plugin</artifactId>
+  <artifactId>eventify-console-client</artifactId>
   <version>x.y.z</version>
 </dependency>`,
     },
@@ -42,7 +42,7 @@ export class ConsoleComponent {
       label: 'Java', language: 'java',
       code: `Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerPlugin(EventifyConsolePlugin.builder()
+    .registerPlugin(EventifyConsoleClient.builder()
         .url("http://localhost:8080")
         .build())
     .build();`,

@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.console.server.security;
 
 import com.sun.net.httpserver.HttpServer;
-import io.github.alikelleci.eventify.console.plugin.ConsoleConnector;
+import io.github.alikelleci.eventify.console.client.ConsoleConnector;
 import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;

@@ -94,8 +94,8 @@ See the [Getting Started guide](https://alikelleci.github.io/eventify/docs/getti
 |---|---|
 | `eventify-core` | The framework |
 | `eventify-spring-boot-starter` | Spring Boot auto-configuration: registers handler beans and starts Eventify with the application |
-| `eventify-console-plugin` | Optional: connects your application to the Eventify Console |
-| `eventify-console-protocol` | The messages between the plugin and the console (used by both) |
+| `eventify-console-client` | Optional: connects your application to the Eventify Console |
+| `eventify-console-protocol` | The messages between the client and the console (used by both) |
 | `ghcr.io/alikelleci/eventify-console` | Optional: the Eventify Console as a Docker image, for all your applications |
 
 ---

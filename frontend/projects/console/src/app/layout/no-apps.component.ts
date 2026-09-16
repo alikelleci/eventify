@@ -15,7 +15,7 @@ import { SessionService } from '../services/session.service';
       <h1 class="mt-5 text-xl font-semibold text-surface-900 dark:text-surface-0">No applications connected</h1>
       <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">
         Applications connect to this console by themselves and show up here as soon as they start.
-        Add <code class="font-mono text-surface-700 dark:text-surface-200">eventify-console-plugin</code> to an application
+        Add <code class="font-mono text-surface-700 dark:text-surface-200">eventify-console-client</code> to an application
         and register it with this console's address:
       </p>
       <pre class="mt-5 overflow-x-auto rounded-lg border border-surface-200 bg-surface-50 px-4 py-3 font-mono text-xs leading-relaxed text-surface-700 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-200">{{ example }}</pre>
@@ -36,7 +36,7 @@ export class NoAppsComponent {
     const token = this.session.session().appTokenRequired ? `\n        .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))` : '';
     return `Eventify.builder()
     .streamsConfig(props)
-    .registerPlugin(EventifyConsolePlugin.builder()
+    .registerPlugin(EventifyConsoleClient.builder()
         .url("${location.origin}")${token}
         .build())
     .build();`;

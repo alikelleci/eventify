@@ -16,12 +16,12 @@ The console is available at `http://localhost:8080`.
 
 ## Connecting an application
 
-Add the plugin to your application:
+Add the client to your application:
 
 ```xml
 <dependency>
     <groupId>io.github.alikelleci</groupId>
-    <artifactId>eventify-console-plugin</artifactId>
+    <artifactId>eventify-console-client</artifactId>
     <version>x.y.z</version>
 </dependency>
 ```
@@ -35,7 +35,7 @@ props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerPlugin(EventifyConsolePlugin.builder()
+    .registerPlugin(EventifyConsoleClient.builder()
         .url("http://localhost:8080")
         .build())
     .build();
@@ -43,7 +43,7 @@ Eventify eventify = Eventify.builder()
 eventify.start();
 ```
 
-### Plugin options
+### Client options
 
 | Method | Required | Description |
 |---|---|---|
@@ -100,7 +100,7 @@ docker run -p 8080:8080 -e EVENTIFY_CONSOLE_APPTOKEN=... ghcr.io/alikelleci/even
 
 Configure the same token in the Eventify client:
 ```java
-EventifyConsolePlugin.builder()
+EventifyConsoleClient.builder()
     .url("http://localhost:8080")
     .token(System.getenv("EVENTIFY_CONSOLE_TOKEN"))
     .build()

@@ -94,7 +94,7 @@
         <!-- The real connector the applications use, to test the console against it -->
         <dependency>
             <groupId>io.github.alikelleci</groupId>
-            <artifactId>eventify-console-plugin</artifactId>
+            <artifactId>eventify-console-client</artifactId>
             <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
