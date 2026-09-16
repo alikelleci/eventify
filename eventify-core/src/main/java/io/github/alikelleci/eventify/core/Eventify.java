@@ -46,7 +46,6 @@ import org.apache.kafka.streams.state.Stores;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -60,7 +59,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 
@@ -190,7 +188,7 @@ public class Eventify {
 
       // Events --> Void
       events
-          .processValues(() -> new EventProcessor(this), "event-store");
+          .processValues(() -> new EventProcessor(this));
     }
 
     /*
@@ -304,11 +302,7 @@ public class Eventify {
   }
 
   private Set<String> getEventTopics() {
-    return Stream.of(
-            eventHandlers.keySet(),
-            eventSourcingHandlers.keySet()
-        )
-        .flatMap(Collection::stream)
+    return eventHandlers.keySet().stream()
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
         .map(TopicInfo::value)
