@@ -25,6 +25,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.junit.jupiter.Container;
@@ -51,6 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * failure that is caught is committed, with everything written before it.
  */
 @Testcontainers
+@DisplayName("Command transactions (exactly-once, real broker)")
 class CommandTransactionIT {
 
   @Container
@@ -174,6 +176,7 @@ class CommandTransactionIT {
 
   /** Scenario 1: the first event is valid, the second has no topic. The command fails, and none of it is stored or sent. */
   @Test
+  @DisplayName("Should fail the command and commit nothing of it when one of its events has no @TopicInfo")
   void aCommandWithAnEventWithoutATopicLeavesNothingBehind() {
     eventify = start("orders-event-without-topic");
     send(EmitEventWithoutTopic.builder().id("order-1").build());
@@ -190,6 +193,7 @@ class CommandTransactionIT {
    * of the command is committed: what was sent is aborted, mostly before it even reached the broker.
    */
   @Test
+  @DisplayName("Should abort the transaction and commit nothing when sending an event fails after the command was accepted")
   void aFailureAfterTheCommandIsAcceptedIsAborted() {
     eventify = start("orders-event-fails-when-sent");
 
