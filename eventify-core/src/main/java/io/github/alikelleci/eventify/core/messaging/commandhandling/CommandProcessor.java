@@ -121,11 +121,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     log.debug("Number of events applied: {}", replay.applied());
     log.debug("Aggregate state reconstructed in {} ms ({} sec): {}", duration.toMillis(), duration.toSeconds(), state);
 
-    // Save snapshot if needed
+    // Save snapshot if needed: when the version passed a multiple of the threshold since the last snapshot. Not only when
+    // it is exactly one: a command with several events can step over it.
+    long startVersion = snapshot != null ? snapshot.getVersion() : 0;
     Optional.ofNullable(state)
-        .filter(s -> replay.applied() > 0)
         .filter(s -> s.getSnapshotThreshold() > 0)
-        .filter(s -> s.getVersion() % s.getSnapshotThreshold() == 0)
+        .filter(s -> s.getVersion() / s.getSnapshotThreshold() > startVersion / s.getSnapshotThreshold())
         .ifPresent(s -> {
           log.debug("Creating snapshot: {}", s);
           saveSnapshot(s);

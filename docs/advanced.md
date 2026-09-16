@@ -18,7 +18,7 @@ public class Order {
 
 | Attribute | Default | Description |
 |---|---|---|
-| `threshold` | `500` | A snapshot is created whenever the aggregate version reaches a multiple of this value. |
+| `threshold` | `500` | A snapshot is created whenever the aggregate version reaches or passes a multiple of this value. |
 | `deleteEvents` | `false` | If `true`, events before the snapshot are deleted after the snapshot is created, reducing storage usage. |
 
 Snapshotting is transparent to your handlers—you do not need to change any handler code.
