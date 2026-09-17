@@ -96,6 +96,11 @@ public class AggregateReplay {
           continue;
         }
         Event event = entry.value;
+        if (event.getPayload() == null) {
+          // Read without its class, which was renamed or removed. Not skipped: the state would silently miss the event.
+          // Fails the replay instead, so every command of this aggregate fails with this reason until an upcaster fixes it.
+          throw new IllegalStateException("Stored event " + entry.key + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it to its current class.");
+        }
         if (listener != null) {
           listener.beforeEvent(event, state, version);
         }

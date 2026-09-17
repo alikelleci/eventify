@@ -10,10 +10,13 @@ import io.github.alikelleci.eventify.core.order.OrderEvent.OrderPlaced;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
 import io.github.alikelleci.eventify.core.order.OrderEventSourcingHandler;
 import io.github.alikelleci.eventify.core.support.InMemoryStore;
+import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
+import io.github.alikelleci.eventify.core.util.IdUtils;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -158,6 +161,23 @@ class AggregateReplayTest {
 
     assertThat(result.state()).isNull();
     assertThat(result.applied()).isEqualTo(2);
+  }
+
+  /** Its class was renamed or removed since it was stored: read back, its payload is null. */
+  @Test
+  @DisplayName("Should refuse to replay a stored event whose class no longer exists, and say which one")
+  void aStoredEventWhoseClassNoLongerExistsIsRefusedClearly() {
+    store(placed("order-1"));
+    String key = IdUtils.createCompoundKey("order-1");
+    String json = "{\"id\":\"" + key + "\",\"type\":\"OrderArchived\",\"aggregateId\":\"order-1\",\"revision\":1,"
+        + "\"metadata\":{},\"payload\":{\"@class\":\"com.acme.OrderArchived\",\"id\":\"order-1\"}}";
+    store(new JsonDeserializer<>(Event.class).deserialize("events", json.getBytes(StandardCharsets.UTF_8)));
+
+    assertThatThrownBy(() -> replay.replay(eventStore, "order-1", null, null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(key)
+        .hasMessageContaining("OrderArchived")
+        .hasMessageContaining("upcaster");
   }
 
   private Event store(Event event) {
