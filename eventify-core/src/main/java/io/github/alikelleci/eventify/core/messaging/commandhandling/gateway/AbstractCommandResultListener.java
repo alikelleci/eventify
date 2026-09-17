@@ -3,12 +3,14 @@ package io.github.alikelleci.eventify.core.messaging.commandhandling.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.CooperativeStickyAssignor;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.errors.RecordDeserializationException;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.StringDeserializer;
 
@@ -17,7 +19,11 @@ import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+@Slf4j
 public abstract class AbstractCommandResultListener {
+
+  /** How long to wait before polling again after an unexpected error, so a lasting one isn't retried in a busy loop. */
+  private static final Duration ERROR_PAUSE = Duration.ofSeconds(1);
 
   private final Consumer<String, Command> consumer;
   private final String replyTopic;
@@ -35,11 +41,13 @@ public abstract class AbstractCommandResultListener {
         new JsonDeserializer<>(Command.class, objectMapper));
 
     this.replyTopic = replyTopic;
-
-    this.start();
   }
 
-  private void start() {
+  /**
+   * Starts listening for replies. Called by the subclass once it is fully constructed: replies are handed to
+   * {@link #onMessage} on another thread, which must not see the subclass's fields before they are set.
+   */
+  protected void start() {
     AtomicBoolean closed = new AtomicBoolean(false);
 
     Thread thread = new Thread(() -> {
@@ -47,8 +55,29 @@ public abstract class AbstractCommandResultListener {
 //      consumer.subscribe(Collections.singletonList(this.replyTopic));
       try {
         while (!closed.get()) {
-          ConsumerRecords<String, Command> consumerRecords = consumer.poll(Duration.ofMillis(1000));
-          onMessage(consumerRecords);
+          ConsumerRecords<String, Command> consumerRecords;
+          try {
+            consumerRecords = consumer.poll(Duration.ofMillis(1000));
+          } catch (RecordDeserializationException e) {
+            // Not a reply this gateway can read: skipped, so the replies after it still arrive.
+            log.warn("Skipping unreadable record on {} at offset {}", e.topicPartition(), e.offset(), e);
+            consumer.seek(e.topicPartition(), e.offset() + 1);
+            continue;
+          } catch (WakeupException e) {
+            throw e;
+          } catch (Exception e) {
+            // The thread keeps listening: once it stops, every command sent through this gateway would time out.
+            log.error("Failed to poll replies from {}", replyTopic, e);
+            if (!pause()) {
+              break;
+            }
+            continue;
+          }
+          try {
+            onMessage(consumerRecords);
+          } catch (Exception e) {
+            log.error("Failed to handle replies from {}", replyTopic, e);
+          }
         }
       } catch (WakeupException e) {
         // Ignore exception if closing
@@ -65,6 +94,18 @@ public abstract class AbstractCommandResultListener {
     thread.start();
   }
 
+  /** @return {@code false} when the thread was interrupted while waiting, and must stop */
+  private static boolean pause() {
+    try {
+      Thread.sleep(ERROR_PAUSE.toMillis());
+      return true;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return false;
+    }
+  }
+
+  /** Handles a batch of replies. It must not throw: a record it can't handle is skipped by it. */
   protected abstract void onMessage(ConsumerRecords<String, Command> consumerRecords);
 
   protected String getReplyTopic() {

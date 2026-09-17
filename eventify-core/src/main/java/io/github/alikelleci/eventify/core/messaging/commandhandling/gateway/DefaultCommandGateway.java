@@ -46,6 +46,8 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
         new JsonSerializer<>(objectMapper));
+
+    start();
   }
 
   @Override
@@ -66,21 +68,29 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   @Override
   protected void onMessage(ConsumerRecords<String, Command> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
-      String messageId = consumerRecord.value().getId();
-      if (StringUtils.isBlank(messageId)) {
-        return;
-      }
-      CompletableFuture<Object> future = cache.getIfPresent(messageId);
-      if (future != null) {
-        Exception exception = checkForErrors(consumerRecord);
-        if (exception == null) {
-          future.complete(consumerRecord.value().getPayload());
-        } else {
-          future.completeExceptionally(exception);
-        }
-        cache.invalidate(messageId);
+      try {
+        onReply(consumerRecord);
+      } catch (Exception e) {
+        log.warn("Skipping reply on {}-{} at offset {}", consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset(), e);
       }
     });
+  }
+
+  private void onReply(ConsumerRecord<String, Command> consumerRecord) {
+    Command command = consumerRecord.value();
+    if (command == null || StringUtils.isBlank(command.getId())) {
+      return;
+    }
+    CompletableFuture<Object> future = cache.getIfPresent(command.getId());
+    if (future != null) {
+      Exception exception = checkForErrors(consumerRecord);
+      if (exception == null) {
+        future.complete(command.getPayload());
+      } else {
+        future.completeExceptionally(exception);
+      }
+      cache.invalidate(command.getId());
+    }
   }
 
   private Exception checkForErrors(ConsumerRecord<String, Command> consumerRecord) {
