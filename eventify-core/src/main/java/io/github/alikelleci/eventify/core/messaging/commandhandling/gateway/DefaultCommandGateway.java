@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
+import com.github.benmanes.caffeine.cache.Scheduler;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.exceptions.CommandExecutionException;
@@ -29,19 +30,30 @@ import static io.github.alikelleci.eventify.core.messaging.Metadata.RESULT;
 @Slf4j
 public class DefaultCommandGateway extends AbstractCommandResultListener implements CommandGateway {
 
-  private final Cache<String, CompletableFuture<Object>> cache = Caffeine.newBuilder()
-      .expireAfterWrite(Duration.ofMinutes(5))
-      .removalListener((String key, CompletableFuture<Object> future, RemovalCause cause) -> {
-        if (cause.wasEvicted()) {
-          future.completeExceptionally(new TimeoutException("Command timed out: no reply received within the allowed time."));
-        }
-      })
-      .build();
+  /** How long a command waits for its reply before its future fails. */
+  private static final Duration TIMEOUT = Duration.ofMinutes(5);
+
+  private final Cache<String, CompletableFuture<Object>> cache;
 
   private final Producer<String, Command> producer;
 
   protected DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
+    this(producerConfig, consumerConfig, replyTopic, objectMapper, TIMEOUT);
+  }
+
+  DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic, ObjectMapper objectMapper, Duration timeout) {
     super(consumerConfig, replyTopic, objectMapper);
+
+    this.cache = Caffeine.newBuilder()
+        .expireAfterWrite(timeout)
+        // Expires on time: without a scheduler, entries only expire when the cache is used, e.g. by the next command.
+        .scheduler(Scheduler.systemScheduler())
+        .removalListener((String key, CompletableFuture<Object> future, RemovalCause cause) -> {
+          if (cause.wasEvicted()) {
+            future.completeExceptionally(new TimeoutException("Command timed out: no reply received within the allowed time."));
+          }
+        })
+        .build();
 
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
