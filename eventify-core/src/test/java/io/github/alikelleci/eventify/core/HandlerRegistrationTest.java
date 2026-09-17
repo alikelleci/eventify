@@ -1,0 +1,157 @@
+package io.github.alikelleci.eventify.core;
+
+import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
+import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
+import io.github.alikelleci.eventify.core.messaging.Metadata;
+import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
+import io.github.alikelleci.eventify.core.messaging.eventhandling.annotations.HandleEvent;
+import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
+import lombok.Value;
+import org.apache.kafka.streams.StreamsConfig;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import java.util.Properties;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+/**
+ * A command and an event have one command handler and one event sourcing handler: a second one would replace the
+ * first, without a word. Event handlers can be several.
+ */
+@DisplayName("Handler registration")
+class HandlerRegistrationTest {
+
+  @Value
+  @AggregateRoot
+  public static class Light {
+    @AggregateId
+    String id;
+  }
+
+  @Value
+  public static class SwitchOn {
+    @AggregateId
+    String id;
+  }
+
+  @Value
+  public static class SwitchedOn {
+    @AggregateId
+    String id;
+  }
+
+  public static class LightHandler {
+    @HandleCommand
+    public Object handle(SwitchOn command, Light state) {
+      return new SwitchedOn(command.getId());
+    }
+
+    @ApplyEvent
+    public Light apply(SwitchedOn event, Light state) {
+      return new Light(event.getId());
+    }
+  }
+
+  /** Handles the same command as LightHandler. */
+  public static class OtherCommandHandler {
+    @HandleCommand
+    public Object handle(SwitchOn command, Light state) {
+      return null;
+    }
+  }
+
+  /** Two event sourcing handlers for the same event in one class. */
+  public static class TwiceApplyingHandler {
+    @ApplyEvent
+    public Light apply(SwitchedOn event, Light state) {
+      return new Light(event.getId());
+    }
+
+    @ApplyEvent
+    public Light apply(SwitchedOn event, Light state, Metadata metadata) {
+      return new Light(event.getId());
+    }
+  }
+
+  /** Overrides its superclass's handlers: still one handler each. */
+  public static class OverridingHandler extends LightHandler {
+    @Override
+    @HandleCommand
+    public Object handle(SwitchOn command, Light state) {
+      return new SwitchedOn(command.getId());
+    }
+
+    @Override
+    @ApplyEvent
+    public Light apply(SwitchedOn event, Light state) {
+      return new Light(event.getId());
+    }
+  }
+
+  public static class FirstEventHandler {
+    @HandleEvent
+    public void on(SwitchedOn event) {
+    }
+  }
+
+  public static class SecondEventHandler {
+    @HandleEvent
+    public void on(SwitchedOn event) {
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse a second command handler for the same command")
+  void aSecondCommandHandlerForTheSameCommandIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new LightHandler())
+        .registerHandler(new OtherCommandHandler())
+        .build())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(SwitchOn.class.getName());
+  }
+
+  @Test
+  @DisplayName("Should refuse a second event sourcing handler for the same event")
+  void aSecondEventSourcingHandlerForTheSameEventIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new TwiceApplyingHandler())
+        .build())
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining(SwitchedOn.class.getName());
+  }
+
+  @Test
+  @DisplayName("Should accept a handler that overrides its superclass's handlers, and registering the same handler twice")
+  void anOverridingHandlerAndTheSameHandlerTwiceAreAccepted() {
+    OverridingHandler handler = new OverridingHandler();
+
+    Eventify eventify = Eventify.builder().streamsConfig(config())
+        .registerHandler(handler)
+        .registerHandler(handler)
+        .build();
+
+    assertThat(eventify.getCommandHandlers()).containsOnlyKeys(SwitchOn.class);
+    assertThat(eventify.getEventSourcingHandlers()).containsOnlyKeys(SwitchedOn.class);
+  }
+
+  @Test
+  @DisplayName("Should accept several event handlers for the same event")
+  void severalEventHandlersForTheSameEventAreAccepted() {
+    Eventify eventify = Eventify.builder().streamsConfig(config())
+        .registerHandler(new FirstEventHandler())
+        .registerHandler(new SecondEventHandler())
+        .build();
+
+    assertThat(eventify.getEventHandlers().get(SwitchedOn.class)).hasSize(2);
+  }
+
+  private static Properties config() {
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "handler-registration-test");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    return properties;
+  }
+}

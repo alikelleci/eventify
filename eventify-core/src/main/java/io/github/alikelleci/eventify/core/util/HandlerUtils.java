@@ -15,6 +15,7 @@ import lombok.experimental.UtilityClass;
 import org.apache.commons.collections4.MultiValuedMap;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 @UtilityClass
 public class HandlerUtils {
@@ -48,14 +49,33 @@ public class HandlerUtils {
   private void addCommandHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
-      eventify.getCommandHandlers().put(type, new CommandHandler(listener, method));
+      CommandHandler previous = eventify.getCommandHandlers().put(type, new CommandHandler(listener, method));
+      if (previous != null) {
+        requireSameHandler("@HandleCommand", type, previous.getHandler(), previous.getMethod(), listener, method);
+      }
     }
   }
 
   private void addEventSourcingHandler(Eventify eventify, Object listener, Method method) {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
-      eventify.getEventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
+      EventSourcingHandler previous = eventify.getEventSourcingHandlers().put(type, new EventSourcingHandler(listener, method));
+      if (previous != null) {
+        requireSameHandler("@ApplyEvent", type, previous.getHandler(), previous.getMethod(), listener, method);
+      }
+    }
+  }
+
+  /**
+   * Throws when the class already has a @HandleCommand or @ApplyEvent handler.
+   * Allowed: registering the same handler object twice, and a subclass method that overrides an annotated method.
+   */
+  private void requireSameHandler(String annotation, Class<?> type, Object previousHandler, Method previousMethod, Object handler, Method method) {
+    boolean sameHandler = previousHandler == handler
+        && previousMethod.getName().equals(method.getName())
+        && Arrays.equals(previousMethod.getParameterTypes(), method.getParameterTypes());
+    if (!sameHandler) {
+      throw new IllegalStateException("Two " + annotation + " handlers for " + type.getName() + ": " + previousMethod + " and " + method);
     }
   }
 

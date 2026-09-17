@@ -164,3 +164,13 @@ public void on(OrderPlaced event) {
 | `@Timestamp Instant` | The event timestamp. |
 | `@MessageId String` | The unique ID of the event message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |
+
+### Run event handlers in a separate application
+
+An exception thrown by an event handler stops the Eventify instance it runs in. This is on purpose: the event is not skipped, so after you fix the problem and restart, the event is handled again and nothing is lost. The same goes for result handlers.
+
+When that instance also handles commands, command handling stops with it. Run your event handlers in a separate application, with its own `application.id`, so a failing event handler never stops command handling.
+
+## Thread safety
+
+One handler object is used by all stream threads (`num.stream.threads`) and by the Eventify Console at the same time. Keep handlers stateless: only `final` dependencies such as repositories or clients, and no fields that change.
