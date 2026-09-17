@@ -124,8 +124,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
 
     // Stored, an event is replayed at every load: one its event sourcing handler can't apply would make every next
-    // command of this aggregate fail. Applied now, it fails this command instead, before it is stored.
-    applyEvents(state, events);
+    // command of this aggregate fail. Applied now, it fails this command instead, before it is stored. The copies are
+    // applied, not the events as returned: a replay reads them as they are stored, after being written as JSON.
+    applyEvents(state, copies);
 
     return copies;
   }

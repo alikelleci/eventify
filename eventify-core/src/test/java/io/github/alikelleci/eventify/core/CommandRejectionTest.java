@@ -10,7 +10,9 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import lombok.AccessLevel;
 import lombok.Builder;
+import lombok.Getter;
 import lombok.Value;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -94,6 +96,14 @@ class CommandRejectionTest {
     String id;
   }
 
+  /** Its event loses a field when written as JSON. */
+  @Value
+  @Builder
+  public static class Lose implements CounterCommand {
+    @AggregateId
+    String id;
+  }
+
   @Value
   @Builder
   public static class Created implements CounterEvent {
@@ -106,6 +116,20 @@ class CommandRejectionTest {
   public static class Broken implements CounterEvent {
     @AggregateId
     String id;
+  }
+
+  /** Its reason has no getter, so it is not written as JSON: stored, the event has no reason. */
+  @Value
+  @Builder
+  public static class Lost implements CounterEvent {
+    @AggregateId
+    String id;
+    @Getter(AccessLevel.NONE)
+    String reason;
+
+    public String reason() {
+      return reason;
+    }
   }
 
   @Value
@@ -154,6 +178,11 @@ class CommandRejectionTest {
     }
 
     @HandleCommand
+    public Object handle(Lose command, Counter state) {
+      return Lost.builder().id(command.getId()).reason("gone").build();
+    }
+
+    @HandleCommand
     public Object handle(Misplace command, Counter state) {
       return Misplaced.builder().id(command.getId()).build();
     }
@@ -176,6 +205,14 @@ class CommandRejectionTest {
     @ApplyEvent
     public Counter apply(Broken event, Counter state) {
       throw new IllegalStateException("cannot apply");
+    }
+
+    @ApplyEvent
+    public Counter apply(Lost event, Counter state) {
+      if (event.reason() == null) {
+        throw new IllegalStateException("no reason");
+      }
+      return state;
     }
 
     @ApplyEvent
@@ -231,6 +268,24 @@ class CommandRejectionTest {
         "Create success null");
     assertThat(storedTypes()).containsExactly("Created", "Created");
     assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created", "Created");
+  }
+
+  /**
+   * The event as it is stored, not as the handler returned it, is what every load replays: one that can't be applied
+   * once written as JSON would make every next command of the aggregate fail.
+   */
+  @Test
+  @DisplayName("Should fail the command and store nothing when an event cannot be applied as it is stored")
+  void anEventThatCannotBeAppliedAsStoredIsNotStored() {
+    send(Create.builder().id("ada").build());
+    send(Lose.builder().id("ada").build());
+    send(Create.builder().id("ada").build());
+
+    assertThat(results()).containsExactly(
+        "Create success null",
+        "Lose failure IllegalStateException: no reason",
+        "Create success null");
+    assertThat(storedTypes()).containsExactly("Created", "Created");
   }
 
   /** Its topic was only looked up when sending it: the event was stored, and the command reported both as done and as failed. */
