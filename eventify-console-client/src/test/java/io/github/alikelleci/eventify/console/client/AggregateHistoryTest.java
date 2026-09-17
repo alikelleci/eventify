@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
 import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
+import io.github.alikelleci.eventify.core.messaging.Metadata;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateReplay;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
@@ -15,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -269,7 +271,7 @@ class AggregateHistoryTest {
     assertThat(foreign.getId()).startsWith("counter-1@");
 
     assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(third, second, first);
-    assertThat(history.eventsByCorrelation(events, "counter-1", foreign.getMetadata().getCorrelationId())).isEmpty();
+    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@x", foreign.getMetadata().getCorrelationId())).isEmpty();
     assertValue(history.stateAt(events, snapshots, "counter-1", null), 3, 3);
     assertDetail(first, 0, 1);
     assertThat(history.events(events, "counter-1@x", null, 50).events()).containsExactly(foreign);
@@ -367,10 +369,38 @@ class AggregateHistoryTest {
     snapshots.put("counter-1", replay.replay(events, "counter-1", null, event.getId()).state());
   }
 
-  private Event store(Object payload) {
-    Event event = Event.builder().payload(payload).build();
+  /** Two commands of one saga share the correlation id: each shows only its own events. */
+  @Test
+  @DisplayName("Should give the events a command produced, not those of other commands with the same correlation id")
+  void theEventsOfACommand() {
+    Event one = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
+        Metadata.CORRELATION_ID, "saga", Metadata.CAUSATION_ID, "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA")).build());
+    Event two = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
+        Metadata.CORRELATION_ID, "saga", Metadata.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
+
+    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "saga")).containsExactly(one);
+    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB", "saga")).containsExactly(two);
+  }
+
+  /** Stored before events named their command: found by the correlation id, without taking events that do name another. */
+  @Test
+  @DisplayName("Should find events without a causation id by the command's correlation id")
+  void theEventsOfACommandWithoutCausationIds() {
+    Event legacy = store(Event.builder().payload(new Incremented("counter-1")).metadata(Metadata.CORRELATION_ID, "old").build());
+    store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
+        Metadata.CORRELATION_ID, "old", Metadata.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
+
+    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "old")).containsExactly(legacy);
+    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", null)).isEmpty();
+  }
+
+  private Event store(Event event) {
     events.put(event.getId(), event);
     return event;
+  }
+
+  private Event store(Object payload) {
+    return store(Event.builder().payload(payload).build());
   }
 
   private static Eventify eventify() {

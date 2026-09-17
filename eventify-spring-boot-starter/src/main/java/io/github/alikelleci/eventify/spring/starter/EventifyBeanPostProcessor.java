@@ -4,8 +4,8 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.common.annotations.HandleMessage;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import org.springframework.beans.factory.config.BeanPostProcessor;
+import org.springframework.util.ClassUtils;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class EventifyBeanPostProcessor implements BeanPostProcessor {
@@ -35,8 +35,12 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor {
     return bean;
   }
 
+  /**
+   * Looks at the bean's own class and its superclasses. A bean with advice (e.g. {@code @Transactional}) is a CGLIB
+   * subclass whose methods don't carry the annotations; registering the bean itself still invokes the handlers through
+   * that advice.
+   */
   private boolean isHandler(Object bean) {
-    return Arrays.stream(bean.getClass().getDeclaredMethods())
-        .anyMatch(method -> AnnotationUtils.findAnnotation(method, HandleMessage.class) != null);
+    return !AnnotationUtils.findAnnotatedMethods(ClassUtils.getUserClass(bean), HandleMessage.class).isEmpty();
   }
 }

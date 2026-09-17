@@ -11,7 +11,6 @@ import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
@@ -22,6 +21,7 @@ import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
+import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -71,8 +71,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       return;
     }
 
-    if (CollectionUtils.isEmpty(events)) {
-      return;
+    if (events == null) {
+      return; // no command handler: not a command of this application
     }
 
     // Not caught: a failure from here on is not the command's, and must not be committed as its failure. It fails
@@ -81,7 +81,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       saveEvent(event);
     }
 
-    // Runs the topology after it on this call: the sends to the result and event topics.
+    // Runs the topology after it on this call: the sends to the result and event topics. Also without events: the
+    // command is accepted, and its caller waits for that answer.
     context.forward(fixedKeyRecord.withValue(Success.builder()
         .command(command)
         .events(events)
@@ -95,13 +96,13 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   /**
    * Handles the command and returns its events, without storing them: {@link #process} stores them once the command
-   * is accepted.
+   * is accepted. Empty when the command is accepted without events; {@code null} when there is no handler for it.
    */
   protected List<Event> executeCommand(String aggregateId, Command command) {
     CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
-      return new ArrayList<>();
+      return null;
     }
 
     // The aggregate is loaded by the record key: another key would hand the handler the state of another aggregate.
@@ -113,24 +114,33 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AggregateState state = loadAggregate(aggregateId);
     List<Event> events = inOrder(aggregateId, commandHandler.apply(state, command));
 
+    // Copied as the handler returned them, before anything else runs: an event may share objects with the aggregate
+    // (e.g. its list of items), and applying the events below may change those. The copies are what is stored and sent.
+    // Events are written as JSON when they are stored and sent, after the command is accepted, where a failure stops
+    // the application. Copied through JSON now, an event that can't be written or read back fails this command instead.
+    List<Event> copies = new ArrayList<>(events.size());
+    for (Event event : events) {
+      copies.add(copyThroughJson(event));
+    }
+
     // Stored, an event is replayed at every load: one its event sourcing handler can't apply would make every next
     // command of this aggregate fail. Applied now, it fails this command instead, before it is stored.
     applyEvents(state, events);
 
-    // Events are written as JSON when they are stored and sent, after the command is accepted, where a failure stops
-    // the application. Written once now, an event that can't be fails this command instead.
-    for (Event event : events) {
-      writeAsJson(event);
-    }
-
-    return events;
+    return copies;
   }
 
-  private void writeAsJson(Event event) {
+  private Event copyThroughJson(Event event) {
+    byte[] json;
     try {
-      eventify.getObjectMapper().writeValueAsBytes(event);
+      json = eventify.getObjectMapper().writeValueAsBytes(event);
     } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Event " + event.getType() + " cannot be written as JSON: " + e.getOriginalMessage(), e);
+    }
+    try {
+      return eventify.getObjectMapper().readValue(json, Event.class);
+    } catch (IOException e) {
+      throw new IllegalArgumentException("Event " + event.getType() + " cannot be read back from JSON: " + e.getMessage(), e);
     }
   }
 

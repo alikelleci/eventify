@@ -12,7 +12,12 @@ public final class Requests {
   public record EventDetail(String aggregateId, String eventId) {
   }
 
-  public record EventsByCorrelation(String aggregateId, String correlationId) {
+  /**
+   * @param commandId     the command whose events are asked for
+   * @param correlationId the command's correlation id, optional: finds the events of the command stored before events
+   *                      named the command that produced them
+   */
+  public record EventsOfCommand(String aggregateId, String commandId, String correlationId) {
   }
 
   public record State(String aggregateId, String eventId) {

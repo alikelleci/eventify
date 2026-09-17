@@ -74,18 +74,30 @@ class AggregateHistory {
     return new ConsoleService.EventsPage(page, nextCursor);
   }
 
-  /** The aggregate's events with this correlation id, oldest first: the events one command produced. */
-  List<Event> eventsByCorrelation(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String correlationId) {
-    List<Event> correlated = new ArrayList<>();
+  /**
+   * The events the command produced, oldest first: the ones that name it as their cause. Not by correlation id: that is
+   * shared with the other commands of the same flow, e.g. a saga. Only an event stored before events named their cause
+   * is found by its correlation id, when one is given.
+   */
+  List<Event> eventsOfCommand(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String commandId, String correlationId) {
+    List<Event> produced = new ArrayList<>();
     try (KeyValueIterator<String, Event> iterator = events.range(IdUtils.firstKey(aggregateId), IdUtils.lastKey(aggregateId))) {
       while (iterator.hasNext()) {
         KeyValue<String, Event> entry = iterator.next();
-        if (IdUtils.isKeyOf(aggregateId, entry.key) && correlationId.equals(entry.value.getMetadata().get(Metadata.CORRELATION_ID))) {
-          correlated.add(entry.value);
+        if (IdUtils.isKeyOf(aggregateId, entry.key) && isCausedBy(entry.value.getMetadata(), commandId, correlationId)) {
+          produced.add(entry.value);
         }
       }
     }
-    return correlated;
+    return produced;
+  }
+
+  private static boolean isCausedBy(Metadata metadata, String commandId, String correlationId) {
+    String causationId = metadata.getCausationId();
+    if (causationId != null) {
+      return causationId.equals(commandId);
+    }
+    return correlationId != null && correlationId.equals(metadata.getCorrelationId());
   }
 
   /**

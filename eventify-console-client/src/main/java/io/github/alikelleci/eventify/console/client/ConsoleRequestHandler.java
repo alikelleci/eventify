@@ -49,9 +49,10 @@ class ConsoleRequestHandler {
           String aggregateId = requireAggregateId(request.aggregateId());
           yield toReply(service.getEventDetail(aggregateId, requireEventOf(aggregateId, request.eventId())));
         }
-        case EVENTS_BY_CORRELATION -> {
-          Requests.EventsByCorrelation request = read(data, Requests.EventsByCorrelation.class);
-          yield toReply(service.getEventsByCorrelation(requireAggregateId(request.aggregateId()), require("correlationId", request.correlationId())));
+        case EVENTS_OF_COMMAND -> {
+          Requests.EventsOfCommand request = read(data, Requests.EventsOfCommand.class);
+          String aggregateId = requireAggregateId(request.aggregateId());
+          yield toReply(service.getEventsOfCommand(aggregateId, requireMessageOf(aggregateId, "commandId", request.commandId()), request.correlationId()));
         }
         case STATE -> {
           Requests.State request = read(data, Requests.State.class);
@@ -90,10 +91,15 @@ class ConsoleRequestHandler {
    * apply every event stored between the two.
    */
   private static String requireEventOf(String aggregateId, String eventId) {
-    if (!IdUtils.isKeyOf(aggregateId, require("eventId", eventId))) {
-      throw new BadRequestException("Event " + eventId + " is not an event of aggregate " + aggregateId);
+    return requireMessageOf(aggregateId, "eventId", eventId);
+  }
+
+  /** A message (event or command) of this aggregate: its id is the aggregate id, "@" and a ULID. */
+  private static String requireMessageOf(String aggregateId, String name, String messageId) {
+    if (!IdUtils.isKeyOf(aggregateId, require(name, messageId))) {
+      throw new BadRequestException(name + " " + messageId + " is not of aggregate " + aggregateId);
     }
-    return eventId;
+    return messageId;
   }
 
   private static String require(String name, String value) {

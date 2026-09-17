@@ -12,8 +12,8 @@ public enum Route {
   EVENTS(Target.OWNER),
   /** {@link Requests.EventDetail} */
   EVENT_DETAIL(Target.OWNER),
-  /** {@link Requests.EventsByCorrelation} */
-  EVENTS_BY_CORRELATION(Target.OWNER),
+  /** {@link Requests.EventsOfCommand} */
+  EVENTS_OF_COMMAND(Target.OWNER),
   /** {@link Requests.State} */
   STATE(Target.OWNER),
   /** {@link Requests.Commands} */

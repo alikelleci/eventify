@@ -28,6 +28,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
+import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSATION_ID;
+
 @Slf4j
 @Getter
 public class CommandHandler implements BiFunction<AggregateState, Command, List<Event>>, CommonParameterResolver {
@@ -90,6 +92,7 @@ public class CommandHandler implements BiFunction<AggregateState, Command, List<
             .timestamp(command.getTimestamp())
             .payload(payload)
             .metadata(command.getMetadata())
+            .metadata(CAUSATION_ID, command.getId())
             .build())
         .toList();
 

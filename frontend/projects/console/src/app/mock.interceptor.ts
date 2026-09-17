@@ -1,6 +1,6 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { of, delay } from 'rxjs';
-import { AggregateState, CommandMessage, CommandsPage, EventDetail, EventMessage, EventsPage } from '@eventify/ui/models';
+import { AggregateState, CommandEventsPage, CommandMessage, CommandsPage, EventDetail, EventMessage, EventsPage } from '@eventify/ui/models';
 import { AppEntry, AppNode } from '@eventify/ui/services/backend.service';
 import { InstanceStatus } from '@eventify/ui/status';
 
@@ -87,8 +87,9 @@ function buildHistory(orderId: string, steps: Step[]): History {
   const events: EventMessage[] = [];
 
   steps.forEach((step, index) => {
+    const commandId = nextId();
     const time = NOW - step.minutesAgo * 60_000;
-    // Each command has its own correlation ID, also a retry, so a failed command never shows events.
+    // Each command has its own correlation ID, also a retry. Its events name it as their cause, so a failed command never shows events.
     const correlationId = fakeUuid(index + 1);
     // A retry names the command it retries: the last one of the same type before it.
     const retried = [...commands].reverse().find(command => command.type === step.command);
@@ -98,7 +99,7 @@ function buildHistory(orderId: string, steps: Step[]): History {
       : { '$correlationId': correlationId, '$replyTo': REPLY_TO };
 
     commands.push({
-      id: nextId(),
+      id: commandId,
       timestamp: new Date(time).toISOString(),
       type: step.command,
       aggregateId: orderId,
@@ -115,7 +116,7 @@ function buildHistory(orderId: string, steps: Step[]): History {
       aggregateId: orderId,
       revision: e.revision ?? 1,
       payload: { '@class': `com.example.order.OrderEvent$${e.type}`, id: orderId, ...e.payload },
-      metadata: { '$correlationId': correlationId, '$replyTo': REPLY_TO },
+      metadata: { '$correlationId': correlationId, '$causationId': commandId, '$replyTo': REPLY_TO },
     }));
   });
 
@@ -242,19 +243,19 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   const aggregateId = decodeURIComponent(req.url.match(/\/aggregates\/([^/?]+)/)?.[1] ?? '');
   const { commands, events, states } = historyOf(aggregateId);
 
+  const commandEventsMatch = req.url.match(/\/commands\/([^/?]+)\/events/);
+  if (commandEventsMatch) {
+    const commandId = decodeURIComponent(commandEventsMatch[1]);
+    // Oldest first, like the real backend, which reads the event store in key order.
+    return respond({ events: events.filter(e => e.metadata['$causationId'] === commandId).reverse() } satisfies CommandEventsPage, 300);
+  }
+
   if (req.url.includes('/commands')) {
     // Commands are polled from Kafka, which is always slower than reading the event store.
     return respond({ commands } satisfies CommandsPage, 2000);
   }
 
   if (req.url.includes('/events')) {
-    const correlationMatch = req.url.match(/\/events\/by-correlation\/(.+)/);
-    if (correlationMatch) {
-      const correlationId = decodeURIComponent(correlationMatch[1]);
-      // Oldest first, like the real backend, which reads the event store in key order.
-      return respond({ events: events.filter(e => e.metadata['$correlationId'] === correlationId).reverse() }, 300);
-    }
-
     const eventDetailMatch = req.url.match(/\/events\/([^?]+)/);
     if (eventDetailMatch) {
       const eventId = decodeURIComponent(eventDetailMatch[1]);

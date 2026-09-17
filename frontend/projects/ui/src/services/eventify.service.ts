@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CommandsPage, CorrelatedEventsPage, EventDetail, EventsPage, CommandMessage } from '../models';
+import { CommandEventsPage, CommandsPage, EventDetail, EventsPage, CommandMessage } from '../models';
 import { BackendService } from './backend.service';
 
 @Injectable({ providedIn: 'root' })
@@ -19,8 +19,12 @@ export class EventifyService {
     return this.http.get<EventDetail>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/${encodeURIComponent(eventId)}`);
   }
 
-  getEventsByCorrelation(aggregateId: string, correlationId: string): Observable<CorrelatedEventsPage> {
-    return this.http.get<CorrelatedEventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/by-correlation/${encodeURIComponent(correlationId)}`);
+  /** The correlation id also finds the events stored before events named the command that produced them. */
+  getEventsOfCommand(command: CommandMessage): Observable<CommandEventsPage> {
+    let params = new HttpParams();
+    const correlationId = command.metadata['$correlationId'];
+    if (correlationId) params = params.set('correlationId', correlationId);
+    return this.http.get<CommandEventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(command.aggregateId)}/commands/${encodeURIComponent(command.id)}/events`, { params });
   }
 
   getCommands(aggregateId: string, limit = 500): Observable<CommandsPage> {

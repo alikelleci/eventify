@@ -11,6 +11,8 @@ import java.util.Map;
 @EqualsAndHashCode
 public class Metadata implements Map<String, String> {
   public static final String CORRELATION_ID = "$correlationId";
+  /** On an event: the id of the command that produced it. */
+  public static final String CAUSATION_ID = "$causationId";
   public static final String REPLY_TO = "$replyTo";
   public static final String RESULT = "$result";
   public static final String CAUSE = "$cause";
@@ -36,6 +38,11 @@ public class Metadata implements Map<String, String> {
   @Transient
   public String getCorrelationId() {
     return this.entries.get(CORRELATION_ID);
+  }
+
+  @Transient
+  public String getCausationId() {
+    return this.entries.get(CAUSATION_ID);
   }
 
   public static MetadataBuilder builder() {

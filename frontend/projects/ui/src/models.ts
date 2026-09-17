@@ -1,4 +1,5 @@
-export interface CorrelatedEventsPage {
+/** The events one command produced, oldest first. */
+export interface CommandEventsPage {
   events: EventMessage[];
 }
 

@@ -72,7 +72,7 @@ class ConsoleService {
    */
   record EventDetail(Event event, RawValue state, RawValue previousState,
                      boolean stateKnown, boolean previousStateKnown) {}
-  record CorrelatedEventsPage(List<Event> events) {}
+  record CommandEventsPage(List<Event> events) {}
 
   /** The outcome of a query, as the console is told it, with the answer when it's {@link ReplyHeader.Status#OK}. */
   record Result<T>(ReplyHeader header, T value) {
@@ -318,17 +318,17 @@ class ConsoleService {
   private static class CommandsReadTimeout extends RuntimeException {
   }
 
-  Result<CorrelatedEventsPage> getEventsByCorrelation(String aggregateId, String correlationId) {
-    Result<CorrelatedEventsPage> routing = checkRouting(aggregateId);
+  Result<CommandEventsPage> getEventsOfCommand(String aggregateId, String commandId, String correlationId) {
+    Result<CommandEventsPage> routing = checkRouting(aggregateId);
     if (routing != null) return routing;
 
     try {
-      return Result.ok(new CorrelatedEventsPage(history.eventsByCorrelation(eventStore(), aggregateId, correlationId)));
+      return Result.ok(new CommandEventsPage(history.eventsOfCommand(eventStore(), aggregateId, commandId, correlationId)));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
     } catch (Exception e) {
-      log.error("Unexpected error querying correlated events for aggregate {}", aggregateId, e);
+      log.error("Unexpected error querying the events of command {} of aggregate {}", commandId, aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
   }

@@ -69,11 +69,9 @@ export class CommandDetailComponent {
       this.drawerVisible.set(false);
       this.drawerEvent.set(null);
       if (!cmd) { this.loading.set(false); return; }
-      const correlationId = cmd.metadata['$correlationId'];
-      if (!correlationId) { this.producedEvents.set([]); this.finishLoading(); return; }
       const startedAt = Date.now();
       this.loading.set(true);
-      this.request = this.svc.getEventsByCorrelation(cmd.aggregateId, correlationId).pipe(
+      this.request = this.svc.getEventsOfCommand(cmd).pipe(
         takeUntilDestroyed(this.destroyRef),
         catchError(err => {
           this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load the events of this command.') });

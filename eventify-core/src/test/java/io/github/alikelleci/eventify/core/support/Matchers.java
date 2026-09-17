@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 
+import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSATION_ID;
 import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.core.messaging.Metadata.RESULT;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,11 +32,12 @@ public class Matchers {
   public static void assertEvent(Command command, Event event, Class<?> type) {
     assertThat(event)
         .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
-            .withIgnoredFields("id", "type", "revision")
+            .withIgnoredFields("id", "type", "revision", "metadata.$causationId")
             .build())
         .isEqualTo(command);
 
     assertThat(event.getId()).isNotBlank();
+    assertThat(event.getMetadata()).containsEntry(CAUSATION_ID, command.getId());
     assertThat(event.getType()).isEqualTo(type.getSimpleName());
     assertThat(event.getRevision()).isNotNegative();
     assertThat(event.getPayload()).isInstanceOf(type);
