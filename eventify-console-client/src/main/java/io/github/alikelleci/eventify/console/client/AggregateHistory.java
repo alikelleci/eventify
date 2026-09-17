@@ -189,11 +189,7 @@ class AggregateHistory {
       after[0] = json(result.state());
     }
 
-    // Only an aggregate that deletes its events at a snapshot can miss the first ones. Without that, the replay is
-    // complete whatever its version: a version differs from the snapshot's as soon as an event type gets a handler it
-    // didn't have when the snapshot was written.
     boolean complete = snapshot == null
-        || !snapshot.deleteEvents()
         || (result.state() != null && result.state().getVersion() == snapshot.getVersion());
     return new FromFirst(before[0], after[0], complete);
   }

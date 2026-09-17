@@ -332,16 +332,6 @@ class AggregateHistoryTest {
     assertThat(json.at("/previousState/payload/value").asInt()).isEqualTo(1);
   }
 
-  /** An event type that gets an @ApplyEvent after a snapshot was written makes a replay count more events than it did. */
-  @Test
-  @DisplayName("Should give the states when the snapshot counted fewer events, for an aggregate that keeps its events")
-  void aSnapshotThatCountedFewerEventsThanAReplayDoes() {
-    AggregateState snapshot = replay.replay(events, "counter-1", null, third.getId()).state();
-    snapshots.put("counter-1", snapshot.withVersion(snapshot.getVersion() - 1));
-
-    assertDetail(second, 1, 2);
-  }
-
   private void assertDetail(Event event, int before, int after) {
     ConsoleService.EventDetail detail = detail(event);
     assertThat(detail.event()).isEqualTo(event);
