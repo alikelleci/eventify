@@ -18,7 +18,6 @@ import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultProcess
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.plugins.LoggingPlugin;
 import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
-import io.github.alikelleci.eventify.core.support.ReplyExceptionHandler;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerde;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
@@ -41,7 +40,6 @@ import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Named;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 import org.apache.kafka.streams.state.Stores;
@@ -160,14 +158,11 @@ public class Eventify {
               Produced.with(Serdes.String(), commandSerde));
 
       // Results --> Push to reply topic
-      // The nodes are named, so ReplyExceptionHandler can tell a reply that cannot be sent from everything else.
       commandResults
-          .mapValues(CommandResult::getCommand, Named.as(ReplyExceptionHandler.REPLY_RESULT))
-          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)), Named.as(ReplyExceptionHandler.REPLY_FILTER))
+          .mapValues(CommandResult::getCommand)
+          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
           .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
-              Produced.<String, Command>as(ReplyExceptionHandler.REPLY_SINK)
-                  .withKeySerde(Serdes.String())
-                  .withValueSerde(commandSerde)
+              Produced.with(Serdes.String(), commandSerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> Optional.of(Set.of(0))));
 
       // Events --> Push
@@ -389,8 +384,6 @@ public class Eventify {
       }
       this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
       this.streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
-      this.streamsConfig.putIfAbsent(StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, ReplyExceptionHandler.class);
-      this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG, ReplyExceptionHandler.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, CustomRocksDbConfig.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
 
