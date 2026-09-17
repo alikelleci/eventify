@@ -7,8 +7,7 @@ import { DrawerModule } from 'primeng/drawer';
 import { TagModule } from 'primeng/tag';
 import { TabsModule } from 'primeng/tabs';
 import { TooltipModule } from 'primeng/tooltip';
-import { ConfirmationService, MessageService } from 'primeng/api';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { MessageService } from 'primeng/api';
 import { CommandMessage, EventMessage } from '../../models';
 import { EventifyService } from '../../services/eventify.service';
 import { JsonHighlightPipe } from '../../pipes/json-highlight.pipe';
@@ -26,21 +25,17 @@ import { errorDetail } from '../../errors';
   standalone: true,
   imports: [
     DatePipe,
-    ButtonModule, ConfirmDialogModule, DrawerModule, TagModule, TabsModule, TooltipModule,
+    ButtonModule, DrawerModule, TagModule, TabsModule, TooltipModule,
     JsonHighlightPipe, EventDetailComponent, DetailSkeletonComponent, TimelineItemComponent,
   ],
-  providers: [ConfirmationService],
 })
 export class CommandDetailComponent {
   private readonly svc = inject(EventifyService);
   private readonly destroyRef = inject(DestroyRef);
   // Provided by the aggregate page, so retry and copy messages show in its toast.
   private readonly messageService = inject(MessageService);
-  private readonly confirmationService = inject(ConfirmationService);
 
   command = input<CommandMessage | null>(null);
-  /** The retries of this command among the loaded commands: the ones whose $retryOf names it. */
-  retries = input<CommandMessage[]>([]);
   // Loading follows the id: a refreshed copy of the same command updates its fields without reloading or resetting the tabs.
   private readonly commandId = computed(() => this.command()?.id);
   // Derived once per command, not in the template: payloads can be large (see EventDetailComponent).
@@ -95,30 +90,7 @@ export class CommandDetailComponent {
     this.drawerVisible.set(true);
   }
 
-  /**
-   * Asks first: a retry sends the command again as a new command, handled against the aggregate as it is now, which may
-   * differ from when it failed. Also says when it was retried already, e.g. by someone else.
-   */
-  confirmRetry() {
-    const cmd = this.command();
-    if (!cmd || this.retrying()) return;
-    const retries = this.retries();
-    const warning = retries.length > 0
-      ? ` It was already retried ${retries.length === 1 ? 'once' : `${retries.length} times`}, last on ${new Date(retries[0].timestamp).toLocaleString()}.`
-      : '';
-    this.confirmationService.confirm({
-      header: 'Retry command?',
-      message: `${cmd.type} failed ${timeAgo(cmd.timestamp)}. It is sent again as a new command and handled against the aggregate as it is now, not as it was then.${warning}`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Retry',
-      rejectLabel: 'Cancel',
-      rejectButtonProps: { severity: 'secondary', text: true },
-      acceptButtonProps: { severity: retries.length > 0 ? 'danger' : 'primary' },
-      accept: () => this.retry(),
-    });
-  }
-
-  private retry() {
+  retry() {
     const cmd = this.command();
     if (!cmd || this.retrying()) return;
     // Like the skeletons: "Retrying…" stays at least MIN_LOADING_MS, so a fast response doesn't make the button flicker.
@@ -135,7 +107,7 @@ export class CommandDetailComponent {
       }),
     ).subscribe(() => afterMinLoading(startedAt, () => {
       this.retrying.set(false);
-      this.messageService.add({ severity: 'success', summary: 'Retried', detail: 'Command has been resubmitted. Refresh to see its result.' });
+      this.messageService.add({ severity: 'success', summary: 'Retried', detail: 'Command has been resubmitted.' });
     }));
   }
 
@@ -163,15 +135,4 @@ export class CommandDetailComponent {
     this.loading.set(false);
     this.loaded.emit();
   }
-}
-
-/** "5 minutes ago", "3 days ago": how long ago a command was sent. */
-function timeAgo(timestamp: string): string {
-  const minutes = Math.max(0, Math.round((Date.now() - new Date(timestamp).getTime()) / 60_000));
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-  const days = Math.round(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
 }

@@ -58,12 +58,6 @@ export class AggregateComponent {
   // Item counts reported by the lists once loaded; null while still loading.
   private eventCount = signal<number | null>(null);
   private commandCount = signal<number | null>(null);
-  private commands = signal<CommandMessage[]>([]);
-  /** The retries of the selected command, newest first like the list, so its detail can say it was retried already. */
-  selectedCommandRetries = computed(() => {
-    const id = this.selectedCommand()?.id;
-    return id ? this.commands().filter(command => command.metadata['$retryOf'] === id) : [];
-  });
   // Reads the list's own loading signal (the one that shows its skeleton), so the spinner stops as the list appears.
   refreshing = computed(() => {
     const tab = this.refreshedTab();
@@ -137,7 +131,6 @@ export class AggregateComponent {
 
   onCommandsLoaded(commands: CommandMessage[]) {
     this.commandCount.set(commands.length);
-    this.commands.set(commands);
     if (this.isCommand(this.selected())) this.reselect(commands);
     this.autoSelect('commands', commands);
   }
