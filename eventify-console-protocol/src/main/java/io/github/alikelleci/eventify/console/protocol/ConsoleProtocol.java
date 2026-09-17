@@ -27,6 +27,12 @@ public final class ConsoleProtocol {
   /** WebSocket frames are limited to 64 KB, so both sides send larger messages (a page of events) in parts of this size. */
   public static final int FRAGMENT_SIZE = 16 * 1024;
 
+  /**
+   * The largest message either side accepts, once its parts are put together. A larger one is refused instead of read
+   * into memory, so one side can't make the other run out of memory, by mistake (a huge aggregate state) or not.
+   */
+  public static final int MAX_PAYLOAD_SIZE = 16 * 1024 * 1024;
+
   private ConsoleProtocol() {
   }
 }

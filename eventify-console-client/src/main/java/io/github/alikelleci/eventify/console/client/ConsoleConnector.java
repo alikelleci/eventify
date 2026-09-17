@@ -125,6 +125,7 @@ public class ConsoleConnector {
         .metadataMimeType(ConsoleProtocol.METADATA_MIME_TYPE)
         .keepAlive(KEEPALIVE_INTERVAL, KEEPALIVE_MAX_LIFETIME)
         .fragment(ConsoleProtocol.FRAGMENT_SIZE)
+        .maxInboundPayloadSize(ConsoleProtocol.MAX_PAYLOAD_SIZE)
         .acceptor(SocketAcceptor.forRequestResponse(this::handle))
         .connect(WebsocketClientTransport.create(uri))
         .retryWhen(Retry.backoff(Long.MAX_VALUE, MIN_BACKOFF)

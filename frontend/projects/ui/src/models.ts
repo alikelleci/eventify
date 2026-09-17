@@ -14,6 +14,10 @@ export interface CommandMessage {
 
 export interface CommandsPage {
   commands: CommandMessage[];
+  /** How many days back the commands were read; older ones are not in the page. Missing from older console clients. */
+  lookbackDays?: number;
+  /** Whether more commands were found than the page holds: the oldest ones are left out. */
+  truncated?: boolean;
 }
 
 export interface EventMessage {

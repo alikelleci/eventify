@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.messaging.resulthandling.annotations.HandleFailure;
 import io.github.alikelleci.eventify.core.messaging.resulthandling.annotations.HandleResult;
 import io.github.alikelleci.eventify.core.messaging.resulthandling.annotations.HandleSuccess;
+import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -36,7 +37,7 @@ public class ResultProcessor implements FixedKeyProcessor<String, Command, Comma
   public void process(FixedKeyRecord<String, Command> fixedKeyRecord) {
     Command command = fixedKeyRecord.value();
 
-    Collection<ResultHandler> resultHandlers = eventify.getResultHandlers().get(command.getPayload().getClass());
+    Collection<ResultHandler> resultHandlers = HandlerUtils.findHandlers(eventify.getResultHandlers(), command.getPayload().getClass());
     if (CollectionUtils.isNotEmpty(resultHandlers)) {
       resultHandlers.stream()
           .sorted(Comparator.comparingInt(ResultHandler::getPriority).reversed())

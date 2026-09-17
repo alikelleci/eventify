@@ -15,6 +15,7 @@ public class RSocketEndpointConfiguration {
   public NettyRouteProvider rsocketRoute(NodeAcceptor acceptor) {
     var connectionAcceptor = RSocketServer.create(acceptor)
         .fragment(ConsoleProtocol.FRAGMENT_SIZE)
+        .maxInboundPayloadSize(ConsoleProtocol.MAX_PAYLOAD_SIZE)
         .asConnectionAcceptor();
     return routes -> routes.ws(ConsoleProtocol.RSOCKET_PATH, WebsocketRouteTransport.newHandler(connectionAcceptor));
   }

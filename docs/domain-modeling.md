@@ -23,7 +23,7 @@ public class Order {
 
 ## Commands and Events
 
-Commands and events are plain, immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic used for those messages. Every command and event class must contain exactly one `String` field annotated with `@AggregateId`. This field identifies the target aggregate instance.
+Commands and events are plain, immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic used for those messages. Every command and event class must contain exactly one field annotated with `@AggregateId`. This field identifies the target aggregate instance. It may have any type, such as `String`, `UUID` or `long`: its `toString()` value is the identifier.
 
 ### Commands
 

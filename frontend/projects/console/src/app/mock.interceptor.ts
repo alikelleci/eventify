@@ -252,7 +252,7 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
 
   if (req.url.includes('/commands')) {
     // Commands are polled from Kafka, which is always slower than reading the event store.
-    return respond({ commands } satisfies CommandsPage, 2000);
+    return respond({ commands, lookbackDays: 7, truncated: false } satisfies CommandsPage, 2000);
   }
 
   if (req.url.includes('/events')) {

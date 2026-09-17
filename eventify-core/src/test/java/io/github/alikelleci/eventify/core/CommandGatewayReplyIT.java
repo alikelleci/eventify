@@ -30,10 +30,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** The gateway keeps receiving replies after records on its reply topic it can't read. */
 @Testcontainers
@@ -85,6 +87,34 @@ class CommandGatewayReplyIT {
         .failsWithin(Duration.ofSeconds(30))
         .withThrowableOfType(ExecutionException.class)
         .withCauseInstanceOf(RecordTooLargeException.class);
+  }
+
+  @Test
+  @DisplayName("Should refuse the same command while it waits, and fail waiting commands when the gateway closes")
+  void theSameCommandIsRefusedWhileItWaitsAndClosingFailsWaitingCommands() {
+    Properties producerConfig = new Properties();
+    producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    CommandGateway gateway = CommandGateway.builder().producerConfig(producerConfig).replyTopic(REPLY_TOPIC).build();
+
+    // Nothing handles the command: it waits for its reply.
+    Command command = Command.builder().payload(Ping.builder().id("ping-closing").build()).build();
+    CompletableFuture<Object> waiting = gateway.send(command);
+    CompletableFuture<Object> again = gateway.send(command);
+
+    assertThat(again)
+        .failsWithin(Duration.ofSeconds(1))
+        .withThrowableOfType(ExecutionException.class)
+        .withCauseInstanceOf(IllegalStateException.class);
+    assertThat(waiting).isNotDone();
+
+    gateway.close();
+
+    assertThat(waiting)
+        .failsWithin(Duration.ofSeconds(1))
+        .withThrowableThat()
+        .isInstanceOf(CancellationException.class);
+    assertThatThrownBy(() -> gateway.send(Command.builder().payload(Ping.builder().id("ping-after-close").build()).build()))
+        .isInstanceOf(IllegalStateException.class);
   }
 
   @Test

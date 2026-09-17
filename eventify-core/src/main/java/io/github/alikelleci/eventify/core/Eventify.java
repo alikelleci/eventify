@@ -79,6 +79,8 @@ public class Eventify {
   private KafkaStreams kafkaStreams;
   /** Whether this run is stopped already: {@link #stop()} is called by the application and by the shutdown hook. */
   private final AtomicBoolean stopped = new AtomicBoolean();
+  /** Stops this run when the JVM exits without {@link #stop()}; one per run, removed again by {@link #stop()}. */
+  private Thread shutdownHook;
 
   protected Eventify(Properties streamsConfig,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
@@ -213,7 +215,7 @@ public class Eventify {
     return builder.build();
   }
 
-  public void start() {
+  public synchronized void start() {
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
       log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
@@ -232,15 +234,32 @@ public class Eventify {
   /**
    * Closes Kafka Streams and stops the plugins, once. Also after Kafka Streams stopped by itself (e.g. in ERROR): its
    * resources and the plugins' still need to be released.
+   *
+   * <p>Synchronized: the application (e.g. Spring, when its context closes) and the shutdown hook can call this at the
+   * same time. The one that comes second waits until the first has closed Kafka Streams, so it never returns while
+   * handlers still run, e.g. before Spring closes the beans those handlers use.
    */
-  public void stop() {
+  public synchronized void stop() {
     if (kafkaStreams == null || !stopped.compareAndSet(false, true)) {
       return;
     }
+    removeShutdownHook();
     log.info("Eventify is shutting down...");
     kafkaStreams.close(Duration.ofSeconds(30));
     notifyListeners(plugins, "onStop", plugin -> plugin.onStop(this));
     log.info("Eventify shut down complete.");
+  }
+
+  private void removeShutdownHook() {
+    if (shutdownHook == null || Thread.currentThread() == shutdownHook) {
+      return;
+    }
+    try {
+      Runtime.getRuntime().removeShutdownHook(shutdownHook);
+    } catch (IllegalStateException e) {
+      // The JVM is shutting down already: the hook runs anyway, and finds this run stopped.
+    }
+    shutdownHook = null;
   }
 
   /** Kafka Streams takes one listener of each kind, so one listener passes everything on to the plugins that asked. */
@@ -275,7 +294,8 @@ public class Eventify {
 
     kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 
-    Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+    shutdownHook = new Thread(this::stop, "eventify-shutdown");
+    Runtime.getRuntime().addShutdownHook(shutdownHook);
   }
 
   private <T> List<T> listenersOf(Function<EventifyPlugin, T> listener) {
@@ -341,7 +361,12 @@ public class Eventify {
       this.streamsConfig = streamsConfig;
       this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
       this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-      this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
+      // Always exactly-once: a command's events, its result and the event store are written in one transaction. With
+      // at-least-once, a command handled again after a crash would add its events a second time, under other ids.
+      Object guarantee = this.streamsConfig.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
+      if (guarantee != null && !StreamsConfig.EXACTLY_ONCE_V2.equals(guarantee)) {
+        log.warn("'{}' is set by Eventify to '{}'; the configured value '{}' is not used.", StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2, guarantee);
+      }
       this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
       this.streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, CustomRocksDbConfig.class);

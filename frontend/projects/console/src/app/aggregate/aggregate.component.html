@@ -58,7 +58,7 @@
         </div>
       } @else if (isCommand(selected())) {
         <div class="px-6 py-5">
-          <app-command-detail [command]="selectedCommand()" (loaded)="onDetailLoaded()" />
+          <app-command-detail [command]="selectedCommand()" [retries]="selectedCommandRetries()" (loaded)="onDetailLoaded()" />
         </div>
       } @else if (activeListHasItems()) {
         <div class="flex flex-col items-center justify-center h-full gap-3 text-surface-400">
@@ -85,7 +85,7 @@
     @if (isEvent(selected())) {
       <app-event-detail [event]="selectedEvent()" />
     } @else {
-      <app-command-detail [command]="selectedCommand()" />
+      <app-command-detail [command]="selectedCommand()" [retries]="selectedCommandRetries()" />
     }
   </p-drawer>
 }

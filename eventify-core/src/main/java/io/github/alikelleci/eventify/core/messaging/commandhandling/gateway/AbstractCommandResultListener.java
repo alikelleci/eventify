@@ -25,8 +25,14 @@ public abstract class AbstractCommandResultListener {
   /** How long to wait before polling again after an unexpected error, so a lasting one isn't retried in a busy loop. */
   private static final Duration ERROR_PAUSE = Duration.ofSeconds(1);
 
+  /** How long {@link #stopListening()} waits for the listening thread to finish its poll and close the consumer. */
+  private static final Duration STOP_TIMEOUT = Duration.ofSeconds(10);
+
   private final Consumer<String, Command> consumer;
   private final String replyTopic;
+  private final AtomicBoolean closed = new AtomicBoolean(false);
+  private Thread thread;
+  private Thread shutdownHook;
 
   protected AbstractCommandResultListener(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
@@ -48,9 +54,7 @@ public abstract class AbstractCommandResultListener {
    * {@link #onMessage} on another thread, which must not see the subclass's fields before they are set.
    */
   protected void start() {
-    AtomicBoolean closed = new AtomicBoolean(false);
-
-    Thread thread = new Thread(() -> {
+    thread = new Thread(() -> {
       consumer.assign(Collections.singletonList(new TopicPartition(replyTopic, 0)));
 //      consumer.subscribe(Collections.singletonList(this.replyTopic));
       try {
@@ -85,13 +89,46 @@ public abstract class AbstractCommandResultListener {
       } finally {
         consumer.close();
       }
-    });
+    }, "eventify-command-gateway-" + replyTopic);
+    // A daemon: a gateway that is never closed doesn't keep the JVM running.
+    thread.setDaemon(true);
 
-    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-      closed.set(true);
-      consumer.wakeup();
-    }));
+    // For a gateway that is never closed: its consumer still leaves cleanly when the JVM exits.
+    shutdownHook = new Thread(this::signalStop, "eventify-command-gateway-shutdown");
+    Runtime.getRuntime().addShutdownHook(shutdownHook);
     thread.start();
+  }
+
+  /**
+   * Stops listening: ends the poll loop, closes the consumer and waits (a while) for that to finish. Replies that
+   * arrive afterwards are not received.
+   */
+  protected void stopListening() {
+    signalStop();
+    if (shutdownHook != null) {
+      try {
+        Runtime.getRuntime().removeShutdownHook(shutdownHook);
+      } catch (IllegalStateException e) {
+        // The JVM is shutting down already: the hook runs anyway.
+      }
+    }
+    if (thread != null && thread != Thread.currentThread()) {
+      try {
+        thread.join(STOP_TIMEOUT.toMillis());
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  private void signalStop() {
+    if (closed.compareAndSet(false, true)) {
+      consumer.wakeup();
+    }
+  }
+
+  protected boolean isClosed() {
+    return closed.get();
   }
 
   /** @return {@code false} when the thread was interrupted while waiting, and must stop */

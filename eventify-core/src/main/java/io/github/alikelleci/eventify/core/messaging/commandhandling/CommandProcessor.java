@@ -16,6 +16,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
+import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
@@ -99,7 +100,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
    * is accepted. Empty when the command is accepted without events; {@code null} when there is no handler for it.
    */
   protected List<Event> executeCommand(String aggregateId, Command command) {
-    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
+    CommandHandler commandHandler = HandlerUtils.findHandler(eventify.getCommandHandlers(), command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return null;
@@ -147,7 +148,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   private void applyEvents(AggregateState state, List<Event> events) {
     for (Event event : events) {
-      EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+      EventSourcingHandler handler = HandlerUtils.findHandler(eventify.getEventSourcingHandlers(), event.getPayload().getClass());
       if (handler != null) {
         state = handler.apply(state, event);
       }
@@ -191,7 +192,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     AggregateState snapshot = loadFromSnapshot(aggregateId);
     if (snapshot != null) {
-      log.debug("Snapshot found: {}", snapshot);
+      log.debug("Snapshot found: {} ({}) at version {}", snapshot.getType(), aggregateId, snapshot.getVersion());
     }
 
     log.debug("Loading aggregate state by applying events...");
@@ -202,7 +203,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     Duration duration = Duration.between(startTime, endTime);
 
     log.debug("Number of events applied: {}", replay.applied());
-    log.debug("Aggregate state reconstructed in {} ms ({} sec): {}", duration.toMillis(), duration.toSeconds(), state);
+    // Only ids, types and versions: the state and the payloads are application data, e.g. personal data.
+    log.debug("Aggregate state reconstructed in {} ms: {} ({}) at version {}", duration.toMillis(),
+        state != null ? state.getType() : null, aggregateId, state != null ? state.getVersion() : 0);
 
     // Save snapshot if needed: when the version passed a multiple of the threshold since the last snapshot. Not only when
     // it is exactly one: a command with several events can step over it.
@@ -211,7 +214,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
         .filter(s -> s.getSnapshotThreshold() > 0)
         .filter(s -> s.getVersion() / s.getSnapshotThreshold() > startVersion / s.getSnapshotThreshold())
         .ifPresent(s -> {
-          log.debug("Creating snapshot: {}", s);
+          log.debug("Creating snapshot: {} ({}) at version {}", s.getType(), s.getAggregateId(), s.getVersion());
           saveSnapshot(s);
 
           // Delete events after snapshot

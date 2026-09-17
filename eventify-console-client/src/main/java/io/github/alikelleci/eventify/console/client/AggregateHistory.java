@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateRepla
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.exceptions.AggregateInvocationException;
+import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
@@ -200,7 +201,7 @@ class AggregateHistory {
     try (KeyValueIterator<String, Event> iterator = events.range(IdUtils.firstKey(aggregateId), untilEventId)) {
       while (iterator.hasNext()) {
         KeyValue<String, Event> entry = iterator.next();
-        if (IdUtils.isKeyOf(aggregateId, entry.key) && eventSourcingHandlers.containsKey(entry.value.getPayload().getClass())) {
+        if (IdUtils.isKeyOf(aggregateId, entry.key) && HandlerUtils.findHandler(eventSourcingHandlers, entry.value.getPayload().getClass()) != null) {
           count++;
         }
       }

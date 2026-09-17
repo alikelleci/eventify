@@ -20,7 +20,10 @@ CommandGateway gateway = CommandGateway.builder()
 |---|---|---|
 | `producerConfig(Properties)` | Yes | Kafka producer configuration. |
 | `replyTopic(String)` | Yes | Topic on which command results are received. |
+| `consumerConfig(Properties)` | No | Settings for the consumer that receives the results. It already takes every setting from the producer config that a consumer also has, such as `bootstrap.servers`, `security.protocol`, `sasl.*` and `ssl.*`, so this is only needed for a setting it should have differently. |
 | `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
+
+The gateway holds a Kafka producer, a consumer and a thread. Close it when your application stops, for example as a Spring bean with `@Bean(destroyMethod = "close")` (Spring calls `close()` by default). Closing sends the commands still buffered and fails the futures still waiting for a result with a `CancellationException`.
 
 ## Sending Commands
 
@@ -42,3 +45,5 @@ PlaceOrder result = gateway.sendAndWait(
 ```
 
 If the command fails, `sendAndWait` throws a `CommandExecutionException` containing the failure message. When using `send`, the returned future completes exceptionally with the same exception.
+
+Sending the same `Command` object again while it still waits for its result fails with an `IllegalStateException`: it would otherwise be handled twice.

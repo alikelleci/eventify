@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.messaging.eventsourcing;
 
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
+import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.KeyValue;
@@ -104,7 +105,7 @@ public class AggregateReplay {
         if (listener != null) {
           listener.beforeEvent(event, state, version);
         }
-        EventSourcingHandler handler = eventSourcingHandlers.get(event.getPayload().getClass());
+        EventSourcingHandler handler = HandlerUtils.findHandler(eventSourcingHandlers, event.getPayload().getClass());
         if (handler != null) {
           log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
           state = handler.apply(state, event);

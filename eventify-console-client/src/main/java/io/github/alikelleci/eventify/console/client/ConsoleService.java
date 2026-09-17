@@ -12,6 +12,7 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -44,9 +45,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_ID;
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 
 @Slf4j
@@ -62,8 +64,16 @@ class ConsoleService {
   private static final Duration COMMANDS_LOOKBACK = Duration.ofDays(7);
   /** Reading the commands stops after this long, so a read that can't finish doesn't keep a query thread. */
   private static final Duration MAX_COMMANDS_READ = Duration.ofSeconds(60);
+  /** How long a retried command may take to reach Kafka before the console is told it failed. */
+  private static final Duration RETRY_SEND_TIMEOUT = Duration.ofSeconds(10);
 
-  record CommandsPage(List<Command> commands) {}
+  /**
+   * The aggregate's newest commands.
+   *
+   * @param lookbackDays how far back the commands were read: older commands are not in the page
+   * @param truncated    whether more commands were found than the page holds: the oldest ones are left out
+   */
+  record CommandsPage(List<Command> commands, long lookbackDays, boolean truncated) {}
   record EventsPage(List<Event> events, String nextCursor) {}
   /**
    * An event with the state after and before it. A state is {@code null} when there is none, or when it is unknown:
@@ -184,9 +194,7 @@ class ConsoleService {
     try {
       JsonNode tree = objectMapper.readTree(json);
       String type = tree.path("payload").path("@class").asText(null);
-      boolean handled = type != null && eventify.getCommandHandlers().keySet().stream()
-          .anyMatch(commandClass -> commandClass.getName().equals(type));
-      if (!handled) {
+      if (!isHandledCommand(type)) {
         return Result.badRequest("Not a command of this application: " + type);
       }
       original = objectMapper.treeToValue(tree, Command.class);
@@ -195,12 +203,13 @@ class ConsoleService {
       return Result.badRequest("Unreadable command");
     }
 
+    // The correlation id stays: the retry belongs to the same flow (e.g. a saga) as the command it retries, and its
+    // events can be traced with the rest of that flow. RETRY_OF tells the retry apart from the original.
     Metadata retryMetadata = Metadata.builder()
         .putAll(original.getMetadata())
         .put(RETRY_OF, original.getId())
         .build();
     retryMetadata.remove(REPLY_TO);
-    retryMetadata.remove(CORRELATION_ID);
 
     Command retryCommand = Command.builder()
         .payload(original.getPayload())
@@ -209,16 +218,41 @@ class ConsoleService {
 
     String commandTopic = original.getTopicInfo().value();
 
+    // Waits until Kafka has the command: only then is the retry done. A send that fails later (no access to the topic,
+    // the broker unreachable) would otherwise be reported as done.
     try {
       producer.send(new ProducerRecord<>(commandTopic, null, retryCommand.getTimestamp().toEpochMilli(),
-          retryCommand.getAggregateId(), retryCommand));
+          retryCommand.getAggregateId(), retryCommand)).get(RETRY_SEND_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
       log.info("Retried command {} as {} on topic {}", original.getId(), retryCommand.getId(), commandTopic);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      return Result.unavailable("Interrupted while publishing the retry command");
     } catch (Exception e) {
-      log.error("Failed to publish retry command for {}", original.getId(), e);
-      return Result.unavailable("Failed to publish retry command");
+      Throwable cause = e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e;
+      log.error("Failed to publish retry command for {}", original.getId(), cause);
+      return Result.unavailable("Failed to publish retry command: " + cause.getMessage());
     }
 
     return Result.ok(null);
+  }
+
+  /**
+   * Whether the class is a command this application handles: it, or one of its supertypes, has a command handler.
+   * The class is looked up without being initialized, before anything of the JSON is read as that class.
+   */
+  private boolean isHandledCommand(String className) {
+    if (className == null) {
+      return false;
+    }
+    ClassLoader classLoader = Thread.currentThread().getContextClassLoader() != null
+        ? Thread.currentThread().getContextClassLoader()
+        : ConsoleService.class.getClassLoader();
+    try {
+      Class<?> type = Class.forName(className, false, classLoader);
+      return HandlerUtils.findHandler(eventify.getCommandHandlers(), type) != null;
+    } catch (ClassNotFoundException | LinkageError e) {
+      return false;
+    }
   }
 
   /**
@@ -231,7 +265,7 @@ class ConsoleService {
         .map(topic -> topic.concat(".results"))
         .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {
-      return Result.ok(new CommandsPage(List.of()));
+      return Result.ok(new CommandsPage(List.of(), COMMANDS_LOOKBACK.toDays(), false));
     }
 
     List<Command> results = new ArrayList<>();
@@ -264,8 +298,9 @@ class ConsoleService {
     }
 
     results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
-    List<Command> limited = results.size() > limit ? results.subList(0, limit) : results;
-    return Result.ok(new CommandsPage(limited));
+    boolean truncated = results.size() > limit;
+    List<Command> limited = truncated ? results.subList(0, limit) : results;
+    return Result.ok(new CommandsPage(limited, COMMANDS_LOOKBACK.toDays(), truncated));
   }
 
   /**

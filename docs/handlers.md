@@ -85,11 +85,11 @@ Create a plain class and annotate its event-sourcing methods with `@ApplyEvent`.
 public class OrderEventSourcingHandler {
 
     @ApplyEvent
-    public Order apply(OrderPlaced event, Order state) {
+    public Order apply(OrderPlaced event, Order state, @Timestamp Instant timestamp) {
         return Order.builder()
             .id(event.getId())
             .customer(event.getCustomer())
-            .placedAt(Instant.now())
+            .placedAt(timestamp) // from the event, never Instant.now(): see below
             .build();
     }
 
@@ -109,6 +109,9 @@ public class OrderEventSourcingHandler {
 
 - Always return a **new** state object—never mutate the existing one.
 - Return `null` to indicate that the aggregate has been deleted. Subsequent commands will receive `null` as the aggregate state.
+- Keep these methods **deterministic and free of side effects**. They run again every time the aggregate is loaded, and whenever the Eventify Console shows its history, so the same events must always give the same state. Use only the event, the state and the injected parameters: no `Instant.now()`, random values, database lookups or calls to other services.
+
+A handler may also be written for a supertype of the event, such as the `OrderEvent` interface. When an event class has no handler of its own, the handler of its nearest superclass or interface is used. The same goes for command handlers. Event handlers of all matching types are invoked.
 
 ### Injectable parameters
 
@@ -165,9 +168,17 @@ public void on(OrderPlaced event) {
 | `@MessageId String` | The unique ID of the event message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |
 
+### Reading event topics outside Eventify
+
+Eventify writes a command's events, its result and its event store in one Kafka transaction. When something fails before that transaction is committed, it is aborted, but events that were already written stay in the topic, marked as aborted. A consumer that reads the event topics without Eventify, for example a projection with a plain `KafkaConsumer` or another Kafka Streams application, must set `isolation.level` to `read_committed`. Kafka's default, `read_uncommitted`, also returns the aborted events: events of commands that never happened. Kafka Streams applications with `processing.guarantee` set to `exactly_once_v2` read committed records already.
+
+```java
+props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
+```
+
 ### Run event handlers in a separate application
 
-An exception thrown by an event handler stops the Eventify instance it runs in. This is on purpose: the event is not skipped, so after you fix the problem and restart, the event is handled again and nothing is lost. The same goes for result handlers.
+An exception thrown by an event handler stops the Eventify instance it runs in. This is on purpose: the event is not skipped, so after you fix the problem and restart, the event is handled again and nothing is lost.
 
 When that instance also handles commands, command handling stops with it. Run your event handlers in a separate application, with its own `application.id`, so a failing event handler never stops command handling.
 

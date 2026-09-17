@@ -1,3 +1,5 @@
+<p-confirmdialog [style]="{ width: '28rem' }" />
+
 @if (loading()) {
   <app-detail-skeleton />
 } @else if (command(); as cmd) {
@@ -47,7 +49,7 @@
           [icon]="retrying() ? 'pi pi-spin pi-spinner' : 'pi pi-refresh'" size="small" styleClass="!w-24 !border !border-red-300 dark:!border-red-800"
           [label]="retrying() ? 'Retrying…' : 'Retry'"
           [disabled]="retrying()"
-          (onClick)="retry()" />
+          (onClick)="confirmRetry()" />
       </div>
     }
   </div>

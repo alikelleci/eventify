@@ -8,19 +8,26 @@ import lombok.SneakyThrows;
 import org.apache.commons.lang3.reflect.FieldUtils;
 
 import java.lang.reflect.Field;
+import java.util.List;
 
 public class IdUtils {
 
   /** A ULID as text is always this long. */
   private static final int ULID_LENGTH = 26;
 
+  /**
+   * The value of the one field annotated with {@link AggregateId}, as text. The field may have any type (e.g. a
+   * {@code UUID} or a {@code long}): its {@code toString()} is the identifier.
+   */
   public static String getAggregateId(Object payload) {
-    return FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class)
-        .stream()
-        .filter(field -> field.getType() == String.class)
-        .findFirst()
-        .map(field -> getFieldValue(field, payload))
-        .orElseThrow(() -> new AggregateIdMissingException("Aggregate identifier missing. Please annotate your field containing the identifier with @AggregateId."));
+    List<Field> fields = FieldUtils.getFieldsListWithAnnotation(payload.getClass(), AggregateId.class);
+    if (fields.isEmpty()) {
+      throw new AggregateIdMissingException("Aggregate identifier missing in " + payload.getClass().getName() + ". Please annotate your field containing the identifier with @AggregateId.");
+    }
+    if (fields.size() > 1) {
+      throw new AggregateIdMissingException("More than one field of " + payload.getClass().getName() + " is annotated with @AggregateId: " + fields.stream().map(Field::getName).toList() + ". Annotate exactly one.");
+    }
+    return getFieldValue(fields.get(0), payload);
   }
 
   /**

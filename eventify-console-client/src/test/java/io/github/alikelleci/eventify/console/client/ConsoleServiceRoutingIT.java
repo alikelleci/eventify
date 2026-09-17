@@ -147,7 +147,8 @@ class ConsoleServiceRoutingIT {
           assertThat(service.getCommands(id, 50, new CancelSignal()).value())
               .satisfies(page -> assertThat(page.commands()).isNotEmpty()));
 
-      // Retried from the console: a new command, with its own correlation id, pointing to the one it retries.
+      // Retried from the console: a new command, pointing to the one it retries. It keeps the correlation id: it belongs
+      // to the same flow (e.g. a saga) as the original.
       Command original = service.getCommands(id, 50, new CancelSignal()).value().commands().get(0);
       byte[] json = first.getObjectMapper().writeValueAsBytes(original);
       assertThat(service.retryCommand(json)).isEqualTo(Result.ok(null));
@@ -156,7 +157,8 @@ class ConsoleServiceRoutingIT {
         assertThat(commands).hasSize(2);
         Command retry = commands.get(0); // newest first
         assertThat(retry.getMetadata()).containsEntry(ConsoleService.RETRY_OF, original.getId()).doesNotContainKey(Metadata.REPLY_TO);
-        assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isNotEqualTo(original.getMetadata().getCorrelationId());
+        assertThat(retry.getId()).isNotEqualTo(original.getId());
+        assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isEqualTo(original.getMetadata().getCorrelationId());
         assertThat(retry.getMetadata()).containsEntry(Metadata.RESULT, "success");
       });
 

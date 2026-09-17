@@ -5,7 +5,9 @@
     <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M8 9l4-4 4 4M8 15l4 4 4-4"/>
     </svg>
-    <span class="text-sm">No commands found for this aggregate</span>
+    <span class="text-sm">
+      @if (lookbackDays(); as days) { No commands in the last {{ days }} days } @else { No commands found for this aggregate }
+    </span>
   </div>
 } @else {
   @for (command of commands(); track command.id) {
@@ -25,6 +27,13 @@
     </app-timeline-item>
   }
   <div class="flex items-center justify-center gap-2 px-4 py-3 text-xs text-surface-400">
-    <i class="pi pi-check-circle"></i><span>All commands loaded</span>
+    <!-- Only commands of the last days are read: say so, instead of suggesting there are no older ones -->
+    @if (truncated()) {
+      <i class="pi pi-info-circle"></i><span>Showing the newest {{ commands().length }} commands; older ones are left out</span>
+    } @else if (lookbackDays(); as days) {
+      <i class="pi pi-check-circle"></i><span>All commands of the last {{ days }} days loaded</span>
+    } @else {
+      <i class="pi pi-check-circle"></i><span>All commands loaded</span>
+    }
   </div>
 }

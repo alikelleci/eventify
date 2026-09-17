@@ -34,6 +34,10 @@ export class CommandListComponent implements OnInit {
   loaded = output<CommandMessage[]>();
 
   commands = signal<CommandMessage[]>([]);
+  /** How far back the commands were read, in days; null when the application didn't say (an older console client). */
+  lookbackDays = signal<number | null>(null);
+  /** Whether older commands were left out because there were more than the page holds. */
+  truncated = signal(false);
   loading = signal(true);
 
   ngOnInit() {
@@ -48,6 +52,8 @@ export class CommandListComponent implements OnInit {
       }),
     ).subscribe(page => {
       this.commands.set(page.commands);
+      this.lookbackDays.set(page.lookbackDays ?? null);
+      this.truncated.set(page.truncated ?? false);
       this.loaded.emit(page.commands);
       afterMinLoading(startedAt, () => this.loading.set(false));
     });

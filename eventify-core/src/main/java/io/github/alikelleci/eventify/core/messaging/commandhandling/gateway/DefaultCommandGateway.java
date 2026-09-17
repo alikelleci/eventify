@@ -20,6 +20,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.time.Duration;
 import java.util.Properties;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 
@@ -32,6 +33,9 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
   /** How long a command waits for its reply before its future fails. */
   private static final Duration TIMEOUT = Duration.ofMinutes(5);
+
+  /** How long {@link #close()} waits for the commands still being sent to reach Kafka. */
+  private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
   private final Cache<String, CompletableFuture<Object>> cache;
 
@@ -64,13 +68,21 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
   @Override
   public <R> CompletableFuture<R> send(Command command) {
+    if (isClosed()) {
+      throw new IllegalStateException("The command gateway is closed.");
+    }
     command.getMetadata().put(REPLY_TO, getReplyTopic());
 
     // Built first: a command that can't be sent (e.g. without @TopicInfo) fails here, without leaving a future behind.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
     CompletableFuture<Object> future = new CompletableFuture<>();
-    cache.put(command.getId(), future);
+    // One future per command id. The same command sent again while it still waits for its reply would be handled twice,
+    // and would replace the first future, which then never completes: it is refused instead.
+    CompletableFuture<Object> waiting = cache.asMap().putIfAbsent(command.getId(), future);
+    if (waiting != null) {
+      return CompletableFuture.failedFuture(new IllegalStateException("Command " + command.getId() + " was already sent and still waits for its result."));
+    }
 
     log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
     try {
@@ -91,8 +103,25 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
 
   private void failSend(Command command, CompletableFuture<Object> future, Exception exception) {
     log.warn("Failed to send command: {} ({})", command.getType(), command.getAggregateId(), exception);
-    cache.invalidate(command.getId());
+    cache.asMap().remove(command.getId(), future);
     future.completeExceptionally(exception);
+  }
+
+  /**
+   * Sends the commands that are still buffered, stops listening for replies, and fails the commands that still wait
+   * for one with a {@link CancellationException}: once closed, their replies can't be received. The commands themselves
+   * are still handled. After closing, {@link #send} throws.
+   */
+  @Override
+  public void close() {
+    if (isClosed()) {
+      return;
+    }
+    stopListening();
+    producer.close(CLOSE_TIMEOUT);
+    cache.asMap().forEach((id, future) ->
+        future.completeExceptionally(new CancellationException("The command gateway was closed before command " + id + " got its result.")));
+    cache.invalidateAll();
   }
 
   @Override

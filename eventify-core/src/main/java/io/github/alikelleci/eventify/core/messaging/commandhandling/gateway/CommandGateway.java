@@ -4,18 +4,23 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
 import lombok.SneakyThrows;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
-public interface CommandGateway {
+public interface CommandGateway extends AutoCloseable {
 
   <R> CompletableFuture<R> send(Command command);
+
+  /** Releases the gateway's Kafka clients and thread. */
+  @Override
+  void close();
 
   default <R> CompletableFuture<R> send(Object payload) {
     return send(Command.builder()
@@ -52,6 +57,11 @@ public interface CommandGateway {
 
   public static class CommandGatewayBuilder {
 
+    /** Producer settings a consumer also knows, but that mean something else for it or must differ. */
+    private static final Set<String> NOT_FOR_THE_CONSUMER = Set.of(
+        CommonClientConfigs.CLIENT_ID_CONFIG,
+        ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG);
+
     private Properties producerConfig;
     private Properties consumerConfig;
     private String replyTopic;
@@ -75,10 +85,30 @@ public interface CommandGateway {
       return this;
     }
 
-//    public Builder consumerConfig(Properties consumerConfig) {
-//      this.consumerConfig = consumerConfig;
-//      return this;
-//    }
+    /**
+     * Settings for the consumer that receives the replies, on top of the ones it takes from the producer config (see
+     * {@link #build()}). Only needed for a setting the consumer should have differently.
+     */
+    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
+      this.consumerConfig = consumerConfig;
+      return this;
+    }
+
+    /** The producer settings a consumer also has, overridden by {@code overrides} (may be {@code null}). */
+    static Properties replyConsumerConfig(Properties producerConfig, Properties overrides) {
+      Properties consumerConfig = new Properties();
+      Set<String> consumerSettings = ConsumerConfig.configNames();
+      producerConfig.forEach((key, value) -> {
+        String name = String.valueOf(key);
+        if (consumerSettings.contains(name) && !NOT_FOR_THE_CONSUMER.contains(name)) {
+          consumerConfig.put(name, value);
+        }
+      });
+      if (overrides != null) {
+        consumerConfig.putAll(overrides);
+      }
+      return consumerConfig;
+    }
 
     public CommandGatewayBuilder replyTopic(String replyTopic) {
       this.replyTopic = replyTopic;
@@ -90,18 +120,14 @@ public interface CommandGateway {
       return this;
     }
 
+    /**
+     * The reply consumer gets every producer setting a consumer has too: the connection and its security
+     * ({@code security.protocol}, {@code sasl.*}, {@code ssl.*}, ...). Without the {@code sasl.*} and {@code ssl.*}
+     * settings it couldn't log in on a secured cluster, and every command would time out. Settings given with
+     * {@link #consumerConfig(Properties)} go first.
+     */
     public DefaultCommandGateway build() {
-      this.consumerConfig = new Properties();
-
-      String bootstrapServers = this.producerConfig.getProperty(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG);
-      if (StringUtils.isNotBlank(bootstrapServers)) {
-        this.consumerConfig.putIfAbsent(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-      }
-
-      String securityProtocol = this.producerConfig.getProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG);
-      if (StringUtils.isNotBlank(securityProtocol)) {
-        this.consumerConfig.putIfAbsent(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
-      }
+      Properties consumerConfig = replyConsumerConfig(this.producerConfig, this.consumerConfig);
 
       if (this.objectMapper == null) {
         this.objectMapper = JacksonUtils.enhancedObjectMapper();
@@ -109,7 +135,7 @@ public interface CommandGateway {
 
       return new DefaultCommandGateway(
           this.producerConfig,
-          this.consumerConfig,
+          consumerConfig,
           this.replyTopic,
           this.objectMapper);
     }
