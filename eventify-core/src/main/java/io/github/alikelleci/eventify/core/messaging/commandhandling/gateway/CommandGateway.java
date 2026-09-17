@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.support.serialization.json.util.Jackso
 import lombok.SneakyThrows;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.common.config.SecurityConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
@@ -57,10 +58,25 @@ public interface CommandGateway extends AutoCloseable {
 
   public static class CommandGatewayBuilder {
 
-    /** Producer settings a consumer also knows, but that mean something else for it or must differ. */
-    private static final Set<String> NOT_FOR_THE_CONSUMER = Set.of(
-        CommonClientConfigs.CLIENT_ID_CONFIG,
-        ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG);
+    /**
+     * What the consumer that receives the results takes from the producer configuration: how to reach the cluster, and
+     * how to log in to it. Not the producer's own tuning (timeouts, buffers, metrics, interceptors).
+     *
+     * <p>The security settings are taken by prefix, not by name: Kafka has over sixty of them, and adds more with every
+     * mechanism it supports.
+     */
+    private static final Set<String> CONNECTION_SETTINGS = Set.of(
+        CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
+        CommonClientConfigs.CLIENT_DNS_LOOKUP_CONFIG,
+        CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
+        SecurityConfig.SECURITY_PROVIDERS_CONFIG,
+        "config.providers");
+
+    private static boolean isConnectionSetting(String name) {
+      return CONNECTION_SETTINGS.contains(name)
+          || name.startsWith("sasl.")
+          || name.startsWith("ssl.");
+    }
 
     private Properties producerConfig;
     private String replyTopic;
@@ -84,13 +100,13 @@ public interface CommandGateway extends AutoCloseable {
       return this;
     }
 
-    /** The producer settings that a consumer has too. */
+    /** How the consumer that receives the results reaches the cluster, taken from the producer configuration. */
     static Properties replyConsumerConfig(Properties producerConfig) {
       Properties consumerConfig = new Properties();
       Set<String> consumerSettings = ConsumerConfig.configNames();
       producerConfig.forEach((key, value) -> {
         String name = String.valueOf(key);
-        if (consumerSettings.contains(name) && !NOT_FOR_THE_CONSUMER.contains(name)) {
+        if (consumerSettings.contains(name) && isConnectionSetting(name)) {
           consumerConfig.put(name, value);
         }
       });
