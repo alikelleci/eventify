@@ -47,7 +47,7 @@ public class OrderCommandHandler {
 |---|---|
 | A single event payload | One event is recorded and published. |
 | A `List` of event payloads | Multiple events are recorded and published. |
-| `null` | No events are produced, and no result is forwarded. |
+| `null` or an empty `List` | The command is accepted without events, e.g. a command that changes nothing because the aggregate is already in that state. A success result is forwarded, so the sender gets its answer. |
 
 ### Throwing exceptions
 
