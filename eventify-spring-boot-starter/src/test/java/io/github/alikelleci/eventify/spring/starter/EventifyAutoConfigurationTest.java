@@ -95,6 +95,33 @@ class EventifyAutoConfigurationTest {
     assertThat(output).doesNotContain("is not eligible for getting processed by all BeanPostProcessors");
   }
 
+  @Configuration
+  static class TwoEventifyBeansWithoutHandlers {
+    @Bean
+    PingHandler pingHandler() {
+      return new PingHandler();
+    }
+
+    @Bean
+    Eventify first() {
+      return Eventify.builder().streamsConfig(streamsConfig()).build();
+    }
+
+    @Bean
+    Eventify second() {
+      return Eventify.builder().streamsConfig(streamsConfig()).build();
+    }
+  }
+
+  /** Every handler would be registered on both, and every command handled twice. */
+  @Test
+  @DisplayName("Should refuse to guess when more than one Eventify bean has no handlers")
+  void handlersAreNotSpreadOverSeveralEventifyBeans() {
+    runner.withUserConfiguration(TwoEventifyBeansWithoutHandlers.class).run(context ->
+        assertThat(context).hasFailed()
+            .getFailure().hasMessageContaining("more than one Eventify bean without handlers"));
+  }
+
   private static Object registeredHandler(Eventify eventify) {
     return eventify.getEventHandlers().get(Pinged.class).stream().map(EventHandler::getHandler).findFirst().orElseThrow();
   }
