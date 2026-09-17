@@ -22,10 +22,6 @@ CommandGateway gateway = CommandGateway.builder()
 | `replyTopic(String)` | Yes | Topic on which command results are received. |
 | `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
 
-The results are received by a consumer that Eventify configures itself, from the producer configuration: it connects the same way, with the same security settings.
-
-Close the gateway when your application stops; as a Spring `@Bean` this happens by itself. Commands on their way are still sent, and commands still waiting for their result fail right away instead of waiting for their timeout.
-
 ## Sending Commands
 
 ```java

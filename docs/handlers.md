@@ -168,7 +168,7 @@ public void on(OrderPlaced event) {
 
 ### Reading event topics outside Eventify
 
-Eventify writes a command's events, its result and its event store in one Kafka transaction. When something fails before that transaction is committed, it is aborted, but events that were already written stay in the topic, marked as aborted. A consumer that reads the event topics without Eventify, for example a projection with a plain `KafkaConsumer` or another Kafka Streams application, must set `isolation.level` to `read_committed`. Kafka's default, `read_uncommitted`, also returns the aborted events: events of commands that never happened. Kafka Streams applications with `processing.guarantee` set to `exactly_once_v2` read committed records already.
+A consumer that reads the event topics without Eventify, for example a projection of your own, must set `isolation.level` to `read_committed`. With Kafka's default, `read_uncommitted`, it also receives events of commands that failed and were rolled back: events of things that never happened.
 
 ```java
 props.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
