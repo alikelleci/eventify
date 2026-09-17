@@ -222,6 +222,8 @@ public class Eventify {
       return;
     }
 
+    warnAboutHandlersThatStopEachOther();
+
     kafkaStreams = new KafkaStreams(topology, streamsConfig);
     stopped.set(false);
     setUpListeners();
@@ -229,6 +231,19 @@ public class Eventify {
     log.info("Eventify is starting...");
     kafkaStreams.start();
     notifyListeners(plugins, "onStart", plugin -> plugin.onStart(this));
+  }
+
+  /**
+   * An exception from an event or result handler stops Kafka Streams, and command handling stops with it: they are
+   * best run in their own application, with their own application id.
+   */
+  private void warnAboutHandlersThatStopEachOther() {
+    if (commandHandlers.isEmpty() || (eventHandlers.isEmpty() && resultHandlers.isEmpty())) {
+      return;
+    }
+    log.warn("This Eventify instance handles commands and events in one application: an exception from an event "
+        + "handler stops command handling too. Consider running the event handlers in their own application, "
+        + "with its own '{}'.", StreamsConfig.APPLICATION_ID_CONFIG);
   }
 
   /**
