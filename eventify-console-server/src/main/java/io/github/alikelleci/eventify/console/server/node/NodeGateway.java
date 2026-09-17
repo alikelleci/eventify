@@ -12,12 +12,10 @@ import io.rsocket.util.DefaultPayload;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.Arrays;
 
 /**
  * Sends a request to an instance of an application, to the one its {@link Route.Target} says.
@@ -133,24 +131,11 @@ public class NodeGateway {
 
   private Reply toReply(Payload payload) {
     try {
-      return new Reply(readHeader(payload.getMetadataUtf8()), toBytes(payload.getData()));
+      ReplyHeader header = jsonMapper.readValue(payload.getMetadataUtf8(), ReplyHeader.class);
+      return new Reply(header, toBytes(payload.getData()));
     } finally {
       payload.release();
     }
-  }
-
-  /**
-   * The reply header. An instance on a newer version may answer with a status this console doesn't know: that is an
-   * answer it can't use, so it counts as unavailable instead of failing the whole reply.
-   */
-  private ReplyHeader readHeader(String json) {
-    JsonNode header = jsonMapper.readTree(json);
-    String status = header.path("status").asString(null);
-    if (Arrays.stream(ReplyHeader.Status.values()).noneMatch(known -> known.name().equals(status))) {
-      log.warn("An instance answered with status '{}', which this console does not know", status);
-      return ReplyHeader.unavailable("The application answered with something this console does not understand: upgrade the console");
-    }
-    return jsonMapper.treeToValue(header, ReplyHeader.class);
   }
 
   private static Reply notConnected(String applicationId) {
