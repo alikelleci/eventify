@@ -14,8 +14,10 @@ import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.errors.RecordTooLargeException;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
@@ -29,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,6 +46,13 @@ class CommandGatewayReplyIT {
   private static final String COMMAND_TOPIC = "gateway.commands";
   private static final String REPLY_TOPIC = "gateway.replies";
 
+  @BeforeAll
+  static void createTopics() throws Exception {
+    try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
+      admin.createTopics(List.of(new NewTopic(COMMAND_TOPIC, 1, (short) 1), new NewTopic(REPLY_TOPIC, 1, (short) 1))).all().get();
+    }
+  }
+
   @TopicInfo(COMMAND_TOPIC)
   @Value
   @Builder
@@ -51,12 +61,35 @@ class CommandGatewayReplyIT {
     String id;
   }
 
+  @TopicInfo(COMMAND_TOPIC)
+  @Value
+  @Builder
+  public static class Upload {
+    @AggregateId
+    String id;
+    String content;
+  }
+
+  @Test
+  @DisplayName("Should fail a command that cannot be sent with the reason, not with a timeout")
+  void aCommandThatCannotBeSentFailsWithTheReason() {
+    Properties producerConfig = new Properties();
+    producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    CommandGateway gateway = CommandGateway.builder().producerConfig(producerConfig).replyTopic(REPLY_TOPIC).build();
+
+    // Larger than the producer sends (max.request.size, 1 MB by default).
+    Upload upload = Upload.builder().id("upload-1").content("x".repeat(2 * 1024 * 1024)).build();
+    CompletableFuture<Object> future = gateway.send(Command.builder().payload(upload).build());
+
+    assertThat(future)
+        .failsWithin(Duration.ofSeconds(30))
+        .withThrowableOfType(ExecutionException.class)
+        .withCauseInstanceOf(RecordTooLargeException.class);
+  }
+
   @Test
   @DisplayName("Should complete a command after unreadable and empty records on the reply topic")
   void repliesArriveAfterRecordsTheGatewayCannotRead() throws Exception {
-    try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
-      admin.createTopics(List.of(new NewTopic(COMMAND_TOPIC, 1, (short) 1), new NewTopic(REPLY_TOPIC, 1, (short) 1))).all().get();
-    }
 
     Properties producerConfig = new Properties();
     producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());

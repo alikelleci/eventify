@@ -54,15 +54,33 @@ public class DefaultCommandGateway extends AbstractCommandResultListener impleme
   public <R> CompletableFuture<R> send(Command command) {
     command.getMetadata().put(REPLY_TO, getReplyTopic());
 
+    // Built first: a command that can't be sent (e.g. without @TopicInfo) fails here, without leaving a future behind.
+    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
+
     CompletableFuture<Object> future = new CompletableFuture<>();
     cache.put(command.getId(), future);
 
-    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopicInfo().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
-
     log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
-    producer.send(producerRecord);
+    try {
+      // A command that doesn't reach Kafka never gets a result: its future fails with the reason right away, instead of
+      // with a timeout later (e.g. no access to the topic, a command too large, or the broker unreachable too long).
+      producer.send(producerRecord, (metadata, exception) -> {
+        if (exception != null) {
+          failSend(command, future, exception);
+        }
+      });
+    } catch (RuntimeException e) {
+      failSend(command, future, e);
+      throw e;
+    }
 
     return (CompletableFuture<R>) future;
+  }
+
+  private void failSend(Command command, CompletableFuture<Object> future, Exception exception) {
+    log.warn("Failed to send command: {} ({})", command.getType(), command.getAggregateId(), exception);
+    cache.invalidate(command.getId());
+    future.completeExceptionally(exception);
   }
 
   @Override
