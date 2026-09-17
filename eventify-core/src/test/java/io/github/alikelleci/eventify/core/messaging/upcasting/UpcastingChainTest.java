@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.messaging.upcasting;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import io.github.alikelleci.eventify.core.Eventify;
@@ -172,6 +173,73 @@ class UpcastingChainTest {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(properties).registerHandler(new TwoForRevision1()).build())
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
+  }
+
+  /** The name {@link Client} had at revision 1: a class that no longer exists. */
+  private static final String CUSTOMER = "io.github.alikelleci.eventify.core.messaging.upcasting.UpcastingChainTest$Customer";
+  private static final String CLIENT = "io.github.alikelleci.eventify.core.messaging.upcasting.UpcastingChainTest$Client";
+
+  /** Revision 1: named {@code Customer}, with {@code name}. Revision 2: {@code Client}, with {@code fullName}. Revision 3: {@code country}. */
+  @Value
+  @Builder
+  @Revision(3)
+  public static class Client {
+    @AggregateId
+    String id;
+    String fullName;
+    String country;
+  }
+
+  public static class RenamingTheClass {
+    /** Revision 1 → 2: {@code Customer} becomes {@code Client}, and {@code name} becomes {@code fullName}. */
+    @Upcast(type = CUSTOMER, revision = 1)
+    public JsonNode renameToClient(ObjectNode payload) {
+      payload.put("@class", CLIENT);
+      payload.set("fullName", payload.remove("name"));
+      return payload;
+    }
+
+    /** Revision 2 → 3, registered for the new class. */
+    @Upcast(type = CLIENT, revision = 2)
+    public JsonNode addCountry(ObjectNode payload) {
+      payload.put("country", "NL");
+      return payload;
+    }
+  }
+
+  @Test
+  @DisplayName("Should read an event under its new class when an upcaster renames the class, and go on with that class's upcasters")
+  void anUpcasterRenamesTheEventClass() {
+    String stored = storedAtRevision1()
+        .replace(TYPE, CUSTOMER)
+        .replace("\"type\":\"Renamed\"", "\"type\":\"Customer\"");
+
+    Event event = read(stored, new RenamingTheClass());
+
+    assertThat(event.getRevision()).isEqualTo(3);
+    assertThat(event.getType()).isEqualTo("Client");
+    assertThat(event.getPayload()).isEqualTo(Client.builder().id("ada").fullName("Ada Lovelace").country("NL").build());
+  }
+
+  /** Builds its node from scratch, without "@class". */
+  public static class BuildingANodeWithoutClass {
+    @Upcast(type = TYPE, revision = 1)
+    public JsonNode fromScratch(ObjectNode payload) {
+      ObjectNode upcasted = JsonNodeFactory.instance.objectNode();
+      upcasted.put("id", payload.path("id").asText());
+      upcasted.put("fullName", payload.path("name").asText());
+      return upcasted;
+    }
+  }
+
+  @Test
+  @DisplayName("Should keep the class when an upcaster returns a node without @class")
+  void anUpcasterWithoutClassKeepsTheClass() {
+    Event event = read(storedAtRevision1(), new BuildingANodeWithoutClass());
+
+    assertThat(event.getRevision()).isEqualTo(2);
+    assertThat(event.getType()).isEqualTo("Renamed");
+    assertThat(event.getPayload()).isEqualTo(Renamed.builder().id("ada").fullName("Ada Lovelace").build());
   }
 
   /** The event as it was stored at revision 1: with {@code name}, before it was renamed. */

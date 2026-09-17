@@ -94,3 +94,53 @@ public JsonNode splitName(ObjectNode payload) {
     return upcasted;
 }
 ```
+
+A new node built without `@class` keeps the event's class.
+
+### Renaming an event class
+
+The stored events keep the class name they were written with. To rename or move an event class, give the new class
+the next revision, and add an upcaster for the **old** class name that sets `@class` to the new one:
+
+```java
+// Revision 3 (was OrderPlaced up to revision 2)
+@Revision(3)
+@Value
+@Builder
+class OrderCreated implements OrderEvent {
+    @AggregateId
+    String id;
+    String customer;
+    String shippingAddress;
+    String couponCode;
+}
+```
+
+```java
+// Migrates revision 2 → 3: OrderPlaced is renamed to OrderCreated
+@Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 2)
+public JsonNode renameToOrderCreated(ObjectNode payload) {
+    payload.put("@class", "com.example.OrderEvent$OrderCreated");
+    return payload;
+}
+
+// Later changes are registered for the new name
+@Upcast(type = "com.example.OrderEvent$OrderCreated", revision = 3)
+public JsonNode addChannel(ObjectNode payload) {
+    payload.put("channel", "web");
+    return payload;
+}
+```
+
+- The chain continues with the upcasters of the new class name, from the revision reached. The upcasters of the old
+  name for earlier revisions stay: events stored at revision 1 still need them before the rename.
+- The event is read as the new class, and its `type` is the new simple name, e.g. `OrderCreated`.
+- The rename and a change of fields can happen in one upcaster.
+- Only reads with the upcasters registered are renamed: Eventify's event store and event handlers use the ones
+  registered on Eventify. A service that reads the events topic itself, e.g. a Kafka Streams projection, registers the
+  same upcasters on its serde, or still gets the old class name:
+
+  ```java
+  Serde<Event> eventSerde = new JsonSerde<>(Event.class)
+      .registerUpcaster(new OrderEventUpcaster());
+  ```

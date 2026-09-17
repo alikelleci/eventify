@@ -15,9 +15,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Deserializer;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -71,50 +68,67 @@ public class JsonDeserializer<T> implements Deserializer<T> {
 
 
   private JsonNode upcast(JsonNode jsonNode) {
-    String className = Optional.ofNullable(jsonNode.get("payload"))
-        .map(payload -> payload.get("@class"))
-        .map(JsonNode::textValue)
-        .orElse(null);
-
-    if (StringUtils.isBlank(className)) {
-      return jsonNode;
-    }
-
-    Collection<Upcaster> upCasters = this.upcasters.get(className);
-    if (CollectionUtils.isEmpty(upCasters)) {
+    String storedClassName = classNameOf(jsonNode.get("payload"));
+    if (StringUtils.isBlank(storedClassName) || CollectionUtils.isEmpty(this.upcasters.get(storedClassName))) {
       return jsonNode;
     }
 
     int storedRevision = jsonNode.path("revision").asInt(1);
     int revision = storedRevision;
+    String className = storedClassName;
     JsonNode payload = jsonNode.get("payload");
 
     // Each upcaster takes the payload as the one before it left it: whether it changed the node it was given, or
     // returned a new one. The tree is parsed for this read only, so changing it in place is safe.
-    List<Upcaster> chain = upCasters.stream()
-        .sorted(Comparator.comparingInt(JsonDeserializer::revisionOf))
-        .toList();
-    for (Upcaster upcaster : chain) {
-      if (revisionOf(upcaster) != revision) {
-        continue;
-      }
+    // An upcaster renames the event class by setting another "@class": the chain goes on with the upcasters of that
+    // class, from the revision reached. Every step raises the revision, so the chain always ends.
+    Upcaster upcaster;
+    while ((upcaster = upcasterOf(className, revision)) != null) {
       JsonNode upcasted = upcaster.apply(payload);
       if (upcasted == null) {
         break; // no upcasting from here: the payload stays at this revision
       }
-      if (!(upcasted instanceof ObjectNode)) {
+      if (!(upcasted instanceof ObjectNode upcastedObject)) {
         throw new UpcastingException("Upcaster " + upcaster.getMethod() + " must return a JSON object, but returned: " + upcasted.getNodeType());
       }
-      ((ObjectNode) upcasted).put("@class", className); // restore original typeInfo in case its changed
-      payload = upcasted;
+      String upcastedClassName = classNameOf(upcastedObject);
+      if (StringUtils.isBlank(upcastedClassName)) {
+        upcastedObject.put("@class", className); // a new node built without it: still the same class
+      } else {
+        className = upcastedClassName;
+      }
+      payload = upcastedObject;
       revision++;
     }
 
     if (revision != storedRevision) {
       ((ObjectNode) jsonNode).set("payload", payload);
       ((ObjectNode) jsonNode).put("revision", revision);
+      if (!className.equals(storedClassName) && jsonNode.has("type")) {
+        ((ObjectNode) jsonNode).put("type", simpleNameOf(className));
+      }
     }
     return jsonNode;
+  }
+
+  private Upcaster upcasterOf(String className, int revision) {
+    return this.upcasters.get(className).stream()
+        .filter(upcaster -> revisionOf(upcaster) == revision)
+        .findFirst()
+        .orElse(null);
+  }
+
+  private static String classNameOf(JsonNode payload) {
+    return Optional.ofNullable(payload)
+        .map(node -> node.get("@class"))
+        .map(JsonNode::textValue)
+        .orElse(null);
+  }
+
+  /** As {@link Class#getSimpleName()} gives it, without loading the class: "com.example.OrderEvent$OrderPlaced" is "OrderPlaced". */
+  private static String simpleNameOf(String className) {
+    String name = className.substring(className.lastIndexOf('.') + 1);
+    return name.substring(name.lastIndexOf('$') + 1);
   }
 
   private static int revisionOf(Upcaster upcaster) {
