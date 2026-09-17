@@ -6,7 +6,9 @@ export class JsonHighlightPipe implements PipeTransform {
   constructor(private sanitizer: DomSanitizer) {}
 
   transform(json: string): SafeHtml {
-    const highlighted = json.replace(
+    // The JSON holds application data, e.g. what a customer typed: escaped first, so it shows as text and never runs as
+    // HTML. Quotes stay, so the pattern below still finds the strings.
+    const highlighted = escapeHtml(json).replace(
       /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
       (match) => {
         if (/^"/.test(match)) {
@@ -26,4 +28,8 @@ export class JsonHighlightPipe implements PipeTransform {
     );
     return this.sanitizer.bypassSecurityTrustHtml(highlighted);
   }
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
