@@ -238,7 +238,7 @@ public class Eventify {
       return;
     }
     log.info("Eventify is shutting down...");
-    kafkaStreams.close(Duration.ofSeconds(60));
+    kafkaStreams.close(Duration.ofSeconds(30));
     notifyListeners(plugins, "onStop", plugin -> plugin.onStop(this));
     log.info("Eventify shut down complete.");
   }
