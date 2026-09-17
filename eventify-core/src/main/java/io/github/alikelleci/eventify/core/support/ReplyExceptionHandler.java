@@ -3,7 +3,9 @@ package io.github.alikelleci.eventify.core.support;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.streams.errors.ErrorHandlerContext;
+import org.apache.kafka.streams.errors.ProcessingExceptionHandler;
 import org.apache.kafka.streams.errors.ProductionExceptionHandler;
+import org.apache.kafka.streams.processor.api.Record;
 
 import java.util.Map;
 
@@ -21,33 +23,54 @@ import java.util.Map;
  * waits for its result until it times out.
  */
 @Slf4j
-public class ReplyExceptionHandler implements ProductionExceptionHandler {
+public class ReplyExceptionHandler implements ProductionExceptionHandler, ProcessingExceptionHandler {
 
-  /** The name of the sink that sends the replies, as {@code Eventify.topology()} names it. */
-  public static final String REPLY_SINK = "eventify-reply-sink";
+  /**
+   * The name every node that sends the replies starts with, as {@code Eventify.topology()} names them. Sending a reply
+   * can fail in the sink itself, or in the node that forwards to it (that is where Kafka Streams looks up the topic's
+   * partitions), so all of them carry this prefix.
+   */
+  public static final String REPLY_NODES = "eventify-reply";
+  public static final String REPLY_SINK = REPLY_NODES + "-sink";
+  public static final String REPLY_FILTER = REPLY_NODES + "-filter";
+  public static final String REPLY_RESULT = REPLY_NODES + "-result";
 
   @Override
-  public Response handleError(ErrorHandlerContext context, ProducerRecord<byte[], byte[]> record, Exception exception) {
+  public ProductionExceptionHandler.Response handleError(ErrorHandlerContext context, ProducerRecord<byte[], byte[]> record, Exception exception) {
     return isReply(context)
         ? dropReply(record, exception)
-        : Response.fail();
+        : ProductionExceptionHandler.Response.fail();
   }
 
   @Override
-  public Response handleSerializationError(ErrorHandlerContext context, ProducerRecord record, Exception exception, SerializationExceptionOrigin origin) {
+  public ProductionExceptionHandler.Response handleSerializationError(ErrorHandlerContext context, ProducerRecord record, Exception exception, SerializationExceptionOrigin origin) {
     return isReply(context)
         ? dropReply(record, exception)
-        : Response.fail();
+        : ProductionExceptionHandler.Response.fail();
+  }
+
+  /**
+   * Sending a reply starts before the record leaves: the topic's partitions are looked up, because a reply goes to
+   * partition 0. A topic Kafka refuses (e.g. a name with a space) fails there, in the sink itself.
+   */
+  @Override
+  public ProcessingExceptionHandler.Response handleError(ErrorHandlerContext context, Record<?, ?> record, Exception exception) {
+    if (!isReply(context)) {
+      return ProcessingExceptionHandler.Response.fail();
+    }
+    log.warn("The result of a command could not be sent to its reply topic; the command itself was handled. "
+        + "Its sender gets no answer and will time out.", exception);
+    return ProcessingExceptionHandler.Response.resume();
   }
 
   private static boolean isReply(ErrorHandlerContext context) {
-    return context != null && REPLY_SINK.equals(context.processorNodeId());
+    return context != null && context.processorNodeId() != null && context.processorNodeId().startsWith(REPLY_NODES);
   }
 
-  private static Response dropReply(ProducerRecord<?, ?> record, Exception exception) {
+  private static ProductionExceptionHandler.Response dropReply(ProducerRecord<?, ?> record, Exception exception) {
     log.warn("The result of a command could not be sent to its reply topic '{}'; the command itself was handled. "
             + "Its sender gets no answer and will time out.", record != null ? record.topic() : null, exception);
-    return Response.resume();
+    return ProductionExceptionHandler.Response.resume();
   }
 
   @Override
