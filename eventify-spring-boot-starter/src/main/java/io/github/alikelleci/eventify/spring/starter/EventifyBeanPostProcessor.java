@@ -46,6 +46,14 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor, SmartInitia
         .filter(eventify -> eventify.getUpcasters().isEmpty())
         .toList();
 
+    // With more than one, every handler would be registered on each of them, and every command handled as many times.
+    // Which handler belongs to which application is the application's own choice: it registers them itself.
+    if (withoutHandlers.size() > 1) {
+      throw new IllegalStateException("There is more than one Eventify bean without handlers (" + withoutHandlers.size()
+          + "). Register the handlers on each Eventify bean yourself, with Eventify.builder().registerHandler(...), "
+          + "so each one handles what it should.");
+    }
+
     handlers.forEach(handler -> withoutHandlers.forEach(eventify -> eventify.registerHandler(handler)));
     handlers.clear();
   }

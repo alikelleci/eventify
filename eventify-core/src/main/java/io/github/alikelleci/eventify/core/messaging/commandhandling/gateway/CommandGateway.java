@@ -63,7 +63,6 @@ public interface CommandGateway extends AutoCloseable {
         ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG);
 
     private Properties producerConfig;
-    private Properties consumerConfig;
     private String replyTopic;
     private ObjectMapper objectMapper;
 
@@ -85,17 +84,8 @@ public interface CommandGateway extends AutoCloseable {
       return this;
     }
 
-    /**
-     * Settings for the consumer that receives the replies, on top of the ones it takes from the producer config (see
-     * {@link #build()}). Only needed for a setting the consumer should have differently.
-     */
-    public CommandGatewayBuilder consumerConfig(Properties consumerConfig) {
-      this.consumerConfig = consumerConfig;
-      return this;
-    }
-
-    /** The producer settings a consumer also has, overridden by {@code overrides} (may be {@code null}). */
-    static Properties replyConsumerConfig(Properties producerConfig, Properties overrides) {
+    /** The producer settings that a consumer has too. */
+    static Properties replyConsumerConfig(Properties producerConfig) {
       Properties consumerConfig = new Properties();
       Set<String> consumerSettings = ConsumerConfig.configNames();
       producerConfig.forEach((key, value) -> {
@@ -104,9 +94,6 @@ public interface CommandGateway extends AutoCloseable {
           consumerConfig.put(name, value);
         }
       });
-      if (overrides != null) {
-        consumerConfig.putAll(overrides);
-      }
       return consumerConfig;
     }
 
@@ -121,13 +108,13 @@ public interface CommandGateway extends AutoCloseable {
     }
 
     /**
-     * The reply consumer gets every producer setting a consumer has too: the connection and its security
-     * ({@code security.protocol}, {@code sasl.*}, {@code ssl.*}, ...). Without the {@code sasl.*} and {@code ssl.*}
-     * settings it couldn't log in on a secured cluster, and every command would time out. Settings given with
-     * {@link #consumerConfig(Properties)} go first.
+     * The consumer that receives the results needs no configuration of its own: it takes every producer setting that a
+     * consumer has too, so it connects the way the producer does. That includes the security settings
+     * ({@code security.protocol}, {@code sasl.*}, {@code ssl.*}): without them it couldn't log in on a secured cluster,
+     * and every command would wait for its result until it timed out.
      */
     public DefaultCommandGateway build() {
-      Properties consumerConfig = replyConsumerConfig(this.producerConfig, this.consumerConfig);
+      Properties consumerConfig = replyConsumerConfig(this.producerConfig);
 
       if (this.objectMapper == null) {
         this.objectMapper = JacksonUtils.enhancedObjectMapper();

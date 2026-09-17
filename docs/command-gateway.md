@@ -20,10 +20,11 @@ CommandGateway gateway = CommandGateway.builder()
 |---|---|---|
 | `producerConfig(Properties)` | Yes | Kafka producer configuration. |
 | `replyTopic(String)` | Yes | Topic on which command results are received. |
-| `consumerConfig(Properties)` | No | Settings for the consumer that receives the results. It already takes every setting from the producer config that a consumer also has, such as `bootstrap.servers`, `security.protocol`, `sasl.*` and `ssl.*`, so this is only needed for a setting it should have differently. |
 | `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
 
-The gateway holds a Kafka producer, a consumer and a thread. Close it when your application stops, for example as a Spring bean with `@Bean(destroyMethod = "close")` (Spring calls `close()` by default). Closing sends the commands still buffered and fails the futures still waiting for a result with a `CancellationException`.
+The results are received by a consumer that Eventify configures itself, from the producer configuration: it connects the same way, with the same security settings.
+
+Close the gateway when your application stops; as a Spring `@Bean` this happens by itself. Commands on their way are still sent, and commands still waiting for their result fail right away instead of waiting for their timeout.
 
 ## Sending Commands
 

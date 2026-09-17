@@ -16,7 +16,6 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
-import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
@@ -100,7 +99,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
    * is accepted. Empty when the command is accepted without events; {@code null} when there is no handler for it.
    */
   protected List<Event> executeCommand(String aggregateId, Command command) {
-    CommandHandler commandHandler = HandlerUtils.findHandler(eventify.getCommandHandlers(), command.getPayload().getClass());
+    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return null;
@@ -148,7 +147,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   private void applyEvents(AggregateState state, List<Event> events) {
     for (Event event : events) {
-      EventSourcingHandler handler = HandlerUtils.findHandler(eventify.getEventSourcingHandlers(), event.getPayload().getClass());
+      EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
       if (handler != null) {
         state = handler.apply(state, event);
       }

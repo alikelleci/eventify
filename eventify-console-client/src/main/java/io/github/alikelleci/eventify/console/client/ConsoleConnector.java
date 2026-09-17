@@ -272,6 +272,10 @@ public class ConsoleConnector {
     return bytes;
   }
 
+  private static boolean isLocal(String host) {
+    return host == null || host.equals("localhost") || host.equals("127.0.0.1") || host.equals("::1") || host.equals("[::1]");
+  }
+
   /** The console's address as its RSocket endpoint: {@code http://host:8080} becomes {@code ws://host:8080/rsocket}. */
   static URI rsocketUri(URI consoleUrl) {
     String scheme = switch (String.valueOf(consoleUrl.getScheme()).toLowerCase()) {
@@ -279,6 +283,10 @@ public class ConsoleConnector {
       case "https", "wss" -> "wss";
       default -> throw new IllegalArgumentException("The Eventify Console url must start with http:// or https://, but is " + consoleUrl);
     };
+    if ("ws".equals(scheme) && !isLocal(consoleUrl.getHost())) {
+      log.warn("The Eventify Console at {} is reached without encryption: the application token and everything the "
+          + "console asks about travel in the clear. Use https:// when the console is not on this machine.", consoleUrl);
+    }
     String path = consoleUrl.getPath() == null ? "" : consoleUrl.getPath().replaceAll("/+$", "");
     if (!path.endsWith(ConsoleProtocol.RSOCKET_PATH)) {
       path = path + ConsoleProtocol.RSOCKET_PATH;

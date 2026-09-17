@@ -29,7 +29,7 @@ class CommandGatewayConfigTest {
     producerConfig.put(ProducerConfig.CLIENT_ID_CONFIG, "orders-api");
     producerConfig.put(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG, "com.example.ProducerInterceptor");
 
-    Properties consumerConfig = CommandGateway.CommandGatewayBuilder.replyConsumerConfig(producerConfig, null);
+    Properties consumerConfig = CommandGateway.CommandGatewayBuilder.replyConsumerConfig(producerConfig);
 
     assertThat(consumerConfig)
         .containsEntry(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "broker:9093")
@@ -40,23 +40,5 @@ class CommandGatewayConfigTest {
         .doesNotContainKey(ProducerConfig.ACKS_CONFIG)
         .doesNotContainKey(CommonClientConfigs.CLIENT_ID_CONFIG)
         .doesNotContainKey(ConsumerConfig.INTERCEPTOR_CLASSES_CONFIG);
-  }
-
-  @Test
-  @DisplayName("Should let the consumer config override what it takes from the producer config")
-  void theConsumerConfigGoesFirst() {
-    Properties producerConfig = new Properties();
-    producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "broker:9093");
-    producerConfig.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SSL");
-    Properties overrides = new Properties();
-    overrides.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL");
-    overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "50");
-
-    Properties consumerConfig = CommandGateway.CommandGatewayBuilder.replyConsumerConfig(producerConfig, overrides);
-
-    assertThat(consumerConfig)
-        .containsEntry(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "broker:9093")
-        .containsEntry(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, "SASL_SSL")
-        .containsEntry(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, "50");
   }
 }

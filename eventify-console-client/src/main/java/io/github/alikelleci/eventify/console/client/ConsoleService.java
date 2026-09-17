@@ -12,7 +12,6 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
-import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -194,7 +193,9 @@ class ConsoleService {
     try {
       JsonNode tree = objectMapper.readTree(json);
       String type = tree.path("payload").path("@class").asText(null);
-      if (!isHandledCommand(type)) {
+      boolean handled = type != null && eventify.getCommandHandlers().keySet().stream()
+          .anyMatch(commandClass -> commandClass.getName().equals(type));
+      if (!handled) {
         return Result.badRequest("Not a command of this application: " + type);
       }
       original = objectMapper.treeToValue(tree, Command.class);
@@ -234,25 +235,6 @@ class ConsoleService {
     }
 
     return Result.ok(null);
-  }
-
-  /**
-   * Whether the class is a command this application handles: it, or one of its supertypes, has a command handler.
-   * The class is looked up without being initialized, before anything of the JSON is read as that class.
-   */
-  private boolean isHandledCommand(String className) {
-    if (className == null) {
-      return false;
-    }
-    ClassLoader classLoader = Thread.currentThread().getContextClassLoader() != null
-        ? Thread.currentThread().getContextClassLoader()
-        : ConsoleService.class.getClassLoader();
-    try {
-      Class<?> type = Class.forName(className, false, classLoader);
-      return HandlerUtils.findHandler(eventify.getCommandHandlers(), type) != null;
-    } catch (ClassNotFoundException | LinkageError e) {
-      return false;
-    }
   }
 
   /**

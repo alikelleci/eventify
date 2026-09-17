@@ -111,8 +111,6 @@ public class OrderEventSourcingHandler {
 - Return `null` to indicate that the aggregate has been deleted. Subsequent commands will receive `null` as the aggregate state.
 - Keep these methods **deterministic and free of side effects**. They run again every time the aggregate is loaded, and whenever the Eventify Console shows its history, so the same events must always give the same state. Use only the event, the state and the injected parameters: no `Instant.now()`, random values, database lookups or calls to other services.
 
-A handler may also be written for a supertype of the event, such as the `OrderEvent` interface. When an event class has no handler of its own, the handler of its nearest superclass or interface is used. The same goes for command handlers. Event handlers of all matching types are invoked.
-
 ### Injectable parameters
 
 | Parameter | What is injected |
