@@ -7,9 +7,9 @@ import io.github.alikelleci.eventify.core.command.internal.CommandHandlerMethod;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
 import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
+import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
-import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
-import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
+import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
@@ -35,7 +35,7 @@ public class HandlerRegistry {
   private final Map<Class<?>, CommandHandlerMethod> commandHandlers = new HashMap<>();
   private final Map<Class<?>, ApplyEventMethod> eventSourcingHandlers = new HashMap<>();
   private final MultiValuedMap<Class<?>, EventHandlerMethod> eventHandlers = new ArrayListValuedHashMap<>();
-  private final MultiValuedMap<String, UpcasterMethod> upcasters = new ArrayListValuedHashMap<>();
+  private final Upcasters upcasters = new Upcasters();
 
   private volatile boolean frozen;
 
@@ -57,16 +57,7 @@ public class HandlerRegistry {
     AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(handler, method));
 
-    registerUpcasters(upcasters, handler);
-  }
-
-  /**
-   * Adds the {@link Upcast} methods of a handler to the upcasters. Also for upcasters outside Eventify, e.g. a
-   * {@code JsonSerde} that reads the events for a projection.
-   */
-  public static void registerUpcasters(MultiValuedMap<String, UpcasterMethod> upcasters, Object handler) {
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
-        .forEach(method -> addUpcaster(upcasters, handler, method));
+    upcasters.register(handler);
   }
 
   public void freeze() {
@@ -104,11 +95,8 @@ public class HandlerRegistry {
     return Collections.unmodifiableCollection(eventHandlers.get(eventType));
   }
 
-  /**
-   * The upcasters, by the class name they upcast. The map itself, not a copy: a serde made with it also upcasts with
-   * the upcasters registered after it was made.
-   */
-  public MultiValuedMap<String, UpcasterMethod> upcasters() {
+  /** The upcasters themselves, not a copy: a serde made with them also upcasts with the ones registered after it was made. */
+  public Upcasters upcasters() {
     return upcasters;
   }
 
@@ -167,20 +155,6 @@ public class HandlerRegistry {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
       eventHandlers.put(type, new EventHandlerMethod(handler, method));
-    }
-  }
-
-  /** One upcaster per type and revision: with two, the chain would take one of them, depending on the order they were registered in. */
-  private static void addUpcaster(MultiValuedMap<String, UpcasterMethod> upcasters, Object handler, Method method) {
-    if (method.getParameterCount() == 1) {
-      Upcast upcast = method.getAnnotation(Upcast.class);
-      upcasters.get(upcast.type()).stream()
-          .filter(existing -> existing.getMethod().getAnnotation(Upcast.class).revision() == upcast.revision())
-          .findFirst()
-          .ifPresent(existing -> {
-            throw new IllegalStateException("Two upcasters for " + upcast.type() + " revision " + upcast.revision() + ": " + existing.getMethod() + " and " + method);
-          });
-      upcasters.put(upcast.type(), new UpcasterMethod(handler, method));
     }
   }
 }

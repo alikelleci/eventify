@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.handler.internal;
+package io.github.alikelleci.eventify.core.internal.reflection;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;

@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.event;
 
 import io.github.alikelleci.eventify.core.event.annotation.Revision;
-import io.github.alikelleci.eventify.core.handler.internal.AnnotationScanner;
+import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;

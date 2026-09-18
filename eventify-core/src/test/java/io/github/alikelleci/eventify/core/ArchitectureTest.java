@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core;
 
+import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -7,6 +8,7 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,14 +17,10 @@ import java.lang.annotation.Annotation;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
-import static com.tngtech.archunit.library.freeze.FreezingArchRule.freeze;
 
 /**
  * The package structure of eventify-core: a feature package holds its public API, its annotations in {@code annotation},
  * its exceptions in {@code exception} and its implementation in {@code internal}.
- *
- * <p>Rules that don't hold everywhere yet are frozen: their known violations are kept in {@code archunit_store}, and
- * only a new one fails the build. A violation that is fixed is removed from the store.
  */
 @DisplayName("Architecture")
 class ArchitectureTest {
@@ -70,10 +68,16 @@ class ArchitectureTest {
         .check(CORE);
   }
 
+  /**
+   * Except for {@link HandlerRegistry}: like {@link Eventify}, it puts the features together, and knows each feature's
+   * handlers.
+   */
   @Test
   @DisplayName("Should have no cycles between the feature packages")
   void featuresHaveNoCycles() {
-    freeze(slices().matching("io.github.alikelleci.eventify.core.(*)..").should().beFreeOfCycles())
+    slices().matching("io.github.alikelleci.eventify.core.(*)..")
+        .should().beFreeOfCycles()
+        .ignoreDependency(JavaClass.Predicates.equivalentTo(HandlerRegistry.class), DescribedPredicate.alwaysTrue())
         .check(CORE);
   }
 }

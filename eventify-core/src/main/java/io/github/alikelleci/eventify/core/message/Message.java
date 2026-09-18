@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.message;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.github.alikelleci.eventify.core.handler.internal.AnnotationScanner;
+import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
 

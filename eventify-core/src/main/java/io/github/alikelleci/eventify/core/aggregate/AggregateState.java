@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.core.aggregate;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.handler.internal.AnnotationScanner;
+import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;

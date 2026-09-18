@@ -5,9 +5,8 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
-import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
+import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.IsolationLevel;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -82,10 +81,10 @@ public class EventifyKafkaListenerAutoConfiguration {
    * <p>Without an Eventify bean, the {@code @Upcast} methods of the beans. With several, those too: which Eventify
    * bean's upcasters apply to a topic is not known here.
    */
-  private static MultiValuedMap<String, UpcasterMethod> upcasters(ObjectProvider<Eventify> apps, EventifyUpcasters beans) {
+  private static Upcasters upcasters(ObjectProvider<Eventify> apps, EventifyUpcasters beans) {
     Eventify eventify = apps.getIfUnique();
     if (eventify != null) {
-      return eventify.getHandlers().upcasters();
+      return eventify.getUpcasters();
     }
     if (apps.stream().findAny().isPresent()) {
       log.warn("There is more than one Eventify bean: @KafkaListener methods only upcast with the @Upcast methods of "

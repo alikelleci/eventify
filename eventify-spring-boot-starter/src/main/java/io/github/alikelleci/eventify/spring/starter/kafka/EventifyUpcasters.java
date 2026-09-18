@@ -1,9 +1,6 @@
 package io.github.alikelleci.eventify.spring.starter.kafka;
 
-import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
-import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
-import org.apache.commons.collections4.MultiValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 
 /**
@@ -14,15 +11,15 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
  */
 public class EventifyUpcasters implements BeanPostProcessor {
 
-  private final MultiValuedMap<String, UpcasterMethod> upcasters = new ArrayListValuedHashMap<>();
+  private final Upcasters upcasters = new Upcasters();
 
   @Override
   public Object postProcessAfterInitialization(Object bean, String beanName) {
-    HandlerRegistry.registerUpcasters(upcasters, bean);
+    upcasters.register(bean);
     return bean;
   }
 
-  public MultiValuedMap<String, UpcasterMethod> getUpcasters() {
+  public Upcasters getUpcasters() {
     return upcasters;
   }
 }

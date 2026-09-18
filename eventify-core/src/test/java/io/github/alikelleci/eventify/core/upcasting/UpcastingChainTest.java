@@ -250,7 +250,7 @@ class UpcastingChainTest {
   }
 
   private static Event read(String stored, Object upcasters) {
-    return new JsonDeserializer<>(Event.class, EventifyObjectMapper.get(), new org.apache.commons.collections4.multimap.ArrayListValuedHashMap<>())
+    return new JsonDeserializer<>(Event.class, EventifyObjectMapper.get(), new Upcasters())
         .registerUpcaster(upcasters)
         .deserialize("events", stored.getBytes());
   }

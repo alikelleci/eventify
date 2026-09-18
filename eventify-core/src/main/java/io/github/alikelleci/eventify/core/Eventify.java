@@ -14,6 +14,7 @@ import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.LoggingPlugin;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonSerde;
+import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -84,6 +85,11 @@ public class Eventify {
 
   public HandlerRegistry getHandlers() {
     return handlers;
+  }
+
+  /** The upcasters of the registered handlers: Eventify reads its events with them, and so can a serde of the application. */
+  public Upcasters getUpcasters() {
+    return handlers.upcasters();
   }
 
   public Properties getStreamsConfig() {
