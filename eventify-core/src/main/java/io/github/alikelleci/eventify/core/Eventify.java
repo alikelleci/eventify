@@ -13,8 +13,6 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.EventProcessor;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultProcessor;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.plugins.LoggingPlugin;
 import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
@@ -67,7 +65,6 @@ import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 public class Eventify {
   private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
   private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
-  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
   private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
   private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
 
@@ -193,25 +190,6 @@ public class Eventify {
           .processValues(() -> new EventProcessor(this));
     }
 
-    /*
-     * -------------------------------------------------------------
-     * RESULT HANDLING
-     * -------------------------------------------------------------
-     */
-
-    if (!getResultTopics().isEmpty()) {
-      // --> Results
-      KStream<String, Command> results = builder.stream(getResultTopics(), Consumed.with(Serdes.String(), commandSerde))
-          .filter((key, command) -> key != null)
-          .filter((key, command) -> command != null)
-          .filter((key, command) -> command.getPayload() != null);
-
-      // Results --> Void
-      results
-          .processValues(() -> new ResultProcessor(this));
-    }
-
-
     return builder.build();
   }
 
@@ -234,11 +212,11 @@ public class Eventify {
   }
 
   /**
-   * An exception from an event or result handler stops Kafka Streams, and command handling stops with it: they are
+   * An exception from an event handler stops Kafka Streams, and command handling stops with it: they are
    * best run in their own application, with their own application id.
    */
   private void warnAboutHandlersThatStopEachOther() {
-    if (commandHandlers.isEmpty() || (eventHandlers.isEmpty() && resultHandlers.isEmpty())) {
+    if (commandHandlers.isEmpty() || eventHandlers.isEmpty()) {
       return;
     }
     log.warn("This Eventify instance handles commands and events in one application: an exception from an event "
@@ -341,15 +319,6 @@ public class Eventify {
         .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
         .filter(Objects::nonNull)
         .map(TopicInfo::value)
-        .collect(Collectors.toSet());
-  }
-
-  private Set<String> getResultTopics() {
-    return resultHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
-        .filter(Objects::nonNull)
-        .map(TopicInfo::value)
-        .map(topic -> topic.concat(".results"))
         .collect(Collectors.toSet());
   }
 

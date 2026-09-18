@@ -14,8 +14,11 @@ import java.util.Map;
  *
  * <p>Events are stored under {@code aggregateId@<ULID>}, so the events of one aggregate are in one key range, in the
  * order they were handled (see {@link IdUtils#nextEventKey}). That range can also hold another aggregate's events (see {@link IdUtils#isKeyOf}): those are
- * skipped. The version of the state is the number of events applied to it: only events with an event sourcing
- * handler count.
+ * skipped. The version of the state is its position in the aggregate's events: every event counts.
+ *
+ * <p>An event without an event sourcing handler leaves the state as it was, the way a handler that returns the state
+ * it is given does: the state moves on to that event, so the version and the snapshot point to it too. Adding such a
+ * handler later changes nothing.
  */
 @Slf4j
 public class AggregateReplay {
@@ -27,9 +30,11 @@ public class AggregateReplay {
    *
    * @param state   the state after the last event, with its version; {@code null} when there is no state, e.g. no
    *                events, or a handler that removed the aggregate
-   * @param applied how many events were applied in this replay, not counting the ones the starting state had
+   * @param replayed how many events this replay went through, also the ones without a handler: the version minus the
+   *                 starting state's version. Without a starting state it equals the version; with a snapshot, it is
+   *                 what the snapshot saved to replay
    */
-  public record Result(AggregateState state, long applied) {
+  public record Result(AggregateState state, long replayed) {
   }
 
   /** Told about every event in the replay, also the ones without a handler, before it is applied. */
@@ -73,7 +78,7 @@ public class AggregateReplay {
 
     AggregateState state = start;
     long version = start != null ? start.getVersion() : 0;
-    long applied = 0;
+    long replayed = 0;
 
     if (start != null && untilEventId != null) {
       int order = start.getEventId().compareTo(untilEventId);
@@ -108,12 +113,15 @@ public class AggregateReplay {
         if (handler != null) {
           log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
           state = handler.apply(state, event);
-          version++;
-          applied++;
+        } else {
+          log.trace("No Event Sourcing Handler found for event: {} ({}), state unchanged", event.getType(), event.getAggregateId());
+          state = state != null ? state.after(event) : null;
         }
+        version++;
+        replayed++;
       }
     }
 
-    return new Result(state != null ? state.withVersion(version) : null, applied);
+    return new Result(state != null ? state.withVersion(version) : null, replayed);
   }
 }

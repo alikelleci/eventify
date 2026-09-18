@@ -34,13 +34,11 @@ import java.util.Map;
  */
 class AggregateHistory {
 
-  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers;
   private final AggregateReplay replay;
   /** Eventify's own mapper: the states are answered as the application writes them. */
   private final ObjectMapper objectMapper;
 
   AggregateHistory(Map<Class<?>, EventSourcingHandler> eventSourcingHandlers, ObjectMapper objectMapper) {
-    this.eventSourcingHandlers = eventSourcingHandlers;
     this.replay = new AggregateReplay(eventSourcingHandlers);
     this.objectMapper = objectMapper;
   }
@@ -180,7 +178,7 @@ class AggregateHistory {
       });
     } catch (AggregateInvocationException e) {
       // With events deleted, the first event left is applied without the state before it, which a handler may refuse.
-      if (snapshot != null && handledEventsUntil(events, aggregateId, snapshot.getEventId()) < snapshot.getVersion()) {
+      if (snapshot != null && eventsUntil(events, aggregateId, snapshot.getEventId()) < snapshot.getVersion()) {
         return new FromFirst(null, null, false);
       }
       throw e; // all events are there: the handler itself fails
@@ -189,18 +187,19 @@ class AggregateHistory {
       after[0] = json(result.state());
     }
 
+    // At least: a snapshot taken when only events with an event sourcing handler counted has a lower version.
     boolean complete = snapshot == null
-        || (result.state() != null && result.state().getVersion() == snapshot.getVersion());
+        || (result.state() != null && result.state().getVersion() >= snapshot.getVersion());
     return new FromFirst(before[0], after[0], complete);
   }
 
-  /** How many of the aggregate's stored events, up to and including this one, have an event sourcing handler. */
-  private long handledEventsUntil(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String untilEventId) {
+  /** How many of the aggregate's events are stored, up to and including this one. */
+  private long eventsUntil(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String untilEventId) {
     long count = 0;
     try (KeyValueIterator<String, Event> iterator = events.range(IdUtils.firstKey(aggregateId), untilEventId)) {
       while (iterator.hasNext()) {
         KeyValue<String, Event> entry = iterator.next();
-        if (IdUtils.isKeyOf(aggregateId, entry.key) && eventSourcingHandlers.containsKey(entry.value.getPayload().getClass())) {
+        if (IdUtils.isKeyOf(aggregateId, entry.key)) {
           count++;
         }
       }

@@ -54,7 +54,7 @@ class AggregateReplayTest {
     assertThat(order(result).getStatus()).isEqualTo("SHIPPED");
     assertThat(result.state().getVersion()).isEqualTo(3);
     assertThat(result.state().getEventId()).isEqualTo(shipped.getId());
-    assertThat(result.applied()).isEqualTo(3);
+    assertThat(result.replayed()).isEqualTo(3);
   }
 
   @Test
@@ -69,7 +69,7 @@ class AggregateReplayTest {
 
     assertThat(order(result).getStatus()).isEqualTo("SHIPPED");
     assertThat(result.state().getVersion()).isEqualTo(3);
-    assertThat(result.applied()).isEqualTo(1);
+    assertThat(result.replayed()).isEqualTo(1);
   }
 
   @Test
@@ -97,7 +97,7 @@ class AggregateReplayTest {
 
     assertThat(order(result).getStatus()).isEqualTo("CONFIRMED");
     assertThat(result.state().getVersion()).isEqualTo(2);
-    assertThat(result.applied()).isZero();
+    assertThat(result.replayed()).isZero();
   }
 
   @Test
@@ -135,8 +135,8 @@ class AggregateReplayTest {
   }
 
   @Test
-  @DisplayName("Should pass events without a handler to the listener without counting them")
-  void eventsWithoutAHandlerAreSeenButNotCounted() {
+  @DisplayName("Should count events without a handler, and leave the state as it was")
+  void eventsWithoutAHandlerAreCountedAndLeaveTheStateAsItWas() {
     store(placed("order-1"));
     store(Event.builder().payload(new OrderViewed("order-1")).build());
     store(confirmed("order-1"));
@@ -145,9 +145,25 @@ class AggregateReplayTest {
     AggregateReplay.Result result = replay.replay(eventStore, "order-1", null, null,
         (event, state, version) -> seen.add(event.getType() + "@v" + version));
 
-    assertThat(seen).containsExactly("OrderPlaced@v0", "OrderViewed@v1", "OrderConfirmed@v1");
+    assertThat(seen).containsExactly("OrderPlaced@v0", "OrderViewed@v1", "OrderConfirmed@v2");
+    assertThat(order(result).getStatus()).isEqualTo("CONFIRMED");
+    assertThat(result.state().getVersion()).isEqualTo(3);
+    assertThat(result.replayed()).isEqualTo(3);
+  }
+
+  @Test
+  @DisplayName("Should move the state on to the last event, also when that event has no handler")
+  void theStateMovesOnToAnEventWithoutAHandler() {
+    Event placed = store(placed("order-1"));
+    Event viewed = store(Event.builder().payload(new OrderViewed("order-1")).build());
+    Order afterPlaced = order(replay.replay(eventStore, "order-1", null, placed.getId()));
+
+    AggregateReplay.Result result = replay.replay(eventStore, "order-1", null, null);
+
+    assertThat(order(result)).isEqualTo(afterPlaced);
+    assertThat(result.state().getEventId()).isEqualTo(viewed.getId());
+    assertThat(result.state().getTimestamp()).isEqualTo(viewed.getTimestamp());
     assertThat(result.state().getVersion()).isEqualTo(2);
-    assertThat(result.applied()).isEqualTo(2);
   }
 
   @Test
@@ -160,7 +176,7 @@ class AggregateReplayTest {
     AggregateReplay.Result result = replay.replay(eventStore, "order-1", null, null);
 
     assertThat(result.state()).isNull();
-    assertThat(result.applied()).isEqualTo(2);
+    assertThat(result.replayed()).isEqualTo(2);
   }
 
   /** Its class was renamed or removed since it was stored: read back, its payload is null. */

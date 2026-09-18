@@ -41,7 +41,6 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor, SmartInitia
     List<Eventify> withoutHandlers = apps.orderedStream()
         .filter(eventify -> eventify.getCommandHandlers().isEmpty())
         .filter(eventify -> eventify.getEventSourcingHandlers().isEmpty())
-        .filter(eventify -> eventify.getResultHandlers().isEmpty())
         .filter(eventify -> eventify.getEventHandlers().isEmpty())
         .filter(eventify -> eventify.getUpcasters().isEmpty())
         .toList();

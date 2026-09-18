@@ -150,6 +150,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
       if (handler != null) {
         state = handler.apply(state, event);
+      } else {
+        log.debug("No Event Sourcing Handler found for event: {} ({}), state unchanged", event.getType(), event.getAggregateId());
+        state = state != null ? state.after(event) : null;
       }
     }
   }
@@ -201,7 +204,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     Instant endTime = Instant.now();
     Duration duration = Duration.between(startTime, endTime);
 
-    log.debug("Number of events applied: {}", replay.applied());
+    log.debug("Number of events replayed: {}", replay.replayed());
     // Only ids, types and versions: the state and the payloads are application data, e.g. personal data.
     log.debug("Aggregate state reconstructed in {} ms: {} ({}) at version {}", duration.toMillis(),
         state != null ? state.getType() : null, aggregateId, state != null ? state.getVersion() : 0);

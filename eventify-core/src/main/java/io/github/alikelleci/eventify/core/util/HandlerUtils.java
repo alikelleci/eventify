@@ -7,8 +7,6 @@ import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.annotations.HandleEvent;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.annotations.HandleResult;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import lombok.experimental.UtilityClass;
@@ -26,9 +24,6 @@ public class HandlerUtils {
 
     AnnotationUtils.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
         .forEach(method -> addEventSourcingHandler(eventify, handler, method));
-
-    AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleResult.class)
-        .forEach(method -> addResultHandler(eventify, handler, method));
 
     AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(eventify, handler, method));
@@ -76,13 +71,6 @@ public class HandlerUtils {
         && Arrays.equals(previousMethod.getParameterTypes(), method.getParameterTypes());
     if (!sameHandler) {
       throw new IllegalStateException("Two " + annotation + " handlers for " + type.getName() + ": " + previousMethod + " and " + method);
-    }
-  }
-
-  private void addResultHandler(Eventify eventify, Object listener, Method method) {
-    if (method.getParameterCount() >= 1) {
-      Class<?> type = method.getParameters()[0].getType();
-      eventify.getResultHandlers().put(type, new ResultHandler(listener, method));
     }
   }
 

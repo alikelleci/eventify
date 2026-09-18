@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.common.annotations.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.common.exceptions.PayloadMissingException;
 import io.github.alikelleci.eventify.core.messaging.Message;
 import io.github.alikelleci.eventify.core.messaging.Metadata;
+import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
 import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import io.github.alikelleci.eventify.core.util.IdUtils;
 import lombok.AccessLevel;
@@ -63,6 +64,19 @@ public class AggregateState implements Message {
     }
   }
 
+
+  /**
+   * This state, unchanged, after the event: what a handler that returns the state it is given produces. Used for an
+   * event without an event sourcing handler.
+   */
+  public AggregateState after(Event event) {
+    return AggregateState.builder()
+        .timestamp(event.getTimestamp())
+        .payload(payload)
+        .metadata(event.getMetadata())
+        .eventId(event.getId())
+        .build();
+  }
 
   /** This state, at the given version. */
   public AggregateState withVersion(long version) {
