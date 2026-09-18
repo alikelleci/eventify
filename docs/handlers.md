@@ -180,6 +180,59 @@ An exception thrown by an event handler stops the Eventify instance it runs in. 
 
 When that instance also handles commands, command handling stops with it. Run your event handlers in a separate application, with its own `application.id`, so a failing event handler never stops command handling.
 
+## Handling events with @KafkaListener
+
+With the Spring Boot starter and `spring-kafka` on the classpath, you can read Eventify's event topics with Spring Kafka's `@KafkaListener` instead of `@HandleEvent`. Set `containerFactory = "eventifyListenerContainerFactory"`, the listener container factory the starter provides for Eventify events, and write the method as you would write an event handler: the payload first, then any of the injectable parameters.
+
+```java
+@Component
+public class OrderProjection {
+
+    @KafkaListener(topics = "orders.events", groupId = "order-projection",
+                   containerFactory = "eventifyListenerContainerFactory")
+    public void on(OrderPlaced event, Metadata metadata, @Timestamp Instant timestamp) {
+        // e.g. insert into a read model database
+    }
+}
+```
+
+When a topic has several event types, put `@KafkaListener` on the class and `@KafkaHandler` on the methods. Spring Kafka picks the method by the payload type, as Eventify does for `@HandleEvent`. Add an `isDefault` handler for the types you don't handle:
+
+```java
+@Component
+@KafkaListener(topics = "orders.events", groupId = "order-projection",
+               containerFactory = "eventifyListenerContainerFactory")
+public class OrderProjection {
+
+    @KafkaHandler
+    public void on(OrderPlaced event, Metadata metadata) { ... }
+
+    @KafkaHandler
+    public void on(OrderShipped event) { ... }
+
+    @KafkaHandler(isDefault = true)
+    public void ignore(Object event) { }
+}
+```
+
+The `@HandleEvent` parameters also work here: `Metadata`, `@Timestamp Instant`, `@MessageId String`, and `@MetadataValue("key") String`. A method-level listener can take the whole `Event` instead of the payload: `public void on(Event event)`.
+
+Why use it:
+
+- **Failures stay in the listener.** An exception is handled by Spring Kafka's error handler: retries, then the next record or a dead-letter topic. Declare a `CommonErrorHandler` bean to change this, e.g. a `DefaultErrorHandler` with a `DeadLetterPublishingRecoverer`. Kafka Streams and command handling keep running.
+- **One consumer group per listener**, so each projection keeps its own offsets and can be reset or replayed on its own.
+- **Concurrency per listener**, with `@KafkaListener(concurrency = "3")`.
+
+What the starter sets up for you:
+
+- Events are read as Eventify writes them, with the `ObjectMapper` of your `Eventify` bean. They are upcasted with the same upcasters as your `Eventify` bean uses, also those registered with `registerHandler(...)`. Without an `Eventify` bean, the `@Upcast` methods of your beans are used.
+- `isolation.level` is always `read_committed`, so events of commands that were rolled back are never delivered. `auto.offset.reset` is `earliest` unless you set it, so a new projection starts from the first event.
+- The connection settings come from your `Eventify` bean's `streamsConfig`: `bootstrap.servers`, security settings, and `consumer.`-prefixed settings. Without an `Eventify` bean, they come from Spring Kafka's consumer factory (`spring.kafka.*`). An application with only listeners doesn't need an `Eventify` bean.
+
+### Commands
+
+Commands can't be handled with `@KafkaListener`. Handling a command needs Eventify's event store, and Eventify writes the events, the result, and the event store in one transaction. Commands are always handled by `@HandleCommand`.
+
 ## Thread safety
 
 One handler object is used by all stream threads (`num.stream.threads`) and by the Eventify Console at the same time. Keep handlers stateless: only `final` dependencies such as repositories or clients, and no fields that change.

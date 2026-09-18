@@ -138,6 +138,12 @@ The starter automatically discovers Spring beans containing handler methods and 
 
 > **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`).
 
+### Handling events with `@KafkaListener`
+
+With `spring-kafka` on the classpath, `@KafkaListener` methods can read the event topics too, as an alternative to `@HandleEvent`. Each listener gets its own consumer group, concurrency, and Spring Kafka error handling (retries, dead-letter topics). An exception in a listener doesn't stop Kafka Streams, so command handling keeps running. See [Handling events with @KafkaListener](handlers.md#handling-events-with-kafkalistener).
+
+Commands are always handled by `@HandleCommand`.
+
 ## Next steps
 
 - [Domain Modeling](domain-modeling.md): define your aggregates, commands, and events.
