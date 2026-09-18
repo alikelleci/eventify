@@ -182,21 +182,11 @@ When that instance also handles commands, command handling stops with it. Run yo
 
 ## Handling events with @KafkaListener
 
-With the Spring Boot starter and `spring-kafka` on the classpath, you can read Eventify's event topics with Spring Kafka's `@KafkaListener` instead of `@HandleEvent`. Set `containerFactory = "eventifyListenerContainerFactory"`, the listener container factory the starter provides for Eventify events, and write the method as you would write an event handler: the payload first, then any of the injectable parameters.
+With the Spring Boot starter and `spring-kafka` on the classpath, you can read Eventify's event topics with Spring Kafka's `@KafkaListener` instead of `@HandleEvent`. Set `containerFactory = "eventifyListenerContainerFactory"`: the listener container factory the starter provides for Eventify events.
 
-```java
-@Component
-public class OrderProjection {
+### All events of a topic
 
-    @KafkaListener(topics = "orders.events", groupId = "order-projection",
-                   containerFactory = "eventifyListenerContainerFactory")
-    public void on(OrderPlaced event, Metadata metadata, @Timestamp Instant timestamp) {
-        // e.g. insert into a read model database
-    }
-}
-```
-
-When a topic has several event types, put `@KafkaListener` on the class and `@KafkaHandler` on the methods. Spring Kafka picks the method by the payload type, as Eventify does for `@HandleEvent`. Add an `isDefault` handler for the types you don't handle:
+An event topic usually has all events of an aggregate: `OrderPlaced`, `OrderShipped`, `OrderCancelled`, ... Put `@KafkaListener` on the class and `@KafkaHandler` on a method per event type. Spring Kafka calls the method for the payload's type, as Eventify does for `@HandleEvent`:
 
 ```java
 @Component
@@ -205,25 +195,74 @@ When a topic has several event types, put `@KafkaListener` on the class and `@Ka
 public class OrderProjection {
 
     @KafkaHandler
-    public void on(OrderPlaced event, Metadata metadata) { ... }
+    public void on(OrderPlaced event, Metadata metadata) {
+        // e.g. insert into a read model database
+    }
 
     @KafkaHandler
-    public void on(OrderShipped event) { ... }
+    public void on(OrderShipped event, @Timestamp Instant timestamp) { ... }
+
+    @KafkaHandler
+    public void on(OrderCancelled event) { ... }
 
     @KafkaHandler(isDefault = true)
-    public void ignore(Object event) { }
+    public void ignore(Object event) {
+        // the other events of the topic
+    }
 }
 ```
 
-The `@HandleEvent` parameters also work here: `Metadata`, `@Timestamp Instant`, `@MessageId String`, and `@MetadataValue("key") String`. A method-level listener can take the whole `Event` instead of the payload: `public void on(Event event)`.
+Unlike `@HandleEvent`, an event type without a method is an error, handled by the error handler (see below). Add the `isDefault` method to ignore the types you don't handle.
 
-Why use it:
+To also get the whole `Event`, add it as a parameter next to the payload. The `isDefault` method can take the `Event` alone:
+
+```java
+    @KafkaHandler
+    public void on(OrderPlaced event, Event whole) { ... }
+
+    @KafkaHandler(isDefault = true)
+    public void other(Event whole) { ... }
+```
+
+A `@KafkaHandler` method with only an `Event` parameter, and not `isDefault`, is never called: Spring Kafka picks the method by the payload's type, and a payload is never an `Event`.
+
+### A listener method
+
+With `@KafkaListener` on a method, every event of the topic goes to that method. Use it for a topic with one event type, or to get all events in one method:
+
+```java
+@KafkaListener(topics = "payments.events", groupId = "payment-projection",
+               containerFactory = "eventifyListenerContainerFactory")
+public void on(PaymentReceived event, Metadata metadata) { ... }   // the topic has only PaymentReceived
+
+@KafkaListener(topics = "orders.events", groupId = "audit-log",
+               containerFactory = "eventifyListenerContainerFactory")
+public void on(Event event) { ... }                                // all events, e.g. for an audit log
+```
+
+A method that takes one payload type, on a topic with other types too, fails for those other events.
+
+### Injectable parameters
+
+The payload comes first, as with `@HandleEvent`. Then any of:
+
+| Parameter | What is injected |
+|---|---|
+| `Event` | The whole event: payload, id, timestamp, metadata, aggregate id. |
+| `Metadata` | The complete metadata map for the event. |
+| `@Timestamp Instant` | The event timestamp. |
+| `@MessageId String` | The unique ID of the event message. |
+| `@MetadataValue("key") String` | A specific value from the metadata map. |
+
+Spring Kafka's own parameters work too, e.g. `@Header(KafkaHeaders.RECEIVED_PARTITION) int partition`.
+
+### Why use @KafkaListener
 
 - **Failures stay in the listener.** An exception is handled by Spring Kafka's error handler: retries, then the next record or a dead-letter topic. Declare a `CommonErrorHandler` bean to change this, e.g. a `DefaultErrorHandler` with a `DeadLetterPublishingRecoverer`. Kafka Streams and command handling keep running.
 - **One consumer group per listener**, so each projection keeps its own offsets and can be reset or replayed on its own.
 - **Concurrency per listener**, with `@KafkaListener(concurrency = "3")`.
 
-What the starter sets up for you:
+### What the starter sets up
 
 - Events are read as Eventify writes them, with the `ObjectMapper` of your `Eventify` bean. They are upcasted with the same upcasters as your `Eventify` bean uses, also those registered with `registerHandler(...)`. Without an `Eventify` bean, the `@Upcast` methods of your beans are used.
 - `isolation.level` is always `read_committed`, so events of commands that were rolled back are never delivered. `auto.offset.reset` is `earliest` unless you set it, so a new projection starts from the first event.

@@ -140,6 +140,35 @@ class EventifyKafkaListenerIT {
 
   // ---------------------------------------------------------------------------------------------------------------
 
+  @KafkaListener(topics = "dispatch-with-event", groupId = "dispatch-with-event",
+      containerFactory = "eventifyListenerContainerFactory")
+  public static class DispatchingListenerWithEvent {
+    @KafkaHandler
+    public void on(OrderPlaced payload, Event event) {
+      received.add("placed " + payload.getId() + " " + event.getId());
+    }
+
+    @KafkaHandler(isDefault = true)
+    public void other(Event event) {
+      received.add("other " + event.getType());
+    }
+  }
+
+  @Test
+  @DisplayName("Should give the Event next to the payload, and to the default @KafkaHandler method")
+  void dispatchWithTheWholeEvent() throws Exception {
+    Event placed = Event.builder().payload(OrderPlaced.builder().id("order-1").total(10).build()).build();
+    send("dispatch-with-event", placed);
+    send("dispatch-with-event", Event.builder().payload(OrderShipped.builder().id("order-1").build()).build());
+
+    run(DispatchingListenerWithEvent.class, () -> {
+      assertThat(take()).isEqualTo("placed order-1 " + placed.getId());
+      assertThat(take()).isEqualTo("other OrderShipped");
+    });
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------
+
   public static class EventListener {
     @KafkaListener(topics = "whole-event", groupId = "whole-event", containerFactory = "eventifyListenerContainerFactory")
     public void on(Event event) {
