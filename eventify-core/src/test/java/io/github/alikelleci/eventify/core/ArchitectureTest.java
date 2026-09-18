@@ -1,8 +1,12 @@
 package io.github.alikelleci.eventify.core;
 
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
+import com.tngtech.archunit.lang.ArchCondition;
+import com.tngtech.archunit.lang.ConditionEvents;
+import com.tngtech.archunit.lang.SimpleConditionEvent;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -39,8 +43,23 @@ class ArchitectureTest {
   @DisplayName("Should keep only exceptions in exception packages")
   void exceptionPackagesHoldExceptions() {
     classes().that().resideInAPackage("..core..exception")
-        .should().beAssignableTo(Throwable.class)
+        .should(beThrowable())
         .check(CORE);
+  }
+
+  /**
+   * Checked on the loaded class, not on ArchUnit's view of the hierarchy: ArchUnit can't read the class files of every
+   * JDK, and then doesn't know that {@code RuntimeException} is a {@code Throwable}.
+   */
+  private static ArchCondition<JavaClass> beThrowable() {
+    return new ArchCondition<>("be a Throwable") {
+      @Override
+      public void check(JavaClass javaClass, ConditionEvents events) {
+        if (!Throwable.class.isAssignableFrom(javaClass.reflect())) {
+          events.add(SimpleConditionEvent.violated(javaClass, javaClass.getName() + " is not a Throwable"));
+        }
+      }
+    };
   }
 
   @Test
