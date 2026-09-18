@@ -1,8 +1,6 @@
 package io.github.alikelleci.eventify.core.aggregate;
 
-import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
@@ -13,7 +11,6 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Value;
 
-import java.beans.Transient;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -88,24 +85,5 @@ public class AggregateState implements Message {
         .eventId(eventId)
         .version(version)
         .build();
-  }
-
-  @Transient
-  public int getSnapshotThreshold() {
-    return Optional.ofNullable(getPayload())
-        .map(Object::getClass)
-        .map(aClass -> AnnotationScanner.findAnnotation(aClass, EnableSnapshotting.class))
-        .map(EnableSnapshotting::threshold)
-        .filter(threshold -> threshold > 0)
-        .orElse(0);
-  }
-
-  @Transient
-  public boolean deleteEvents() {
-    return Optional.ofNullable(getPayload())
-        .map(Object::getClass)
-        .map(aClass -> AnnotationScanner.findAnnotation(aClass, EnableSnapshotting.class))
-        .map(EnableSnapshotting::deleteEvents)
-        .orElse(false);
   }
 }

@@ -79,18 +79,25 @@ public class AggregateReplayer {
       if (listener != null) {
         listener.beforeEvent(event, state, version);
       }
-      ApplyEventMethod handler = eventSourcingHandlers.get(event.getPayload().getClass());
-      if (handler != null) {
-        log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
-        state = handler.apply(state, event);
-      } else {
-        log.trace("No Event Sourcing Handler found for event: {} ({}), state unchanged", event.getType(), event.getAggregateId());
-        state = state != null ? state.after(event) : null;
-      }
+      state = apply(state, event);
       version++;
       replayed++;
     }
 
     return new Result(state != null ? state.withVersion(version) : null, replayed);
+  }
+
+  /**
+   * The state after one event: what its event sourcing handler returns, or the state unchanged when it has none. The
+   * version is not set.
+   */
+  public AggregateState apply(AggregateState state, Event event) {
+    ApplyEventMethod handler = eventSourcingHandlers.get(event.getPayload().getClass());
+    if (handler != null) {
+      log.trace("Applying event: {} ({})", event.getType(), event.getAggregateId());
+      return handler.apply(state, event);
+    }
+    log.trace("No Event Sourcing Handler found for event: {} ({}), state unchanged", event.getType(), event.getAggregateId());
+    return state != null ? state.after(event) : null;
   }
 }
