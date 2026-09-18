@@ -123,7 +123,7 @@ class ConsoleService {
     this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();
     this.thisHost = hostInfo(eventify);
-    this.history = new AggregateHistory(eventify.getEventSourcingHandlers(), objectMapper);
+    this.history = new AggregateHistory(eventify.getHandlers().eventSourcingHandlers(), objectMapper);
     this.producer = new KafkaProducer<>(producerConfig(eventify), new StringSerializer(), new JsonSerializer<>(objectMapper));
   }
 
@@ -193,7 +193,7 @@ class ConsoleService {
     try {
       JsonNode tree = objectMapper.readTree(json);
       String type = tree.path("payload").path("@class").asText(null);
-      boolean handled = type != null && eventify.getCommandHandlers().keySet().stream()
+      boolean handled = type != null && eventify.getHandlers().commandHandlers().keySet().stream()
           .anyMatch(commandClass -> commandClass.getName().equals(type));
       if (!handled) {
         return Result.badRequest("Not a command of this application: " + type);
@@ -243,7 +243,7 @@ class ConsoleService {
    */
   Result<CommandsPage> getCommands(String aggregateId, int limit, CancelSignal cancel) {
     // Eventify writes the result of every handled command to its command topic with .results.
-    Set<String> resultTopics = eventify.getCommandTopics().stream()
+    Set<String> resultTopics = eventify.getHandlers().commandTopics().stream()
         .map(topic -> topic.concat(".results"))
         .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {

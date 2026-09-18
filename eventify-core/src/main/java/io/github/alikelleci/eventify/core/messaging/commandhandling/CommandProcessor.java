@@ -1,8 +1,9 @@
 package io.github.alikelleci.eventify.core.messaging.commandhandling;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import io.github.alikelleci.eventify.core.Eventify;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.common.exceptions.AggregateIdMismatchException;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Failure;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
@@ -33,15 +34,17 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
 
-  private final Eventify eventify;
+  private final HandlerRegistry handlers;
+  private final ObjectMapper objectMapper;
   private final AggregateReplay aggregateReplay;
   private FixedKeyProcessorContext<String, CommandResult> context;
   private KeyValueStore<String, Event> eventStore;
   private KeyValueStore<String, AggregateState> snapshotStore;
 
-  public CommandProcessor(Eventify eventify) {
-    this.eventify = eventify;
-    this.aggregateReplay = new AggregateReplay(eventify.getEventSourcingHandlers());
+  public CommandProcessor(HandlerRegistry handlers, ObjectMapper objectMapper) {
+    this.handlers = handlers;
+    this.objectMapper = objectMapper;
+    this.aggregateReplay = new AggregateReplay(handlers.eventSourcingHandlers());
   }
 
   @Override
@@ -99,7 +102,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
    * is accepted. Empty when the command is accepted without events; {@code null} when there is no handler for it.
    */
   protected List<Event> executeCommand(String aggregateId, Command command) {
-    CommandHandler commandHandler = eventify.getCommandHandlers().get(command.getPayload().getClass());
+    CommandHandler commandHandler = handlers.commandHandler(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return null;
@@ -134,12 +137,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   private Event copyThroughJson(Event event) {
     byte[] json;
     try {
-      json = eventify.getObjectMapper().writeValueAsBytes(event);
+      json = objectMapper.writeValueAsBytes(event);
     } catch (JsonProcessingException e) {
       throw new IllegalArgumentException("Event " + event.getType() + " cannot be written as JSON: " + e.getOriginalMessage(), e);
     }
     try {
-      return eventify.getObjectMapper().readValue(json, Event.class);
+      return objectMapper.readValue(json, Event.class);
     } catch (IOException e) {
       throw new IllegalArgumentException("Event " + event.getType() + " cannot be read back from JSON: " + e.getMessage(), e);
     }
@@ -147,7 +150,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   private void applyEvents(AggregateState state, List<Event> events) {
     for (Event event : events) {
-      EventSourcingHandler handler = eventify.getEventSourcingHandlers().get(event.getPayload().getClass());
+      EventSourcingHandler handler = handlers.eventSourcingHandler(event.getPayload().getClass());
       if (handler != null) {
         state = handler.apply(state, event);
       } else {

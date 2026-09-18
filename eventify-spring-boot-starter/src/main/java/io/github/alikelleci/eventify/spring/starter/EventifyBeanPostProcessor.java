@@ -1,8 +1,6 @@
 package io.github.alikelleci.eventify.spring.starter;
 
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.common.annotations.HandleMessage;
-import io.github.alikelleci.eventify.core.util.AnnotationUtils;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -39,10 +37,7 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor, SmartInitia
   @Override
   public void afterSingletonsInstantiated() {
     List<Eventify> withoutHandlers = apps.orderedStream()
-        .filter(eventify -> eventify.getCommandHandlers().isEmpty())
-        .filter(eventify -> eventify.getEventSourcingHandlers().isEmpty())
-        .filter(eventify -> eventify.getEventHandlers().isEmpty())
-        .filter(eventify -> eventify.getUpcasters().isEmpty())
+        .filter(eventify -> eventify.getHandlers().isEmpty())
         .toList();
 
     // With more than one, every handler would be registered on each of them, and every command handled as many times.
@@ -63,6 +58,6 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor, SmartInitia
    * that advice.
    */
   private boolean isHandler(Object bean) {
-    return !AnnotationUtils.findAnnotatedMethods(ClassUtils.getUserClass(bean), HandleMessage.class).isEmpty();
+    return Eventify.isHandler(ClassUtils.getUserClass(bean));
   }
 }

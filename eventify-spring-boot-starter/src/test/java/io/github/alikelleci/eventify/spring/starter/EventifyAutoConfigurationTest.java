@@ -90,7 +90,7 @@ class EventifyAutoConfigurationTest {
       Object handler = registeredHandler(context.getBean(Eventify.class));
       assertThat(AopUtils.isAopProxy(handler)).isTrue();
       assertThat(handler).isSameAs(context.getBean(PingHandler.class));
-      assertThat(context.getBean(Eventify.class).getEventHandlers().get(Pinged.class)).hasSize(1);
+      assertThat(context.getBean(Eventify.class).getHandlers().eventHandlers(Pinged.class)).hasSize(1);
     });
     assertThat(output).doesNotContain("is not eligible for getting processed by all BeanPostProcessors");
   }
@@ -123,7 +123,7 @@ class EventifyAutoConfigurationTest {
   }
 
   private static Object registeredHandler(Eventify eventify) {
-    return eventify.getEventHandlers().get(Pinged.class).stream().map(EventHandler::getHandler).findFirst().orElseThrow();
+    return eventify.getHandlers().eventHandlers(Pinged.class).stream().map(EventHandler::getHandler).findFirst().orElseThrow();
   }
 
   private static Properties streamsConfig() {

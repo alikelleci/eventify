@@ -85,7 +85,7 @@ public class EventifyKafkaListenerAutoConfiguration {
   private static MultiValuedMap<String, Upcaster> upcasters(ObjectProvider<Eventify> apps, EventifyUpcasters beans) {
     Eventify eventify = apps.getIfUnique();
     if (eventify != null) {
-      return eventify.getUpcasters();
+      return eventify.getHandlers().upcasters();
     }
     if (apps.stream().findAny().isPresent()) {
       log.warn("There is more than one Eventify bean: @KafkaListener methods only upcast with the @Upcast methods of "

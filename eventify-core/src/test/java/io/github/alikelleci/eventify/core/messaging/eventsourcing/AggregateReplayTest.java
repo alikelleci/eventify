@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AggregateReplayTest {
 
   private final InMemoryStore<Event> eventStore = new InMemoryStore<>();
-  private final AggregateReplay replay = new AggregateReplay(eventify().getEventSourcingHandlers());
+  private final AggregateReplay replay = new AggregateReplay(eventify().getHandlers().eventSourcingHandlers());
 
   /** An event no event sourcing handler applies, e.g. one only an event handler reacts to. */
   public static class OrderViewed {

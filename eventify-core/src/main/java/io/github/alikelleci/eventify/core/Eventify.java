@@ -1,29 +1,20 @@
 package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandProcessor;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult;
 import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Success;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
 import io.github.alikelleci.eventify.core.messaging.eventhandling.EventProcessor;
 import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.plugins.LoggingPlugin;
 import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
 import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerde;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
-import io.github.alikelleci.eventify.core.util.AnnotationUtils;
-import io.github.alikelleci.eventify.core.util.HandlerUtils;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.MultiValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.Serde;
@@ -45,9 +36,7 @@ import org.apache.kafka.streams.state.Stores;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
@@ -56,17 +45,12 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 
 import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
 
 @Slf4j
-@Getter
 public class Eventify {
-  private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
-  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
-  private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
-  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+  private final HandlerRegistry handlers = new HandlerRegistry();
 
   private final Properties streamsConfig;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
@@ -90,7 +74,29 @@ public class Eventify {
   }
 
   public void registerHandler(Object handler) {
-    HandlerUtils.registerHandler(this, handler);
+    handlers.register(handler);
+  }
+
+  /** Whether objects of this class are handlers: a method has {@code @HandleCommand}, {@code @ApplyEvent}, {@code @HandleEvent} or {@code @Upcast}. */
+  public static boolean isHandler(Class<?> type) {
+    return HandlerRegistry.isHandler(type);
+  }
+
+  public HandlerRegistry getHandlers() {
+    return handlers;
+  }
+
+  public Properties getStreamsConfig() {
+    return streamsConfig;
+  }
+
+  public ObjectMapper getObjectMapper() {
+    return objectMapper;
+  }
+
+  /** The running Kafka Streams; {@code null} before the first {@link #start()}. */
+  public KafkaStreams getKafkaStreams() {
+    return kafkaStreams;
   }
 
   public void registerPlugin(EventifyPlugin plugin) {
@@ -111,7 +117,7 @@ public class Eventify {
      */
 
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
-    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
+    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, handlers.upcasters());
     Serde<AggregateState> snapshotSerde = new JsonSerde<>(AggregateState.class, objectMapper);
 
     /*
@@ -136,16 +142,17 @@ public class Eventify {
      * -------------------------------------------------------------
      */
 
-    if (!getCommandTopics().isEmpty()) {
+    Set<String> commandTopics = handlers.commandTopics();
+    if (!commandTopics.isEmpty()) {
       // --> Commands
-      KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), commandSerde))
+      KStream<String, Command> commands = builder.stream(commandTopics, Consumed.with(Serdes.String(), commandSerde))
           .filter((key, command) -> key != null)
           .filter((key, command) -> command != null)
           .filter((key, command) -> command.getPayload() != null);
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .processValues(() -> new CommandProcessor(this), "event-store", "snapshot-store")
+          .processValues(() -> new CommandProcessor(handlers, objectMapper), "event-store", "snapshot-store")
           .filter((key, result) -> result != null);
 
       // Results --> Push
@@ -178,22 +185,24 @@ public class Eventify {
      * -------------------------------------------------------------
      */
 
-    if (!getEventTopics().isEmpty()) {
+    Set<String> eventTopics = handlers.eventTopics();
+    if (!eventTopics.isEmpty()) {
       // --> Events
-      KStream<String, Event> events = builder.stream(getEventTopics(), Consumed.with(Serdes.String(), eventSerde))
+      KStream<String, Event> events = builder.stream(eventTopics, Consumed.with(Serdes.String(), eventSerde))
           .filter((key, event) -> key != null)
           .filter((key, event) -> event != null)
           .filter((key, event) -> event.getPayload() != null);
 
       // Events --> Void
       events
-          .processValues(() -> new EventProcessor(this));
+          .processValues(() -> new EventProcessor(handlers));
     }
 
     return builder.build();
   }
 
   public synchronized void start() {
+    handlers.freeze();
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
       log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
@@ -216,7 +225,7 @@ public class Eventify {
    * best run in their own application, with their own application id.
    */
   private void warnAboutHandlersThatStopEachOther() {
-    if (commandHandlers.isEmpty() || eventHandlers.isEmpty()) {
+    if (handlers.commandHandlers().isEmpty() || !handlers.hasEventHandlers()) {
       return;
     }
     log.warn("This Eventify instance handles commands and events in one application: an exception from an event "
@@ -304,22 +313,6 @@ public class Eventify {
         log.warn("Plugin {} failed in {}", listener.getClass().getName(), hook, e);
       }
     });
-  }
-
-  public Set<String> getCommandTopics() {
-    return commandHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
-        .filter(Objects::nonNull)
-        .map(TopicInfo::value)
-        .collect(Collectors.toSet());
-  }
-
-  private Set<String> getEventTopics() {
-    return eventHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
-        .filter(Objects::nonNull)
-        .map(TopicInfo::value)
-        .collect(Collectors.toSet());
   }
 
 

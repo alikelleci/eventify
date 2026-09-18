@@ -3,11 +3,11 @@ package io.github.alikelleci.eventify.core.support.serialization.json;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
 import io.github.alikelleci.eventify.core.messaging.upcasting.exceptions.UpcastingException;
 import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
-import io.github.alikelleci.eventify.core.util.HandlerUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
@@ -131,7 +131,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
   }
 
   public JsonDeserializer<T> registerUpcaster(Object handler) {
-    HandlerUtils.registerUpcasters(upcasters, handler);
+    HandlerRegistry.registerUpcasters(upcasters, handler);
     return this;
   }
 }

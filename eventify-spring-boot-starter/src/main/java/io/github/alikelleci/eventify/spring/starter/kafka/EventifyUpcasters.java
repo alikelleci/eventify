@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.spring.starter.kafka;
 
 import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.core.util.HandlerUtils;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -18,7 +18,7 @@ public class EventifyUpcasters implements BeanPostProcessor {
 
   @Override
   public Object postProcessAfterInitialization(Object bean, String beanName) {
-    HandlerUtils.registerUpcasters(upcasters, bean);
+    HandlerRegistry.registerUpcasters(upcasters, bean);
     return bean;
   }
 

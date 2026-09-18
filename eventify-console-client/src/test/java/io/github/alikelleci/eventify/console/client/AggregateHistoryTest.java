@@ -128,8 +128,8 @@ class AggregateHistoryTest {
   }
 
   private final Eventify eventify = eventify();
-  private final AggregateHistory history = new AggregateHistory(eventify.getEventSourcingHandlers(), eventify.getObjectMapper());
-  private final AggregateReplay replay = new AggregateReplay(eventify.getEventSourcingHandlers());
+  private final AggregateHistory history = new AggregateHistory(eventify.getHandlers().eventSourcingHandlers(), eventify.getObjectMapper());
+  private final AggregateReplay replay = new AggregateReplay(eventify.getHandlers().eventSourcingHandlers());
   private final InMemoryStore<Event> events = new InMemoryStore<>();
   private final InMemoryStore<AggregateState> snapshots = new InMemoryStore<>();
 

@@ -133,8 +133,8 @@ class HandlerRegistrationTest {
         .registerHandler(handler)
         .build();
 
-    assertThat(eventify.getCommandHandlers()).containsOnlyKeys(SwitchOn.class);
-    assertThat(eventify.getEventSourcingHandlers()).containsOnlyKeys(SwitchedOn.class);
+    assertThat(eventify.getHandlers().commandHandlers()).containsOnlyKeys(SwitchOn.class);
+    assertThat(eventify.getHandlers().eventSourcingHandlers()).containsOnlyKeys(SwitchedOn.class);
   }
 
   @Test
@@ -145,7 +145,21 @@ class HandlerRegistrationTest {
         .registerHandler(new SecondEventHandler())
         .build();
 
-    assertThat(eventify.getEventHandlers().get(SwitchedOn.class)).hasSize(2);
+    assertThat(eventify.getHandlers().eventHandlers(SwitchedOn.class)).hasSize(2);
+  }
+
+  @Test
+  @DisplayName("Should refuse a handler registered after Eventify started")
+  void aHandlerRegisteredAfterStartIsRefused() {
+    // Without @TopicInfo nothing is subscribed: start() returns without connecting to Kafka.
+    Eventify eventify = Eventify.builder().streamsConfig(config())
+        .registerHandler(new LightHandler())
+        .build();
+    eventify.start();
+
+    assertThatThrownBy(() -> eventify.registerHandler(new FirstEventHandler()))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("started");
   }
 
   private static Properties config() {
