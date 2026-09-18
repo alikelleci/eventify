@@ -24,13 +24,8 @@ public class JsonDeserializer<T> implements Deserializer<T> {
   private final ObjectMapper objectMapper;
   private final MultiValuedMap<String, Upcaster> upcasters;
 
-  public JsonDeserializer() {
-    this(null);
-  }
-
   public JsonDeserializer(Class<T> targetType) {
     this(targetType, JacksonUtils.enhancedObjectMapper(), new ArrayListValuedHashMap<>());
-
   }
 
   public JsonDeserializer(Class<T> targetType, ObjectMapper objectMapper) {

@@ -365,11 +365,6 @@ public class Eventify {
         log.warn("'{}' is set by Eventify; the configured value '{}' is not used.", StreamsConfig.APPLICATION_SERVER_CONFIG, configured);
       }
 
-//    ArrayList<String> interceptors = new ArrayList<>();
-//    interceptors.add(CommonProducerInterceptor.class.getName());
-//
-//    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
-
       return this;
     }
 

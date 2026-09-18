@@ -5,7 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 
@@ -14,7 +13,6 @@ import java.util.List;
 @Slf4j
 @AutoConfiguration
 @ConditionalOnBean(Eventify.class)
-@EnableConfigurationProperties(EventifyProperties.class)
 public class EventifyAutoConfiguration {
 
   /** Static: a post-processor created from an instance method would first create this configuration, too early. */
