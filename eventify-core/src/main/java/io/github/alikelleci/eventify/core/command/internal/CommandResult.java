@@ -8,10 +8,7 @@ import lombok.Value;
 
 import java.util.List;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.core.message.Metadata.RESULT;
-
-
+/** The outcome of handling a command. How it is sent to the result and reply topics: see {@link CommandReplies}. */
 public interface CommandResult {
 
   Command getCommand();
@@ -22,14 +19,6 @@ public interface CommandResult {
     Command command;
     @Singular
     List<Event> events;
-
-    @Override
-    public Command getCommand() {
-      command.getMetadata().put(RESULT, "success");
-      command.getMetadata().remove(CAUSE);
-
-      return command;
-    }
   }
 
   @Value
@@ -37,14 +26,6 @@ public interface CommandResult {
   class Failure implements CommandResult {
     Command command;
     String cause;
-
-    @Override
-    public Command getCommand() {
-      command.getMetadata().put(RESULT, "failure");
-      command.getMetadata().put(CAUSE, cause);
-
-      return command;
-    }
   }
 
 }

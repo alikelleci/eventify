@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
+import io.github.alikelleci.eventify.core.command.internal.CommandReplies;
 import io.github.alikelleci.eventify.core.command.internal.CommandResult.Success;
 import io.github.alikelleci.eventify.core.command.internal.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
@@ -223,13 +224,13 @@ public class Eventify {
 
       // Results --> Push
       commandResults
-          .mapValues(CommandResult::getCommand)
+          .mapValues(CommandReplies::toReply)
           .to((key, command, recordContext) -> command.getTopic().value().concat(".results"),
               Produced.with(Serdes.String(), commandSerde));
 
       // Results --> Push to reply topic
       commandResults
-          .mapValues(CommandResult::getCommand)
+          .mapValues(CommandReplies::toReply)
           .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
           .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
               Produced.with(Serdes.String(), commandSerde)

@@ -6,9 +6,8 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.Scheduler;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
-import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.command.internal.CommandReplies;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -25,9 +24,7 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CAUSE;
 import static io.github.alikelleci.eventify.core.message.Metadata.REPLY_TO;
-import static io.github.alikelleci.eventify.core.message.Metadata.RESULT;
 
 @Slf4j
 public class DefaultCommandGateway extends ReplyConsumer implements CommandGateway {
@@ -143,7 +140,7 @@ public class DefaultCommandGateway extends ReplyConsumer implements CommandGatew
     }
     CompletableFuture<Object> future = cache.getIfPresent(command.getId());
     if (future != null) {
-      Exception exception = checkForErrors(consumerRecord);
+      Exception exception = CommandReplies.failureOf(command);
       if (exception == null) {
         future.complete(command.getPayload());
       } else {
@@ -151,17 +148,6 @@ public class DefaultCommandGateway extends ReplyConsumer implements CommandGatew
       }
       cache.invalidate(command.getId());
     }
-  }
-
-  private Exception checkForErrors(ConsumerRecord<String, Command> consumerRecord) {
-    Command command = consumerRecord.value();
-    Metadata metadata = command.getMetadata();
-
-    if ("failure".equals(metadata.get(RESULT))) {
-      return new CommandExecutionException(metadata.get(CAUSE));
-    }
-
-    return null;
   }
 
 }

@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.command.gateway;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.internal.CommandReplies;
 import io.github.alikelleci.eventify.core.command.internal.CommandResult;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -128,7 +129,7 @@ class CommandGatewayReplyIT {
     Command command = Command.builder().payload(Ping.builder().id("ping-1").build()).build();
     CompletableFuture<Object> future = gateway.send(command);
     // The reply as Eventify writes it: the command itself, with its result.
-    byte[] reply = new JsonSerializer<Command>().serialize(REPLY_TOPIC, CommandResult.Success.builder().command(command).build().getCommand());
+    byte[] reply = new JsonSerializer<Command>().serialize(REPLY_TOPIC, CommandReplies.toReply(CommandResult.Success.builder().command(command).build()));
 
     Properties rawConfig = new Properties();
     rawConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
