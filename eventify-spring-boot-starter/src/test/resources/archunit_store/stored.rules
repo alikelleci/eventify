@@ -1,0 +1,3 @@
+#
+#Sat Sep 19 01:03:57 CEST 2026
+no\ classes\ should\ depend\ on\ classes\ that\ reside\ in\ a\ package\ 'io.github.alikelleci.eventify.core..internal..'=79ccd83b-9a02-4f42-bfc0-5084c5fb9a80
