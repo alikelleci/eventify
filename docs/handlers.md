@@ -258,7 +258,7 @@ Spring Kafka's own parameters work too, e.g. `@Header(KafkaHeaders.RECEIVED_PART
 
 ### Why use @KafkaListener
 
-- **Failures stay in the listener.** An exception is handled by Spring Kafka's error handler: retries, then the next record or a dead-letter topic. Declare a `CommonErrorHandler` bean to change this, e.g. a `DefaultErrorHandler` with a `DeadLetterPublishingRecoverer`. Kafka Streams and command handling keep running.
+- **Failures stay in the listener.** An exception is handled by Spring Kafka's error handler: retries, then the next record or a [dead-letter topic](#errors-and-dead-letter-topics). Kafka Streams and command handling keep running.
 - **One consumer group per listener**, so each projection keeps its own offsets and can be reset or replayed on its own.
 - **Concurrency per listener**, with `@KafkaListener(concurrency = "3")`.
 
@@ -267,6 +267,30 @@ Spring Kafka's own parameters work too, e.g. `@Header(KafkaHeaders.RECEIVED_PART
 - Events are read as Eventify writes them, with the `ObjectMapper` of your `Eventify` bean. They are upcasted with the same upcasters as your `Eventify` bean uses, also those registered with `registerHandler(...)`. Without an `Eventify` bean, the `@Upcast` methods of your beans are used.
 - `isolation.level` is always `read_committed`, so events of commands that were rolled back are never delivered. `auto.offset.reset` is `earliest` unless you set it, so a new projection starts from the first event.
 - The connection settings come from your `Eventify` bean's `streamsConfig`: `bootstrap.servers`, security settings, and `consumer.`-prefixed settings. Without an `Eventify` bean, they come from Spring Kafka's consumer factory (`spring.kafka.*`). An application with only listeners doesn't need an `Eventify` bean.
+
+### Errors and dead-letter topics
+
+By default, Spring Kafka retries a failed event 9 times, logs it, and goes on with the next one: the event is lost for that listener. To keep failed events, declare a `CommonErrorHandler` bean: the starter's factory uses it. For example, a `DefaultErrorHandler` that sends them to a dead-letter topic (`<topic>-dlt`):
+
+```java
+@Bean
+DefaultErrorHandler errorHandler(Eventify eventify) {
+    Map<Class<?>, Serializer<?>> serializers = new LinkedHashMap<>();
+    serializers.put(byte[].class, new ByteArraySerializer());                    // records that could not be read
+    serializers.put(Event.class, new JsonSerializer<>(eventify.getObjectMapper())); // Eventify's JsonSerializer
+
+    KafkaTemplate<String, Object> template = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(
+        Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092"),
+        new StringSerializer(), new DelegatingByTypeSerializer(serializers)));
+
+    return new DefaultErrorHandler(new DeadLetterPublishingRecoverer(template),
+                                   new FixedBackOff(1000, 3));  // 3 retries, 1 second apart
+}
+```
+
+Write the events with Eventify's `JsonSerializer`, as above. The dead-letter topic then has the events as Eventify wrote them, and you can read it with a listener on `containerFactory = "eventifyListenerContainerFactory"`, e.g. to handle them again once the problem is fixed. With another serializer, such as Spring Kafka's `JsonSerializer`, the events are written in another format and can't be read as events.
+
+A record that could not be read at all, e.g. one that is not JSON, has no event: `ByteArraySerializer` writes its bytes as they were.
 
 ### Commands
 

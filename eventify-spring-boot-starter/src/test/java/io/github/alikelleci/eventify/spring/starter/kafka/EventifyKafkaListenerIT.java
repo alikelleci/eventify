@@ -36,6 +36,22 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 
+import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
+import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.Serializer;
+import org.springframework.kafka.core.DefaultKafkaProducerFactory;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
+import org.springframework.util.backoff.FixedBackOff;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -217,6 +233,75 @@ class EventifyKafkaListenerIT {
       assertThat(take()).isEqualTo("committed");
       assertThat(received.poll(2, TimeUnit.SECONDS)).isNull();
     });
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------
+
+  public static class FailingListener {
+    @KafkaListener(topics = "failing", groupId = "failing", containerFactory = "eventifyListenerContainerFactory")
+    public void on(OrderShipped event) {
+      throw new IllegalStateException("the read model is down");
+    }
+  }
+
+  /**
+   * As in the docs: events are written with Eventify's serializer, so the dead-letter topic can be read as the event
+   * topic. A record that could not be read has no event: its bytes are written as they were.
+   */
+  @Configuration
+  static class DeadLetterTopic {
+    @Bean
+    DefaultErrorHandler errorHandler() {
+      Map<Class<?>, Serializer<?>> serializers = new LinkedHashMap<>();
+      serializers.put(byte[].class, new ByteArraySerializer());
+      serializers.put(Event.class, new JsonSerializer<>(objectMapper));
+      KafkaTemplate<String, Object> template = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(
+          Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()),
+          new StringSerializer(), new DelegatingByTypeSerializer(serializers)));
+      return new DefaultErrorHandler(new DeadLetterPublishingRecoverer(template), new FixedBackOff(0, 0));
+    }
+  }
+
+  @Test
+  @DisplayName("Should send a failed event, and a record that could not be read, to the dead-letter topic as they were")
+  void deadLetterTopic() throws Exception {
+    Event event = Event.builder().payload(OrderShipped.builder().id("order-1").build()).build();
+    send("failing", event);
+    try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerConfig(Map.of()))) {
+      producer.send(new ProducerRecord<>("failing", "order-1", "not an event")).get();
+    }
+
+    received.clear();
+    ApplicationContextRunner runner = new ApplicationContextRunner()
+        .withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))
+        .withUserConfiguration(ListenersOnly.class, DeadLetterTopic.class)
+        .withBean(FailingListener.class);
+    runner.run(context -> {
+      assertThat(context).hasNotFailed();
+      List<byte[]> deadLetters = read("failing-dlt", 2);
+
+      Event deadLetter = new JsonDeserializer<>(Event.class, objectMapper).deserialize("failing-dlt", deadLetters.get(0));
+      assertThat(deadLetter.getId()).isEqualTo(event.getId());
+      assertThat(deadLetter.getPayload()).isEqualTo(event.getPayload());
+      assertThat(new String(deadLetters.get(1), StandardCharsets.UTF_8)).isEqualTo("not an event");
+    });
+  }
+
+  private static List<byte[]> read(String topic, int count) {
+    Properties properties = new Properties();
+    properties.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    properties.put(ConsumerConfig.GROUP_ID_CONFIG, "reader-" + topic);
+    properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    try (KafkaConsumer<String, byte[]> consumer = new KafkaConsumer<>(properties, new StringDeserializer(), new ByteArrayDeserializer())) {
+      consumer.subscribe(List.of(topic));
+      List<byte[]> values = new ArrayList<>();
+      long deadline = System.currentTimeMillis() + 30_000;
+      while (values.size() < count && System.currentTimeMillis() < deadline) {
+        consumer.poll(Duration.ofMillis(500)).forEach(record -> values.add(record.value()));
+      }
+      assertThat(values).as("records on " + topic).hasSize(count);
+      return values;
+    }
   }
 
   // ---------------------------------------------------------------------------------------------------------------
