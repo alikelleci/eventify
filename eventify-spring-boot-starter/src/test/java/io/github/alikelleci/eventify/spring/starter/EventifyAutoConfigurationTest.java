@@ -1,8 +1,8 @@
 package io.github.alikelleci.eventify.spring.starter;
 
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.annotations.HandleEvent;
+import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
+import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -123,7 +123,7 @@ class EventifyAutoConfigurationTest {
   }
 
   private static Object registeredHandler(Eventify eventify) {
-    return eventify.getHandlers().eventHandlers(Pinged.class).stream().map(EventHandler::getHandler).findFirst().orElseThrow();
+    return eventify.getHandlers().eventHandlers(Pinged.class).stream().map(EventHandlerMethod::getHandler).findFirst().orElseThrow();
   }
 
   private static Properties streamsConfig() {

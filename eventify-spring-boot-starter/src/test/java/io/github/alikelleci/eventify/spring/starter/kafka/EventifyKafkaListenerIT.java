@@ -4,21 +4,27 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.MessageId;
-import io.github.alikelleci.eventify.core.common.annotations.MetadataValue;
-import io.github.alikelleci.eventify.core.common.annotations.Revision;
-import io.github.alikelleci.eventify.core.common.annotations.Timestamp;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
-import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.event.annotation.Revision;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.MessageId;
+import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.serialization.ByteArrayDeserializer;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.Serializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.DisplayName;
@@ -32,27 +38,21 @@ import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.kafka.KafkaContainer;
-
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
-import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.serialization.Serializer;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
 import org.springframework.util.backoff.FixedBackOff;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.kafka.KafkaContainer;
+
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -70,7 +70,7 @@ class EventifyKafkaListenerIT {
   @Container
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
 
-  private static final ObjectMapper objectMapper = JacksonUtils.enhancedObjectMapper();
+  private static final ObjectMapper objectMapper = EventifyObjectMapper.get();
 
   /** What the listeners got, in order. */
   static final BlockingQueue<Object> received = new LinkedBlockingQueue<>();

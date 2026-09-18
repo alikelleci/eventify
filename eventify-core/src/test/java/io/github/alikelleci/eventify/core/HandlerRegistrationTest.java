@@ -1,11 +1,11 @@
 package io.github.alikelleci.eventify.core;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.annotations.HandleEvent;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import lombok.Value;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -151,7 +151,7 @@ class HandlerRegistrationTest {
   @Test
   @DisplayName("Should refuse a handler registered after Eventify started")
   void aHandlerRegisteredAfterStartIsRefused() {
-    // Without @TopicInfo nothing is subscribed: start() returns without connecting to Kafka.
+    // Without @Topic nothing is subscribed: start() returns without connecting to Kafka.
     Eventify eventify = Eventify.builder().streamsConfig(config())
         .registerHandler(new LightHandler())
         .build();

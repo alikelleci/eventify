@@ -1,27 +1,27 @@
 package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
+import io.github.alikelleci.eventify.core.command.internal.CommandResult.Success;
+import io.github.alikelleci.eventify.core.command.internal.CommandResult;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
-import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandProcessor;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Success;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.EventProcessor;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.plugins.LoggingPlugin;
-import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerde;
-import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.core.kafka.internal.RocksDbConfig;
+import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugin.LoggingPlugin;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import io.github.alikelleci.eventify.core.serialization.JsonSerde;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
+import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
@@ -46,7 +46,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
+import static io.github.alikelleci.eventify.core.message.Metadata.REPLY_TO;
 
 @Slf4j
 public class Eventify {
@@ -158,7 +158,7 @@ public class Eventify {
       // Results --> Push
       commandResults
           .mapValues(CommandResult::getCommand)
-          .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
+          .to((key, command, recordContext) -> command.getTopic().value().concat(".results"),
               Produced.with(Serdes.String(), commandSerde));
 
       // Results --> Push to reply topic
@@ -175,7 +175,7 @@ public class Eventify {
           .mapValues((key, result) -> (Success) result)
           .flatMapValues(Success::getEvents)
           .filter((key, event) -> event != null)
-          .to((key, event, recordContext) -> event.getTopicInfo().value(),
+          .to((key, event, recordContext) -> event.getTopic().value(),
               Produced.with(Serdes.String(), eventSerde));
     }
 
@@ -346,7 +346,7 @@ public class Eventify {
       }
       this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
       this.streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
-      this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, CustomRocksDbConfig.class);
+      this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, RocksDbConfig.class);
       this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
 
       // A unique name for this instance, not an address: nothing listens on it. Kafka Streams shares it with the
@@ -378,7 +378,7 @@ public class Eventify {
       }
 
       if (this.objectMapper == null) {
-        this.objectMapper = JacksonUtils.enhancedObjectMapper();
+        this.objectMapper = EventifyObjectMapper.get();
       }
 
       // What happens underneath is logged by a plugin, so it can be seen, replaced or joined by others.

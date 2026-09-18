@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.console.client.item;
 
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.client.item.ItemEvent.ItemCreated;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 
 public class ItemHandler {
 

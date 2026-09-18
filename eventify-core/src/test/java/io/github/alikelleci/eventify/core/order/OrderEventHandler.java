@@ -1,11 +1,11 @@
 package io.github.alikelleci.eventify.core.order;
 
+import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderCancelled;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderConfirmed;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderDelivered;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderPlaced;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.annotations.HandleEvent;
 
 public class OrderEventHandler {
 

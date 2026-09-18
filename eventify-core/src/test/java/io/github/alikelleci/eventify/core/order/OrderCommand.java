@@ -1,12 +1,12 @@
 package io.github.alikelleci.eventify.core.order;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Builder;
 import lombok.Value;
 
-@TopicInfo("commands.order")
+@Topic("commands.order")
 public interface OrderCommand {
 
   @Value

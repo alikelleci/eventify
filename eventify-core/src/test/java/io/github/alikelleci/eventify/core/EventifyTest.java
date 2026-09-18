@@ -1,25 +1,25 @@
 package io.github.alikelleci.eventify.core;
 
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.order.Order;
-import io.github.alikelleci.eventify.core.order.OrderCommandHandler;
-import io.github.alikelleci.eventify.core.order.OrderEventSourcingHandler;
-import io.github.alikelleci.eventify.core.order.OrderEventUpcaster;
-import io.github.alikelleci.eventify.core.order.OrderCommand;
 import io.github.alikelleci.eventify.core.order.OrderCommand.PlaceOrder;
 import io.github.alikelleci.eventify.core.order.OrderCommand.ShipOrder;
-import io.github.alikelleci.eventify.core.order.OrderEvent;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderPlaced;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderConfirmed;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderDelivered;
+import io.github.alikelleci.eventify.core.order.OrderCommand;
+import io.github.alikelleci.eventify.core.order.OrderCommandHandler;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderCancelled;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import io.github.alikelleci.eventify.core.order.OrderEvent.OrderConfirmed;
+import io.github.alikelleci.eventify.core.order.OrderEvent.OrderDelivered;
+import io.github.alikelleci.eventify.core.order.OrderEvent.OrderPlaced;
+import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
+import io.github.alikelleci.eventify.core.order.OrderEvent;
+import io.github.alikelleci.eventify.core.order.OrderEventSourcingHandler;
+import io.github.alikelleci.eventify.core.order.OrderEventUpcaster;
+import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -38,11 +38,11 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Properties;
 
-import static io.github.alikelleci.eventify.core.support.CommandFactory.buildPlaceOrderCommand;
-import static io.github.alikelleci.eventify.core.support.CommandFactory.buildConfirmOrderCommand;
-import static io.github.alikelleci.eventify.core.support.CommandFactory.buildShipOrderCommand;
-import static io.github.alikelleci.eventify.core.support.CommandFactory.buildDeliverOrderCommand;
 import static io.github.alikelleci.eventify.core.support.CommandFactory.buildCancelOrderCommand;
+import static io.github.alikelleci.eventify.core.support.CommandFactory.buildConfirmOrderCommand;
+import static io.github.alikelleci.eventify.core.support.CommandFactory.buildDeliverOrderCommand;
+import static io.github.alikelleci.eventify.core.support.CommandFactory.buildPlaceOrderCommand;
+import static io.github.alikelleci.eventify.core.support.CommandFactory.buildShipOrderCommand;
 import static io.github.alikelleci.eventify.core.support.Matchers.assertCommandResult;
 import static io.github.alikelleci.eventify.core.support.Matchers.assertEvent;
 import static io.github.alikelleci.eventify.core.support.Matchers.assertSnapshot;
@@ -69,19 +69,19 @@ class EventifyTest {
 
   static TestInputTopic<String, Command> commandsTopic(TopologyTestDriver driver) {
     return driver.createInputTopic(
-        OrderCommand.class.getAnnotation(TopicInfo.class).value(),
+        OrderCommand.class.getAnnotation(Topic.class).value(),
         new StringSerializer(), new JsonSerializer<>());
   }
 
   static TestOutputTopic<String, Command> commandResultsTopic(TopologyTestDriver driver) {
     return driver.createOutputTopic(
-        OrderCommand.class.getAnnotation(TopicInfo.class).value().concat(".results"),
+        OrderCommand.class.getAnnotation(Topic.class).value().concat(".results"),
         new StringDeserializer(), new JsonDeserializer<>(Command.class));
   }
 
   static TestOutputTopic<String, Event> eventsTopic(TopologyTestDriver driver) {
     return driver.createOutputTopic(
-        OrderEvent.class.getAnnotation(TopicInfo.class).value(),
+        OrderEvent.class.getAnnotation(Topic.class).value(),
         new StringDeserializer(), new JsonDeserializer<>(Event.class));
   }
 

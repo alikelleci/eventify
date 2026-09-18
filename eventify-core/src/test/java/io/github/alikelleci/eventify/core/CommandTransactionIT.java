@@ -1,12 +1,12 @@
 package io.github.alikelleci.eventify.core;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -66,11 +66,11 @@ class CommandTransactionIT {
     String id;
   }
 
-  @TopicInfo("orders")
+  @Topic("orders")
   public interface OrderCommand {
   }
 
-  @TopicInfo("orders.events")
+  @Topic("orders.events")
   public interface OrderEvent {
   }
 
@@ -98,7 +98,7 @@ class CommandTransactionIT {
     String id;
   }
 
-  /** A user mistake: no {@code @TopicInfo}, so it has no topic to be sent to. */
+  /** A user mistake: no {@code @Topic}, so it has no topic to be sent to. */
   @Value
   @Builder
   public static class EventWithoutTopic {
@@ -176,7 +176,7 @@ class CommandTransactionIT {
 
   /** Scenario 1: the first event is valid, the second has no topic. The command fails, and none of it is stored or sent. */
   @Test
-  @DisplayName("Should fail the command and commit nothing of it when one of its events has no @TopicInfo")
+  @DisplayName("Should fail the command and commit nothing of it when one of its events has no @Topic")
   void aCommandWithAnEventWithoutATopicLeavesNothingBehind() {
     eventify = start("orders-event-without-topic");
     send(EmitEventWithoutTopic.builder().id("order-1").build());

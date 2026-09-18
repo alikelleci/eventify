@@ -1,15 +1,15 @@
 package io.github.alikelleci.eventify.core;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -48,11 +48,11 @@ class MutableAggregateTest {
     List<String> items = new ArrayList<>();
   }
 
-  @TopicInfo("commands.cart")
+  @Topic("commands.cart")
   public interface CartCommand {
   }
 
-  @TopicInfo("events.cart")
+  @Topic("events.cart")
   public interface CartEvent {
   }
 

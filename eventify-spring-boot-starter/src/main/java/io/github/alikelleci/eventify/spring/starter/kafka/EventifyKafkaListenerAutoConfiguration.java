@@ -2,10 +2,10 @@ package io.github.alikelleci.eventify.spring.starter.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
-import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -82,7 +82,7 @@ public class EventifyKafkaListenerAutoConfiguration {
    * <p>Without an Eventify bean, the {@code @Upcast} methods of the beans. With several, those too: which Eventify
    * bean's upcasters apply to a topic is not known here.
    */
-  private static MultiValuedMap<String, Upcaster> upcasters(ObjectProvider<Eventify> apps, EventifyUpcasters beans) {
+  private static MultiValuedMap<String, UpcasterMethod> upcasters(ObjectProvider<Eventify> apps, EventifyUpcasters beans) {
     Eventify eventify = apps.getIfUnique();
     if (eventify != null) {
       return eventify.getHandlers().upcasters();
@@ -163,7 +163,7 @@ public class EventifyKafkaListenerAutoConfiguration {
   /** The Eventify bean's, so events are read as they were written; one of Eventify's own without one. */
   private static ObjectMapper objectMapper(ObjectProvider<Eventify> apps) {
     Eventify eventify = apps.getIfUnique();
-    return eventify != null ? eventify.getObjectMapper() : JacksonUtils.enhancedObjectMapper();
+    return eventify != null ? eventify.getObjectMapper() : EventifyObjectMapper.get();
   }
 
   /** Where to connect to: an Eventify bean, or Spring Kafka's consumer factory. */

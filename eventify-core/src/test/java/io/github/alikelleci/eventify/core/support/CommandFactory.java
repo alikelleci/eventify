@@ -1,19 +1,19 @@
 package io.github.alikelleci.eventify.core.support;
 
 import com.github.javafaker.Faker;
-import io.github.alikelleci.eventify.core.order.OrderCommand.PlaceOrder;
-import io.github.alikelleci.eventify.core.order.OrderCommand.ConfirmOrder;
-import io.github.alikelleci.eventify.core.order.OrderCommand.ShipOrder;
-import io.github.alikelleci.eventify.core.order.OrderCommand.DeliverOrder;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.order.OrderCommand.CancelOrder;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
+import io.github.alikelleci.eventify.core.order.OrderCommand.ConfirmOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.DeliverOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.PlaceOrder;
+import io.github.alikelleci.eventify.core.order.OrderCommand.ShipOrder;
 
 import java.util.UUID;
 
-import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_ID;
-import static io.github.alikelleci.eventify.core.messaging.Metadata.RESULT;
+import static io.github.alikelleci.eventify.core.message.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.core.message.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.core.message.Metadata.RESULT;
 
 public class CommandFactory {
 

@@ -1,13 +1,13 @@
 package io.github.alikelleci.eventify.core.support;
 
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.event.Event;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 
-import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSATION_ID;
-import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.core.messaging.Metadata.RESULT;
+import static io.github.alikelleci.eventify.core.message.Metadata.CAUSATION_ID;
+import static io.github.alikelleci.eventify.core.message.Metadata.CAUSE;
+import static io.github.alikelleci.eventify.core.message.Metadata.RESULT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class Matchers {

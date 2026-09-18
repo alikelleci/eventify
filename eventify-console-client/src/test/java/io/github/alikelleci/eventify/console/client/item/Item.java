@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.console.client.item;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import lombok.Builder;
 import lombok.Value;
 

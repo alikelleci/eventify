@@ -1,12 +1,12 @@
 package io.github.alikelleci.eventify.core.order;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.Revision;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
+import io.github.alikelleci.eventify.core.event.annotation.Revision;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import lombok.Builder;
 import lombok.Value;
 
-@TopicInfo("events.order")
+@Topic("events.order")
 public interface OrderEvent {
 
   @Value

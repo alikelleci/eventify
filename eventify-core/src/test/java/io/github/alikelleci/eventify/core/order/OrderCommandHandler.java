@@ -1,8 +1,10 @@
 package io.github.alikelleci.eventify.core.order;
 
-import io.github.alikelleci.eventify.core.common.annotations.MessageId;
-import io.github.alikelleci.eventify.core.common.annotations.MetadataValue;
-import io.github.alikelleci.eventify.core.common.annotations.Timestamp;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.annotation.MessageId;
+import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.order.OrderCommand.CancelOrder;
 import io.github.alikelleci.eventify.core.order.OrderCommand.ConfirmOrder;
 import io.github.alikelleci.eventify.core.order.OrderCommand.DeliverOrder;
@@ -13,13 +15,11 @@ import io.github.alikelleci.eventify.core.order.OrderEvent.OrderConfirmed;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderDelivered;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderPlaced;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
 import jakarta.validation.ValidationException;
 
 import java.time.Instant;
 
-import static io.github.alikelleci.eventify.core.messaging.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.core.message.Metadata.CORRELATION_ID;
 
 public class OrderCommandHandler {
 

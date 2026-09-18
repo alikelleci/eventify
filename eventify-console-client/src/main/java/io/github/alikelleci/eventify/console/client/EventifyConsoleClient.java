@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.console.client;
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import lombok.Builder;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsConfig;

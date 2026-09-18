@@ -1,9 +1,9 @@
 package io.github.alikelleci.eventify.core.account;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import jakarta.validation.ValidationException;
 import lombok.Builder;
 import lombok.Value;
@@ -12,11 +12,11 @@ import java.util.List;
 
 public class AccountMessages {
 
-  @TopicInfo("commands.account")
+  @Topic("commands.account")
   public interface AccountCommand {
   }
 
-  @TopicInfo("events.account")
+  @Topic("events.account")
   public interface AccountEvent {
   }
 

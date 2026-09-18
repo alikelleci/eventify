@@ -1,11 +1,11 @@
 package io.github.alikelleci.eventify.core;
 
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.gateway.CommandGateway;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
+import io.github.alikelleci.eventify.core.command.internal.CommandResult;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -55,7 +55,7 @@ class CommandGatewayReplyIT {
     }
   }
 
-  @TopicInfo(COMMAND_TOPIC)
+  @Topic(COMMAND_TOPIC)
   @Value
   @Builder
   public static class Ping {
@@ -63,7 +63,7 @@ class CommandGatewayReplyIT {
     String id;
   }
 
-  @TopicInfo(COMMAND_TOPIC)
+  @Topic(COMMAND_TOPIC)
   @Value
   @Builder
   public static class Upload {

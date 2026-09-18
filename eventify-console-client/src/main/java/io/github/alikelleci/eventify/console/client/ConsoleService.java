@@ -6,12 +6,12 @@ import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonDeserializer;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerializer;
+import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -37,8 +37,8 @@ import org.apache.kafka.streams.state.HostInfo;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
-import java.time.Duration;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +48,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
+import static io.github.alikelleci.eventify.core.message.Metadata.REPLY_TO;
 
 @Slf4j
 class ConsoleService {
@@ -217,7 +217,7 @@ class ConsoleService {
         .metadata(retryMetadata)
         .build();
 
-    String commandTopic = original.getTopicInfo().value();
+    String commandTopic = original.getTopic().value();
 
     // Waits until Kafka has the command: only then is the retry done. A send that fails later (no access to the topic,
     // the broker unreachable) would otherwise be reported as done.

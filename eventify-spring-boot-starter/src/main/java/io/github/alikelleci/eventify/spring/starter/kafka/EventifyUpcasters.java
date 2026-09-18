@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.spring.starter.kafka;
 
-import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.springframework.beans.factory.config.BeanPostProcessor;
@@ -14,7 +14,7 @@ import org.springframework.beans.factory.config.BeanPostProcessor;
  */
 public class EventifyUpcasters implements BeanPostProcessor {
 
-  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<String, UpcasterMethod> upcasters = new ArrayListValuedHashMap<>();
 
   @Override
   public Object postProcessAfterInitialization(Object bean, String beanName) {
@@ -22,7 +22,7 @@ public class EventifyUpcasters implements BeanPostProcessor {
     return bean;
   }
 
-  public MultiValuedMap<String, Upcaster> getUpcasters() {
+  public MultiValuedMap<String, UpcasterMethod> getUpcasters() {
     return upcasters;
   }
 }

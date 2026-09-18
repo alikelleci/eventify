@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.spring.starter.kafka;
 
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
+import io.github.alikelleci.eventify.core.event.Event;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.core.ResolvableType;
 import org.springframework.kafka.support.converter.MessagingMessageConverter;

@@ -6,7 +6,7 @@ import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.Route;
-import io.github.alikelleci.eventify.core.util.IdUtils;
+import io.github.alikelleci.eventify.core.message.MessageIds;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -96,7 +96,7 @@ class ConsoleRequestHandler {
 
   /** A message (event or command) of this aggregate: its id is the aggregate id, "@" and a ULID. */
   private static String requireMessageOf(String aggregateId, String name, String messageId) {
-    if (!IdUtils.isKeyOf(aggregateId, require(name, messageId))) {
+    if (!MessageIds.isKeyOf(aggregateId, require(name, messageId))) {
       throw new BadRequestException(name + " " + messageId + " is not of aggregate " + aggregateId);
     }
     return messageId;

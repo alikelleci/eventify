@@ -1,16 +1,15 @@
 package io.github.alikelleci.eventify.core.handler.internal;
 
-import io.github.alikelleci.eventify.core.common.annotations.HandleMessage;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.annotations.HandleCommand;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.annotations.HandleEvent;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
-import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
-import io.github.alikelleci.eventify.core.util.AnnotationUtils;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.internal.CommandHandlerMethod;
+import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
+import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
+import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
+import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 
@@ -33,29 +32,29 @@ import java.util.stream.Collectors;
  */
 public class HandlerRegistry {
 
-  private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
-  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
-  private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
-  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+  private final Map<Class<?>, CommandHandlerMethod> commandHandlers = new HashMap<>();
+  private final Map<Class<?>, ApplyEventMethod> eventSourcingHandlers = new HashMap<>();
+  private final MultiValuedMap<Class<?>, EventHandlerMethod> eventHandlers = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<String, UpcasterMethod> upcasters = new ArrayListValuedHashMap<>();
 
   private volatile boolean frozen;
 
   /** Whether the class has a method with an Eventify handler annotation, e.g. {@code @HandleCommand} or {@code @Upcast}. */
   public static boolean isHandler(Class<?> type) {
-    return !AnnotationUtils.findAnnotatedMethods(type, HandleMessage.class).isEmpty();
+    return !AnnotationScanner.findAnnotatedMethods(type, HandleMessage.class).isEmpty();
   }
 
   public void register(Object handler) {
     if (frozen) {
       throw new IllegalStateException("Eventify is started: handlers can only be registered before it starts.");
     }
-    AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
         .forEach(method -> addCommandHandler(handler, method));
 
-    AnnotationUtils.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
         .forEach(method -> addEventSourcingHandler(handler, method));
 
-    AnnotationUtils.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(handler, method));
 
     registerUpcasters(upcasters, handler);
@@ -65,8 +64,8 @@ public class HandlerRegistry {
    * Adds the {@link Upcast} methods of a handler to the upcasters. Also for upcasters outside Eventify, e.g. a
    * {@code JsonSerde} that reads the events for a projection.
    */
-  public static void registerUpcasters(MultiValuedMap<String, Upcaster> upcasters, Object handler) {
-    AnnotationUtils.findAnnotatedMethods(handler.getClass(), Upcast.class)
+  public static void registerUpcasters(MultiValuedMap<String, UpcasterMethod> upcasters, Object handler) {
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
         .forEach(method -> addUpcaster(upcasters, handler, method));
   }
 
@@ -79,20 +78,20 @@ public class HandlerRegistry {
   }
 
   /** The command handler for this command class; {@code null} when there is none. */
-  public CommandHandler commandHandler(Class<?> commandType) {
+  public CommandHandlerMethod commandHandler(Class<?> commandType) {
     return commandHandlers.get(commandType);
   }
 
-  public Map<Class<?>, CommandHandler> commandHandlers() {
+  public Map<Class<?>, CommandHandlerMethod> commandHandlers() {
     return Collections.unmodifiableMap(commandHandlers);
   }
 
   /** The event sourcing handler for this event class; {@code null} when there is none. */
-  public EventSourcingHandler eventSourcingHandler(Class<?> eventType) {
+  public ApplyEventMethod eventSourcingHandler(Class<?> eventType) {
     return eventSourcingHandlers.get(eventType);
   }
 
-  public Map<Class<?>, EventSourcingHandler> eventSourcingHandlers() {
+  public Map<Class<?>, ApplyEventMethod> eventSourcingHandlers() {
     return Collections.unmodifiableMap(eventSourcingHandlers);
   }
 
@@ -101,7 +100,7 @@ public class HandlerRegistry {
   }
 
   /** The event handlers for this event class, in the order they were registered; empty when there are none. */
-  public Collection<EventHandler> eventHandlers(Class<?> eventType) {
+  public Collection<EventHandlerMethod> eventHandlers(Class<?> eventType) {
     return Collections.unmodifiableCollection(eventHandlers.get(eventType));
   }
 
@@ -109,7 +108,7 @@ public class HandlerRegistry {
    * The upcasters, by the class name they upcast. The map itself, not a copy: a serde made with it also upcasts with
    * the upcasters registered after it was made.
    */
-  public MultiValuedMap<String, Upcaster> upcasters() {
+  public MultiValuedMap<String, UpcasterMethod> upcasters() {
     return upcasters;
   }
 
@@ -125,16 +124,16 @@ public class HandlerRegistry {
 
   private static Set<String> topicsOf(Set<Class<?>> types) {
     return types.stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
+        .map(aClass -> AnnotationScanner.findAnnotation(aClass, Topic.class))
         .filter(Objects::nonNull)
-        .map(TopicInfo::value)
+        .map(Topic::value)
         .collect(Collectors.toSet());
   }
 
   private void addCommandHandler(Object handler, Method method) {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
-      CommandHandler previous = commandHandlers.put(type, new CommandHandler(handler, method));
+      CommandHandlerMethod previous = commandHandlers.put(type, new CommandHandlerMethod(handler, method));
       if (previous != null) {
         requireSameHandler("@HandleCommand", type, previous.getHandler(), previous.getMethod(), handler, method);
       }
@@ -144,7 +143,7 @@ public class HandlerRegistry {
   private void addEventSourcingHandler(Object handler, Method method) {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
-      EventSourcingHandler previous = eventSourcingHandlers.put(type, new EventSourcingHandler(handler, method));
+      ApplyEventMethod previous = eventSourcingHandlers.put(type, new ApplyEventMethod(handler, method));
       if (previous != null) {
         requireSameHandler("@ApplyEvent", type, previous.getHandler(), previous.getMethod(), handler, method);
       }
@@ -167,12 +166,12 @@ public class HandlerRegistry {
   private void addEventHandler(Object handler, Method method) {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
-      eventHandlers.put(type, new EventHandler(handler, method));
+      eventHandlers.put(type, new EventHandlerMethod(handler, method));
     }
   }
 
   /** One upcaster per type and revision: with two, the chain would take one of them, depending on the order they were registered in. */
-  private static void addUpcaster(MultiValuedMap<String, Upcaster> upcasters, Object handler, Method method) {
+  private static void addUpcaster(MultiValuedMap<String, UpcasterMethod> upcasters, Object handler, Method method) {
     if (method.getParameterCount() == 1) {
       Upcast upcast = method.getAnnotation(Upcast.class);
       upcasters.get(upcast.type()).stream()
@@ -181,7 +180,7 @@ public class HandlerRegistry {
           .ifPresent(existing -> {
             throw new IllegalStateException("Two upcasters for " + upcast.type() + " revision " + upcast.revision() + ": " + existing.getMethod() + " and " + method);
           });
-      upcasters.put(upcast.type(), new Upcaster(handler, method));
+      upcasters.put(upcast.type(), new UpcasterMethod(handler, method));
     }
   }
 }

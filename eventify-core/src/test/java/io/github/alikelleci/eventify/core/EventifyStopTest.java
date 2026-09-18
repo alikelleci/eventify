@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core;
 
 import io.github.alikelleci.eventify.core.order.OrderCommandHandler;
-import io.github.alikelleci.eventify.core.plugins.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

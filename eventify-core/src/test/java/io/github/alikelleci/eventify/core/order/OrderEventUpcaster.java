@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.core.order;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.github.alikelleci.eventify.core.messaging.upcasting.annotations.Upcast;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j

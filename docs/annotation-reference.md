@@ -2,7 +2,7 @@
 
 | Annotation | Where | Description |
 |---|---|---|
-| `@TopicInfo("topic")` | Command / Event interface or class | Declares the Kafka topic. Inherited by all nested classes. |
+| `@Topic("topic")` | Command / Event interface or class | Declares the Kafka topic. Inherited by all nested classes. |
 | `@AggregateId` | Field | Marks the `String` field that identifies the aggregate. |
 | `@AggregateRoot` | Class | Marks a class as an aggregate root. |
 | `@EnableSnapshotting` | Aggregate class | Enables periodic snapshotting. |

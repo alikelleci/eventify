@@ -3,14 +3,14 @@ package io.github.alikelleci.eventify.console.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.Eventify;
-import io.github.alikelleci.eventify.core.common.annotations.AggregateId;
-import io.github.alikelleci.eventify.core.common.annotations.AggregateRoot;
-import io.github.alikelleci.eventify.core.messaging.Metadata;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateReplay;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.annotations.ApplyEvent;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.exceptions.AggregateInvocationException;
+import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
+import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -129,7 +129,7 @@ class AggregateHistoryTest {
 
   private final Eventify eventify = eventify();
   private final AggregateHistory history = new AggregateHistory(eventify.getHandlers().eventSourcingHandlers(), eventify.getObjectMapper());
-  private final AggregateReplay replay = new AggregateReplay(eventify.getHandlers().eventSourcingHandlers());
+  private final AggregateReplayer replay = new AggregateReplayer(eventify.getHandlers().eventSourcingHandlers());
   private final InMemoryStore<Event> events = new InMemoryStore<>();
   private final InMemoryStore<AggregateState> snapshots = new InMemoryStore<>();
 
@@ -218,7 +218,7 @@ class AggregateHistoryTest {
     snapshotAt(third);
     events.put(first.getId(), Event.builder().payload(new Incremented("counter-1")).build().withId(first.getId())); // no state before it
 
-    assertThatThrownBy(() -> detail(second)).isInstanceOf(AggregateInvocationException.class);
+    assertThatThrownBy(() -> detail(second)).isInstanceOf(EventSourcingException.class);
   }
 
   @Test
