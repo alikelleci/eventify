@@ -10,18 +10,18 @@ import io.github.alikelleci.eventify.core.command.internal.CommandResult.Failure
 import io.github.alikelleci.eventify.core.command.internal.CommandResult.Success;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
-import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
+import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.internal.EventStore;
+import io.github.alikelleci.eventify.core.store.internal.SnapshotStore;
+import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
-import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.KeyValueStore;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 
 @Slf4j
@@ -39,8 +38,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   private final ObjectMapper objectMapper;
   private final AggregateReplayer aggregateReplay;
   private FixedKeyProcessorContext<String, CommandResult> context;
-  private KeyValueStore<String, Event> eventStore;
-  private KeyValueStore<String, AggregateState> snapshotStore;
+  private EventStore eventStore;
+  private SnapshotStore snapshotStore;
 
   public CommandProcessor(HandlerRegistry handlers, ObjectMapper objectMapper) {
     this.handlers = handlers;
@@ -51,8 +50,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   @Override
   public void init(FixedKeyProcessorContext<String, CommandResult> context) {
     this.context = context;
-    this.eventStore = context.getStateStore("event-store");
-    this.snapshotStore = context.getStateStore("snapshot-store");
+    this.eventStore = new EventStore(context.getStateStore(StoreNames.EVENT_STORE));
+    this.snapshotStore = new SnapshotStore(context.getStateStore(StoreNames.SNAPSHOT_STORE));
   }
 
   @Override
@@ -116,7 +115,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
     AggregateState state = loadAggregate(aggregateId);
-    List<Event> events = inOrder(aggregateId, commandHandler.apply(state, command));
+    List<Event> events = eventStore.assignIds(aggregateId, commandHandler.apply(state, command));
 
     // Copied as the handler returned them, before anything else runs: an event may share objects with the aggregate
     // (e.g. its list of items), and applying the events below may change those. The copies are what is stored and sent.
@@ -161,38 +160,6 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
   }
 
-  /**
-   * The events under keys after the aggregate's last stored event, in the order the handler returned them. The store
-   * order is the replay order: it must be the order the events were handled in, not the order of the commands'
-   * timestamps or of the clocks of the hosts that handled them.
-   */
-  private List<Event> inOrder(String aggregateId, List<Event> events) {
-    String lastKey = lastEventKey(aggregateId);
-    List<Event> ordered = new ArrayList<>(events.size());
-    for (Event event : events) {
-      Event keyed = event.withId(MessageIds.nextEventKey(aggregateId, lastKey));
-      ordered.add(keyed);
-      lastKey = keyed.getId();
-    }
-    return ordered;
-  }
-
-  /**
-   * The key of the aggregate's last stored event; {@code null} when it has none. Deleting events at a snapshot keeps
-   * the snapshot's event and the ones after it, so the last key is never deleted.
-   */
-  private String lastEventKey(String aggregateId) {
-    try (KeyValueIterator<String, Event> iterator = eventStore.reverseRange(MessageIds.firstKey(aggregateId), MessageIds.lastKey(aggregateId))) {
-      while (iterator.hasNext()) {
-        String key = iterator.next().key;
-        if (MessageIds.isKeyOf(aggregateId, key)) {
-          return key;
-        }
-      }
-    }
-    return null;
-  }
-
   protected AggregateState loadAggregate(String aggregateId) {
     Instant startTime = Instant.now();
 
@@ -202,7 +169,10 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
 
     log.debug("Loading aggregate state by applying events...");
-    AggregateReplayer.Result replay = aggregateReplay.replay(eventStore, aggregateId, snapshot, null);
+    AggregateReplayer.Result replay;
+    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId, snapshot != null ? snapshot.getEventId() : null, null)) {
+      replay = aggregateReplay.replay(events, snapshot);
+    }
     AggregateState state = replay.state();
 
     Instant endTime = Instant.now();
@@ -238,33 +208,15 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   protected void saveEvent(Event event) {
-    eventStore.putIfAbsent(event.getId(), event);
+    eventStore.append(event);
   }
 
   protected void saveSnapshot(AggregateState state) {
-    snapshotStore.put(state.getAggregateId(), state);
+    snapshotStore.save(state);
   }
 
   protected void deleteEvents(AggregateState state) {
-    AtomicLong counter = new AtomicLong(0);
-
-    String from = MessageIds.firstKey(state.getAggregateId());
-    String to = state.getEventId();
-
-    try (KeyValueIterator<String, Event> iterator = eventStore.range(from, to)) {
-      while (iterator.hasNext()) {
-        KeyValue<String, Event> entry = iterator.next();
-        if (entry.key.equals(to)) {
-          break; // keep the snapshot event itself
-        }
-        if (!MessageIds.isKeyOf(state.getAggregateId(), entry.key)) {
-          continue; // another aggregate's event in the range: never ours to delete
-        }
-        eventStore.delete(entry.key);
-        counter.incrementAndGet();
-      }
-    }
-    log.debug("Number of events deleted: {}", counter.get());
+    log.debug("Number of events deleted: {}", eventStore.deleteBefore(state));
   }
 
   private void logFailure(Exception e) {

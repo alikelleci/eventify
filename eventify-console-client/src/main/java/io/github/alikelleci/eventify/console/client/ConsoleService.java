@@ -12,6 +12,8 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -24,18 +26,14 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Utils;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyQueryMetadata;
-import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
 import org.apache.kafka.streams.state.HostInfo;
-import org.apache.kafka.streams.state.QueryableStoreTypes;
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -52,9 +50,6 @@ import static io.github.alikelleci.eventify.core.message.Metadata.REPLY_TO;
 
 @Slf4j
 class ConsoleService {
-
-  private static final String EVENT_STORE = "event-store";
-  private static final String SNAPSHOT_STORE = "snapshot-store";
 
   /** On a command retried from the console: the id of the command it retries. */
   static final String RETRY_OF = "$retryOf";
@@ -123,7 +118,7 @@ class ConsoleService {
     this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();
     this.thisHost = hostInfo(eventify);
-    this.history = new AggregateHistory(eventify.getHandlers().eventSourcingHandlers(), objectMapper);
+    this.history = new AggregateHistory(eventify.getAggregateReplayer(), objectMapper);
     this.producer = new KafkaProducer<>(producerConfig(eventify), new StringSerializer(), new JsonSerializer<>(objectMapper));
   }
 
@@ -193,7 +188,7 @@ class ConsoleService {
     try {
       JsonNode tree = objectMapper.readTree(json);
       String type = tree.path("payload").path("@class").asText(null);
-      boolean handled = type != null && eventify.getHandlers().commandHandlers().keySet().stream()
+      boolean handled = type != null && eventify.getCommandTypes().stream()
           .anyMatch(commandClass -> commandClass.getName().equals(type));
       if (!handled) {
         return Result.badRequest("Not a command of this application: " + type);
@@ -243,7 +238,7 @@ class ConsoleService {
    */
   Result<CommandsPage> getCommands(String aggregateId, int limit, CancelSignal cancel) {
     // Eventify writes the result of every handled command to its command topic with .results.
-    Set<String> resultTopics = eventify.getHandlers().commandTopics().stream()
+    Set<String> resultTopics = eventify.getCommandTopics().stream()
         .map(topic -> topic.concat(".results"))
         .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {
@@ -410,12 +405,12 @@ class ConsoleService {
     }
   }
 
-  private ReadOnlyKeyValueStore<String, Event> eventStore() {
-    return eventify.getKafkaStreams().store(StoreQueryParameters.fromNameAndType(EVENT_STORE, QueryableStoreTypes.keyValueStore()));
+  private ReadOnlyEventStore eventStore() {
+    return eventify.getEventStore();
   }
 
-  private ReadOnlyKeyValueStore<String, AggregateState> snapshotStore() {
-    return eventify.getKafkaStreams().store(StoreQueryParameters.fromNameAndType(SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()));
+  private ReadOnlySnapshotStore snapshotStore() {
+    return eventify.getSnapshotStore();
   }
 
   /** Nothing found; unless this instance stopped owning the aggregate during the query, and simply no longer has it. */
@@ -439,7 +434,7 @@ class ConsoleService {
       return Result.unavailable("Kafka Streams is not running");
     }
 
-    KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
+    KeyQueryMetadata metadata = eventify.getAggregateMetadata(aggregateId);
     if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
       log.warn("Metadata unavailable for aggregate {}", aggregateId);
       return Result.unavailable("Metadata unavailable");
@@ -458,7 +453,7 @@ class ConsoleService {
     if (streams.state() != KafkaStreams.State.RUNNING) {
       return false;
     }
-    KeyQueryMetadata metadata = streams.queryMetadataForKey(EVENT_STORE, aggregateId, Serdes.String().serializer());
+    KeyQueryMetadata metadata = eventify.getAggregateMetadata(aggregateId);
     return metadata != null && thisHost.equals(metadata.activeHost());
   }
 }

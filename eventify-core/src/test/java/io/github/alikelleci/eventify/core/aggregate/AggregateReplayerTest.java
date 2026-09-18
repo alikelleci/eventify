@@ -11,6 +11,7 @@ import io.github.alikelleci.eventify.core.order.OrderEvent.OrderPlaced;
 import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
 import io.github.alikelleci.eventify.core.order.OrderEventSourcingHandler;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.support.InMemoryStore;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -27,8 +28,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("Aggregate replay")
 class AggregateReplayerTest {
 
-  private final InMemoryStore<Event> eventStore = new InMemoryStore<>();
-  private final AggregateReplayer replay = new AggregateReplayer(eventify().getHandlers().eventSourcingHandlers());
+  private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
+  private final ReadOnlyEventStore eventStore = ReadOnlyEventStore.of(storedEvents);
+  private final AggregateReplayer replay = eventify().getAggregateReplayer();
 
   /** An event no event sourcing handler applies, e.g. one only an event handler reacts to. */
   public static class OrderViewed {
@@ -49,7 +51,7 @@ class AggregateReplayerTest {
     store(placed("order-2"));  // sorts right after
     Event shipped = store(shipped("order-1"));
 
-    AggregateReplayer.Result result = replay.replay(eventStore, "order-1", null, null);
+    AggregateReplayer.Result result = replayed("order-1", null, null);
 
     assertThat(order(result).getStatus()).isEqualTo("SHIPPED");
     assertThat(result.state().getVersion()).isEqualTo(3);
@@ -63,9 +65,9 @@ class AggregateReplayerTest {
     store(placed("order-1"));
     Event confirmed = store(confirmed("order-1"));
     store(shipped("order-1"));
-    AggregateState snapshot = replay.replay(eventStore, "order-1", null, confirmed.getId()).state();
+    AggregateState snapshot = replayed("order-1", null, confirmed.getId()).state();
 
-    AggregateReplayer.Result result = replay.replay(eventStore, "order-1", snapshot, null);
+    AggregateReplayer.Result result = replayed("order-1", snapshot, null);
 
     assertThat(order(result).getStatus()).isEqualTo("SHIPPED");
     assertThat(result.state().getVersion()).isEqualTo(3);
@@ -79,7 +81,7 @@ class AggregateReplayerTest {
     Event confirmed = store(confirmed("order-1"));
     store(shipped("order-1"));
 
-    AggregateReplayer.Result result = replay.replay(eventStore, "order-1", null, confirmed.getId());
+    AggregateReplayer.Result result = replayed("order-1", null, confirmed.getId());
 
     assertThat(order(result).getStatus()).isEqualTo("CONFIRMED");
     assertThat(result.state().getVersion()).isEqualTo(2);
@@ -91,9 +93,9 @@ class AggregateReplayerTest {
   void aStartingStateAtTheGivenEventIsTheAnswer() {
     store(placed("order-1"));
     Event confirmed = store(confirmed("order-1"));
-    AggregateState snapshot = replay.replay(eventStore, "order-1", null, confirmed.getId()).state();
+    AggregateState snapshot = replayed("order-1", null, confirmed.getId()).state();
 
-    AggregateReplayer.Result result = replay.replay(eventStore, "order-1", snapshot, confirmed.getId());
+    AggregateReplayer.Result result = replayed("order-1", snapshot, confirmed.getId());
 
     assertThat(order(result).getStatus()).isEqualTo("CONFIRMED");
     assertThat(result.state().getVersion()).isEqualTo(2);
@@ -106,13 +108,13 @@ class AggregateReplayerTest {
     Event placed = store(placed("order-1"));
     Event confirmed = store(confirmed("order-1"));
     Event otherOrder = store(placed("order-2"));
-    AggregateState atConfirmed = replay.replay(eventStore, "order-1", null, confirmed.getId()).state();
+    AggregateState atConfirmed = replayed("order-1", null, confirmed.getId()).state();
 
     // Before the starting state
-    assertThatThrownBy(() -> replay.replay(eventStore, "order-1", atConfirmed, placed.getId()))
+    assertThatThrownBy(() -> replayed("order-1", atConfirmed, placed.getId()))
         .isInstanceOf(IllegalArgumentException.class);
     // Another aggregate's event: the range would cover the events in between
-    assertThatThrownBy(() -> replay.replay(eventStore, "order-1", null, otherOrder.getId()))
+    assertThatThrownBy(() -> replayed("order-1", null, otherOrder.getId()))
         .isInstanceOf(IllegalArgumentException.class);
   }
 
@@ -125,13 +127,13 @@ class AggregateReplayerTest {
     store(confirmed("ada"));
     List<String> seen = new ArrayList<>();
 
-    AggregateReplayer.Result result = replay.replay(eventStore, "ada", null, null,
+    AggregateReplayer.Result result = replayed("ada", null, null,
         (event, state, version) -> seen.add(event.getAggregateId()));
 
     assertThat(seen).containsExactly("ada", "ada");
     assertThat(order(result).getStatus()).isEqualTo("CONFIRMED");
     assertThat(result.state().getVersion()).isEqualTo(2);
-    assertThat(replay.replay(eventStore, "ada@example.com", null, null).state().getVersion()).isEqualTo(1);
+    assertThat(replayed("ada@example.com", null, null).state().getVersion()).isEqualTo(1);
   }
 
   @Test
@@ -142,7 +144,7 @@ class AggregateReplayerTest {
     store(confirmed("order-1"));
     List<String> seen = new ArrayList<>();
 
-    AggregateReplayer.Result result = replay.replay(eventStore, "order-1", null, null,
+    AggregateReplayer.Result result = replayed("order-1", null, null,
         (event, state, version) -> seen.add(event.getType() + "@v" + version));
 
     assertThat(seen).containsExactly("OrderPlaced@v0", "OrderViewed@v1", "OrderConfirmed@v2");
@@ -156,9 +158,9 @@ class AggregateReplayerTest {
   void theStateMovesOnToAnEventWithoutAHandler() {
     Event placed = store(placed("order-1"));
     Event viewed = store(Event.builder().payload(new OrderViewed("order-1")).build());
-    Order afterPlaced = order(replay.replay(eventStore, "order-1", null, placed.getId()));
+    Order afterPlaced = order(replayed("order-1", null, placed.getId()));
 
-    AggregateReplayer.Result result = replay.replay(eventStore, "order-1", null, null);
+    AggregateReplayer.Result result = replayed("order-1", null, null);
 
     assertThat(order(result)).isEqualTo(afterPlaced);
     assertThat(result.state().getEventId()).isEqualTo(viewed.getId());
@@ -169,11 +171,11 @@ class AggregateReplayerTest {
   @Test
   @DisplayName("Should have no state without events or after the aggregate was removed")
   void noEventsOrARemovedAggregateIsNoState() {
-    assertThat(replay.replay(eventStore, "order-1", null, null)).isEqualTo(new AggregateReplayer.Result(null, 0));
+    assertThat(replayed("order-1", null, null)).isEqualTo(new AggregateReplayer.Result(null, 0));
 
     store(placed("order-1"));
     store(Event.builder().payload(OrderCancelled.builder().id("order-1").build()).build());
-    AggregateReplayer.Result result = replay.replay(eventStore, "order-1", null, null);
+    AggregateReplayer.Result result = replayed("order-1", null, null);
 
     assertThat(result.state()).isNull();
     assertThat(result.replayed()).isEqualTo(2);
@@ -189,7 +191,7 @@ class AggregateReplayerTest {
         + "\"metadata\":{},\"payload\":{\"@class\":\"com.acme.OrderArchived\",\"id\":\"order-1\"}}";
     store(new JsonDeserializer<>(Event.class).deserialize("events", json.getBytes(StandardCharsets.UTF_8)));
 
-    assertThatThrownBy(() -> replay.replay(eventStore, "order-1", null, null))
+    assertThatThrownBy(() -> replayed("order-1", null, null))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining(key)
         .hasMessageContaining("OrderArchived")
@@ -197,7 +199,7 @@ class AggregateReplayerTest {
   }
 
   private Event store(Event event) {
-    eventStore.put(event.getId(), event);
+    storedEvents.put(event.getId(), event);
     return event;
   }
 
@@ -222,5 +224,17 @@ class AggregateReplayerTest {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "replay-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     return Eventify.builder().streamsConfig(properties).registerHandler(new OrderEventSourcingHandler()).build();
+  }
+
+  /** The aggregate's stored events after {@code start}, up to and including {@code untilEventId}, applied to {@code start}. */
+  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, String untilEventId) {
+    return replayed(aggregateId, start, untilEventId, null);
+  }
+
+  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, String untilEventId,
+                                            AggregateReplayer.Listener listener) {
+    try (ReadOnlyEventStore.Events toApply = eventStore.events(aggregateId, start != null ? start.getEventId() : null, untilEventId)) {
+      return replay.replay(toApply, start, listener);
+    }
   }
 }

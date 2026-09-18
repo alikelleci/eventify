@@ -1,2 +1,1 @@
 Class <io.github.alikelleci.eventify.spring.starter.kafka.EventifyArgumentResolver> implements interface <io.github.alikelleci.eventify.core.handler.internal.HandlerParameterResolver> in (EventifyArgumentResolver.java:0)
-Method <io.github.alikelleci.eventify.spring.starter.EventifyBeanPostProcessor.afterSingletonsInstantiated()> calls method <io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry.isEmpty()> in (EventifyBeanPostProcessor.java:40)

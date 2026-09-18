@@ -11,6 +11,8 @@ import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingExcep
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -128,10 +130,12 @@ class AggregateHistoryTest {
   }
 
   private final Eventify eventify = eventify();
-  private final AggregateHistory history = new AggregateHistory(eventify.getHandlers().eventSourcingHandlers(), eventify.getObjectMapper());
-  private final AggregateReplayer replay = new AggregateReplayer(eventify.getHandlers().eventSourcingHandlers());
-  private final InMemoryStore<Event> events = new InMemoryStore<>();
-  private final InMemoryStore<AggregateState> snapshots = new InMemoryStore<>();
+  private final AggregateHistory history = new AggregateHistory(eventify.getAggregateReplayer(), eventify.getObjectMapper());
+  private final AggregateReplayer replay = eventify.getAggregateReplayer();
+  private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
+  private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
+  private final ReadOnlyEventStore events = ReadOnlyEventStore.of(storedEvents);
+  private final ReadOnlySnapshotStore snapshots = ReadOnlySnapshotStore.of(storedSnapshots);
 
   private Event first;
   private Event second;
@@ -165,7 +169,7 @@ class AggregateHistoryTest {
   @DisplayName("Should replay an event after the snapshot from the snapshot")
   void anEventAfterTheSnapshotStartsFromTheSnapshot() {
     snapshotAt(second);
-    events.delete(first.getId()); // proves the snapshot is used: without it, the replay would miss this event
+    storedEvents.delete(first.getId()); // proves the snapshot is used: without it, the replay would miss this event
 
     assertDetail(third, 2, 3);
   }
@@ -182,7 +186,7 @@ class AggregateHistoryTest {
   @DisplayName("Should give the snapshot as the state at its own event, and an unknown state before it, when earlier events were deleted")
   void theSnapshotsOwnEventWithTheEventsBeforeItDeleted() {
     snapshotAt(second);
-    events.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
+    storedEvents.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
 
     ConsoleService.EventDetail detail = detail(second);
 
@@ -198,7 +202,7 @@ class AggregateHistoryTest {
   @DisplayName("Should report the states of an event before the snapshot as unknown when the first events were deleted")
   void anEventBeforeTheSnapshotWithTheFirstEventsDeletedIsUnknown() {
     snapshotAt(third);
-    events.delete(first.getId());
+    storedEvents.delete(first.getId());
 
     ConsoleService.EventDetail detail = detail(second);
 
@@ -216,7 +220,7 @@ class AggregateHistoryTest {
   @DisplayName("Should fail, not report an unknown state, when a handler fails while all events are there")
   void aHandlerThatFailsWithAllEventsThereIsNotAnUnknownState() {
     snapshotAt(third);
-    events.put(first.getId(), Event.builder().payload(new Incremented("counter-1")).build().withId(first.getId())); // no state before it
+    storedEvents.put(first.getId(), Event.builder().payload(new Incremented("counter-1")).build().withId(first.getId())); // no state before it
 
     assertThatThrownBy(() -> detail(second)).isInstanceOf(EventSourcingException.class);
   }
@@ -245,7 +249,7 @@ class AggregateHistoryTest {
   @DisplayName("Should not find an event that is not stored")
   void anEventThatIsNotThereIsNotFound() {
     snapshotAt(second);
-    events.delete(first.getId());
+    storedEvents.delete(first.getId());
 
     assertThat(detail(first)).isNull();
     assertThat(history.stateAt(events, snapshots, "counter-1", first.getId())).isNull();
@@ -255,7 +259,7 @@ class AggregateHistoryTest {
   @DisplayName("Should give the state at an event, and the current state")
   void theStateAtAnEvent() {
     snapshotAt(second);
-    events.delete(first.getId());
+    storedEvents.delete(first.getId());
 
     assertValue(history.stateAt(events, snapshots, "counter-1", null), 3, 3);
     assertValue(history.stateAt(events, snapshots, "counter-1", second.getId()), 2, 2);
@@ -313,7 +317,7 @@ class AggregateHistoryTest {
     assertValue(detail.state(), 2, 2);
 
     // With a snapshot after the event, the replay goes on past it.
-    snapshots.put("mutable-counter-1", replay.replay(events, "mutable-counter-1", null, incrementedAgain.getId()).state());
+    storedSnapshots.put("mutable-counter-1", replayed("mutable-counter-1", null, incrementedAgain.getId()).state());
     detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getId());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
@@ -366,7 +370,7 @@ class AggregateHistoryTest {
 
   /** Stores the state after this event as the snapshot, as the application does. */
   private void snapshotAt(Event event) {
-    snapshots.put("counter-1", replay.replay(events, "counter-1", null, event.getId()).state());
+    storedSnapshots.put("counter-1", replayed("counter-1", null, event.getId()).state());
   }
 
   /** Two commands of one saga share the correlation id: each shows only its own events. */
@@ -395,7 +399,7 @@ class AggregateHistoryTest {
   }
 
   private Event store(Event event) {
-    events.put(event.getId(), event);
+    storedEvents.put(event.getId(), event);
     return event;
   }
 
@@ -408,5 +412,17 @@ class AggregateHistoryTest {
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "history-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).registerHandler(new MutableCounterHandler()).build();
+  }
+
+  /** The aggregate's stored events after {@code start}, up to and including {@code untilEventId}, applied to {@code start}. */
+  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, String untilEventId) {
+    return replayed(aggregateId, start, untilEventId, null);
+  }
+
+  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, String untilEventId,
+                                            AggregateReplayer.Listener listener) {
+    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getEventId() : null, untilEventId)) {
+      return replay.replay(toApply, start, listener);
+    }
   }
 }

@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
@@ -14,6 +15,9 @@ import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.LoggingPlugin;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonSerde;
+import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +27,8 @@ import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.KeyQueryMetadata;
+import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
@@ -32,6 +38,7 @@ import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KStream;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.processor.StateRestoreListener;
+import org.apache.kafka.streams.state.QueryableStoreTypes;
 import org.apache.kafka.streams.state.Stores;
 
 import java.time.Duration;
@@ -105,6 +112,59 @@ public class Eventify {
     return kafkaStreams;
   }
 
+  /** Whether any handler is registered: a command handler, an event sourcing handler, an event handler or an upcaster. */
+  public boolean hasHandlers() {
+    return !handlers.isEmpty();
+  }
+
+  /** The command classes this instance has a command handler for. */
+  public Set<Class<?>> getCommandTypes() {
+    return handlers.commandHandlers().keySet();
+  }
+
+  /** The topics of the commands this instance handles. */
+  public Set<String> getCommandTopics() {
+    return handlers.commandTopics();
+  }
+
+  /** Rebuilds the state of an aggregate from its events, with the event sourcing handlers of this instance. */
+  public AggregateReplayer getAggregateReplayer() {
+    return new AggregateReplayer(handlers.eventSourcingHandlers());
+  }
+
+  /**
+   * The events stored on this instance: only those of the aggregates it owns (see {@link #getAggregateMetadata}).
+   *
+   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now, e.g.
+   *                                                                    while Kafka Streams is rebalancing
+   */
+  public ReadOnlyEventStore getEventStore() {
+    return ReadOnlyEventStore.of(runningKafkaStreams().store(
+        StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore())));
+  }
+
+  /**
+   * The snapshots stored on this instance: only those of the aggregates it owns.
+   *
+   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now
+   */
+  public ReadOnlySnapshotStore getSnapshotStore() {
+    return ReadOnlySnapshotStore.of(runningKafkaStreams().store(
+        StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore())));
+  }
+
+  /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */
+  public KeyQueryMetadata getAggregateMetadata(String aggregateId) {
+    return runningKafkaStreams().queryMetadataForKey(StoreNames.EVENT_STORE, aggregateId, Serdes.String().serializer());
+  }
+
+  private KafkaStreams runningKafkaStreams() {
+    if (kafkaStreams == null) {
+      throw new IllegalStateException("Eventify is not started");
+    }
+    return kafkaStreams;
+  }
+
   public void registerPlugin(EventifyPlugin plugin) {
     this.plugins.add(plugin);
   }
@@ -134,12 +194,12 @@ public class Eventify {
 
     // Event store
     builder.addStateStore(Stores
-        .keyValueStoreBuilder(Stores.persistentKeyValueStore("event-store"), Serdes.String(), eventSerde)
+        .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.EVENT_STORE), Serdes.String(), eventSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
     // Snapshot Store
     builder.addStateStore(Stores
-        .keyValueStoreBuilder(Stores.persistentKeyValueStore("snapshot-store"), Serdes.String(), snapshotSerde)
+        .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SNAPSHOT_STORE), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
     /*
@@ -158,7 +218,7 @@ public class Eventify {
 
       // Commands --> Results
       KStream<String, CommandResult> commandResults = commands
-          .processValues(() -> new CommandProcessor(handlers, objectMapper), "event-store", "snapshot-store")
+          .processValues(() -> new CommandProcessor(handlers, objectMapper), StoreNames.EVENT_STORE, StoreNames.SNAPSHOT_STORE)
           .filter((key, result) -> result != null);
 
       // Results --> Push

@@ -6,17 +6,14 @@ import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
-import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
-import org.apache.kafka.streams.KeyValue;
-import org.apache.kafka.streams.state.KeyValueIterator;
-import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
+import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * The history of an aggregate: its events, and its state at any of them, rebuilt the way the application rebuilds it
@@ -38,8 +35,8 @@ class AggregateHistory {
   /** Eventify's own mapper: the states are answered as the application writes them. */
   private final ObjectMapper objectMapper;
 
-  AggregateHistory(Map<Class<?>, ApplyEventMethod> eventSourcingHandlers, ObjectMapper objectMapper) {
-    this.replay = new AggregateReplayer(eventSourcingHandlers);
+  AggregateHistory(AggregateReplayer replay, ObjectMapper objectMapper) {
+    this.replay = replay;
     this.objectMapper = objectMapper;
   }
 
@@ -49,18 +46,14 @@ class AggregateHistory {
    * @param cursor where the page starts: the {@link ConsoleService.EventsPage#nextCursor()} of the page before it, or
    *               {@code null} for the newest events
    */
-  ConsoleService.EventsPage events(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String cursor, int limit) {
-    String from = MessageIds.firstKey(aggregateId);
-    String to = cursor != null ? MessageIds.firstKey(aggregateId) + cursor + "\0" : MessageIds.lastKey(aggregateId); // the cursor's event included
+  ConsoleService.EventsPage events(ReadOnlyEventStore events, String aggregateId, String cursor, int limit) {
+    String from = cursor != null ? MessageIds.firstKey(aggregateId) + cursor : null; // the cursor's event included
 
     // One more than the page, to know whether there is a next page and where it starts.
     List<Event> page = new ArrayList<>();
-    try (KeyValueIterator<String, Event> iterator = events.reverseRange(from, to)) {
-      while (iterator.hasNext() && page.size() <= limit) {
-        KeyValue<String, Event> entry = iterator.next();
-        if (MessageIds.isKeyOf(aggregateId, entry.key)) {
-          page.add(entry.value);
-        }
+    try (ReadOnlyEventStore.Events newestFirst = events.eventsNewestFirst(aggregateId, from)) {
+      while (newestFirst.hasNext() && page.size() <= limit) {
+        page.add(newestFirst.next());
       }
     }
 
@@ -77,13 +70,13 @@ class AggregateHistory {
    * shared with the other commands of the same flow, e.g. a saga. Only an event stored before events named their cause
    * is found by its correlation id, when one is given.
    */
-  List<Event> eventsOfCommand(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String commandId, String correlationId) {
+  List<Event> eventsOfCommand(ReadOnlyEventStore events, String aggregateId, String commandId, String correlationId) {
     List<Event> produced = new ArrayList<>();
-    try (KeyValueIterator<String, Event> iterator = events.range(MessageIds.firstKey(aggregateId), MessageIds.lastKey(aggregateId))) {
-      while (iterator.hasNext()) {
-        KeyValue<String, Event> entry = iterator.next();
-        if (MessageIds.isKeyOf(aggregateId, entry.key) && isCausedBy(entry.value.getMetadata(), commandId, correlationId)) {
-          produced.add(entry.value);
+    try (ReadOnlyEventStore.Events all = events.events(aggregateId)) {
+      while (all.hasNext()) {
+        Event event = all.next();
+        if (isCausedBy(event.getMetadata(), commandId, correlationId)) {
+          produced.add(event);
         }
       }
     }
@@ -102,14 +95,14 @@ class AggregateHistory {
    * The state after the event, or the current state when {@code eventId} is {@code null}; {@code null} when there is
    * none, the event isn't there, or the state at it is unknown because earlier events were deleted.
    */
-  RawValue stateAt(ReadOnlyKeyValueStore<String, Event> events, ReadOnlyKeyValueStore<String, AggregateState> snapshots,
+  RawValue stateAt(ReadOnlyEventStore events, ReadOnlySnapshotStore snapshots,
                    String aggregateId, String eventId) {
     if (eventId != null && events.get(eventId) == null) {
       return null;
     }
     AggregateState snapshot = snapshots.get(aggregateId);
     if (snapshot == null || eventId == null || snapshot.getEventId().compareTo(eventId) <= 0) {
-      return json(replay.replay(events, aggregateId, snapshot, eventId).state());
+      return json(replay(events, aggregateId, snapshot, eventId, null).state());
     }
     // A snapshot after the event can't be the start: replay from the first event.
     FromFirst fromFirst = replayFromFirst(events, aggregateId, snapshot, eventId);
@@ -117,7 +110,7 @@ class AggregateHistory {
   }
 
   /** The event with the state before and after it; {@code null} when the event isn't there. */
-  ConsoleService.EventDetail eventDetail(ReadOnlyKeyValueStore<String, Event> events, ReadOnlyKeyValueStore<String, AggregateState> snapshots,
+  ConsoleService.EventDetail eventDetail(ReadOnlyEventStore events, ReadOnlySnapshotStore snapshots,
                                           String aggregateId, String eventId) {
     Event event = events.get(eventId);
     if (event == null) {
@@ -128,7 +121,7 @@ class AggregateHistory {
     if (snapshot != null && snapshot.getEventId().compareTo(eventId) < 0) {
       // The snapshot is before the event: start there. The state before the event is seen on the way.
       RawValue[] before = {null};
-      AggregateReplayer.Result result = replay.replay(events, aggregateId, snapshot, eventId, (current, state, version) -> {
+      AggregateReplayer.Result result = replay(events, aggregateId, snapshot, eventId, (current, state, version) -> {
         if (current.getId().equals(eventId)) {
           before[0] = versioned(state, version);
         }
@@ -156,7 +149,7 @@ class AggregateHistory {
    *
    * @param snapshot the snapshot, at or after the event; {@code null} when there is none
    */
-  private FromFirst replayFromFirst(ReadOnlyKeyValueStore<String, Event> events, String aggregateId,
+  private FromFirst replayFromFirst(ReadOnlyEventStore events, String aggregateId,
                                     AggregateState snapshot, String eventId) {
     RawValue[] before = {null};
     RawValue[] after = {null};
@@ -166,7 +159,7 @@ class AggregateHistory {
 
     AggregateReplayer.Result result;
     try {
-      result = replay.replay(events, aggregateId, null, until, (current, state, version) -> {
+      result = replay(events, aggregateId, null, until, (current, state, version) -> {
         if (reached[0] && !passed[0]) {
           after[0] = versioned(state, version); // the state before the next event is the state after the event
           passed[0] = true;
@@ -194,17 +187,23 @@ class AggregateHistory {
   }
 
   /** How many of the aggregate's events are stored, up to and including this one. */
-  private long eventsUntil(ReadOnlyKeyValueStore<String, Event> events, String aggregateId, String untilEventId) {
+  private long eventsUntil(ReadOnlyEventStore events, String aggregateId, String untilEventId) {
     long count = 0;
-    try (KeyValueIterator<String, Event> iterator = events.range(MessageIds.firstKey(aggregateId), untilEventId)) {
-      while (iterator.hasNext()) {
-        KeyValue<String, Event> entry = iterator.next();
-        if (MessageIds.isKeyOf(aggregateId, entry.key)) {
-          count++;
-        }
+    try (ReadOnlyEventStore.Events until = events.events(aggregateId, null, untilEventId)) {
+      while (until.hasNext()) {
+        until.next();
+        count++;
       }
     }
     return count;
+  }
+
+  /** The aggregate's events after {@code start}, up to and including {@code untilEventId}, applied to {@code start}. */
+  private AggregateReplayer.Result replay(ReadOnlyEventStore events, String aggregateId, AggregateState start,
+                                          String untilEventId, AggregateReplayer.Listener listener) {
+    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getEventId() : null, untilEventId)) {
+      return replay.replay(toApply, start, listener);
+    }
   }
 
   private record FromFirst(RawValue before, RawValue after, boolean complete) {

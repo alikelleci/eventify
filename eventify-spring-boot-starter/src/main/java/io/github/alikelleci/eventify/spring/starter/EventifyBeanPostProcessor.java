@@ -37,7 +37,7 @@ public class EventifyBeanPostProcessor implements BeanPostProcessor, SmartInitia
   @Override
   public void afterSingletonsInstantiated() {
     List<Eventify> withoutHandlers = apps.orderedStream()
-        .filter(eventify -> eventify.getHandlers().isEmpty())
+        .filter(eventify -> !eventify.hasHandlers())
         .toList();
 
     // With more than one, every handler would be registered on each of them, and every command handled as many times.
