@@ -1,7 +1,7 @@
-package io.github.alikelleci.eventify.core;
+package io.github.alikelleci.eventify.core.command.gateway;
 
+import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.command.internal.CommandResult;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
