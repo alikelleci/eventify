@@ -1,30 +1,38 @@
 package io.github.alikelleci.eventify.core.store.internal;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.exception.SnapshotOutdatedException;
 import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotPolicy;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.serialization.internal.JsonRoundTrip;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.exception.EventStoreException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * The aggregates as the event store and the snapshot store keep them: loaded from their latest snapshot and the events
- * after it, snapshotted as their {@link SnapshotPolicy} says.
+ * after it, recorded when a command changes them, and snapshotted as their {@link SnapshotPolicy} says.
  */
 @Slf4j
 public class AggregateRepository {
 
   private final AggregateReplayer replayer;
+  private final ObjectMapper objectMapper;
   private final EventStore eventStore;
   private final SnapshotStore snapshotStore;
 
-  public AggregateRepository(AggregateReplayer replayer, EventStore eventStore, SnapshotStore snapshotStore) {
+  public AggregateRepository(AggregateReplayer replayer, ObjectMapper objectMapper, EventStore eventStore, SnapshotStore snapshotStore) {
     this.replayer = replayer;
+    this.objectMapper = objectMapper;
     this.eventStore = eventStore;
     this.snapshotStore = snapshotStore;
   }
@@ -101,12 +109,56 @@ public class AggregateRepository {
     }
   }
 
-  /** The events with the sequences after the aggregate's last stored event: see {@link EventStore#sequence}. */
-  public List<Event> sequence(String aggregateId, List<Event> events) {
-    return eventStore.sequence(aggregateId, events);
+  /**
+   * Records what happened to an aggregate: the payloads become its next events, in the order they are given, and are
+   * stored.
+   *
+   * <p>An event is made with the place it has in its aggregate: the sequence after the last stored one. That is the
+   * order the events were handled in, whatever the clocks of the hosts that handled them.
+   *
+   * @param state    the state the events happened to: they are applied to it before they are stored
+   * @param metadata what every one of these events carries, e.g. the command they come from
+   * @return the events as they are stored and sent
+   */
+  public List<Event> record(String aggregateId, AggregateState state, List<Object> payloads, Metadata metadata) {
+    long sequence = eventStore.lastSequence(aggregateId);
+
+    // Copied as they were given, before anything else runs: a payload may share objects with the aggregate (e.g. its
+    // list of items), and applying the events below may change those. The copies are what is stored and sent.
+    // Events are written as JSON when they are stored and sent, where a failure stops the application. Copied through
+    // JSON now, an event that can't be written or read back fails the command that produced it instead.
+    List<Event> events = new ArrayList<>(payloads.size());
+    for (Object payload : payloads) {
+      Event event = Event.builder()
+          .payload(payload)
+          .metadata(metadata)
+          .sequence(++sequence)
+          .build();
+      events.add(JsonRoundTrip.copy(objectMapper, event, Event.class, "Event " + event.getType()));
+    }
+
+    // Stored, an event is replayed at every load: one its event sourcing handler can't apply would make every next
+    // command of this aggregate fail. Applied now, it fails the command that produced it, before it is stored.
+    AggregateState applied = state;
+    for (Event event : events) {
+      applied = replayer.apply(applied, event);
+    }
+
+    store(aggregateId, events);
+    return events;
   }
 
-  public void save(List<Event> events) {
-    events.forEach(eventStore::append);
+  /**
+   * Stores the events of one recording. They are stored together or not at all: a failure is answered with an
+   * {@link EventStoreException}, which command handling lets through instead of answering the command with it. Told as
+   * a failure of the command, the events stored before it would stay behind without ever being sent.
+   */
+  private void store(String aggregateId, List<Event> events) {
+    try {
+      events.forEach(eventStore::append);
+    } catch (Exception e) {
+      throw new EventStoreException("Not all events of aggregate " + aggregateId + " could be stored: "
+          + ExceptionUtils.getRootCauseMessage(e), e);
+    }
   }
 }

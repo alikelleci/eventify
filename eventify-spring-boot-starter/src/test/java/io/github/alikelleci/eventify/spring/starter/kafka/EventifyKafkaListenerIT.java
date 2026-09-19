@@ -114,7 +114,7 @@ class EventifyKafkaListenerIT {
   @DisplayName("Should give the payload, upcasted, and the parameters Eventify handlers can have")
   void payloadAndParameters() throws Exception {
     Event event = Event.builder().payload(OrderPlaced.builder().id("order-1").total(10).build())
-        .metadata("user", "ali").build();
+        .metadata("user", "ali").sequence(1).build();
     send("parameters", atRevision1(event));
 
     run(ParameterListener.class, () -> {
@@ -145,8 +145,8 @@ class EventifyKafkaListenerIT {
   @Test
   @DisplayName("Should pick the @KafkaHandler method by the type of the payload")
   void dispatchByPayloadType() throws Exception {
-    send("dispatch", Event.builder().payload(OrderPlaced.builder().id("order-1").total(10).build()).build());
-    send("dispatch", Event.builder().payload(OrderShipped.builder().id("order-1").build()).build());
+    send("dispatch", Event.builder().payload(OrderPlaced.builder().id("order-1").total(10).build()).sequence(1).build());
+    send("dispatch", Event.builder().payload(OrderShipped.builder().id("order-1").build()).sequence(1).build());
 
     run(DispatchingListener.class, () -> {
       assertThat(take()).isEqualTo("placed order-1");
@@ -173,9 +173,9 @@ class EventifyKafkaListenerIT {
   @Test
   @DisplayName("Should give the Event next to the payload, and to the default @KafkaHandler method")
   void dispatchWithTheWholeEvent() throws Exception {
-    Event placed = Event.builder().payload(OrderPlaced.builder().id("order-1").total(10).build()).build();
+    Event placed = Event.builder().payload(OrderPlaced.builder().id("order-1").total(10).build()).sequence(1).build();
     send("dispatch-with-event", placed);
-    send("dispatch-with-event", Event.builder().payload(OrderShipped.builder().id("order-1").build()).build());
+    send("dispatch-with-event", Event.builder().payload(OrderShipped.builder().id("order-1").build()).sequence(1).build());
 
     run(DispatchingListenerWithEvent.class, () -> {
       assertThat(take()).isEqualTo("placed order-1 " + placed.getId());
@@ -195,7 +195,7 @@ class EventifyKafkaListenerIT {
   @Test
   @DisplayName("Should give the whole event to a listener that asks for it")
   void wholeEvent() throws Exception {
-    Event event = Event.builder().payload(OrderShipped.builder().id("order-1").build()).build();
+    Event event = Event.builder().payload(OrderShipped.builder().id("order-1").build()).sequence(1).build();
     send("whole-event", event);
 
     run(EventListener.class, () -> {
@@ -221,11 +221,11 @@ class EventifyKafkaListenerIT {
         ProducerConfig.TRANSACTIONAL_ID_CONFIG, "committed-test")))) {
       producer.initTransactions();
       producer.beginTransaction();
-      producer.send(record("committed", Event.builder().payload(OrderShipped.builder().id("rolled-back").build()).build()));
+      producer.send(record("committed", Event.builder().payload(OrderShipped.builder().id("rolled-back").build()).sequence(1).build()));
       producer.flush();
       producer.abortTransaction();
       producer.beginTransaction();
-      producer.send(record("committed", Event.builder().payload(OrderShipped.builder().id("committed").build()).build()));
+      producer.send(record("committed", Event.builder().payload(OrderShipped.builder().id("committed").build()).sequence(1).build()));
       producer.commitTransaction();
     }
 
@@ -265,7 +265,7 @@ class EventifyKafkaListenerIT {
   @Test
   @DisplayName("Should send a failed event, and a record that could not be read, to the dead-letter topic as they were")
   void deadLetterTopic() throws Exception {
-    Event event = Event.builder().payload(OrderShipped.builder().id("order-1").build()).build();
+    Event event = Event.builder().payload(OrderShipped.builder().id("order-1").build()).sequence(1).build();
     send("failing", event);
     try (KafkaProducer<String, String> producer = new KafkaProducer<>(producerConfig(Map.of()))) {
       producer.send(new ProducerRecord<>("failing", "order-1", "not an event")).get();
@@ -321,7 +321,7 @@ class EventifyKafkaListenerIT {
   @DisplayName("Should connect as the Eventify bean does, without Spring Kafka's consumer factory")
   void connectionOfTheEventifyBean() throws Exception {
     received.clear();
-    send("whole-event-2", Event.builder().payload(OrderShipped.builder().id("order-2").build()).build());
+    send("whole-event-2", Event.builder().payload(OrderShipped.builder().id("order-2").build()).sequence(1).build());
 
     new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))
@@ -365,7 +365,7 @@ class EventifyKafkaListenerIT {
   @DisplayName("Should upcast with the upcasters registered on the Eventify bean, also when they are not beans")
   void upcastersOfTheEventifyBean() throws Exception {
     received.clear();
-    send("upcasted", atRevision1(Event.builder().payload(OrderPlaced.builder().id("order-3").total(30).build()).build()));
+    send("upcasted", atRevision1(Event.builder().payload(OrderPlaced.builder().id("order-3").total(30).build()).sequence(1).build()));
 
     new ApplicationContextRunner()
         .withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))

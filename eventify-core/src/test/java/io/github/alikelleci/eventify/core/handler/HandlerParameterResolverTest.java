@@ -48,6 +48,7 @@ class HandlerParameterResolverTest {
       .timestamp(timestamp)
       .payload(new OrderPlaced("order-1"))
       .metadata("userId", "ada")
+      .sequence(1)
       .build();
 
   @Test

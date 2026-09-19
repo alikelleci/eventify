@@ -4,12 +4,12 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
-import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
+import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
@@ -29,11 +29,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
-
 @Slf4j
 @Getter
-public class CommandHandlerMethod implements BiFunction<AggregateState, Command, List<Event>> {
+public class CommandHandlerMethod implements BiFunction<AggregateState, Command, List<Object>> {
 
   private final Object handler;
   private final Method method;
@@ -45,12 +43,13 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
     this.method = method;
   }
 
+  /** What the command changes about its aggregate: the payloads of the events to record, in the order returned. */
   @Override
-  public List<Event> apply(AggregateState state, Command command) {
+  public List<Object> apply(AggregateState state, Command command) {
     try {
       validate(command.getPayload());
       Object result = invokeHandler(handler, state, command);
-      return createEvents(command, result);
+      return eventPayloads(command, result);
     } catch (Exception e) {
       throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
@@ -75,39 +74,30 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
     return method.invoke(handler, args);
   }
 
-  private List<Event> createEvents(Command command, Object result) {
-    if (result == null) {
-      return new ArrayList<>();
+  private List<Object> eventPayloads(Command command, Object result) {
+    List<Object> payloads = new ArrayList<>();
+    if (result instanceof List<?> list) {
+      list.stream().filter(Objects::nonNull).forEach(payloads::add);
+    } else if (result != null) {
+      payloads.add(result);
     }
 
-    List<Object> list = new ArrayList<>();
-    if (List.class.isAssignableFrom(result.getClass())) {
-      list.addAll((List<?>) result);
-    } else {
-      list.add(result);
-    }
-
-    List<Event> events = list.stream()
-        .filter(Objects::nonNull)
-        .map(payload -> Event.builder()
-            .payload(payload)
-            .metadata(command.getMetadata())
-            .metadata(CAUSATION_ID, command.getId())
-            .build())
-        .toList();
-
-    events.forEach(event -> {
-      if (!StringUtils.equals(event.getAggregateId(), command.getAggregateId())) {
-        throw new AggregateIdMismatchException("Aggregate identifier does not match for event " + event.getType() + ". Expected " + command.getAggregateId() + ", but was " + event.getAggregateId());
+    payloads.forEach(payload -> {
+      String type = payload.getClass().getSimpleName();
+      // The events of a command belong to the aggregate the command was handled for: another id would be stored and
+      // replayed as another aggregate's event.
+      String aggregateId = AggregateIdResolver.getAggregateId(payload);
+      if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
+        throw new AggregateIdMismatchException("Aggregate identifier does not match for event " + type + ". Expected " + command.getAggregateId() + ", but was " + aggregateId);
       }
       // The topic an event is sent to is only looked up when it is sent, after it is stored: an event without one
       // is rejected here, before anything of the command is stored.
-      if (AnnotationScanner.findAnnotation(event.getPayload().getClass(), Topic.class) == null) {
-        throw new TopicMissingException("Event " + event.getType() + " has no topic. Please annotate its class, or an interface it implements, with @Topic.");
+      if (AnnotationScanner.findAnnotation(payload.getClass(), Topic.class) == null) {
+        throw new TopicMissingException("Event " + type + " has no topic. Please annotate its class, or an interface it implements, with @Topic.");
       }
     });
 
-    return events;
+    return payloads;
   }
 
   private void validate(Object payload) {

@@ -23,7 +23,7 @@ class MessageJsonTest {
   @DisplayName("Should write a command and an event without their topic, correlation id or causation id as fields")
   void derivedValuesAreNotWritten() {
     Command command = Command.builder().payload(new Thing("a")).build();
-    Event event = Event.builder().payload(new Thing("a")).metadata(MetadataKeys.CAUSATION_ID, command.getId()).build();
+    Event event = Event.builder().payload(new Thing("a")).metadata(MetadataKeys.CAUSATION_ID, command.getId()).sequence(1).build();
 
     for (Object message : new Object[]{command, event}) {
       JsonNode json = EventifyObjectMapper.create().valueToTree(message);

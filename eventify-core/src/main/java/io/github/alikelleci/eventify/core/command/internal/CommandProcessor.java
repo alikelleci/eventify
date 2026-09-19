@@ -8,7 +8,7 @@ import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
-import io.github.alikelleci.eventify.core.serialization.internal.JsonRoundTrip;
+import io.github.alikelleci.eventify.core.store.exception.EventStoreException;
 import io.github.alikelleci.eventify.core.store.internal.AggregateRepository;
 import io.github.alikelleci.eventify.core.store.internal.EventStore;
 import io.github.alikelleci.eventify.core.store.internal.SnapshotStore;
@@ -21,9 +21,9 @@ import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
 
 @Slf4j
 public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
@@ -43,7 +43,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   @Override
   public void init(FixedKeyProcessorContext<String, CommandResult> context) {
     this.context = context;
-    this.aggregates = new AggregateRepository(replayer,
+    this.aggregates = new AggregateRepository(replayer, objectMapper,
         new EventStore(context.getStateStore(StoreNames.EVENT_STORE)),
         new SnapshotStore(context.getStateStore(StoreNames.SNAPSHOT_STORE)));
   }
@@ -53,12 +53,15 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     String key = fixedKeyRecord.key();
     Command command = fixedKeyRecord.value();
 
-    // Everything that can reject the command, user code included. Nothing of the command is stored yet: a failure
-    // leaves the aggregate as it was.
     List<Event> events;
     try {
-      events = executeCommand(key, command);
+      events = handleCommand(key, command);
+    } catch (EventStoreException e) {
+      // Not the command's failure, and it must not be committed as one: it fails the task, and exactly-once aborts
+      // the transaction with all that was written for this command.
+      throw e;
     } catch (Exception e) {
+      // Everything that can reject the command, user code included: the aggregate is left as it was.
       logFailure(e);
 
       context.forward(fixedKeyRecord.withValue(new CommandResult.Failure(command, ExceptionUtils.getRootCauseMessage(e))));
@@ -69,20 +72,16 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       return; // no command handler: not a command of this application
     }
 
-    // Not caught: a failure from here on is not the command's, and must not be committed as its failure. It fails
-    // the task, and exactly-once aborts the transaction with all that was written for this command.
-    aggregates.save(events);
-
     // Runs the topology after it on this call: the sends to the result and event topics. Also without events: the
     // command is accepted, and its caller waits for that answer.
     context.forward(fixedKeyRecord.withValue(new CommandResult.Success(command, events)));
   }
 
   /**
-   * Handles the command and returns its events, without storing them: {@link #process} stores them once the command
-   * is accepted. Empty when the command is accepted without events; {@code null} when there is no handler for it.
+   * Handles the command and records its events. Empty when the command is accepted without events; {@code null} when
+   * there is no handler for it.
    */
-  private List<Event> executeCommand(String aggregateId, Command command) {
+  private List<Event> handleCommand(String aggregateId, Command command) {
     CommandHandlerMethod commandHandler = handlers.commandHandler(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
@@ -96,25 +95,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
     AggregateState state = aggregates.load(aggregateId);
-    List<Event> events = aggregates.sequence(aggregateId, commandHandler.apply(state, command));
-
-    // Copied as the handler returned them, before anything else runs: an event may share objects with the aggregate
-    // (e.g. its list of items), and applying the events below may change those. The copies are what is stored and sent.
-    // Events are written as JSON when they are stored and sent, after the command is accepted, where a failure stops
-    // the application. Copied through JSON now, an event that can't be written or read back fails this command instead.
-    List<Event> copies = new ArrayList<>(events.size());
-    for (Event event : events) {
-      copies.add(JsonRoundTrip.copy(objectMapper, event, Event.class, "Event " + event.getType()));
-    }
-
-    // Stored, an event is replayed at every load: one its event sourcing handler can't apply would make every next
-    // command of this aggregate fail. Applied now, it fails this command instead, before it is stored. The copies are
-    // applied, not the events as returned: a replay reads them as they are stored, after being written as JSON.
-    for (Event copy : copies) {
-      state = replayer.apply(state, copy);
-    }
-
-    return copies;
+    List<Object> payloads = commandHandler.apply(state, command);
+    // The events take over the command's metadata, and name it as their cause.
+    return aggregates.record(aggregateId, state, payloads, command.getMetadata().with(CAUSATION_ID, command.getId()));
   }
 
   private void logFailure(Exception e) {

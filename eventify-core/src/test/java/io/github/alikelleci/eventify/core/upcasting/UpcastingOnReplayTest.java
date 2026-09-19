@@ -113,7 +113,7 @@ class UpcastingOnReplayTest {
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.profile", new StringSerializer(), new CommandSerde().serializer());
     TestOutputTopic<String, Event> events = driver.createOutputTopic("events.profile", new StringDeserializer(), new EventSerde().deserializer());
 
-    Event current = Event.builder().payload(new Registered("ada", "Ada")).build();
+    Event current = Event.builder().payload(new Registered("ada", "Ada")).sequence(1).build();
     ObjectNode stored = EventifyObjectMapper.create().valueToTree(current);
     ObjectNode payload = (ObjectNode) stored.get("payload");
     payload.set("fullName", payload.remove("name"));

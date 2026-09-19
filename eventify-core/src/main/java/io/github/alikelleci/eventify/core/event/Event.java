@@ -17,6 +17,10 @@ import java.util.UUID;
 
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
 
+/**
+ * Something that happened to an aggregate. An event is made complete: it knows its place in its aggregate from the
+ * moment it exists, so there is no event that still has to be finished before it can be stored.
+ */
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Event implements Message {
@@ -28,14 +32,11 @@ public class Event implements Message {
   Metadata metadata;
   String aggregateId;
   int revision;
-  /**
-   * The event's position in its aggregate: 1 for its first event, then one more for each next one. Set when the event
-   * is stored; 0 before that, and in events stored before sequences existed.
-   */
+  /** The event's position in its aggregate: 1 for its first event, then one more for each next one. */
   long sequence;
 
   @Builder
-  private Event(Instant timestamp, Object payload, Metadata metadata) {
+  private Event(Instant timestamp, Object payload, Metadata metadata, long sequence) {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     // A copy with the flow this event belongs to: the metadata that was given stays as it is.
@@ -47,12 +48,10 @@ public class Event implements Message {
     this.id = UUID.randomUUID().toString();
 
     this.revision = Revisions.of(getPayload().getClass());
-    this.sequence = 0; // given when stored
-  }
-
-  /** This event at the given position in its aggregate. */
-  public Event withSequence(long sequence) {
-    return new Event(id, timestamp, type, payload, metadata, aggregateId, revision, sequence);
+    if (sequence < 1) {
+      throw new IllegalArgumentException("Event " + this.type + " of aggregate " + this.aggregateId + " has no sequence: an event is made with the place it has in its aggregate.");
+    }
+    this.sequence = sequence;
   }
 
   public static class EventBuilder {
@@ -72,7 +71,7 @@ public class Event implements Message {
 
     public Event build() {
       Metadata metadata = metadataBuilder.build();
-      return new Event(timestamp, payload, metadata);
+      return new Event(timestamp, payload, metadata, sequence);
     }
   }
 }

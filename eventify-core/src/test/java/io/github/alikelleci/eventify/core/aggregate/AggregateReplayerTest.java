@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.store.StoreKeys;
@@ -108,19 +109,20 @@ class AggregateReplayerTest {
   @DisplayName("Should refuse a replay with a missing event")
   void refusesAReplayWithAMissingEvent() {
     store(placed("order-1"));
-    storedEvents.put(StoreKeys.of("order-1", 3), shipped("order-1").withSequence(3)); // 2 is missing
+    store(shipped("order-1"), 3); // 2 is missing
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("expected #2, found #3");
   }
 
-  /** E.g. an event written to the store by hand, without a sequence. */
+  /** E.g. an event stored before events had a sequence, or one written to the store by hand. */
   @Test
   @DisplayName("Should refuse a replay with an event without a sequence")
   void refusesAReplayWithAnEventWithoutASequence() {
     store(placed("order-1"));
-    storedEvents.put(StoreKeys.of("order-1", 2), confirmed("order-1")); // sequence 0
+    storedEvents.put(StoreKeys.of("order-1", 2), stored("{\"id\":\"old-1\",\"type\":\"OrderConfirmed\",\"aggregateId\":\"order-1\",\"revision\":1,"
+        + "\"metadata\":{},\"payload\":{\"@class\":\"" + OrderConfirmed.class.getName() + "\",\"id\":\"order-1\"}}")); // no sequence
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
         .isInstanceOf(EventReplayException.class)
@@ -161,7 +163,7 @@ class AggregateReplayerTest {
   @DisplayName("Should count events without a handler, and leave the state as it was")
   void eventsWithoutAHandlerAreCountedAndLeaveTheStateAsItWas() {
     store(placed("order-1"));
-    store(Event.builder().payload(new OrderViewed("order-1")).build());
+    store(new OrderViewed("order-1"));
     store(confirmed("order-1"));
     List<String> seen = new ArrayList<>();
 
@@ -178,7 +180,7 @@ class AggregateReplayerTest {
   @DisplayName("Should move the state on to the last event, also when that event has no handler")
   void theStateMovesOnToAnEventWithoutAHandler() {
     store(placed("order-1"));
-    Event viewed = store(Event.builder().payload(new OrderViewed("order-1")).build());
+    Event viewed = store(new OrderViewed("order-1"));
     Order afterPlaced = order(replayed("order-1", null, 1L));
 
     AggregateReplayer.Result result = replayed("order-1", null, null);
@@ -194,7 +196,7 @@ class AggregateReplayerTest {
     assertThat(replayed("order-1", null, null)).isEqualTo(new AggregateReplayer.Result(null, 0));
 
     store(placed("order-1"));
-    store(Event.builder().payload(OrderCancelled.builder().id("order-1").build()).build());
+    store(OrderCancelled.builder().id("order-1").build());
     AggregateReplayer.Result result = replayed("order-1", null, null);
 
     assertThat(result.state()).isNull();
@@ -209,7 +211,7 @@ class AggregateReplayerTest {
     String id = "archived-1";
     String json = "{\"id\":\"" + id + "\",\"type\":\"OrderArchived\",\"aggregateId\":\"order-1\",\"revision\":1,\"sequence\":2,"
         + "\"metadata\":{},\"payload\":{\"@class\":\"com.acme.OrderArchived\",\"id\":\"order-1\"}}";
-    storedEvents.put(StoreKeys.of("order-1", 2), new JsonDeserializer<>(Event.class).deserialize("events", json.getBytes(StandardCharsets.UTF_8)));
+    storedEvents.put(StoreKeys.of("order-1", 2), stored(json));
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
         .isInstanceOf(EventReplayException.class)
@@ -218,28 +220,37 @@ class AggregateReplayerTest {
         .hasMessageContaining("upcaster");
   }
 
-  /** Stores the event as the aggregate's next one. */
-  private Event store(Event event) {
-    long sequence = lastSequences.merge(event.getAggregateId(), 1L, Long::sum);
-    Event stored = event.withSequence(sequence);
-    storedEvents.put(StoreKeys.of(event.getAggregateId(), sequence), stored);
-    return stored;
+  /** Stores the payload as its aggregate's next event. */
+  private Event store(Object payload) {
+    return store(payload, lastSequences.merge(AggregateIdResolver.getAggregateId(payload), 1L, Long::sum));
+  }
+
+  /** Stores the payload as the event with this sequence, also when that is not the aggregate's next one. */
+  private Event store(Object payload, long sequence) {
+    Event event = Event.builder().payload(payload).sequence(sequence).build();
+    storedEvents.put(StoreKeys.of(event.getAggregateId(), sequence), event);
+    return event;
+  }
+
+  /** An event as it comes out of the store: read from JSON, so also one no builder would make. */
+  private static Event stored(String json) {
+    return new JsonDeserializer<>(Event.class).deserialize("events", json.getBytes(StandardCharsets.UTF_8));
   }
 
   private static Order order(AggregateReplayer.Result result) {
     return (Order) result.state().getPayload();
   }
 
-  private static Event placed(String id) {
-    return Event.builder().payload(OrderPlaced.builder().id(id).customer("Ada").build()).build();
+  private static OrderPlaced placed(String id) {
+    return OrderPlaced.builder().id(id).customer("Ada").build();
   }
 
-  private static Event confirmed(String id) {
-    return Event.builder().payload(OrderConfirmed.builder().id(id).build()).build();
+  private static OrderConfirmed confirmed(String id) {
+    return OrderConfirmed.builder().id(id).build();
   }
 
-  private static Event shipped(String id) {
-    return Event.builder().payload(OrderShipped.builder().id(id).trackingNumber("T-1").build()).build();
+  private static OrderShipped shipped(String id) {
+    return OrderShipped.builder().id(id).trackingNumber("T-1").build();
   }
 
   private static Eventify eventify() {

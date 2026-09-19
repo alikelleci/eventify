@@ -12,6 +12,7 @@ import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayExcepti
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
+import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
@@ -260,8 +261,7 @@ class AggregateHistoryTest {
   @Test
   @DisplayName("Should show the states before a gap, and refuse the ones after it with the reason")
   void aGapRefusesTheStatesAfterIt() {
-    Event fifth = Event.builder().payload(new Incremented("counter-1")).build().withSequence(5);
-    storedEvents.put(key(fifth), fifth);                       // 4 is missing
+    Event fifth = store(new Incremented("counter-1"), 5);      // 4 is missing
     storedEvents.delete(key(third));                           // and so is 3
 
     assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(fifth, second, first);
@@ -278,7 +278,7 @@ class AggregateHistoryTest {
   @DisplayName("Should fail, not report an unknown state, when a handler fails while all events are there")
   void aHandlerThatFailsWithAllEventsThereIsNotAnUnknownState() {
     snapshotAt(third);
-    storedEvents.put(key(first), Event.builder().payload(new Incremented("counter-1")).build().withSequence(1)); // no state before it
+    store(new Incremented("counter-1"), 1); // replaces the first event: no state before it
 
     assertThatThrownBy(() -> detail(second)).isInstanceOf(EventSourcingException.class);
   }
@@ -435,10 +435,10 @@ class AggregateHistoryTest {
   @Test
   @DisplayName("Should give the events a command produced, not those of other commands with the same correlation id")
   void theEventsOfACommand() {
-    Event one = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-a")).build());
-    Event two = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-b")).build());
+    Event one = store(new Incremented("counter-1"), Map.of(
+        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-a"));
+    Event two = store(new Incremented("counter-1"), Map.of(
+        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-b"));
 
     assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-a"))).containsExactly(one);
     assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-b"))).containsExactly(two);
@@ -448,24 +448,33 @@ class AggregateHistoryTest {
   @Test
   @DisplayName("Should give no events for a command when no event names it as its cause")
   void anEventWithoutACausationIdIsOfNoCommand() {
-    store(Event.builder().payload(new Incremented("counter-1")).metadata(MetadataKeys.CORRELATION_ID, "old").build());
+    store(new Incremented("counter-1"), Map.of(MetadataKeys.CORRELATION_ID, "old"));
 
     assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-a"))).isEmpty();
   }
 
-  /** Stores the event as its aggregate's next one. */
-  private Event store(Event event) {
-    Event stored = event.withSequence(lastSequences.merge(event.getAggregateId(), 1L, Long::sum));
-    storedEvents.put(key(stored), stored);
-    return stored;
+  /** Stores the payload as its aggregate's next event. */
+  private Event store(Object payload) {
+    return store(payload, (Map<String, String>) null);
+  }
+
+  private Event store(Object payload, Map<String, String> metadata) {
+    return store(payload, metadata, lastSequences.merge(AggregateIdResolver.getAggregateId(payload), 1L, Long::sum));
+  }
+
+  /** Stores the payload as the event with this sequence, also when that is not the aggregate's next one. */
+  private Event store(Object payload, long sequence) {
+    return store(payload, null, sequence);
+  }
+
+  private Event store(Object payload, Map<String, String> metadata, long sequence) {
+    Event event = Event.builder().payload(payload).metadata(metadata).sequence(sequence).build();
+    storedEvents.put(key(event), event);
+    return event;
   }
 
   private static String key(Event event) {
     return StoreKeys.of(event.getAggregateId(), event.getSequence());
-  }
-
-  private Event store(Object payload) {
-    return store(Event.builder().payload(payload).build());
   }
 
   private static Eventify eventify() {
