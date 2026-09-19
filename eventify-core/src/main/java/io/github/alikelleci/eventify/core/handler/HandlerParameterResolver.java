@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.handler.internal;
+package io.github.alikelleci.eventify.core.handler;
 
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.Metadata;
@@ -8,9 +8,17 @@ import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
 
 import java.lang.reflect.Parameter;
 
-public interface HandlerParameterResolver {
+/**
+ * The value a handler method gets for a parameter about its message: {@link Metadata}, {@link Timestamp},
+ * {@link MessageId} or {@link MetadataValue}. Also for handler methods outside Eventify, e.g. Spring Kafka listeners.
+ */
+public final class HandlerParameterResolver {
 
-  default Object resolve(Parameter parameter, Message message) {
+  private HandlerParameterResolver() {
+  }
+
+  /** @throws IllegalArgumentException when the parameter is not one of these */
+  public static Object resolve(Parameter parameter, Message message) {
     if (parameter.getType().isAssignableFrom(Metadata.class)) {
       return message.getMetadata();
     } else if (parameter.isAnnotationPresent(Timestamp.class)) {

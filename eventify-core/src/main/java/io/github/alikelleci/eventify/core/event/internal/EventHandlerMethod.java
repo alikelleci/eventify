@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.core.event.internal;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -16,7 +16,7 @@ import java.util.function.Function;
 
 @Slf4j
 @Getter
-public class EventHandlerMethod implements Function<Event, Void>, HandlerParameterResolver {
+public class EventHandlerMethod implements Function<Event, Void> {
 
   private final Object handler;
   private final Method method;
@@ -45,7 +45,7 @@ public class EventHandlerMethod implements Function<Event, Void>, HandlerParamet
       if (i == 0) {
         args[i] = event.getPayload();
       } else {
-        args[i] = resolve(parameter, event);
+        args[i] = HandlerParameterResolver.resolve(parameter, event);
       }
     }
 

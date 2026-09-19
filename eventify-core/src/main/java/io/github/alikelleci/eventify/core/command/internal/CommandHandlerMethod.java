@@ -6,7 +6,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
@@ -33,7 +33,7 @@ import static io.github.alikelleci.eventify.core.message.Metadata.CAUSATION_ID;
 
 @Slf4j
 @Getter
-public class CommandHandlerMethod implements BiFunction<AggregateState, Command, List<Event>>, HandlerParameterResolver {
+public class CommandHandlerMethod implements BiFunction<AggregateState, Command, List<Event>> {
 
   private final Object handler;
   private final Method method;
@@ -67,7 +67,7 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
       } else if (parameter.getType().isAnnotationPresent(AggregateRoot.class)) {
         args[i] = state != null ? state.getPayload() : null;
       } else {
-        args[i] = resolve(parameter, command);
+        args[i] = HandlerParameterResolver.resolve(parameter, command);
       }
     }
 

@@ -4,7 +4,7 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +18,7 @@ import java.util.function.BiFunction;
 
 @Slf4j
 @Getter
-public class ApplyEventMethod implements BiFunction<AggregateState, Event, AggregateState>, HandlerParameterResolver {
+public class ApplyEventMethod implements BiFunction<AggregateState, Event, AggregateState> {
 
   private final Object handler;
   private final Method method;
@@ -49,7 +49,7 @@ public class ApplyEventMethod implements BiFunction<AggregateState, Event, Aggre
       } else if (parameter.getType().isAnnotationPresent(AggregateRoot.class)) {
         args[i] = state != null ? state.getPayload() : null;
       } else {
-        args[i] = resolve(parameter, event);
+        args[i] = HandlerParameterResolver.resolve(parameter, event);
       }
     }
 

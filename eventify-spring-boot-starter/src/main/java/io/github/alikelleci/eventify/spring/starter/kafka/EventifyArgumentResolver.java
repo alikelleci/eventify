@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.spring.starter.kafka;
 
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.MessageId;
 import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
@@ -18,7 +18,7 @@ import org.springframework.messaging.handler.invocation.MethodArgumentResolution
  * <p>Spring Kafka uses it for every listener, so it only takes parameters of these types and annotations; a plain
  * {@code Object} or {@code Map} parameter is left to Spring Kafka.
  */
-public class EventifyArgumentResolver implements HandlerMethodArgumentResolver, HandlerParameterResolver {
+public class EventifyArgumentResolver implements HandlerMethodArgumentResolver {
 
   @Override
   public boolean supportsParameter(MethodParameter parameter) {
@@ -36,6 +36,6 @@ public class EventifyArgumentResolver implements HandlerMethodArgumentResolver, 
       throw new MethodArgumentResolutionException(message, parameter,
           "The record is not an Eventify event: use containerFactory = \"eventifyListenerContainerFactory\"");
     }
-    return parameter.getParameterType() == Event.class ? event : resolve(parameter.getParameter(), event);
+    return parameter.getParameterType() == Event.class ? event : HandlerParameterResolver.resolve(parameter.getParameter(), event);
   }
 }
