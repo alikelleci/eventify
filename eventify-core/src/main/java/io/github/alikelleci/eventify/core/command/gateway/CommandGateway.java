@@ -3,16 +3,13 @@ package io.github.alikelleci.eventify.core.command.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.gateway.internal.DefaultCommandGateway;
+import io.github.alikelleci.eventify.core.kafka.KafkaClientConfigs;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import lombok.SneakyThrows;
-import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.config.SecurityConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -59,26 +56,6 @@ public interface CommandGateway extends AutoCloseable {
 
   public static class CommandGatewayBuilder {
 
-    /**
-     * What the consumer that receives the results takes from the producer configuration: how to reach the cluster, and
-     * how to log in to it. Not the producer's own tuning (timeouts, buffers, metrics, interceptors).
-     *
-     * <p>The security settings are taken by prefix, not by name: Kafka has over sixty of them, and adds more with every
-     * mechanism it supports.
-     */
-    private static final Set<String> CONNECTION_SETTINGS = Set.of(
-        CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG,
-        CommonClientConfigs.CLIENT_DNS_LOOKUP_CONFIG,
-        CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
-        SecurityConfig.SECURITY_PROVIDERS_CONFIG,
-        "config.providers");
-
-    private static boolean isConnectionSetting(String name) {
-      return CONNECTION_SETTINGS.contains(name)
-          || name.startsWith("sasl.")
-          || name.startsWith("ssl.");
-    }
-
     private Properties producerConfig;
     private String replyTopic;
     private ObjectMapper objectMapper;
@@ -93,19 +70,6 @@ public interface CommandGateway extends AutoCloseable {
       this.producerConfig.putIfAbsent(ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd");
 
       return this;
-    }
-
-    /** How the consumer that receives the results reaches the cluster, taken from the producer configuration. */
-    static Properties replyConsumerConfig(Properties producerConfig) {
-      Properties consumerConfig = new Properties();
-      Set<String> consumerSettings = ConsumerConfig.configNames();
-      producerConfig.forEach((key, value) -> {
-        String name = String.valueOf(key);
-        if (consumerSettings.contains(name) && isConnectionSetting(name)) {
-          consumerConfig.put(name, value);
-        }
-      });
-      return consumerConfig;
     }
 
     public CommandGatewayBuilder replyTopic(String replyTopic) {
@@ -125,7 +89,7 @@ public interface CommandGateway extends AutoCloseable {
      * and every command would wait for its result until it timed out.
      */
     public DefaultCommandGateway build() {
-      Properties consumerConfig = replyConsumerConfig(this.producerConfig);
+      Properties consumerConfig = KafkaClientConfigs.consumerConnectionOf(this.producerConfig);
 
       if (this.objectMapper == null) {
         this.objectMapper = EventifyObjectMapper.get();

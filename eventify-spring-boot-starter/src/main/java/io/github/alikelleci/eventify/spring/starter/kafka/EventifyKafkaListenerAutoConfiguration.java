@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.spring.starter.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.kafka.KafkaClientConfigs;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
@@ -30,8 +31,6 @@ import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
 
 /**
  * Lets {@code @KafkaListener} methods read Eventify's event topics, next to or instead of {@code @HandleEvent}: each
@@ -116,7 +115,7 @@ public class EventifyKafkaListenerAutoConfiguration {
     Map<String, Object> config = new HashMap<>();
     Eventify eventify = apps.getIfUnique();
     if (eventify != null && eventify.getStreamsConfig() != null) {
-      config.putAll(consumerSettingsOf(eventify.getStreamsConfig()));
+      config.putAll(KafkaClientConfigs.consumerSettingsOf(eventify.getStreamsConfig()));
     } else {
       ConsumerFactory<?, ?> consumerFactory = consumerFactories.getIfUnique();
       if (consumerFactory != null) {
@@ -136,26 +135,6 @@ public class EventifyKafkaListenerAutoConfiguration {
     config.putIfAbsent(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
     config.remove(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG);
     config.remove(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG);
-    return config;
-  }
-
-  /** The settings of a Kafka Streams configuration that are also consumer settings; not its client id. */
-  private static Map<String, Object> consumerSettingsOf(Properties streamsConfig) {
-    Set<String> consumerSettings = ConsumerConfig.configNames();
-    Map<String, Object> config = new HashMap<>();
-    streamsConfig.forEach((key, value) -> {
-      String name = key.toString();
-      if (consumerSettings.contains(name) && !name.equals(ConsumerConfig.CLIENT_ID_CONFIG)) {
-        config.put(name, value);
-      }
-    });
-    // Consumer overrides of Kafka Streams ("consumer.max.poll.records") win, as they do in Kafka Streams.
-    streamsConfig.forEach((key, value) -> {
-      String name = key.toString();
-      if (name.startsWith("consumer.") && consumerSettings.contains(name.substring("consumer.".length()))) {
-        config.put(name.substring("consumer.".length()), value);
-      }
-    });
     return config;
   }
 

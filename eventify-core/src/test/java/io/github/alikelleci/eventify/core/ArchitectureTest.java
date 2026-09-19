@@ -9,6 +9,7 @@ import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.kafka.internal.EventifyTopology;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -69,8 +70,8 @@ class ArchitectureTest {
   }
 
   /**
-   * Except for {@link HandlerRegistry}: like {@link Eventify}, it puts the features together, and knows each feature's
-   * handlers.
+   * Except for the classes that, like {@link Eventify}, put the features together: {@link HandlerRegistry} knows each
+   * feature's handlers, {@link EventifyTopology} wires the features into Kafka Streams.
    */
   @Test
   @DisplayName("Should have no cycles between the feature packages")
@@ -78,6 +79,7 @@ class ArchitectureTest {
     slices().matching("io.github.alikelleci.eventify.core.(*)..")
         .should().beFreeOfCycles()
         .ignoreDependency(JavaClass.Predicates.equivalentTo(HandlerRegistry.class), DescribedPredicate.alwaysTrue())
+        .ignoreDependency(JavaClass.Predicates.equivalentTo(EventifyTopology.class), DescribedPredicate.alwaysTrue())
         .check(CORE);
   }
 }
