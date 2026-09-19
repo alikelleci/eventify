@@ -10,5 +10,5 @@ package io.github.alikelleci.eventify.console.protocol;
  * @param restoring  whether state stores are being restored, after a restart or a rebalance. While this happens the
  *                   instance is REBALANCING and answers no queries about aggregates.
  */
-public record InstanceStatus(String state, long stateForMs, boolean restoring) {
+public record NodeStatus(String state, long stateForMs, boolean restoring) {
 }

@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.console.client;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.util.RawValue;
-import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
+import io.github.alikelleci.eventify.console.protocol.NodeStatus;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
@@ -127,13 +127,13 @@ class ConsoleService {
    * How this instance is doing: its Kafka Streams state, how long it has been in it, and whether it is restoring.
    * Everything is read from what Kafka Streams already keeps in memory: no calls to Kafka, and not on the stream threads.
    */
-  Result<InstanceStatus> getStatus() {
+  Result<NodeStatus> getStatus() {
     KafkaStreams streams = eventify.getKafkaStreams();
     if (streams == null) {
       return Result.unavailable("Eventify is not started");
     }
 
-    return Result.ok(new InstanceStatus(streams.state().name(), statusTracker.stateForMs(), statusTracker.restoring()));
+    return Result.ok(new NodeStatus(streams.state().name(), statusTracker.stateForMs(), statusTracker.restoring()));
   }
 
   void close() {

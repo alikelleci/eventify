@@ -20,7 +20,7 @@ public enum Route {
   COMMANDS(Target.ANY),
   /** The command to retry, as JSON. */
   RETRY_COMMAND(Target.ANY),
-  /** No request data; answered with {@link InstanceStatus}. */
+  /** No request data; answered with {@link NodeStatus}. */
   STATUS(Target.INSTANCE);
 
   /** Which instance of the application a request goes to. */

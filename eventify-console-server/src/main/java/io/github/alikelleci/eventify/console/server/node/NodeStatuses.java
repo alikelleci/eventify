@@ -1,13 +1,11 @@
-package io.github.alikelleci.eventify.console.server.api;
+package io.github.alikelleci.eventify.console.server.node;
 
 import com.github.benmanes.caffeine.cache.AsyncCache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
+import io.github.alikelleci.eventify.console.protocol.NodeStatus;
 import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
-import io.github.alikelleci.eventify.console.server.node.ConnectedNode;
-import io.github.alikelleci.eventify.console.server.node.NodeGateway;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,7 +23,7 @@ import java.util.Optional;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class InstanceStatuses {
+public class NodeStatuses {
 
   /** How long an answer is kept. Shorter than the UI asks, so every page still sees a fresh status each time. */
   private static final Duration KEEP = Duration.ofSeconds(2);
@@ -37,7 +35,7 @@ public class InstanceStatuses {
   private final JsonMapper jsonMapper;
 
   /** By node id; empty when the instance didn't answer. */
-  private final AsyncCache<String, Optional<InstanceStatus>> cache = Caffeine.newBuilder()
+  private final AsyncCache<String, Optional<NodeStatus>> cache = Caffeine.newBuilder()
       .expireAfterWrite(KEEP)
       .buildAsync();
 
@@ -45,23 +43,23 @@ public class InstanceStatuses {
    * The status of one instance, unless it was asked a moment ago; empty when it doesn't answer. Pages asking at the same
    * time wait for the same answer, so one that stops waiting (e.g. it refreshed) must not cancel it for the others.
    */
-  public Mono<Optional<InstanceStatus>> of(ConnectedNode node) {
+  public Mono<Optional<NodeStatus>> of(ConnectedNode node) {
     return Mono.fromFuture(() -> cache.get(node.nodeId(), (key, executor) -> ask(node).toFuture()), true);
   }
 
-  private Mono<Optional<InstanceStatus>> ask(ConnectedNode node) {
+  private Mono<Optional<NodeStatus>> ask(ConnectedNode node) {
     return gateway.sendTo(node, Route.STATUS, new byte[0])
         .timeout(TIMEOUT, Mono.empty())
         .map(reply -> read(node, reply))
         .defaultIfEmpty(Optional.empty());
   }
 
-  private Optional<InstanceStatus> read(ConnectedNode node, Reply reply) {
+  private Optional<NodeStatus> read(ConnectedNode node, Reply reply) {
     if (reply.header().status() != ReplyHeader.Status.OK || reply.body().length == 0) {
       return Optional.empty();
     }
     try {
-      return Optional.of(jsonMapper.readValue(reply.body(), InstanceStatus.class)).filter(status -> status.state() != null);
+      return Optional.of(jsonMapper.readValue(reply.body(), NodeStatus.class)).filter(status -> status.state() != null);
     } catch (Exception e) {
       log.warn("Could not read the status of instance {}", node.nodeId(), e);
       return Optional.empty();

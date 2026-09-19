@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.console.client;
 import io.github.alikelleci.eventify.console.client.ConsoleService.Result;
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.client.item.ItemHandler;
-import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
+import io.github.alikelleci.eventify.console.protocol.NodeStatus;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
@@ -78,7 +78,7 @@ class StatusIT {
     eventify = start("status-running", "running");
     awaitRunning();
 
-    InstanceStatus status = status();
+    NodeStatus status = status();
     assertThat(status.state()).isEqualTo("RUNNING");
     assertThat(status.stateForMs()).isPositive();
     assertThat(status.restoring()).isFalse();
@@ -104,8 +104,8 @@ class StatusIT {
     assertThat(status().restoring()).isFalse();  // restoring is over once it runs
   }
 
-  private InstanceStatus status() {
-    Result<InstanceStatus> result = service.getStatus();
+  private NodeStatus status() {
+    Result<NodeStatus> result = service.getStatus();
     assertThat(result.isOk()).isTrue();
     return result.value();
   }

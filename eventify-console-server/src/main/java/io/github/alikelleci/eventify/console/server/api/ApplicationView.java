@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.console.server.api;
 
-import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
+import io.github.alikelleci.eventify.console.protocol.NodeStatus;
 
 import java.time.Instant;
 import java.util.List;
@@ -9,6 +9,6 @@ import java.util.List;
 public record ApplicationView(String name, List<NodeView> nodes) {
 
   /** @param status how the instance is doing, or {@code null} when it didn't answer */
-  public record NodeView(String nodeId, String hostname, String version, Instant connectedAt, InstanceStatus status) {
+  public record NodeView(String nodeId, String hostname, String version, Instant connectedAt, NodeStatus status) {
   }
 }

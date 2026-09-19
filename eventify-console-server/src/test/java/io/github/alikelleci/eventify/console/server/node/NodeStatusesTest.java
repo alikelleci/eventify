@@ -1,13 +1,11 @@
-package io.github.alikelleci.eventify.console.server.api;
+package io.github.alikelleci.eventify.console.server.node;
 
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
-import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
+import io.github.alikelleci.eventify.console.protocol.NodeStatus;
 import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Route;
-import io.github.alikelleci.eventify.console.server.node.ConnectedNode;
-import io.github.alikelleci.eventify.console.server.node.NodeGateway;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import reactor.core.Disposable;
@@ -28,11 +26,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-@DisplayName("Instance statuses")
-class InstanceStatusesTest {
+@DisplayName("Node statuses")
+class NodeStatusesTest {
 
   private final NodeGateway gateway = mock(NodeGateway.class);
-  private final InstanceStatuses statuses = new InstanceStatuses(gateway, JsonMapper.builder().build());
+  private final NodeStatuses statuses = new NodeStatuses(gateway, JsonMapper.builder().build());
   private final ConnectedNode node = new ConnectedNode(
       new NodeInfo("app", "app.a:0", "localhost", "test", ConsoleProtocol.VERSION), null, Instant.now());
 
@@ -49,10 +47,10 @@ class InstanceStatusesTest {
 
     // Two pages ask at the same time; one of them refreshes before the answer is there.
     Disposable refreshed = statuses.of(node).subscribe();
-    CompletableFuture<Optional<InstanceStatus>> other = statuses.of(node).toFuture();
+    CompletableFuture<Optional<NodeStatus>> other = statuses.of(node).toFuture();
     refreshed.dispose();
 
-    assertThat(other.get(5, TimeUnit.SECONDS)).map(InstanceStatus::state).contains("RUNNING");
+    assertThat(other.get(5, TimeUnit.SECONDS)).map(NodeStatus::state).contains("RUNNING");
     assertThat(asked).hasValue(1);
   }
 }

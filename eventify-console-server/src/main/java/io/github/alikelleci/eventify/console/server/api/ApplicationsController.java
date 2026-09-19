@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.console.server.api;
 
 import io.github.alikelleci.eventify.console.server.node.ConnectedNode;
 import io.github.alikelleci.eventify.console.server.node.NodeRegistry;
+import io.github.alikelleci.eventify.console.server.node.NodeStatuses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 public class ApplicationsController {
 
   private final NodeRegistry registry;
-  private final InstanceStatuses statuses;
+  private final NodeStatuses statuses;
 
   @GetMapping
   public Mono<List<ApplicationView>> applications() {
