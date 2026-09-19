@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.console.client;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
@@ -195,6 +196,40 @@ class AggregateHistoryTest {
     assertThat(detail.stateKnown()).isTrue();
     assertThat(detail.previousState()).isNull();
     assertThat(detail.previousStateKnown()).isFalse();
+  }
+
+  @Test
+  @DisplayName("Should report every state as unknown when the snapshot is outdated and the events before it were deleted")
+  void anOutdatedSnapshotWithTheEventsBeforeItDeleted() {
+    snapshotAt(second);
+    storedSnapshots.put("counter-1", outdated(storedSnapshots.get("counter-1")));
+    storedEvents.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
+
+    ConsoleViews.EventDetail detail = detail(third);
+
+    // Replayed from the first event there is, the state after the third event would be 2 instead of 3.
+    assertThat(detail.stateKnown()).isFalse();
+    assertThat(detail.previousStateKnown()).isFalse();
+    assertThat(history.stateAt(events, snapshots, "counter-1", null)).isNull();
+  }
+
+  @Test
+  @DisplayName("Should rebuild the states from the events when the snapshot is outdated and all events are kept")
+  void anOutdatedSnapshotWithAllEventsKept() {
+    snapshotAt(second);
+    storedSnapshots.put("counter-1", outdated(storedSnapshots.get("counter-1")));
+
+    assertDetail(third, 2, 3);
+  }
+
+  /**
+   * The snapshot as it is read when its aggregate can't be (e.g. its class was moved): outdated, like one of another
+   * revision. It still tells its event and its version.
+   */
+  private AggregateState outdated(AggregateState snapshot) {
+    ObjectNode json = eventify.getObjectMapper().valueToTree(snapshot);
+    json.remove("payload");
+    return eventify.getObjectMapper().convertValue(json, AggregateState.class);
   }
 
   /** The first events were deleted at an earlier snapshot, a later one replaced it, and an event before it is still there. */

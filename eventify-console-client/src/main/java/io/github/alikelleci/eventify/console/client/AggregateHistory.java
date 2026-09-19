@@ -101,6 +101,9 @@ class AggregateHistory {
       return null;
     }
     AggregateState snapshot = snapshots.get(aggregateId);
+    if (snapshot == null && lostWithOutdatedSnapshot(events, snapshots, aggregateId)) {
+      return null;
+    }
     if (snapshot == null || eventId == null || snapshot.getEventId().compareTo(eventId) <= 0) {
       return json(replay(events, aggregateId, snapshot, eventId, null).state());
     }
@@ -118,6 +121,9 @@ class AggregateHistory {
     }
 
     AggregateState snapshot = snapshots.get(aggregateId);
+    if (snapshot == null && lostWithOutdatedSnapshot(events, snapshots, aggregateId)) {
+      return new ConsoleViews.EventDetail(event, null, null, false, false);
+    }
     if (snapshot != null && snapshot.getEventId().compareTo(eventId) < 0) {
       // The snapshot is before the event: start there. The state before the event is seen on the way.
       RawValue[] before = {null};
@@ -184,6 +190,16 @@ class AggregateHistory {
     boolean complete = snapshot == null
         || (result.state() != null && result.state().getVersion() >= snapshot.getVersion());
     return new FromFirst(before[0], after[0], complete);
+  }
+
+  /**
+   * Whether none of the aggregate's states can be known: its snapshot is outdated (another {@code @Revision}, or its
+   * aggregate can't be read), so it can't be the start of a replay, and the events before it were deleted, so a replay
+   * from the first event there is starts too late. Eventify fails the aggregate's commands then too.
+   */
+  private boolean lostWithOutdatedSnapshot(ReadOnlyEventStore events, ReadOnlySnapshotStore snapshots, String aggregateId) {
+    AggregateState stored = snapshots.find(aggregateId);
+    return stored != null && eventsUntil(events, aggregateId, stored.getEventId()) < stored.getVersion();
   }
 
   /** How many of the aggregate's events are stored, up to and including this one. */

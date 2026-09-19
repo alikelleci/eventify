@@ -12,6 +12,16 @@ public interface ReadOnlySnapshotStore {
     return SnapshotStore.readOnly(store);
   }
 
-  /** The snapshot of the aggregate; {@code null} when it has none. */
+  /**
+   * The snapshot of the aggregate when it can be used; {@code null} when it has none, or it is outdated: made with
+   * another {@code @Revision} of the aggregate, or its aggregate can't be read.
+   */
   AggregateState get(String aggregateId);
+
+  /**
+   * The snapshot of the aggregate as it is stored, also when it is outdated; {@code null} when it has none. An outdated
+   * one can't be the start of a replay, but still tells which event it was made at and after how many events. Its
+   * payload is {@code null} when its aggregate can't be read.
+   */
+  AggregateState find(String aggregateId);
 }

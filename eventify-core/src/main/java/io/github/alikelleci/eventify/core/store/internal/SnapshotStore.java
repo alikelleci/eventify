@@ -32,7 +32,7 @@ public class SnapshotStore implements ReadOnlySnapshotStore {
     return snapshot != null && whyOutdated(snapshot) == null ? snapshot : null;
   }
 
-  /** The aggregate's snapshot as it is stored, also when it is outdated; {@code null} when it has none. */
+  @Override
   public AggregateState find(String aggregateId) {
     return reads.get(aggregateId);
   }
