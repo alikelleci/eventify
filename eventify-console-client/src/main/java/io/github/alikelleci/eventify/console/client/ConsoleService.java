@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.kafka.TopicNames;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
@@ -237,9 +238,9 @@ class ConsoleService {
    * other. When the request is cancelled, only this call's consumer stops, the way Kafka intends: with a wakeup.
    */
   Result<CommandsPage> getCommands(String aggregateId, int limit, CancelSignal cancel) {
-    // Eventify writes the result of every handled command to its command topic with .results.
+    // Eventify writes the result of every handled command to a result topic of its own.
     Set<String> resultTopics = eventify.getCommandTopics().stream()
-        .map(topic -> topic.concat(".results"))
+        .map(TopicNames::resultTopicOf)
         .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {
       return Result.ok(new CommandsPage(List.of(), COMMANDS_LOOKBACK.toDays(), false));
