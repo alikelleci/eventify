@@ -1,8 +1,10 @@
 package io.github.alikelleci.eventify.core;
 
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
-import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.AccountHandler;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,6 +22,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Stopping Eventify")
 class EventifyStopTest {
 
+  /** Only there so Eventify has a topology to start. */
+  @Topic("commands.ping")
+  public record Ping(@AggregateId String id) {
+  }
+
+  public static class PingHandler {
+    @HandleCommand
+    public Object handle(Ping command) {
+      return null;
+    }
+  }
+
   @TempDir
   Path stateDir;
 
@@ -34,7 +48,7 @@ class EventifyStopTest {
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
-        .registerHandler(new AccountHandler())
+        .registerHandler(new PingHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
           public void onStop(PluginContext context) {
@@ -63,7 +77,7 @@ class EventifyStopTest {
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
-        .registerHandler(new AccountHandler())
+        .registerHandler(new PingHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
           public void onStop(PluginContext context) {
@@ -96,7 +110,7 @@ class EventifyStopTest {
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
-        .registerHandler(new AccountHandler())
+        .registerHandler(new PingHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
           public void onStop(PluginContext context) {
