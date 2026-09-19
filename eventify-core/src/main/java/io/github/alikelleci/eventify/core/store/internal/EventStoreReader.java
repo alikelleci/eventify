@@ -29,11 +29,22 @@ public class EventStoreReader implements ReadOnlyEventStore {
   /**
    * The sequence of the aggregate's last stored event; 0 when it has none. Deleting events at a snapshot keeps the
    * snapshot's event and the ones after it, so the last event is never deleted.
+   *
+   * <p>Reads one entry, however many events the aggregate has: the iterator is lazy, and stops at the first key of
+   * this aggregate. The sequence comes from the key: the store orders and checks the events by it.
    */
   @Override
   public long lastSequence(String aggregateId) {
-    try (Events events = eventsNewestFirst(aggregateId)) {
-      return events.hasNext() ? events.next().getSequence() : 0;
+    // reverseRange starts at the end of the aggregate's key range: the first key of this aggregate is its last event.
+    try (KeyValueIterator<String, Event> keys = store.reverseRange(StoreKeys.first(aggregateId), StoreKeys.last(aggregateId))) {
+      while (keys.hasNext()) {
+        String key = keys.next().key;
+        if (StoreKeys.isKeyOf(aggregateId, key)) {
+          return StoreKeys.sequenceOf(aggregateId, key);
+        }
+        // another aggregate's key in the range, e.g. of "order-1@1": skipped
+      }
+      return 0;
     }
   }
 
