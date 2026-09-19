@@ -1,13 +1,13 @@
 package io.github.alikelleci.eventify.core.aggregate;
 
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.event.annotation.Revision;
-import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.message.exception.PayloadMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
+import io.github.alikelleci.eventify.core.message.internal.Revisions;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,14 +47,7 @@ public class AggregateState implements Message {
 
     this.eventId = eventId;
     this.version = version;
-    this.revision = revisionOf(getPayload().getClass());
-  }
-
-  /** The {@link Revision} of an aggregate class; 1 without the annotation. */
-  public static int revisionOf(Class<?> aggregateType) {
-    return Optional.ofNullable(AnnotationScanner.findAnnotation(aggregateType, Revision.class))
-        .map(Revision::value)
-        .orElse(1);
+    this.revision = Revisions.of(getPayload().getClass());
   }
 
   public static class AggregateStateBuilder {

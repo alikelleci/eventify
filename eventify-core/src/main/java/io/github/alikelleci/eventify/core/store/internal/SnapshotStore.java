@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.message.internal.Revisions;
 import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
@@ -47,7 +48,7 @@ public class SnapshotStore implements ReadOnlySnapshotStore {
       return "its aggregate can't be read, e.g. its class was moved or a field no longer fits";
     }
     int stored = snapshot.getRevision() == 0 ? 1 : snapshot.getRevision();
-    int current = AggregateState.revisionOf(snapshot.getPayload().getClass());
+    int current = Revisions.of(snapshot.getPayload().getClass());
     if (stored != current) {
       return "it was made with revision " + stored + " of " + snapshot.getPayload().getClass().getSimpleName() + ", the code is revision " + current;
     }

@@ -1,12 +1,11 @@
 package io.github.alikelleci.eventify.core.event;
 
-import io.github.alikelleci.eventify.core.event.annotation.Revision;
-import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.PayloadMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
+import io.github.alikelleci.eventify.core.message.internal.Revisions;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -40,9 +39,7 @@ public class Event implements Message {
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
     this.id = MessageIds.createCompoundKey(getAggregateId());
 
-    this.revision = Optional.ofNullable(AnnotationScanner.findAnnotation(getPayload().getClass(), Revision.class))
-        .map(Revision::value)
-        .orElse(1);
+    this.revision = Revisions.of(getPayload().getClass());
 
     getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }

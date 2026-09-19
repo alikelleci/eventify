@@ -12,7 +12,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshottin
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
-import io.github.alikelleci.eventify.core.event.annotation.Revision;
+import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.event.annotation.Revision;
+import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
