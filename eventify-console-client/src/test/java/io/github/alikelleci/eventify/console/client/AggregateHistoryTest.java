@@ -14,11 +14,13 @@ import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -138,6 +140,8 @@ class AggregateHistoryTest {
   private final ReadOnlyEventStore events = ReadOnlyEventStore.of(storedEvents);
   private final ReadOnlySnapshotStore snapshots = ReadOnlySnapshotStore.of(storedSnapshots);
 
+  private final Map<String, Long> lastSequences = new HashMap<>();
+
   private Event first;
   private Event second;
   private Event third;
@@ -170,7 +174,7 @@ class AggregateHistoryTest {
   @DisplayName("Should replay an event after the snapshot from the snapshot")
   void anEventAfterTheSnapshotStartsFromTheSnapshot() {
     snapshotAt(second);
-    storedEvents.delete(first.getId()); // proves the snapshot is used: without it, the replay would miss this event
+    storedEvents.delete(key(first)); // proves the snapshot is used: without it, the replay would miss this event
 
     assertDetail(third, 2, 3);
   }
@@ -187,7 +191,7 @@ class AggregateHistoryTest {
   @DisplayName("Should give the snapshot as the state at its own event, and an unknown state before it, when earlier events were deleted")
   void theSnapshotsOwnEventWithTheEventsBeforeItDeleted() {
     snapshotAt(second);
-    storedEvents.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
+    storedEvents.delete(key(first)); // @EnableSnapshotting(deleteEvents = true)
 
     ConsoleViews.EventDetail detail = detail(second);
 
@@ -203,7 +207,7 @@ class AggregateHistoryTest {
   void anOutdatedSnapshotWithTheEventsBeforeItDeleted() {
     snapshotAt(second);
     storedSnapshots.put("counter-1", outdated(storedSnapshots.get("counter-1")));
-    storedEvents.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
+    storedEvents.delete(key(first)); // @EnableSnapshotting(deleteEvents = true)
 
     ConsoleViews.EventDetail detail = detail(third);
 
@@ -224,7 +228,7 @@ class AggregateHistoryTest {
 
   /**
    * The snapshot as it is read when its aggregate can't be (e.g. its class was moved): outdated, like one of another
-   * revision. It still tells its event and its version.
+   * revision. It still tells its version.
    */
   private AggregateState outdated(AggregateState snapshot) {
     ObjectNode json = eventify.getObjectMapper().valueToTree(snapshot);
@@ -237,7 +241,7 @@ class AggregateHistoryTest {
   @DisplayName("Should report the states of an event before the snapshot as unknown when the first events were deleted")
   void anEventBeforeTheSnapshotWithTheFirstEventsDeletedIsUnknown() {
     snapshotAt(third);
-    storedEvents.delete(first.getId());
+    storedEvents.delete(key(first));
 
     ConsoleViews.EventDetail detail = detail(second);
 
@@ -247,7 +251,7 @@ class AggregateHistoryTest {
     assertThat(detail.stateKnown()).isFalse();
     assertThat(detail.previousState()).isNull();
     assertThat(detail.previousStateKnown()).isFalse();
-    assertThat(history.stateAt(events, snapshots, "counter-1", second.getId())).isNull();
+    assertThat(history.stateAt(events, snapshots, "counter-1", second.getSequence())).isNull();
   }
 
   /** A handler that fails with every event still there is an error, not a state unknown because of deleted events. */
@@ -255,7 +259,7 @@ class AggregateHistoryTest {
   @DisplayName("Should fail, not report an unknown state, when a handler fails while all events are there")
   void aHandlerThatFailsWithAllEventsThereIsNotAnUnknownState() {
     snapshotAt(third);
-    storedEvents.put(first.getId(), Event.builder().payload(new Incremented("counter-1")).build().withId(first.getId())); // no state before it
+    storedEvents.put(key(first), Event.builder().payload(new Incremented("counter-1")).build().withSequence(1)); // no state before it
 
     assertThatThrownBy(() -> detail(second)).isInstanceOf(EventSourcingException.class);
   }
@@ -269,7 +273,7 @@ class AggregateHistoryTest {
     assertDetail(first, 0, 1);
     assertDetail(second, 1, 2);
     assertDetail(fourth, 3, 4);
-    assertValue(history.stateAt(events, snapshots, "counter-1", first.getId()), 1, 1);
+    assertValue(history.stateAt(events, snapshots, "counter-1", first.getSequence()), 1, 1);
   }
 
   @Test
@@ -284,47 +288,47 @@ class AggregateHistoryTest {
   @DisplayName("Should not find an event that is not stored")
   void anEventThatIsNotThereIsNotFound() {
     snapshotAt(second);
-    storedEvents.delete(first.getId());
+    storedEvents.delete(key(first));
 
     assertThat(detail(first)).isNull();
-    assertThat(history.stateAt(events, snapshots, "counter-1", first.getId())).isNull();
+    assertThat(history.stateAt(events, snapshots, "counter-1", first.getSequence())).isNull();
   }
 
   @Test
   @DisplayName("Should give the state at an event, and the current state")
   void theStateAtAnEvent() {
     snapshotAt(second);
-    storedEvents.delete(first.getId());
+    storedEvents.delete(key(first));
 
     assertValue(history.stateAt(events, snapshots, "counter-1", null), 3, 3);
-    assertValue(history.stateAt(events, snapshots, "counter-1", second.getId()), 2, 2);
-    assertValue(history.stateAt(events, snapshots, "counter-1", third.getId()), 3, 3);
+    assertValue(history.stateAt(events, snapshots, "counter-1", second.getSequence()), 2, 2);
+    assertValue(history.stateAt(events, snapshots, "counter-1", third.getSequence()), 3, 3);
   }
 
-  /** "counter-1@x": its keys ("counter-1@x@ULID") are in the key range of "counter-1". */
+  /** "counter-1@1": its keys ("counter-1@1@000…1") are in the key range of "counter-1"; "counter-1@x" sorts after it. */
   @Test
   @DisplayName("Should not show the events of an aggregate whose id starts with this id and '@'")
   void theEventsOfAnAggregateWhoseIdStartsWithThisIdAndAtAreNotThisAggregates() {
-    Event foreign = store(new Incremented("counter-1@x"));
-    Event foreignBeforeUlids = store(new Incremented("counter-1@-x")); // "-" sorts before every ULID
-    assertThat(foreign.getId()).startsWith("counter-1@");
+    Event foreign = store(new Incremented("counter-1@1"));
+    Event foreignAfter = store(new Incremented("counter-1@x"));
+    assertThat(key(foreign)).isBetween(StoreKeys.first("counter-1"), StoreKeys.last("counter-1"));
 
     assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(third, second, first);
-    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@x", foreign.getMetadata().getCorrelationId())).isEmpty();
+    assertThat(history.eventsOfCommand(events, "counter-1", foreign.getMetadata().getCausationId(), foreign.getMetadata().getCorrelationId())).isEmpty();
     assertValue(history.stateAt(events, snapshots, "counter-1", null), 3, 3);
     assertDetail(first, 0, 1);
-    assertThat(history.events(events, "counter-1@x", null, 50).events()).containsExactly(foreign);
-    assertThat(history.events(events, "counter-1@-x", null, 50).events()).containsExactly(foreignBeforeUlids);
+    assertThat(history.events(events, "counter-1@1", null, 50).events()).containsExactly(foreign);
+    assertThat(history.events(events, "counter-1@x", null, 50).events()).containsExactly(foreignAfter);
   }
 
   @Test
   @DisplayName("Should page the events newest first")
   void theEventsArePagedNewestFirst() {
-    store(new Incremented("counter-1@x")); // in the range, not on a page
+    store(new Incremented("counter-1@1")); // in the range, not on a page
 
     ConsoleViews.EventsPage page = history.events(events, "counter-1", null, 2);
     assertThat(page.events()).containsExactly(third, second);
-    assertThat(page.nextCursor()).isEqualTo(first.getId().substring("counter-1@".length()));
+    assertThat(page.nextCursor()).isEqualTo(first.getSequence());
 
     ConsoleViews.EventsPage next = history.events(events, "counter-1", page.nextCursor(), 2);
     assertThat(next.events()).containsExactly(first);
@@ -336,7 +340,7 @@ class AggregateHistoryTest {
   void theStateAtAnEventBeforeTheSnapshot() {
     snapshotAt(third);
 
-    assertValue(history.stateAt(events, snapshots, "counter-1", second.getId()), 2, 2);
+    assertValue(history.stateAt(events, snapshots, "counter-1", second.getSequence()), 2, 2);
   }
 
   /** Each state is the state at its own event, not the state the handlers after it made of the same object. */
@@ -347,16 +351,16 @@ class AggregateHistoryTest {
     Event incremented = store(new MutableCounterIncremented("mutable-counter-1"));
     Event incrementedAgain = store(new MutableCounterIncremented("mutable-counter-1"));
 
-    ConsoleViews.EventDetail detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getId());
+    ConsoleViews.EventDetail detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getSequence());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
 
     // With a snapshot after the event, the replay goes on past it.
-    storedSnapshots.put("mutable-counter-1", replayed("mutable-counter-1", null, incrementedAgain.getId()).state());
-    detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getId());
+    storedSnapshots.put("mutable-counter-1", replayed("mutable-counter-1", null, incrementedAgain.getSequence()).state());
+    detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getSequence());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
-    assertValue(history.stateAt(events, snapshots, "mutable-counter-1", incremented.getId()), 2, 2);
+    assertValue(history.stateAt(events, snapshots, "mutable-counter-1", incremented.getSequence()), 2, 2);
   }
 
   /** The states are sent to the console as the JSON objects they are, as before: not as text. */
@@ -400,12 +404,12 @@ class AggregateHistoryTest {
   }
 
   private ConsoleViews.EventDetail detail(Event event) {
-    return history.eventDetail(events, snapshots, "counter-1", event.getId());
+    return history.eventDetail(events, snapshots, "counter-1", event.getSequence());
   }
 
   /** Stores the state after this event as the snapshot, as the application does. */
   private void snapshotAt(Event event) {
-    storedSnapshots.put("counter-1", replayed("counter-1", null, event.getId()).state());
+    storedSnapshots.put("counter-1", replayed("counter-1", null, event.getSequence()).state());
   }
 
   /** Two commands of one saga share the correlation id: each shows only its own events. */
@@ -433,9 +437,15 @@ class AggregateHistoryTest {
     assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", null)).isEmpty();
   }
 
+  /** Stores the event as its aggregate's next one. */
   private Event store(Event event) {
-    storedEvents.put(event.getId(), event);
-    return event;
+    Event stored = event.withSequence(lastSequences.merge(event.getAggregateId(), 1L, Long::sum));
+    storedEvents.put(key(stored), stored);
+    return stored;
+  }
+
+  private static String key(Event event) {
+    return StoreKeys.of(event.getAggregateId(), event.getSequence());
   }
 
   private Event store(Object payload) {
@@ -449,14 +459,14 @@ class AggregateHistoryTest {
     return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).registerHandler(new MutableCounterHandler()).build();
   }
 
-  /** The aggregate's stored events after {@code start}, up to and including {@code untilEventId}, applied to {@code start}. */
-  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, String untilEventId) {
-    return replayed(aggregateId, start, untilEventId, null);
+  /** The aggregate's stored events after {@code start}, up to and including {@code untilSequence}, applied to {@code start}. */
+  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, long untilSequence) {
+    return replayed(aggregateId, start, untilSequence, null);
   }
 
-  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, String untilEventId,
+  private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, long untilSequence,
                                             AggregateReplayer.Listener listener) {
-    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getEventId() : null, untilEventId)) {
+    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() : 0, untilSequence)) {
       return replay.replay(toApply, start, listener);
     }
   }

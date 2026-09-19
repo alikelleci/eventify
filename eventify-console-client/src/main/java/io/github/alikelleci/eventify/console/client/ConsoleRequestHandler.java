@@ -6,7 +6,6 @@ import io.github.alikelleci.eventify.console.protocol.Reply;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.Route;
-import io.github.alikelleci.eventify.core.message.MessageIds;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -43,22 +42,22 @@ class ConsoleRequestHandler {
         case EVENTS -> {
           Requests.Events request = read(data, Requests.Events.class);
           String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getEvents(aggregateId, requireCursorOf(aggregateId, request.cursor()), clampLimit(request.limit(), DEFAULT_PAGE_SIZE)));
+          yield toReply(service.getEvents(aggregateId, request.cursor() == null ? null : requireSequence("cursor", request.cursor()), clampLimit(request.limit(), DEFAULT_PAGE_SIZE)));
         }
         case EVENT_DETAIL -> {
           Requests.EventDetail request = read(data, Requests.EventDetail.class);
           String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getEventDetail(aggregateId, requireEventOf(aggregateId, request.eventId())));
+          yield toReply(service.getEventDetail(aggregateId, requireSequence("sequence", request.sequence())));
         }
         case EVENTS_OF_COMMAND -> {
           Requests.EventsOfCommand request = read(data, Requests.EventsOfCommand.class);
           String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getEventsOfCommand(aggregateId, requireMessageOf(aggregateId, "commandId", request.commandId()), request.correlationId()));
+          yield toReply(service.getEventsOfCommand(aggregateId, require("commandId", request.commandId()), request.correlationId()));
         }
         case STATE -> {
           Requests.State request = read(data, Requests.State.class);
           String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getState(aggregateId, request.eventId() == null ? null : requireEventOf(aggregateId, request.eventId())));
+          yield toReply(service.getState(aggregateId, request.sequence() == null ? null : requireSequence("sequence", request.sequence())));
         }
         case COMMANDS -> {
           Requests.Commands request = read(data, Requests.Commands.class);
@@ -87,28 +86,12 @@ class ConsoleRequestHandler {
     return require("aggregateId", aggregateId);
   }
 
-  /**
-   * An event of this aggregate. Its id starts with the aggregate id: another aggregate's event would make a replay
-   * apply every event stored between the two.
-   */
-  private static String requireEventOf(String aggregateId, String eventId) {
-    return requireMessageOf(aggregateId, "eventId", eventId);
-  }
-
-  /** A message (event or command) of this aggregate: its id is the aggregate id, "@" and a ULID. */
-  private static String requireMessageOf(String aggregateId, String name, String messageId) {
-    if (!MessageIds.isKeyOf(aggregateId, require(name, messageId))) {
-      throw new BadRequestException(name + " " + messageId + " is not of aggregate " + aggregateId);
+  /** An event's sequence: 1 for an aggregate's first event, so never below 1. */
+  private static long requireSequence(String name, Long sequence) {
+    if (sequence == null || sequence < 1) {
+      throw new BadRequestException(name + " must be a sequence of 1 or more");
     }
-    return messageId;
-  }
-
-  /** A page's cursor: the ULID of an event of this aggregate, or {@code null} for the first page. */
-  private static String requireCursorOf(String aggregateId, String cursor) {
-    if (cursor != null && !MessageIds.isKeyOf(aggregateId, MessageIds.firstKey(aggregateId) + cursor)) {
-      throw new BadRequestException("cursor " + cursor + " is not a cursor of aggregate " + aggregateId);
-    }
-    return cursor;
+    return sequence;
   }
 
   private static String require(String name, String value) {

@@ -6,10 +6,12 @@ public final class Requests {
   private Requests() {
   }
 
-  public record Events(String aggregateId, String cursor, Integer limit) {
+  /** @param cursor the sequence the page starts at, included; {@code null} for the newest events */
+  public record Events(String aggregateId, Long cursor, Integer limit) {
   }
 
-  public record EventDetail(String aggregateId, String eventId) {
+  /** @param sequence the event's sequence in its aggregate */
+  public record EventDetail(String aggregateId, Long sequence) {
   }
 
   /**
@@ -20,7 +22,8 @@ public final class Requests {
   public record EventsOfCommand(String aggregateId, String commandId, String correlationId) {
   }
 
-  public record State(String aggregateId, String eventId) {
+  /** @param sequence the event to take the state after; {@code null} for the current state */
+  public record State(String aggregateId, Long sequence) {
   }
 
   public record Commands(String aggregateId, Integer limit) {

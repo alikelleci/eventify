@@ -32,21 +32,23 @@ export interface EventMessage {
   metadata: Record<string, string>;
   aggregateId: string;
   revision: number;
+  /** Its position in its aggregate: 1 for the first event, then one more for each next one. */
+  sequence: number;
 }
 
 export interface EventsPage {
   events: EventMessage[];
-  nextCursor: string | null;
+  /** The sequence the next page starts at; null on the last page. */
+  nextCursor: number | null;
 }
 
 export interface AggregateState {
-  id: string;
   timestamp: string;
   type: string;
   payload: Record<string, unknown> & { '@class'?: string };
   metadata: Record<string, string>;
   aggregateId: string;
-  eventId: string;
+  /** The sequence of the last event applied to it. */
   version: number;
 }
 

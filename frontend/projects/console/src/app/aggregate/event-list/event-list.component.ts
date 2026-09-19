@@ -35,7 +35,7 @@ export class EventListComponent implements OnInit {
   loaded = output<EventMessage[]>();
 
   events = signal<EventMessage[]>([]);
-  nextCursor = signal<string | null>(null);
+  nextCursor = signal<number | null>(null);
   loading = signal(true);
   /** Position of the selected item in this list, or -1 when the selection is not one of these events. */
   selectedIndex = computed(() => this.events().indexOf(this.selected() as EventMessage));
@@ -61,7 +61,7 @@ export class EventListComponent implements OnInit {
     else if (e.key === 'ArrowUp') { e.preventDefault(); this.select.emit(list[Math.max(idx - 1, 0)]); }
   }
 
-  private load(cursor: string | null) {
+  private load(cursor: number | null) {
     const firstPage = cursor === null;
     const flag = firstPage ? this.loading : this.loadingMore;
     const startedAt = Date.now();

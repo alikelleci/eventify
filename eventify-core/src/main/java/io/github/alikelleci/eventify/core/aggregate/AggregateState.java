@@ -1,8 +1,7 @@
 package io.github.alikelleci.eventify.core.aggregate;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.Message;
-import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.message.exception.PayloadMissingException;
@@ -19,14 +18,14 @@ import java.util.Optional;
 
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class AggregateState implements Message {
-  String id;
+public class AggregateState {
   Instant timestamp;
   String type;
+  @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
   Object payload;
   Metadata metadata;
   String aggregateId;
-  String eventId;
+  /** The sequence of the last event applied to this state: how many events the aggregate had then. */
   long version;
   /**
    * The {@link Revision} of the aggregate class this state was made with: of its fields and its event sourcing
@@ -36,16 +35,13 @@ public class AggregateState implements Message {
   int revision;
 
   @Builder
-  private AggregateState(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
+  private AggregateState(Instant timestamp, Object payload, Metadata metadata, long version) {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
-    this.id = MessageIds.createCompoundKey(getAggregateId());
-
-    this.eventId = eventId;
     this.version = version;
     this.revision = Revisions.of(getPayload().getClass());
   }
@@ -67,7 +63,7 @@ public class AggregateState implements Message {
 
     public AggregateState build() {
       Metadata metadata = metadataBuilder.build();
-      return new AggregateState(timestamp, payload, metadata, eventId, version);
+      return new AggregateState(timestamp, payload, metadata, version);
     }
   }
 
@@ -81,7 +77,6 @@ public class AggregateState implements Message {
         .timestamp(event.getTimestamp())
         .payload(payload)
         .metadata(event.getMetadata())
-        .eventId(event.getId())
         .build();
   }
 
@@ -91,7 +86,6 @@ public class AggregateState implements Message {
         .timestamp(timestamp)
         .payload(payload)
         .metadata(metadata)
-        .eventId(eventId)
         .version(version)
         .build();
   }

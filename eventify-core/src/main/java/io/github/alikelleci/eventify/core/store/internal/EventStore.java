@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
@@ -14,8 +14,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 /**
- * The event store, stored by event id: {@code aggregateId@ULID}. The events of one aggregate are in one key range, in
- * the order they were handled.
+ * The event store, stored by {@link StoreKeys}: {@code aggregateId@sequence}. The events of one aggregate are in one
+ * key range, in the order of their sequence: the order they were handled in.
  */
 public class EventStore implements ReadOnlyEventStore {
 
@@ -37,70 +37,68 @@ public class EventStore implements ReadOnlyEventStore {
   }
 
   @Override
-  public Event get(String eventId) {
-    return reads.get(eventId);
-  }
-
-  @Override
-  public Events events(String aggregateId, String afterEventId, String untilEventId) {
-    requireEventOf(aggregateId, afterEventId);
-    requireEventOf(aggregateId, untilEventId);
-    if (afterEventId != null && untilEventId != null) {
-      int order = afterEventId.compareTo(untilEventId);
-      if (order > 0) {
-        throw new IllegalArgumentException("Cannot read the events of aggregate '" + aggregateId + "' after event '" + afterEventId + "' up to event '" + untilEventId + "': that event comes before it.");
-      }
-      if (order == 0) {
-        return new OfAggregate(aggregateId, null); // nothing after it up to itself; and not a range: its start would come after its end
-      }
-    }
-    String from = afterEventId != null ? afterEventId + "\0" : MessageIds.firstKey(aggregateId); // after that event
-    String to = untilEventId != null ? untilEventId : MessageIds.lastKey(aggregateId);
-    return new OfAggregate(aggregateId, reads.range(from, to));
-  }
-
-  @Override
-  public Events eventsNewestFirst(String aggregateId, String untilEventId) {
-    requireEventOf(aggregateId, untilEventId);
-    String to = untilEventId != null ? untilEventId : MessageIds.lastKey(aggregateId);
-    return new OfAggregate(aggregateId, reads.reverseRange(MessageIds.firstKey(aggregateId), to));
-  }
-
-  /** A range bounded by another aggregate's event would cover the events stored in between. */
-  private static void requireEventOf(String aggregateId, String eventId) {
-    if (eventId != null && !MessageIds.isKeyOf(aggregateId, eventId)) {
-      throw new IllegalArgumentException("Event '" + eventId + "' is not an event of aggregate '" + aggregateId + "'.");
-    }
+  public Event get(String aggregateId, long sequence) {
+    return sequence < 1 ? null : reads.get(StoreKeys.of(aggregateId, sequence));
   }
 
   /**
-   * The id of the aggregate's last stored event; {@code null} when it has none. Deleting events at a snapshot keeps
-   * the snapshot's event and the ones after it, so the last event is never deleted.
+   * The sequence of the aggregate's last stored event; 0 when it has none. Deleting events at a snapshot keeps the
+   * snapshot's event and the ones after it, so the last event is never deleted.
    */
-  public String lastEventId(String aggregateId) {
-    try (Events events = eventsNewestFirst(aggregateId, null)) {
-      return events.hasNext() ? events.next().getId() : null;
+  @Override
+  public long lastSequence(String aggregateId) {
+    try (Events events = eventsNewestFirst(aggregateId)) {
+      return events.hasNext() ? events.next().getSequence() : 0;
     }
   }
 
+  @Override
+  public Events events(String aggregateId, long afterSequence, long untilSequence) {
+    if (afterSequence < 0 || untilSequence < 0) {
+      throw new IllegalArgumentException("Cannot read the events of aggregate '" + aggregateId + "' after sequence " + afterSequence + " up to sequence " + untilSequence + ": a sequence is never negative.");
+    }
+    if (untilSequence <= afterSequence) {
+      return new OfAggregate(aggregateId, null); // nothing after it up to there; and not a range: its start would come after its end
+    }
+    return new OfAggregate(aggregateId, reads.range(StoreKeys.of(aggregateId, afterSequence + 1), StoreKeys.of(aggregateId, untilSequence)));
+  }
+
+  @Override
+  public Events eventsNewestFirst(String aggregateId, long untilSequence) {
+    if (untilSequence < 1) {
+      throw new IllegalArgumentException("Cannot read the events of aggregate '" + aggregateId + "' from sequence " + untilSequence + ": a sequence starts at 1.");
+    }
+    return new OfAggregate(aggregateId, reads.reverseRange(StoreKeys.first(aggregateId), StoreKeys.of(aggregateId, untilSequence)));
+  }
+
   /**
-   * The events under ids after the aggregate's last stored event, in the order they are given. The store order is the
-   * replay order: it must be the order the events were handled in, not the order of the commands' timestamps or of the
-   * clocks of the hosts that handled them.
+   * The events with the sequences after the aggregate's last stored event, in the order they are given. The sequence
+   * is the replay order: the order the events were handled in, whatever the commands' timestamps or the clocks of the
+   * hosts that handled them.
    */
-  public List<Event> assignIds(String aggregateId, List<Event> events) {
-    String lastId = lastEventId(aggregateId);
-    List<Event> ordered = new ArrayList<>(events.size());
+  public List<Event> sequence(String aggregateId, List<Event> events) {
+    long last = lastSequence(aggregateId);
+    List<Event> sequenced = new ArrayList<>(events.size());
     for (Event event : events) {
-      Event withId = event.withId(MessageIds.nextEventKey(aggregateId, lastId));
-      ordered.add(withId);
-      lastId = withId.getId();
+      sequenced.add(event.withSequence(++last));
     }
-    return ordered;
+    return sequenced;
   }
 
+  /**
+   * Stores the event under its sequence.
+   *
+   * @throws IllegalStateException when the event has no sequence, or its sequence is taken: the aggregate's events would
+   *                               no longer be the ones that were handled
+   */
   public void append(Event event) {
-    writes.putIfAbsent(event.getId(), event);
+    if (event.getSequence() < 1) {
+      throw new IllegalStateException("Event " + event.getId() + " of aggregate " + event.getAggregateId() + " has no sequence: it can't be stored.");
+    }
+    Event taken = writes.putIfAbsent(StoreKeys.of(event.getAggregateId(), event.getSequence()), event);
+    if (taken != null) {
+      throw new IllegalStateException("Aggregate " + event.getAggregateId() + " already has an event with sequence " + event.getSequence() + ": event " + taken.getId() + ".");
+    }
   }
 
   /**
@@ -109,15 +107,15 @@ public class EventStore implements ReadOnlyEventStore {
    * @return how many events were deleted
    */
   public long deleteBefore(AggregateState snapshot) {
+    if (snapshot.getVersion() <= 1) {
+      return 0;
+    }
     long deleted = 0;
     String aggregateId = snapshot.getAggregateId();
-    try (KeyValueIterator<String, Event> iterator = writes.range(MessageIds.firstKey(aggregateId), snapshot.getEventId())) {
+    try (KeyValueIterator<String, Event> iterator = writes.range(StoreKeys.first(aggregateId), StoreKeys.of(aggregateId, snapshot.getVersion() - 1))) {
       while (iterator.hasNext()) {
         KeyValue<String, Event> entry = iterator.next();
-        if (entry.key.equals(snapshot.getEventId())) {
-          break; // keep the snapshot event itself
-        }
-        if (!MessageIds.isKeyOf(aggregateId, entry.key)) {
+        if (!StoreKeys.isKeyOf(aggregateId, entry.key)) {
           continue; // another aggregate's event in the range: never ours to delete
         }
         writes.delete(entry.key);
@@ -144,7 +142,7 @@ public class EventStore implements ReadOnlyEventStore {
     public boolean hasNext() {
       while (next == null && iterator != null && iterator.hasNext()) {
         KeyValue<String, Event> entry = iterator.next();
-        if (MessageIds.isKeyOf(aggregateId, entry.key)) {
+        if (StoreKeys.isKeyOf(aggregateId, entry.key)) {
           next = entry.value;
         }
       }

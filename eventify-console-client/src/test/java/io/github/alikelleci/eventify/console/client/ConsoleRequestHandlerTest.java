@@ -18,20 +18,23 @@ class ConsoleRequestHandlerTest {
   private final ConsoleRequestHandler handler = new ConsoleRequestHandler(null, new ObjectMapper());
 
   @Test
-  @DisplayName("Should refuse a page of events whose cursor is not a ULID")
-  void refusesAMalformedCursor() {
-    Reply reply = handle(Route.EVENTS, "{\"aggregateId\":\"order-1\",\"cursor\":\"not-a-ulid\"}");
+  @DisplayName("Should refuse a page of events whose cursor is not a sequence")
+  void refusesACursorThatIsNotASequence() {
+    Reply reply = handle(Route.EVENTS, "{\"aggregateId\":\"order-1\",\"cursor\":0}");
 
     assertThat(reply.header().status()).isEqualTo(ReplyHeader.Status.BAD_REQUEST);
     assertThat(reply.header().reason()).contains("cursor");
+    assertThat(handle(Route.EVENTS, "{\"aggregateId\":\"order-1\",\"cursor\":\"abc\"}").header().status())
+        .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
   }
 
   @Test
-  @DisplayName("Should refuse an event that is not of the aggregate")
-  void refusesAnEventOfAnotherAggregate() {
-    Reply reply = handle(Route.EVENT_DETAIL, "{\"aggregateId\":\"order-1\",\"eventId\":\"order-2@01J00000000000000000000000\"}");
-
-    assertThat(reply.header().status()).isEqualTo(ReplyHeader.Status.BAD_REQUEST);
+  @DisplayName("Should refuse an event without a sequence")
+  void refusesAnEventWithoutASequence() {
+    assertThat(handle(Route.EVENT_DETAIL, "{\"aggregateId\":\"order-1\"}").header().status())
+        .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
+    assertThat(handle(Route.EVENT_DETAIL, "{\"aggregateId\":\"order-1\",\"sequence\":0}").header().reason())
+        .contains("sequence");
   }
 
   private Reply handle(Route route, String json) {

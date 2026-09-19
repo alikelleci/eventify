@@ -25,7 +25,6 @@ class SnapshotSerdeTest {
 
   private final AggregateState snapshot = AggregateState.builder()
       .payload(new Cart("cart-1", 3))
-      .eventId("cart-1@01J00000000000000000000000")
       .version(40)
       .build();
 
@@ -38,7 +37,6 @@ class SnapshotSerdeTest {
     AggregateState read = read(json);
 
     assertThat(read.getPayload()).isNull();
-    assertThat(read.getEventId()).isEqualTo(snapshot.getEventId());
     assertThat(read.getVersion()).isEqualTo(40);
     assertThat(SnapshotStore.whyOutdated(read)).contains("can't be read");
   }

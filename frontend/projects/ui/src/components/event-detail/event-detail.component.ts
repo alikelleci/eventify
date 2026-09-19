@@ -75,7 +75,7 @@ export class EventDetailComponent {
       this.loading.set(true);
       // Data that is there right away (the website's example screen) shows without a skeleton flashing by.
       let answeredAtOnce = true;
-      this.request = this.svc.getEventDetail(ev.aggregateId, ev.id).pipe(
+      this.request = this.svc.getEventDetail(ev.aggregateId, ev.sequence).pipe(
         takeUntilDestroyed(this.destroyRef),
         catchError(err => {
           this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load the event details.') });

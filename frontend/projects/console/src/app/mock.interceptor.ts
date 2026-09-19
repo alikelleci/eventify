@@ -74,14 +74,14 @@ const REPLY_TO = 'orders.replies';
 interface History {
   commands: CommandMessage[];               // newest first, like the backend
   events: EventMessage[];                   // newest first
-  states: Record<string, AggregateState>;   // the order after each event, by event ID
+  states: Record<number, AggregateState>;   // the order after each event, by its sequence
 }
 
 function buildHistory(orderId: string, steps: Step[]): History {
-  let sequence = 0;
-  // Fake IDs in the backend's aggregateId@key shape, numbered in the order things happened.
-  const nextId = () => `${orderId}@${String(++sequence).padStart(13, '0')}`;
+  let ids = 0;
   const fakeUuid = (n: number) => `${(0x5f0c2b1e + n * 0x1a2b3c).toString(16).slice(-8)}-7d4a-4c8e-9b3f-${String(n).padStart(12, '0')}`;
+  // Fake UUIDs, like the backend's message IDs; distinct from the correlation IDs.
+  const nextId = () => fakeUuid(1000 + ++ids);
 
   const commands: CommandMessage[] = [];
   const events: EventMessage[] = [];
@@ -111,23 +111,24 @@ function buildHistory(orderId: string, steps: Step[]): History {
     if (step.failure) return;
     (step.events ?? []).forEach((e, i) => events.push({
       id: nextId(),
+      sequence: events.length + 1,
       // A few milliseconds after the command, and apart from each other, like events handled in one go.
       timestamp: new Date(time + (i + 1) * 4).toISOString(),
       type: e.type,
       aggregateId: orderId,
       revision: e.revision ?? 1,
       payload: { '@class': `com.example.order.OrderEvent$${e.type}`, id: orderId, ...e.payload },
-      metadata: { '$correlationId': correlationId, '$causationId': commandId, '$replyTo': REPLY_TO },
+      metadata: { '$correlationId': correlationId, '$causationId': commandId },
     }));
   });
 
   // The order after each event, applied oldest first.
-  const states: Record<string, AggregateState> = {};
+  const states: Record<number, AggregateState> = {};
   let order: Record<string, unknown> = {};
-  events.forEach((e, index) => {
+  events.forEach(e => {
     order = applyEvent(order, e);
-    states[e.id] = {
-      id: e.id, eventId: e.id, aggregateId: orderId, type: 'Order', version: index + 1,
+    states[e.sequence] = {
+      aggregateId: orderId, type: 'Order', version: e.sequence,
       timestamp: e.timestamp, metadata: { '$correlationId': e.metadata['$correlationId'] }, payload: order,
     };
   });
@@ -259,11 +260,10 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.url.includes('/events')) {
     const eventDetailMatch = req.url.match(/\/events\/([^?]+)/);
     if (eventDetailMatch) {
-      const eventId = decodeURIComponent(eventDetailMatch[1]);
-      const index = events.findIndex(e => e.id === eventId);
+      const sequence = Number(eventDetailMatch[1]);
+      const index = events.findIndex(e => e.sequence === sequence);
       if (index === -1) return of(new HttpResponse({ status: 404, body: 'Not Found' }));
-      const older = events[index + 1];
-      const detail: EventDetail = { event: events[index], state: states[eventId] ?? null, previousState: older ? states[older.id] : null, stateKnown: true, previousStateKnown: true };
+      const detail: EventDetail = { event: events[index], state: states[sequence] ?? null, previousState: states[sequence - 1] ?? null, stateKnown: true, previousStateKnown: true };
       return respond(detail, 300);
     }
 

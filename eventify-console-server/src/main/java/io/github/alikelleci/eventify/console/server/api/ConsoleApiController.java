@@ -31,15 +31,15 @@ public class ConsoleApiController {
 
   @GetMapping("/{app}/aggregates/{aggregateId}/events")
   public Mono<ResponseEntity<byte[]>> events(@PathVariable String app, @PathVariable String aggregateId,
-                                             @RequestParam(required = false) String cursor,
+                                             @RequestParam(required = false) Long cursor,
                                              @RequestParam(required = false) Integer limit) {
     return toOwner(app, Route.EVENTS, aggregateId, new Requests.Events(aggregateId, cursor, limit));
   }
 
-  @GetMapping("/{app}/aggregates/{aggregateId}/events/{eventId}")
+  @GetMapping("/{app}/aggregates/{aggregateId}/events/{sequence}")
   public Mono<ResponseEntity<byte[]>> eventDetail(@PathVariable String app, @PathVariable String aggregateId,
-                                                  @PathVariable String eventId) {
-    return toOwner(app, Route.EVENT_DETAIL, aggregateId, new Requests.EventDetail(aggregateId, eventId));
+                                                  @PathVariable long sequence) {
+    return toOwner(app, Route.EVENT_DETAIL, aggregateId, new Requests.EventDetail(aggregateId, sequence));
   }
 
   /** The events the command produced; {@code correlationId} also finds the ones stored before events named their command. */
@@ -52,8 +52,8 @@ public class ConsoleApiController {
 
   @GetMapping("/{app}/aggregates/{aggregateId}/state")
   public Mono<ResponseEntity<byte[]>> state(@PathVariable String app, @PathVariable String aggregateId,
-                                            @RequestParam(required = false) String eventId) {
-    return toOwner(app, Route.STATE, aggregateId, new Requests.State(aggregateId, eventId));
+                                            @RequestParam(required = false) Long sequence) {
+    return toOwner(app, Route.STATE, aggregateId, new Requests.State(aggregateId, sequence));
   }
 
   @GetMapping("/{app}/aggregates/{aggregateId}/commands")

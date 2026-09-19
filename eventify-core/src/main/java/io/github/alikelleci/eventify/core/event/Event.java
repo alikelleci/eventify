@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.core.event;
 
 import io.github.alikelleci.eventify.core.message.Message;
-import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.PayloadMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
@@ -28,6 +27,11 @@ public class Event implements Message {
   Metadata metadata;
   String aggregateId;
   int revision;
+  /**
+   * The event's position in its aggregate: 1 for its first event, then one more for each next one. Set when the event
+   * is stored; 0 before that, and in events stored before sequences existed.
+   */
+  long sequence;
 
   @Builder
   private Event(Instant timestamp, Object payload, Metadata metadata) {
@@ -37,19 +41,17 @@ public class Event implements Message {
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
-    this.id = MessageIds.createCompoundKey(getAggregateId());
+    this.id = UUID.randomUUID().toString();
 
     this.revision = Revisions.of(getPayload().getClass());
+    this.sequence = 0; // given when stored
 
     getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }
 
-  /** This event under another key of the same aggregate. */
-  public Event withId(String id) {
-    if (!MessageIds.isKeyOf(aggregateId, id)) {
-      throw new IllegalArgumentException("Key '" + id + "' is not a key of aggregate '" + aggregateId + "'.");
-    }
-    return new Event(id, timestamp, type, payload, metadata, aggregateId, revision);
+  /** This event at the given position in its aggregate. */
+  public Event withSequence(long sequence) {
+    return new Event(id, timestamp, type, payload, metadata, aggregateId, revision, sequence);
   }
 
   public static class EventBuilder {

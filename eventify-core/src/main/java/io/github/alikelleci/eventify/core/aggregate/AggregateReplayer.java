@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.core.aggregate;
 
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.MessageIds;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.Iterator;
@@ -11,9 +10,8 @@ import java.util.Map;
 /**
  * Rebuilds the state of an aggregate: applies its stored events, in the order they are stored, to a starting state.
  *
- * <p>The events are applied in the order they were handled, the order they are stored in (see
- * {@link MessageIds#nextEventKey}). The version of the state is its position in the aggregate's events: every event
- * counts.
+ * <p>The events are applied in the order of their sequence: the order they were handled in. The version of the state
+ * is the sequence of the last event applied: every event counts.
  *
  * <p>An event without an event sourcing handler leaves the state as it was, the way a handler that returns the state
  * it is given does: the state moves on to that event, so the version and the snapshot point to it too. Adding such a
@@ -60,7 +58,7 @@ public class AggregateReplayer {
    * Applies the events to the starting state.
    *
    * @param events   the aggregate's events after {@code start}, in the order they were handled: e.g. from
-   *                 {@code ReadOnlyEventStore.events(aggregateId, start.getEventId(), untilEventId)}
+   *                 {@code ReadOnlyEventStore.events(aggregateId, start.getVersion(), untilSequence)}
    * @param start    the state to start from, e.g. a snapshot; {@code null} to start before the first event
    * @param listener told about each event before it is applied; may be {@code null}
    */
@@ -76,11 +74,16 @@ public class AggregateReplayer {
         // Fails the replay instead, so every command of this aggregate fails with this reason until an upcaster fixes it.
         throw new IllegalStateException("Stored event " + event.getId() + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it to its current class.");
       }
+      // A gap, or an event twice: the stored events are not the ones that were handled, and the state would be wrong
+      // without a word. Fails the replay instead.
+      if (event.getSequence() != version + 1) {
+        throw new IllegalStateException("Stored event " + event.getId() + " (" + event.getType() + ") of aggregate " + event.getAggregateId() + " has sequence " + event.getSequence() + ", expected " + (version + 1) + ": the aggregate's events are incomplete or out of order.");
+      }
       if (listener != null) {
         listener.beforeEvent(event, state, version);
       }
       state = apply(state, event);
-      version++;
+      version = event.getSequence();
       replayed++;
     }
 

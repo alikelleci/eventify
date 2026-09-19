@@ -14,6 +14,7 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -117,9 +118,10 @@ class UpcastingOnReplayTest {
     ObjectNode payload = (ObjectNode) stored.get("payload");
     payload.set("fullName", payload.remove("name"));
     stored.put("revision", 1);
+    stored.put("sequence", 1);
     // The event store's own serde writes it: the JSON as an older version of the application stored it.
     KeyValueStore<String, Object> eventStore = driver.getKeyValueStore("event-store");
-    eventStore.put(current.getId(), stored);
+    eventStore.put(StoreKeys.of("ada", 1), stored);
 
     Command greet = Command.builder().payload(new Greet("ada")).build();
     commands.pipeInput(greet.getAggregateId(), greet);

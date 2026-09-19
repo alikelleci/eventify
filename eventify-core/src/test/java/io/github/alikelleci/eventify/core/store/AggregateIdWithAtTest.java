@@ -31,8 +31,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * An aggregate id that is another aggregate id followed by "@", like "ada" and "ada@example.com". Events are stored
- * under aggregateId@ULID, so the keys of the second start with the keys' prefix of the first: each aggregate must
- * still only see, and delete, its own events.
+ * under aggregateId@sequence, so the keys of the second start with the keys' prefix of the first. After "@" and a
+ * digit, e.g. "ada@1", they are even in the key range of the first: each aggregate must still only see, and delete, its
+ * own events.
  */
 @DisplayName("Aggregate ids that start with another id and '@'")
 class AggregateIdWithAtTest {
@@ -52,12 +53,13 @@ class AggregateIdWithAtTest {
     TestOutputTopic<String, CommandResult> results = driver.createOutputTopic("commands.account.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
 
     send(commands, Command.builder().payload(OpenAccount.builder().id("ada@example.com").build()).build());
+    send(commands, Command.builder().payload(OpenAccount.builder().id("ada@1").build()).build());
     send(commands, Command.builder().payload(OpenAccount.builder().id("ada").build()).build());
 
-    // Opening "ada" fails with "Account already exists." when it loads the account of "ada@example.com".
+    // Opening "ada" fails with "Account already exists." when it loads the account of another aggregate.
     assertThat(results.readValuesToList())
         .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
-        .containsExactly("ada@example.com success null", "ada success null");
+        .containsExactly("ada@example.com success null", "ada@1 success null", "ada success null");
   }
 
   @Test
@@ -69,9 +71,10 @@ class AggregateIdWithAtTest {
     KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
     KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
 
-    // "ada-team"-like ids with a character that sorts before every ULID ("-" before "0"): their keys come first.
-    send(commands, Command.builder().payload(OpenAccount.builder().id("ada@-team").build()).build());
-    send(commands, Command.builder().payload(Deposit.builder().id("ada@-team").amount(100).build()).build());
+    // An id whose keys sort between the first two keys of "ada": inside the range that is deleted.
+    String between = StoreKeys.of("ada", 1);
+    send(commands, Command.builder().payload(OpenAccount.builder().id(between).build()).build());
+    send(commands, Command.builder().payload(Deposit.builder().id(between).amount(100).build()).build());
 
     // "ada": the third command loads two events, takes a snapshot and deletes the events before it.
     send(commands, Command.builder().payload(OpenAccount.builder().id("ada").build()).build());
@@ -81,7 +84,7 @@ class AggregateIdWithAtTest {
     assertThat(results.readValuesToList())
         .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .containsExactly(
-            "ada@-team success null", "ada@-team success null",
+            between + " success null", between + " success null",
             "ada success null", "ada success null", "ada success null");
 
     AggregateState snapshot = snapshotStore.get("ada");
@@ -90,7 +93,8 @@ class AggregateIdWithAtTest {
     assertThat(snapshot.getVersion()).isEqualTo(2);
 
     // The other aggregate keeps all its events.
-    assertThat(eventsOf(eventStore, "ada@-team")).hasSize(2);
+    assertThat(StoreKeys.of(between, 1)).isBetween(StoreKeys.of("ada", 1), StoreKeys.of("ada", 2));
+    assertThat(eventsOf(eventStore, between)).hasSize(2);
     assertThat(eventsOf(eventStore, "ada")).hasSize(2); // its first event was deleted at the snapshot
   }
 

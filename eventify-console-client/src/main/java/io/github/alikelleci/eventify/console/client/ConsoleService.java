@@ -81,7 +81,7 @@ class ConsoleService {
     }
   }
 
-  Result<EventsPage> getEvents(String aggregateId, String cursor, int limit) {
+  Result<EventsPage> getEvents(String aggregateId, Long cursor, int limit) {
     Result<EventsPage> routing = ownership.check(aggregateId);
     if (routing != null) {
       return routing;
@@ -98,14 +98,14 @@ class ConsoleService {
     }
   }
 
-  Result<EventDetail> getEventDetail(String aggregateId, String eventId) {
+  Result<EventDetail> getEventDetail(String aggregateId, long sequence) {
     Result<EventDetail> routing = ownership.check(aggregateId);
     if (routing != null) {
       return routing;
     }
 
     try {
-      EventDetail detail = history.eventDetail(eventStore(), snapshotStore(), aggregateId, eventId);
+      EventDetail detail = history.eventDetail(eventStore(), snapshotStore(), aggregateId, sequence);
       if (detail == null) {
         return ownership.notFound(aggregateId);
       }
@@ -120,14 +120,14 @@ class ConsoleService {
   }
 
   /** The {@link AggregateState} as JSON, see {@link AggregateHistory}. */
-  Result<RawValue> getState(String aggregateId, String eventId) {
+  Result<RawValue> getState(String aggregateId, Long sequence) {
     Result<RawValue> routing = ownership.check(aggregateId);
     if (routing != null) {
       return routing;
     }
 
     try {
-      RawValue state = history.stateAt(eventStore(), snapshotStore(), aggregateId, eventId);
+      RawValue state = history.stateAt(eventStore(), snapshotStore(), aggregateId, sequence);
       if (state == null) {
         return ownership.notFound(aggregateId);
       }

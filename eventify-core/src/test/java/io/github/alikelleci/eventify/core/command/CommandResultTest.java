@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
 
@@ -133,6 +134,19 @@ class CommandResultTest {
     assertThat(result.command().getType()).isEqualTo("Touch");
     assertThat(result).isInstanceOfSatisfying(CommandResult.Success.class, success -> assertThat(success.events()).isEmpty());
     assertThat(events.isEmpty()).isTrue();
+  }
+
+  @Test
+  @DisplayName("Should number the events of an aggregate in the order they were handled, whatever the commands' timestamps")
+  void eventsAreNumberedInTheOrderTheyWereHandled() {
+    Instant now = Instant.now();
+    send(Command.builder().payload(new AddItem("cart-1", "apple")).timestamp(now).build());
+    send(Command.builder().payload(new AddItem("cart-2", "pear")).timestamp(now).build());
+    send(Command.builder().payload(new AddItem("cart-1", "bread")).timestamp(now.minusSeconds(60)).build()); // a clock behind
+
+    assertThat(events.readValuesToList())
+        .extracting(event -> event.getAggregateId() + " " + event.getSequence())
+        .containsExactly("cart-1 1", "cart-2 1", "cart-1 2");
   }
 
   /** The correlation id is shared with the other commands of a flow; the causation id tells which command it was. */

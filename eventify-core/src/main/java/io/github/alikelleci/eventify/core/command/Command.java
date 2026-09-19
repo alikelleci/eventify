@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.core.command;
 
 import io.github.alikelleci.eventify.core.message.Message;
-import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.PayloadMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
@@ -35,7 +34,7 @@ public class Command implements Message {
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
-    this.id = MessageIds.createCompoundKey(getAggregateId());
+    this.id = UUID.randomUUID().toString();
 
     getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }

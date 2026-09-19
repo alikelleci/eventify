@@ -9,14 +9,15 @@ export class EventifyService {
   private readonly http = inject(HttpClient);
   private readonly backend = inject(BackendService);
 
-  getEvents(aggregateId: string, cursor?: string | null, limit = 50): Observable<EventsPage> {
+  getEvents(aggregateId: string, cursor?: number | null, limit = 50): Observable<EventsPage> {
     let params = new HttpParams().set('limit', limit);
-    if (cursor) params = params.set('cursor', cursor);
+    if (cursor != null) params = params.set('cursor', cursor);
     return this.http.get<EventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events`, { params });
   }
 
-  getEventDetail(aggregateId: string, eventId: string): Observable<EventDetail> {
-    return this.http.get<EventDetail>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/${encodeURIComponent(eventId)}`);
+  /** An event is found by its aggregate and its sequence in it. */
+  getEventDetail(aggregateId: string, sequence: number): Observable<EventDetail> {
+    return this.http.get<EventDetail>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/${sequence}`);
   }
 
   /** The correlation id also finds the events stored before events named the command that produced them. */

@@ -96,7 +96,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
     AggregateState state = aggregates.load(aggregateId);
-    List<Event> events = aggregates.assignIds(aggregateId, commandHandler.apply(state, command));
+    List<Event> events = aggregates.sequence(aggregateId, commandHandler.apply(state, command));
 
     // Copied as the handler returned them, before anything else runs: an event may share objects with the aggregate
     // (e.g. its list of items), and applying the events below may change those. The copies are what is stored and sent.

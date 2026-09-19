@@ -38,7 +38,7 @@ final class ConsoleViews {
           : new CommandView(result.command(), "success", null);
     }
   }
-  record EventsPage(List<Event> events, String nextCursor) {}
+  record EventsPage(List<Event> events, Long nextCursor) {}
   /**
    * An event with the state after and before it. A state is {@code null} when there is none, or when it is unknown:
    * {@code stateKnown} and {@code previousStateKnown} tell which. A state is unknown when the events before it were

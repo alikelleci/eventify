@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import io.github.alikelleci.eventify.core.testdomain.account.Account;
 import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.AccountHandler;
 import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.Deposit;
@@ -55,7 +56,7 @@ class SnapshottingTest {
     assertThat(snapshot).isNotNull();
     assertThat(snapshot.getVersion()).isEqualTo(3);
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(12);
-    assertThat(eventStore.get(snapshot.getEventId())).isNotNull();
+    assertThat(eventStore.get(StoreKeys.of("ada", snapshot.getVersion()))).isNotNull();
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(2); // the snapshot's event and the last deposit
   }
 

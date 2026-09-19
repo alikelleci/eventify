@@ -43,7 +43,7 @@ public class AggregateRepository {
 
     log.debug("Loading aggregate state by applying events...");
     AggregateReplayer.Result replay;
-    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId, snapshot != null ? snapshot.getEventId() : null, null)) {
+    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId, snapshot != null ? snapshot.getVersion() : 0)) {
       replay = replayer.replay(events, snapshot);
     }
     AggregateState state = replay.state();
@@ -89,21 +89,21 @@ public class AggregateRepository {
   }
 
   /**
-   * Whether events before the snapshot's event are gone. Deleting them keeps the snapshot's event, so it is then the
-   * aggregate's first stored event, while the snapshot came after more events than that one.
+   * Whether events before the snapshot's event are gone. Deleting them keeps the snapshot's event, so the aggregate's
+   * first stored event then comes after its first sequence.
    */
   private boolean eventsBeforeWereDeleted(String aggregateId, AggregateState snapshot) {
     if (snapshot.getVersion() <= 1) {
       return false;
     }
     try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId)) {
-      return !events.hasNext() || events.next().getId().equals(snapshot.getEventId());
+      return !events.hasNext() || events.next().getSequence() > 1;
     }
   }
 
-  /** The events under ids after the aggregate's last stored event: see {@link EventStore#assignIds}. */
-  public List<Event> assignIds(String aggregateId, List<Event> events) {
-    return eventStore.assignIds(aggregateId, events);
+  /** The events with the sequences after the aggregate's last stored event: see {@link EventStore#sequence}. */
+  public List<Event> sequence(String aggregateId, List<Event> events) {
+    return eventStore.sequence(aggregateId, events);
   }
 
   public void save(List<Event> events) {

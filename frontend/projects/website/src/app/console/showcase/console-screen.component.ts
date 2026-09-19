@@ -46,7 +46,7 @@ const STEPS: Step[] = [
 /** The events newest first, like the console list, with the state after each one. */
 function buildOrder() {
   const events: EventMessage[] = [];
-  const states = new Map<string, AggregateState>();
+  const states = new Map<number, AggregateState>();
   let order: Record<string, unknown> = {};
   let sequence = 0;
 
@@ -54,14 +54,14 @@ function buildOrder() {
     const correlationId = `5f0c2b1e-7d4a-4c8e-9b3f-${String(index + 1).padStart(12, '0')}`;
     step.events.forEach((e, i) => {
       const event: EventMessage = {
-        id: `${ORDER_ID}@${String(++sequence).padStart(13, '0')}`, timestamp: at(step.minutesAgo, (i + 1) * 4),
+        id: `8c1d4e2a-3b5f-4a6c-9d7e-${String(++sequence).padStart(12, '0')}`, sequence, timestamp: at(step.minutesAgo, (i + 1) * 4),
         type: e.type, aggregateId: ORDER_ID, revision: e.revision ?? 1,
         payload: { id: ORDER_ID, ...e.payload }, metadata: { '$correlationId': correlationId },
       };
       order = e.apply(order, event.timestamp);
       events.push(event);
-      states.set(event.id, {
-        id: event.id, eventId: event.id, aggregateId: ORDER_ID, type: 'Order', version: events.length,
+      states.set(event.sequence, {
+        aggregateId: ORDER_ID, type: 'Order', version: event.sequence,
         timestamp: event.timestamp, metadata: {}, payload: order,
       });
     });
@@ -74,13 +74,11 @@ const ORDER = buildOrder();
 
 /** Stands in for the console API, so the real detail components show the example order. */
 const EXAMPLE_API: Partial<EventifyService> = {
-  getEventDetail: (_, eventId) => {
-    const index = ORDER.events.findIndex(e => e.id === eventId);
-    const older = ORDER.events[index + 1];
+  getEventDetail: (_, sequence) => {
     const detail: EventDetail = {
-      event: ORDER.events[index],
-      state: ORDER.states.get(eventId) ?? null,
-      previousState: older ? ORDER.states.get(older.id) ?? null : null,
+      event: ORDER.events.find(e => e.sequence === sequence)!,
+      state: ORDER.states.get(sequence) ?? null,
+      previousState: ORDER.states.get(sequence - 1) ?? null,
       stateKnown: true,
       previousStateKnown: true,
     };

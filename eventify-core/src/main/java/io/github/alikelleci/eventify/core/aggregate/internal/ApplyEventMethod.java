@@ -66,7 +66,6 @@ public class ApplyEventMethod implements BiFunction<AggregateState, Event, Aggre
         .timestamp(event.getTimestamp())
         .payload(result)
         .metadata(event.getMetadata())
-        .eventId(event.getId())
         .build();
 
     // The state is stored as the snapshot of its own aggregate id: another id would overwrite that aggregate's snapshot.
