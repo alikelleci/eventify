@@ -9,7 +9,6 @@ import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 
-import java.net.InetAddress;
 import java.net.URI;
 
 /** Connects the application to the Eventify Console, so it can be inspected there. */
@@ -39,8 +38,8 @@ public class EventifyConsoleClient implements EventifyPlugin {
   public void onStart(PluginContext eventify) {
     NodeInfo nodeInfo = new NodeInfo(
         eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_ID_CONFIG),
-        ConsoleService.nodeId(ConsoleService.hostInfo(eventify)),
-        hostname(),
+        NodeIdentity.nodeId(NodeIdentity.hostInfo(eventify)),
+        NodeIdentity.hostname(),
         EventifyConsoleClient.class.getPackage().getImplementationVersion(),
         ConsoleProtocol.VERSION);
 
@@ -69,19 +68,6 @@ public class EventifyConsoleClient implements EventifyPlugin {
     if (consoleService != null) {
       consoleService.close();
       consoleService = null;
-    }
-  }
-
-  private static String hostname() {
-    // Set in containers (the pod name in Kubernetes); looking it up can be slow on some machines.
-    String hostname = System.getenv("HOSTNAME");
-    if (hostname != null && !hostname.isBlank()) {
-      return hostname;
-    }
-    try {
-      return InetAddress.getLocalHost().getHostName();
-    } catch (Exception e) {
-      return null;
     }
   }
 }

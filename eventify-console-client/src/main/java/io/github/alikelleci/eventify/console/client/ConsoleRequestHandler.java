@@ -110,7 +110,7 @@ class ConsoleRequestHandler {
   }
 
   /** The header as it is; the answer as JSON, only when there is one. */
-  private Reply toReply(ConsoleService.Result<?> result) throws IOException {
+  private Reply toReply(ConsoleViews.Result<?> result) throws IOException {
     if (!result.isOk() || result.value() == null) {
       return Reply.of(result.header());
     }

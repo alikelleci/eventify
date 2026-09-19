@@ -43,10 +43,10 @@ class AggregateHistory {
   /**
    * A page of the aggregate's events, newest first.
    *
-   * @param cursor where the page starts: the {@link ConsoleService.EventsPage#nextCursor()} of the page before it, or
+   * @param cursor where the page starts: the {@link ConsoleViews.EventsPage#nextCursor()} of the page before it, or
    *               {@code null} for the newest events
    */
-  ConsoleService.EventsPage events(ReadOnlyEventStore events, String aggregateId, String cursor, int limit) {
+  ConsoleViews.EventsPage events(ReadOnlyEventStore events, String aggregateId, String cursor, int limit) {
     String from = cursor != null ? MessageIds.firstKey(aggregateId) + cursor : null; // the cursor's event included
 
     // One more than the page, to know whether there is a next page and where it starts.
@@ -62,7 +62,7 @@ class AggregateHistory {
       Event first = page.remove(page.size() - 1);
       nextCursor = first.getId().substring(MessageIds.firstKey(aggregateId).length());
     }
-    return new ConsoleService.EventsPage(page, nextCursor);
+    return new ConsoleViews.EventsPage(page, nextCursor);
   }
 
   /**
@@ -110,7 +110,7 @@ class AggregateHistory {
   }
 
   /** The event with the state before and after it; {@code null} when the event isn't there. */
-  ConsoleService.EventDetail eventDetail(ReadOnlyEventStore events, ReadOnlySnapshotStore snapshots,
+  ConsoleViews.EventDetail eventDetail(ReadOnlyEventStore events, ReadOnlySnapshotStore snapshots,
                                           String aggregateId, String eventId) {
     Event event = events.get(eventId);
     if (event == null) {
@@ -136,9 +136,9 @@ class AggregateHistory {
     }
     if (snapshot.getEventId().equals(eventId)) {
       // The snapshot is the state after this very event; what came before it is gone.
-      return new ConsoleService.EventDetail(event, json(snapshot), null, true, false);
+      return new ConsoleViews.EventDetail(event, json(snapshot), null, true, false);
     }
-    return new ConsoleService.EventDetail(event, null, null, false, false);
+    return new ConsoleViews.EventDetail(event, null, null, false, false);
   }
 
   /**
@@ -209,8 +209,8 @@ class AggregateHistory {
   private record FromFirst(RawValue before, RawValue after, boolean complete) {
   }
 
-  private static ConsoleService.EventDetail known(Event event, RawValue state, RawValue previousState) {
-    return new ConsoleService.EventDetail(event, state, previousState, true, true);
+  private static ConsoleViews.EventDetail known(Event event, RawValue state, RawValue previousState) {
+    return new ConsoleViews.EventDetail(event, state, previousState, true, true);
   }
 
   /** The state at this version, as JSON written now: before the next handler can change it. */

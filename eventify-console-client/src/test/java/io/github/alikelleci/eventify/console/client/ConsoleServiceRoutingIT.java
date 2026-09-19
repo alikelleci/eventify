@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.console.client;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.github.alikelleci.eventify.console.client.ConsoleService.Result;
+import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.client.item.ItemHandler;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
@@ -95,15 +95,15 @@ class ConsoleServiceRoutingIT {
 
     ConsoleService firstService = new ConsoleService(first, new StatusTracker());
     ConsoleService secondService = new ConsoleService(second, new StatusTracker());
-    String firstId = ConsoleService.nodeId(ConsoleService.hostInfo(first));
-    String secondId = ConsoleService.nodeId(ConsoleService.hostInfo(second));
+    String firstId = NodeIdentity.nodeId(NodeIdentity.hostInfo(first));
+    String secondId = NodeIdentity.nodeId(NodeIdentity.hostInfo(second));
     Set<String> owners = new HashSet<>();
 
     try {
       for (String id : aggregateIds) {
         await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
-          Result<ConsoleService.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
-          Result<ConsoleService.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
+          Result<ConsoleViews.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
+          Result<ConsoleViews.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
 
           // Exactly one answers with the event; the other names it as the owner.
           if (fromFirst.isOk()) {
@@ -156,7 +156,7 @@ class ConsoleServiceRoutingIT {
         List<Command> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
         assertThat(commands).hasSize(2);
         Command retry = commands.get(0); // newest first
-        assertThat(retry.getMetadata()).containsEntry(ConsoleService.RETRY_OF, original.getId()).doesNotContainKey(MetadataKeys.REPLY_TO);
+        assertThat(retry.getMetadata()).containsEntry(CommandRetry.RETRY_OF, original.getId()).doesNotContainKey(MetadataKeys.REPLY_TO);
         assertThat(retry.getId()).isNotEqualTo(original.getId());
         assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isEqualTo(original.getMetadata().getCorrelationId());
         assertThat(retry.getMetadata()).containsEntry(MetadataKeys.RESULT, "success");

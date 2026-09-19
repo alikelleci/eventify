@@ -21,7 +21,7 @@ class KafkaClientConfigTest {
   @Test
   @DisplayName("Should give the retry producer the application's security and producer settings")
   void theRetryProducerUsesTheApplicationsSecurityAndProducerSettings() {
-    Map<String, Object> config = ConsoleService.producerConfig(eventify);
+    Map<String, Object> config = CommandRetry.producerConfig(eventify);
 
     assertThat(config)
         .containsEntry("security.protocol", "SASL_SSL")
@@ -36,7 +36,7 @@ class KafkaClientConfigTest {
   @Test
   @DisplayName("Should give the commands consumer the application's security and consumer settings")
   void theCommandsConsumerUsesTheApplicationsSecurityAndConsumerSettings() {
-    Map<String, Object> config = ConsoleService.consumerConfig(eventify);
+    Map<String, Object> config = CommandHistory.consumerConfig(eventify);
 
     assertThat(config)
         .containsEntry("security.protocol", "SASL_SSL")

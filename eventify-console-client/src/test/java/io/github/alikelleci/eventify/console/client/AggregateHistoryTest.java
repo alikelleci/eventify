@@ -159,7 +159,7 @@ class AggregateHistoryTest {
   @Test
   @DisplayName("Should have no state before the first event")
   void beforeTheFirstEventThereIsNoState() {
-    ConsoleService.EventDetail detail = detail(first);
+    ConsoleViews.EventDetail detail = detail(first);
 
     assertThat(detail.previousState()).isNull();
     assertValue(detail.state(), 1, 1);
@@ -188,7 +188,7 @@ class AggregateHistoryTest {
     snapshotAt(second);
     storedEvents.delete(first.getId()); // @EnableSnapshotting(deleteEvents = true)
 
-    ConsoleService.EventDetail detail = detail(second);
+    ConsoleViews.EventDetail detail = detail(second);
 
     // The snapshot is the state after this event; what came before it is gone, so the state before it is unknown.
     assertValue(detail.state(), 2, 2);
@@ -204,7 +204,7 @@ class AggregateHistoryTest {
     snapshotAt(third);
     storedEvents.delete(first.getId());
 
-    ConsoleService.EventDetail detail = detail(second);
+    ConsoleViews.EventDetail detail = detail(second);
 
     // Replayed from the first event there is, it would be the state after one event: 1 instead of 2.
     assertThat(detail.event()).isEqualTo(second);
@@ -287,11 +287,11 @@ class AggregateHistoryTest {
   void theEventsArePagedNewestFirst() {
     store(new Incremented("counter-1@x")); // in the range, not on a page
 
-    ConsoleService.EventsPage page = history.events(events, "counter-1", null, 2);
+    ConsoleViews.EventsPage page = history.events(events, "counter-1", null, 2);
     assertThat(page.events()).containsExactly(third, second);
     assertThat(page.nextCursor()).isEqualTo(first.getId().substring("counter-1@".length()));
 
-    ConsoleService.EventsPage next = history.events(events, "counter-1", page.nextCursor(), 2);
+    ConsoleViews.EventsPage next = history.events(events, "counter-1", page.nextCursor(), 2);
     assertThat(next.events()).containsExactly(first);
     assertThat(next.nextCursor()).isNull();
   }
@@ -312,7 +312,7 @@ class AggregateHistoryTest {
     Event incremented = store(new MutableCounterIncremented("mutable-counter-1"));
     Event incrementedAgain = store(new MutableCounterIncremented("mutable-counter-1"));
 
-    ConsoleService.EventDetail detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getId());
+    ConsoleViews.EventDetail detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getId());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
 
@@ -337,7 +337,7 @@ class AggregateHistoryTest {
   }
 
   private void assertDetail(Event event, int before, int after) {
-    ConsoleService.EventDetail detail = detail(event);
+    ConsoleViews.EventDetail detail = detail(event);
     assertThat(detail.event()).isEqualTo(event);
     assertThat(detail.stateKnown()).isTrue();
     assertThat(detail.previousStateKnown()).isTrue();
@@ -364,7 +364,7 @@ class AggregateHistoryTest {
     }
   }
 
-  private ConsoleService.EventDetail detail(Event event) {
+  private ConsoleViews.EventDetail detail(Event event) {
     return history.eventDetail(events, snapshots, "counter-1", event.getId());
   }
 
