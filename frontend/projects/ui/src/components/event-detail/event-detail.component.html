@@ -2,7 +2,7 @@
   <app-detail-skeleton />
 } @else if (detail(); as d) {
   <div class="pb-5 border-b border-surface-100 dark:border-surface-800">
-    <div class="flex items-center gap-2">
+    <div class="flex items-baseline gap-2">
       <span class="font-mono text-sm tabular-nums text-surface-400">#{{ d.event.sequence }}</span>
       <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ d.event.type }}</span>
       @if (d.event.revision > 1) {
