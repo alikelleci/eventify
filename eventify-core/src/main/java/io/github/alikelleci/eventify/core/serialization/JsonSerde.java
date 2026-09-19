@@ -1,28 +1,24 @@
 package io.github.alikelleci.eventify.core.serialization;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
 import java.util.Map;
 
+/** Reads and writes JSON as the given type. Events: {@link io.github.alikelleci.eventify.core.event.EventSerde}; commands: {@link io.github.alikelleci.eventify.core.command.CommandSerde}. */
 public class JsonSerde<T> implements Serde<T> {
   private final JsonSerializer<T> serializer;
   private final JsonDeserializer<T> deserializer;
 
   public JsonSerde(Class<T> targetType) {
-    this(targetType, EventifyObjectMapper.create(), new Upcasters());
+    this(targetType, EventifyObjectMapper.create());
   }
 
   public JsonSerde(Class<T> targetType, ObjectMapper objectMapper) {
-    this(targetType, objectMapper, new Upcasters());
-  }
-
-  public JsonSerde(Class<T> targetType, ObjectMapper objectMapper, Upcasters upcasters) {
     this.serializer = new JsonSerializer<>(objectMapper);
-    this.deserializer = new JsonDeserializer<>(targetType, objectMapper, upcasters);
+    this.deserializer = new JsonDeserializer<>(targetType, objectMapper);
   }
 
   @Override
@@ -45,10 +41,5 @@ public class JsonSerde<T> implements Serde<T> {
   public void close() {
     this.serializer.close();
     this.deserializer.close();
-  }
-
-  public JsonSerde<T> registerUpcaster(Object listener) {
-    this.deserializer.registerUpcaster(listener);
-    return this;
   }
 }

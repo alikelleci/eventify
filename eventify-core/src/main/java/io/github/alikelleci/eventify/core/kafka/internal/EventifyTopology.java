@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
+import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
@@ -46,9 +48,9 @@ public final class EventifyTopology {
      * -------------------------------------------------------------
      */
 
-    Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
+    Serde<Command> commandSerde = new CommandSerde(objectMapper);
     Serde<CommandResult> resultSerde = new JsonSerde<>(CommandResult.class, objectMapper);
-    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, handlers.upcasters());
+    Serde<Event> eventSerde = new EventSerde(objectMapper, handlers.upcasters());
     Serde<AggregateState> snapshotSerde = new SnapshotSerde(objectMapper);
 
     /*

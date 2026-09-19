@@ -6,11 +6,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.annotation.Revision;
+import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
-import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
 import lombok.Builder;
@@ -159,7 +159,7 @@ class UpcastingChainTest {
   @Test
   @DisplayName("Should refuse two upcasters for the same type and revision in a serde")
   void twoUpcastersForTheSameTypeAndRevisionAreRefusedBySerde() {
-    assertThatThrownBy(() -> new JsonDeserializer<>(Event.class).registerUpcaster(new TwoForRevision1()))
+    assertThatThrownBy(() -> new EventSerde().registerUpcaster(new TwoForRevision1()))
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
   }
@@ -251,8 +251,9 @@ class UpcastingChainTest {
   }
 
   private static Event read(String stored, Object upcasters) {
-    return new JsonDeserializer<>(Event.class, EventifyObjectMapper.create(), new Upcasters())
+    return new EventSerde()
         .registerUpcaster(upcasters)
+        .deserializer()
         .deserialize("events", stored.getBytes());
   }
 }

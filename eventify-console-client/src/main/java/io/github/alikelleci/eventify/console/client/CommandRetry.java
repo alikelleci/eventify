@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
-import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -39,7 +39,7 @@ class CommandRetry {
   CommandRetry(PluginContext eventify) {
     this.eventify = eventify;
     this.objectMapper = eventify.getObjectMapper();
-    this.producer = new KafkaProducer<>(producerConfig(eventify), new StringSerializer(), new JsonSerializer<>(objectMapper));
+    this.producer = new KafkaProducer<>(producerConfig(eventify), new StringSerializer(), new CommandSerde(objectMapper).serializer());
   }
 
   void close() {

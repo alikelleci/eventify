@@ -278,7 +278,7 @@ By default, Spring Kafka retries a failed event 9 times, logs it, and goes on wi
 DefaultErrorHandler errorHandler(Eventify eventify) {
     Map<Class<?>, Serializer<?>> serializers = new LinkedHashMap<>();
     serializers.put(byte[].class, new ByteArraySerializer());                    // records that could not be read
-    serializers.put(Event.class, new JsonSerializer<>(eventify.getObjectMapper())); // Eventify's JsonSerializer
+    serializers.put(Event.class, new EventSerde(eventify.getObjectMapper()).serializer()); // Eventify's EventSerde
 
     KafkaTemplate<String, Object> template = new KafkaTemplate<>(new DefaultKafkaProducerFactory<>(
         Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092"),
@@ -289,7 +289,7 @@ DefaultErrorHandler errorHandler(Eventify eventify) {
 }
 ```
 
-Write the events with Eventify's `JsonSerializer`, as above. The dead-letter topic then has the events as Eventify wrote them, and you can read it with a listener on `containerFactory = "eventifyListenerContainerFactory"`, e.g. to handle them again once the problem is fixed. With another serializer, such as Spring Kafka's `JsonSerializer`, the events are written in another format and can't be read as events.
+Write the events with Eventify's `EventSerde`, as above. The dead-letter topic then has the events as Eventify wrote them, and you can read it with a listener on `containerFactory = "eventifyListenerContainerFactory"`, e.g. to handle them again once the problem is fixed. With another serializer, such as Spring Kafka's `JsonSerializer`, the events are written in another format and can't be read as events.
 
 A record that could not be read at all, e.g. one that is not JSON, has no event: `ByteArraySerializer` writes its bytes as they were.
 

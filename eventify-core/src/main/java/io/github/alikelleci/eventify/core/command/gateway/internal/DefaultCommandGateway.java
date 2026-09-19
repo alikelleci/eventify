@@ -7,9 +7,9 @@ import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.Scheduler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
+import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
-import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -60,7 +60,7 @@ public class DefaultCommandGateway implements CommandGateway {
 
     this.producer = new KafkaProducer<>(producerConfig,
         new StringSerializer(),
-        new JsonSerializer<>(objectMapper));
+        new CommandSerde(objectMapper).serializer());
 
     this.replies = new ReplyConsumer(consumerConfig, replyTopic, objectMapper, this::onReplies);
     replies.start();

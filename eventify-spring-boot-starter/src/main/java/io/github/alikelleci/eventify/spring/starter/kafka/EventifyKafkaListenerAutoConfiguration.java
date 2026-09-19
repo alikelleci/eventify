@@ -3,9 +3,9 @@ package io.github.alikelleci.eventify.spring.starter.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.kafka.KafkaClientConfigs;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
-import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -69,7 +69,7 @@ public class EventifyKafkaListenerAutoConfiguration {
       EventifyUpcasters upcasters) {
     ObjectMapper objectMapper = objectMapper(apps);
     return containerFactory(consumerConfig(apps, consumerFactories), errorHandlers,
-        new JsonDeserializer<>(Event.class, objectMapper, upcasters(apps, upcasters)));
+        new EventSerde(objectMapper, upcasters(apps, upcasters)).deserializer());
   }
 
   /**

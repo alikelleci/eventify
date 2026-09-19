@@ -26,7 +26,7 @@ class OrderTest {
 
         commands = driver.createInputTopic(
             "commands.order",
-            new StringSerializer(), new JsonSerializer<>());
+            new StringSerializer(), new CommandSerde().serializer());
 
         results = driver.createOutputTopic(
             "commands.order.results",
@@ -34,7 +34,7 @@ class OrderTest {
 
         events = driver.createOutputTopic(
             "events.order",
-            new StringDeserializer(), new JsonDeserializer<>(Event.class));
+            new StringDeserializer(), new EventSerde().deserializer());
     }
 
     @AfterEach
