@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.store.internal;
+package io.github.alikelleci.eventify.core.aggregate.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import io.github.alikelleci.eventify.core.store.internal.SnapshotStore;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

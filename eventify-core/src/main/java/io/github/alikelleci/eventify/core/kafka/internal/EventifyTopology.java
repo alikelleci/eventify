@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.kafka.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotSerde;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
@@ -12,7 +13,6 @@ import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
 import io.github.alikelleci.eventify.core.serialization.JsonSerde;
-import io.github.alikelleci.eventify.core.store.internal.SnapshotSerde;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.Serde;

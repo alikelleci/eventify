@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.store.internal;
+package io.github.alikelleci.eventify.core.aggregate.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
