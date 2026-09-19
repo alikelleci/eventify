@@ -25,19 +25,19 @@ class SnapshotPolicyTest {
 
   @Test
   @DisplayName("Should be due when the version passed a multiple of the threshold, also when a command steps over it")
-  void isDueWhenAMultipleIsPassed() {
+  void aSnapshotIsDueWhenAMultipleIsPassed() {
     SnapshotPolicy policy = new SnapshotPolicy(10, false);
 
-    assertThat(policy.isDue(0, 9)).isFalse();
-    assertThat(policy.isDue(0, 10)).isTrue();
-    assertThat(policy.isDue(8, 12)).isTrue();   // several events: stepped over 10
-    assertThat(policy.isDue(10, 19)).isFalse(); // snapshotted at 10 already
-    assertThat(policy.isDue(10, 20)).isTrue();
+    assertThat(policy.isSnapshotDue(0, 9)).isFalse();
+    assertThat(policy.isSnapshotDue(0, 10)).isTrue();
+    assertThat(policy.isSnapshotDue(8, 12)).isTrue();   // several events: stepped over 10
+    assertThat(policy.isSnapshotDue(10, 19)).isFalse(); // snapshotted at 10 already
+    assertThat(policy.isSnapshotDue(10, 20)).isTrue();
   }
 
   @Test
   @DisplayName("Should never be due without a threshold")
   void neverDueWithoutAThreshold() {
-    assertThat(new SnapshotPolicy(0, false).isDue(0, 1_000)).isFalse();
+    assertThat(new SnapshotPolicy(0, false).isSnapshotDue(0, 1_000)).isFalse();
   }
 }

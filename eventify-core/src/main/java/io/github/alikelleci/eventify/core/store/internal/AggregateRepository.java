@@ -56,7 +56,7 @@ public class AggregateRepository {
 
     if (state != null) {
       SnapshotPolicy policy = SnapshotPolicy.of(state.getPayload().getClass());
-      if (policy.isDue(snapshot != null ? snapshot.getVersion() : 0, state.getVersion())) {
+      if (policy.isSnapshotDue(snapshot != null ? snapshot.getVersion() : 0, state.getVersion())) {
         log.debug("Creating snapshot: {} ({}) at version {}", state.getType(), state.getAggregateId(), state.getVersion());
         snapshotStore.save(state);
         if (policy.deleteEvents()) {

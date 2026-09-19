@@ -18,10 +18,13 @@ public record SnapshotPolicy(int threshold, boolean deleteEvents) {
   }
 
   /**
-   * Whether a snapshot is due at {@code version}: when the version passed a multiple of the threshold since the last
-   * snapshot. Not only when it is exactly one: a command with several events can step over it.
+   * Whether the aggregate is to be snapshotted now: when it passed a multiple of the threshold since its last snapshot.
+   * Not only when it is exactly one: a command with several events can step over it.
+   *
+   * @param lastSnapshotVersion the version of its last snapshot; 0 when it has none
+   * @param currentVersion      the version it is at now: the sequence of its last event
    */
-  public boolean isDue(long lastSnapshotVersion, long version) {
-    return threshold > 0 && version / threshold > lastSnapshotVersion / threshold;
+  public boolean isSnapshotDue(long lastSnapshotVersion, long currentVersion) {
+    return threshold > 0 && currentVersion / threshold > lastSnapshotVersion / threshold;
   }
 }
