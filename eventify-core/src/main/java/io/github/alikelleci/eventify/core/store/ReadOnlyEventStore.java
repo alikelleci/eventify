@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.store;
 
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.internal.EventStore;
+import io.github.alikelleci.eventify.core.store.internal.EventStoreReader;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 import java.util.Iterator;
@@ -15,7 +15,7 @@ public interface ReadOnlyEventStore {
 
   /** Reads the events of a key-value store that holds them by {@link StoreKeys}, e.g. a state store of Kafka Streams. */
   static ReadOnlyEventStore of(ReadOnlyKeyValueStore<String, Event> store) {
-    return EventStore.readOnly(store);
+    return new EventStoreReader(store);
   }
 
   /** The aggregate's event with this sequence; {@code null} when there is none. */
