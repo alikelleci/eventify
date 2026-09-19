@@ -42,7 +42,8 @@ class ConsoleRequestHandler {
       return switch (route) {
         case EVENTS -> {
           Requests.Events request = read(data, Requests.Events.class);
-          yield toReply(service.getEvents(requireAggregateId(request.aggregateId()), request.cursor(), clampLimit(request.limit(), DEFAULT_PAGE_SIZE)));
+          String aggregateId = requireAggregateId(request.aggregateId());
+          yield toReply(service.getEvents(aggregateId, requireCursorOf(aggregateId, request.cursor()), clampLimit(request.limit(), DEFAULT_PAGE_SIZE)));
         }
         case EVENT_DETAIL -> {
           Requests.EventDetail request = read(data, Requests.EventDetail.class);
@@ -100,6 +101,14 @@ class ConsoleRequestHandler {
       throw new BadRequestException(name + " " + messageId + " is not of aggregate " + aggregateId);
     }
     return messageId;
+  }
+
+  /** A page's cursor: the ULID of an event of this aggregate, or {@code null} for the first page. */
+  private static String requireCursorOf(String aggregateId, String cursor) {
+    if (cursor != null && !MessageIds.isKeyOf(aggregateId, MessageIds.firstKey(aggregateId) + cursor)) {
+      throw new BadRequestException("cursor " + cursor + " is not a cursor of aggregate " + aggregateId);
+    }
+    return cursor;
   }
 
   private static String require(String name, String value) {
