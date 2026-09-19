@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.account;
+package io.github.alikelleci.eventify.core.testdomain.account;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;

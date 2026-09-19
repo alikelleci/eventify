@@ -1,7 +1,7 @@
-package io.github.alikelleci.eventify.core.order;
+package io.github.alikelleci.eventify.core.testdomain.order;
 
-import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import lombok.Builder;
 import lombok.Value;

@@ -1,15 +1,15 @@
-package io.github.alikelleci.eventify.core.order;
+package io.github.alikelleci.eventify.core.testdomain.order;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.MessageId;
 import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
 import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderCancelled;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderConfirmed;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderDelivered;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderPlaced;
-import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
+import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderCancelled;
+import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderConfirmed;
+import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderDelivered;
+import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderPlaced;
+import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderShipped;
 
 import java.time.Instant;
 

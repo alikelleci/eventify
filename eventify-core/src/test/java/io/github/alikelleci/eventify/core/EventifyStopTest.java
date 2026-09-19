@@ -1,8 +1,8 @@
 package io.github.alikelleci.eventify.core;
 
-import io.github.alikelleci.eventify.core.order.OrderCommandHandler;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.AccountHandler;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -34,7 +34,7 @@ class EventifyStopTest {
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
-        .registerHandler(new OrderCommandHandler())
+        .registerHandler(new AccountHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
           public void onStop(PluginContext context) {
@@ -63,7 +63,7 @@ class EventifyStopTest {
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
-        .registerHandler(new OrderCommandHandler())
+        .registerHandler(new AccountHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
           public void onStop(PluginContext context) {
@@ -96,7 +96,7 @@ class EventifyStopTest {
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
-        .registerHandler(new OrderCommandHandler())
+        .registerHandler(new AccountHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
           public void onStop(PluginContext context) {

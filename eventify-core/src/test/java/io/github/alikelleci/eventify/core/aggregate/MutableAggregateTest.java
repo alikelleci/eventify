@@ -1,12 +1,12 @@
-package io.github.alikelleci.eventify.core;
+package io.github.alikelleci.eventify.core.aggregate;
 
+import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -34,9 +34,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Immutability is recommended, not required: an aggregate and its events written in a mutable style still give the
- * events the handler returned, and every accepted command gets its result.
+ * events the handler returned. Command results: see CommandResultTest.
  */
-@DisplayName("Mutable aggregates and command results")
+@DisplayName("Mutable aggregates")
 class MutableAggregateTest {
 
   @Data
@@ -74,15 +74,6 @@ class MutableAggregateTest {
     String id;
   }
 
-  /** Accepted, without anything to change. */
-  @Data
-  @NoArgsConstructor
-  @AllArgsConstructor
-  public static class Touch implements CartCommand {
-    @AggregateId
-    String id;
-  }
-
   @Data
   @NoArgsConstructor
   @AllArgsConstructor
@@ -111,11 +102,6 @@ class MutableAggregateTest {
     @HandleCommand
     public Object handle(CheckOut command, Cart state) {
       return new CheckedOut(command.getId(), state.getItems());
-    }
-
-    @HandleCommand
-    public Object handle(Touch command, Cart state) {
-      return null;
     }
 
     @ApplyEvent
@@ -166,33 +152,6 @@ class MutableAggregateTest {
 
     Event sent = events.readValuesToList().get(2);
     assertThat(((CheckedOut) sent.getPayload()).getItems()).containsExactly("apple", "pear");
-  }
-
-  @Test
-  @DisplayName("Should answer a command without events as a success")
-  void aCommandWithoutEventsSucceeds() {
-    send(new AddItem("cart", "apple"));
-    events.readValuesToList();
-    results.readValuesToList();
-
-    send(new Touch("cart"));
-
-    CommandResult result = results.readValue();
-    assertThat(result.command().getType()).isEqualTo("Touch");
-    assertThat(result).isInstanceOfSatisfying(CommandResult.Success.class, success -> assertThat(success.events()).isEmpty());
-    assertThat(events.isEmpty()).isTrue();
-  }
-
-  /** The correlation id is shared with the other commands of a flow; the causation id tells which command it was. */
-  @Test
-  @DisplayName("Should name the command that produced an event, and keep its correlation id")
-  void anEventNamesItsCommand() {
-    Command command = Command.builder().payload(new AddItem("cart", "apple")).metadata(MetadataKeys.CORRELATION_ID, "saga").build();
-    commands.pipeInput(command.getAggregateId(), command);
-
-    Event event = events.readValue();
-    assertThat(event.getMetadata().getCausationId()).isEqualTo(command.getId());
-    assertThat(event.getMetadata().getCorrelationId()).isEqualTo("saga");
   }
 
   private void send(Object payload) {

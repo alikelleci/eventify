@@ -1,15 +1,15 @@
-package io.github.alikelleci.eventify.core;
+package io.github.alikelleci.eventify.core.aggregate;
 
-import io.github.alikelleci.eventify.core.account.Account;
-import io.github.alikelleci.eventify.core.account.AccountMessages.AccountHandler;
-import io.github.alikelleci.eventify.core.account.AccountMessages.Deposit;
-import io.github.alikelleci.eventify.core.account.AccountMessages.DepositEach;
-import io.github.alikelleci.eventify.core.account.AccountMessages.Deposited;
-import io.github.alikelleci.eventify.core.account.AccountMessages.OpenAccount;
-import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.testdomain.account.Account;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.AccountHandler;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.Deposit;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.DepositEach;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.Deposited;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.OpenAccount;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;

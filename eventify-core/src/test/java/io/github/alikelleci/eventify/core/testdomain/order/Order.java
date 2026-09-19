@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.account;
+package io.github.alikelleci.eventify.core.testdomain.order;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
@@ -6,13 +6,20 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import lombok.Builder;
 import lombok.Value;
 
-/** An aggregate that deletes its events at every second event, when a snapshot is taken. */
+import java.time.Instant;
+
 @Value
 @Builder(toBuilder = true)
 @AggregateRoot
-@EnableSnapshotting(threshold = 2, deleteEvents = true)
-public class Account {
+@EnableSnapshotting(threshold = 3)
+public class Order {
   @AggregateId
   String id;
-  int balance;
+  String customer;
+  String shippingAddress;
+  String couponCode;
+  String status;
+  String trackingNumber;
+  Instant placedAt;
 }
+

@@ -1,9 +1,8 @@
-package io.github.alikelleci.eventify.core;
+package io.github.alikelleci.eventify.core.command;
 
+import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
-import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;

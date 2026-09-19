@@ -1,9 +1,6 @@
-package io.github.alikelleci.eventify.core;
+package io.github.alikelleci.eventify.core.store;
 
-import io.github.alikelleci.eventify.core.account.Account;
-import io.github.alikelleci.eventify.core.account.AccountMessages.AccountHandler;
-import io.github.alikelleci.eventify.core.account.AccountMessages.Deposit;
-import io.github.alikelleci.eventify.core.account.AccountMessages.OpenAccount;
+import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
@@ -11,6 +8,10 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.support.Matchers;
+import io.github.alikelleci.eventify.core.testdomain.account.Account;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.AccountHandler;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.Deposit;
+import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.OpenAccount;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -26,7 +27,6 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Properties;
 
-import static io.github.alikelleci.eventify.core.EventifyTest.buildPlaceOrderCommandFor;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -47,14 +47,14 @@ class AggregateIdWithAtTest {
   @Test
   @DisplayName("Should not load the events of an aggregate whose id starts with its id and '@'")
   void anAggregateDoesNotLoadTheEventsOfAnAggregateWhoseIdStartsWithItsIdAndAt() {
-    driver = new TopologyTestDriver(EventifyTest.baseBuilder().build().topology());
-    TestInputTopic<String, Command> commands = EventifyTest.commandsTopic(driver);
-    TestOutputTopic<String, CommandResult> results = EventifyTest.commandResultsTopic(driver);
+    driver = new TopologyTestDriver(accounts());
+    TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
+    TestOutputTopic<String, CommandResult> results = driver.createOutputTopic("commands.account.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
 
-    send(commands, buildPlaceOrderCommandFor("ada@example.com"));
-    send(commands, buildPlaceOrderCommandFor("ada"));
+    send(commands, Command.builder().payload(OpenAccount.builder().id("ada@example.com").build()).build());
+    send(commands, Command.builder().payload(OpenAccount.builder().id("ada").build()).build());
 
-    // Placing "ada" fails with "Order already exists." when it loads the order of "ada@example.com".
+    // Opening "ada" fails with "Account already exists." when it loads the account of "ada@example.com".
     assertThat(results.readValuesToList())
         .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .containsExactly("ada@example.com success null", "ada success null");
