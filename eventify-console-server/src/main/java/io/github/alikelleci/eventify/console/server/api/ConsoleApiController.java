@@ -84,6 +84,7 @@ public class ConsoleApiController {
           : ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(reply.body());
       case NOT_FOUND -> text(HttpStatus.NOT_FOUND, "Not Found");
       case BAD_REQUEST -> text(HttpStatus.BAD_REQUEST, reply.header().reason());
+      case UNREADABLE -> text(HttpStatus.UNPROCESSABLE_CONTENT, reply.header().reason());
       // NOT_OWNER never reaches here: the gateway follows it, or turns it into UNAVAILABLE.
       case UNAVAILABLE, NOT_OWNER -> text(HttpStatus.SERVICE_UNAVAILABLE, reply.header().reason());
     };

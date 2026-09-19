@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.aggregate;
 
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -110,8 +111,8 @@ class AggregateReplayerTest {
     storedEvents.put(StoreKeys.of("order-1", 3), shipped("order-1").withSequence(3)); // 2 is missing
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("sequence 3, expected 2");
+        .isInstanceOf(EventReplayException.class)
+        .hasMessageContaining("expected #2, found #3");
   }
 
   /** E.g. an event written to the store by hand, without a sequence. */
@@ -122,8 +123,8 @@ class AggregateReplayerTest {
     storedEvents.put(StoreKeys.of("order-1", 2), confirmed("order-1")); // sequence 0
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("sequence 0, expected 2");
+        .isInstanceOf(EventReplayException.class)
+        .hasMessageContaining("expected #2, found #0");
   }
 
   /** E.g. an event copied to another key: its sequence no longer matches its place. */
@@ -134,8 +135,8 @@ class AggregateReplayerTest {
     storedEvents.put(StoreKeys.of("order-1", 2), placed);
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("sequence 1, expected 2");
+        .isInstanceOf(EventReplayException.class)
+        .hasMessageContaining("expected #2, found #1");
   }
 
   @Test
@@ -211,7 +212,7 @@ class AggregateReplayerTest {
     storedEvents.put(StoreKeys.of("order-1", 2), new JsonDeserializer<>(Event.class).deserialize("events", json.getBytes(StandardCharsets.UTF_8)));
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(EventReplayException.class)
         .hasMessageContaining(id)
         .hasMessageContaining("OrderArchived")
         .hasMessageContaining("upcaster");

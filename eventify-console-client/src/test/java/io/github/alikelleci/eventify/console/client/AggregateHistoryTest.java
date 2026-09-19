@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
@@ -252,6 +253,23 @@ class AggregateHistoryTest {
     assertThat(detail.previousState()).isNull();
     assertThat(detail.previousStateKnown()).isFalse();
     assertThat(history.stateAt(events, snapshots, "counter-1", second.getSequence())).isNull();
+  }
+
+  /** A gap after the second event: what comes before it can be shown, what comes after it can't be replayed. */
+  @Test
+  @DisplayName("Should show the states before a gap, and refuse the ones after it with the reason")
+  void aGapRefusesTheStatesAfterIt() {
+    Event fifth = Event.builder().payload(new Incremented("counter-1")).build().withSequence(5);
+    storedEvents.put(key(fifth), fifth);                       // 4 is missing
+    storedEvents.delete(key(third));                           // and so is 3
+
+    assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(fifth, second, first);
+    assertDetail(second, 1, 2);
+    assertThatThrownBy(() -> detail(fifth))
+        .isInstanceOf(EventReplayException.class)
+        .hasMessageContaining("expected #3, found #5");
+    assertThatThrownBy(() -> history.stateAt(events, snapshots, "counter-1", null))
+        .isInstanceOf(EventReplayException.class);
   }
 
   /** A handler that fails with every event still there is an error, not a state unknown because of deleted events. */
