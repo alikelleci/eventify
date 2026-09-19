@@ -15,8 +15,11 @@
                        (click)="select.emit(event)">
       <div class="flex flex-col flex-1 min-w-0">
         <div class="flex items-center gap-2 h-[22px]">
-          <span class="text-xs font-mono tabular-nums text-surface-400 shrink-0">#{{ event.sequence }}</span>
-          <span class="font-medium text-sm truncate">{{ event.type }}</span>
+          <!-- The number and the type on one baseline; the row centres them with the tag -->
+          <span class="flex items-baseline gap-2 min-w-0">
+            <span class="text-xs font-mono tabular-nums text-surface-400 shrink-0">#{{ event.sequence }}</span>
+            <span class="font-medium text-sm truncate">{{ event.type }}</span>
+          </span>
           @if (event.revision > 1) { <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" /> }
         </div>
         <span class="text-xs text-surface-400 mt-0.5">{{ event.timestamp | date:'MMM d, y · HH:mm:ss' }}</span>

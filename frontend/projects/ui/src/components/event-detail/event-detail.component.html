@@ -6,7 +6,7 @@
       <span class="font-mono text-sm tabular-nums text-surface-400">#{{ d.event.sequence }}</span>
       <span class="font-semibold text-base text-surface-900 dark:text-surface-100">{{ d.event.type }}</span>
       @if (d.event.revision > 1) {
-        <p-tag [value]="'rev ' + d.event.revision" severity="secondary" styleClass="shrink-0" />
+        <p-tag class="self-center" [value]="'rev ' + d.event.revision" severity="secondary" styleClass="shrink-0" />
       }
     </div>
     <div class="text-xs text-surface-400 mt-0.5">{{ d.event.timestamp | date:'MMM d, y · HH:mm:ss.SSS' }}</div>
