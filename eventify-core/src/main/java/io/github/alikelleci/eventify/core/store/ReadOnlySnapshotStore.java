@@ -20,7 +20,7 @@ public interface ReadOnlySnapshotStore {
 
   /**
    * The snapshot of the aggregate as it is stored, also when it is outdated; {@code null} when it has none. An outdated
-   * one can't be the start of a replay, but still tells which event it was made at and after how many events. Its
+   * one can't be the start of a replay, but still tells its version: the sequence of the event it was made at. Its
    * payload is {@code null} when its aggregate can't be read.
    */
   AggregateState find(String aggregateId);

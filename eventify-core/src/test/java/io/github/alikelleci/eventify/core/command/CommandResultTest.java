@@ -10,12 +10,14 @@ import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
+import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -147,6 +149,24 @@ class CommandResultTest {
     assertThat(events.readValuesToList())
         .extracting(event -> event.getAggregateId() + " " + event.getSequence())
         .containsExactly("cart-1 1", "cart-2 1", "cart-1 2");
+  }
+
+  /** E.g. a store edited by hand: the other aggregates go on, this one is refused with the reason until it is fixed. */
+  @Test
+  @DisplayName("Should reject the commands of an aggregate whose stored events have a gap, and say why")
+  void anAggregateWithAGapIsRejected() {
+    KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
+    eventStore.put(StoreKeys.of("cart-1", 1), Event.builder().payload(new ItemAdded("cart-1", "apple")).build().withSequence(1));
+    eventStore.put(StoreKeys.of("cart-1", 3), Event.builder().payload(new ItemAdded("cart-1", "pear")).build().withSequence(3));
+
+    send(Command.builder().payload(new AddItem("cart-1", "bread")).build());
+    send(Command.builder().payload(new AddItem("cart-2", "bread")).build());
+
+    List<CommandResult> results = this.results.readValuesToList();
+    assertThat(results.get(0)).isInstanceOfSatisfying(CommandResult.Failure.class,
+        failure -> assertThat(failure.cause()).contains("sequence 3, expected 2"));
+    assertThat(results.get(1)).isInstanceOf(CommandResult.Success.class);
+    assertThat(events.readValuesToList()).extracting(Event::getAggregateId).containsExactly("cart-2");
   }
 
   /** The correlation id is shared with the other commands of a flow; the causation id tells which command it was. */

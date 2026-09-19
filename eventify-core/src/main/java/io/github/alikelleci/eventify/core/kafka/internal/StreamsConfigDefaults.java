@@ -21,7 +21,7 @@ public final class StreamsConfigDefaults {
     streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
     // Always exactly-once: a command's events, its result and the event store are written in one transaction. With
-    // at-least-once, a command handled again after a crash would add its events a second time, under other ids.
+    // at-least-once, a command handled again after a crash would add its events a second time, under the next sequences.
     Object guarantee = streamsConfig.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
     if (guarantee != null && !StreamsConfig.EXACTLY_ONCE_V2.equals(guarantee)) {
       log.warn("'{}' is set by Eventify to '{}'; the configured value '{}' is not used.", StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2, guarantee);
