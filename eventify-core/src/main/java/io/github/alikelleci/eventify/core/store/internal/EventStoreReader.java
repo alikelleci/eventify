@@ -49,22 +49,27 @@ public class EventStoreReader implements ReadOnlyEventStore {
   }
 
   @Override
-  public Events events(String aggregateId, long afterSequence, long untilSequence) {
-    if (afterSequence < 0 || untilSequence < 0) {
-      throw new IllegalArgumentException("Cannot read the events of aggregate '" + aggregateId + "' after sequence " + afterSequence + " up to sequence " + untilSequence + ": a sequence is never negative.");
+  public Events events(String aggregateId, long from, long to) {
+    requireSequences(aggregateId, from, to);
+    if (to < from) {
+      return new OfAggregate(aggregateId, null); // an empty range: its start would come after its end
     }
-    if (untilSequence <= afterSequence) {
-      return new OfAggregate(aggregateId, null); // nothing after it up to there; and not a range: its start would come after its end
-    }
-    return new OfAggregate(aggregateId, store.range(StoreKeys.of(aggregateId, afterSequence + 1), StoreKeys.of(aggregateId, untilSequence)));
+    return new OfAggregate(aggregateId, store.range(StoreKeys.of(aggregateId, from), StoreKeys.of(aggregateId, to)));
   }
 
   @Override
-  public Events eventsNewestFirst(String aggregateId, long untilSequence) {
-    if (untilSequence < 1) {
-      throw new IllegalArgumentException("Cannot read the events of aggregate '" + aggregateId + "' from sequence " + untilSequence + ": a sequence starts at 1.");
+  public Events eventsNewestFirst(String aggregateId, long from, long to) {
+    requireSequences(aggregateId, to, from);
+    if (from < to) {
+      return new OfAggregate(aggregateId, null);
     }
-    return new OfAggregate(aggregateId, store.reverseRange(StoreKeys.first(aggregateId), StoreKeys.of(aggregateId, untilSequence)));
+    return new OfAggregate(aggregateId, store.reverseRange(StoreKeys.of(aggregateId, to), StoreKeys.of(aggregateId, from)));
+  }
+
+  private static void requireSequences(String aggregateId, long from, long to) {
+    if (from < 1 || to < 1) {
+      throw new IllegalArgumentException("Cannot read the events of aggregate '" + aggregateId + "' from sequence " + from + " to sequence " + to + ": a sequence starts at 1.");
+    }
   }
 
   /** The events of one aggregate in a key range: the other aggregates' events in it are skipped. */

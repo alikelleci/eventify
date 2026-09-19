@@ -256,7 +256,7 @@ class AggregateReplayerTest {
 
   private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, Long untilSequence,
                                             AggregateReplayer.Listener listener) {
-    try (ReadOnlyEventStore.Events toApply = eventStore.events(aggregateId, start != null ? start.getVersion() : 0,
+    try (ReadOnlyEventStore.Events toApply = eventStore.events(aggregateId, start != null ? start.getVersion() + 1 : 1,
         untilSequence != null ? untilSequence : Long.MAX_VALUE)) {
       return replay.replay(toApply, start, listener);
     }

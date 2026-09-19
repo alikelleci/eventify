@@ -43,7 +43,7 @@ public class AggregateRepository {
 
     log.debug("Loading aggregate state by replaying events...");
     AggregateReplayer.Result replay;
-    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId, snapshot != null ? snapshot.getVersion() : 0)) {
+    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId, snapshot != null ? snapshot.getVersion() + 1 : 1, Long.MAX_VALUE)) {
       replay = replayer.replay(events, snapshot);
     }
     AggregateState state = replay.state();

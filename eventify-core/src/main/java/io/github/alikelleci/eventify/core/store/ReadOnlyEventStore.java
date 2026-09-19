@@ -26,39 +26,33 @@ public interface ReadOnlyEventStore {
 
   /** All events of the aggregate, oldest first. */
   default Events events(String aggregateId) {
-    return events(aggregateId, 0, Long.MAX_VALUE);
+    return events(aggregateId, 1, Long.MAX_VALUE);
   }
 
   /**
-   * The events of the aggregate after a sequence, oldest first.
+   * The events of the aggregate from one sequence to another, oldest first. Both are included: to read on after a
+   * snapshot at version 40, start at 41.
    *
-   * @param afterSequence the sequence to start after, e.g. a snapshot's version; 0 to start at the first event
+   * @param from where to start, e.g. 1 for the first event
+   * @param to   where to stop, e.g. {@link Long#MAX_VALUE} for the last event; nothing is read when it is below
+   *             {@code from}
+   * @throws IllegalArgumentException when a sequence is below 1
    */
-  default Events events(String aggregateId, long afterSequence) {
-    return events(aggregateId, afterSequence, Long.MAX_VALUE);
-  }
-
-  /**
-   * The events of the aggregate between two sequences, oldest first.
-   *
-   * @param afterSequence the sequence to start after; 0 to start at the first event
-   * @param untilSequence the last sequence, included; {@link Long#MAX_VALUE} to go on to the last event
-   * @throws IllegalArgumentException when a sequence is negative
-   */
-  Events events(String aggregateId, long afterSequence, long untilSequence);
+  Events events(String aggregateId, long from, long to);
 
   /** All events of the aggregate, newest first. */
   default Events eventsNewestFirst(String aggregateId) {
-    return eventsNewestFirst(aggregateId, Long.MAX_VALUE);
+    return eventsNewestFirst(aggregateId, Long.MAX_VALUE, 1);
   }
 
   /**
-   * The events of the aggregate, newest first.
+   * The events of the aggregate from one sequence back to another, newest first. Both are included.
    *
-   * @param untilSequence the first sequence returned, included; {@link Long#MAX_VALUE} to start at the newest event
-   * @throws IllegalArgumentException when the sequence is not positive
+   * @param from where to start, e.g. {@link Long#MAX_VALUE} for the last event
+   * @param to   where to stop, e.g. 1 for the first event; nothing is read when it is above {@code from}
+   * @throws IllegalArgumentException when a sequence is below 1
    */
-  Events eventsNewestFirst(String aggregateId, long untilSequence);
+  Events eventsNewestFirst(String aggregateId, long from, long to);
 
   /** Events read from the store. Close it once read, to release the store's iterator. */
   interface Events extends Iterator<Event>, AutoCloseable {

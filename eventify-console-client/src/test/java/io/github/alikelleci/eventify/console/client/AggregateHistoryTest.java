@@ -484,7 +484,7 @@ class AggregateHistoryTest {
 
   private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, long untilSequence,
                                             AggregateReplayer.Listener listener) {
-    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() : 0, untilSequence)) {
+    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
       return replay.replay(toApply, start, listener);
     }
   }

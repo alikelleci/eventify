@@ -45,7 +45,7 @@ class AggregateHistory {
   ConsoleViews.EventsPage events(ReadOnlyEventStore events, String aggregateId, Long cursor, int limit) {
     // One more than the page, to know whether there is a next page and where it starts.
     List<Event> page = new ArrayList<>();
-    try (ReadOnlyEventStore.Events newestFirst = events.eventsNewestFirst(aggregateId, cursor != null ? cursor : Long.MAX_VALUE)) {
+    try (ReadOnlyEventStore.Events newestFirst = events.eventsNewestFirst(aggregateId, cursor != null ? cursor : Long.MAX_VALUE, 1)) {
       while (newestFirst.hasNext() && page.size() <= limit) {
         page.add(newestFirst.next());
       }
@@ -153,7 +153,7 @@ class AggregateHistory {
   /** The aggregate's events after {@code start}, up to and including {@code untilSequence}, applied to {@code start}. */
   private AggregateReplayer.Result replay(ReadOnlyEventStore events, String aggregateId, AggregateState start,
                                           long untilSequence, AggregateReplayer.Listener listener) {
-    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() : 0, untilSequence)) {
+    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
       return replay.replay(toApply, start, listener);
     }
   }
