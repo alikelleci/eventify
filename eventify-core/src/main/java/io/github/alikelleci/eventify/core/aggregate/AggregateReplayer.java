@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.aggregate;
 
+import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.event.Event;
 import lombok.extern.slf4j.Slf4j;
@@ -72,12 +73,12 @@ public class AggregateReplayer {
       if (event.getPayload() == null) {
         // Read without its class, which was renamed or removed. Not skipped: the state would silently miss the event.
         // Fails the replay instead, so every command of this aggregate fails with this reason until an upcaster fixes it.
-        throw new IllegalStateException("Stored event " + event.getId() + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it to its current class.");
+        throw new EventReplayException("Stored event " + event.getId() + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it to its current class.");
       }
       // A gap, or an event twice: the stored events are not the ones that were handled, and the state would be wrong
       // without a word. Fails the replay instead.
       if (event.getSequence() != version + 1) {
-        throw new IllegalStateException("Stored event " + event.getId() + " (" + event.getType() + ") of aggregate " + event.getAggregateId() + " has sequence " + event.getSequence() + ", expected " + (version + 1) + ": the aggregate's events are incomplete or out of order.");
+        throw new EventReplayException("The stored events of aggregate " + event.getAggregateId() + " are incomplete or out of order: expected #" + (version + 1) + ", found #" + event.getSequence() + " (" + event.getType() + ", event " + event.getId() + ").");
       }
       if (listener != null) {
         listener.beforeEvent(event, state, version);

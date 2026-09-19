@@ -71,6 +71,10 @@ final class ConsoleViews {
       return new Result<>(ReplyHeader.badRequest(reason), null);
     }
 
+    static <T> Result<T> unreadable(String reason) {
+      return new Result<>(ReplyHeader.unreadable(reason), null);
+    }
+
     boolean isOk() {
       return header.status() == ReplyHeader.Status.OK;
     }

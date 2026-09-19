@@ -164,7 +164,7 @@ class CommandResultTest {
 
     List<CommandResult> results = this.results.readValuesToList();
     assertThat(results.get(0)).isInstanceOfSatisfying(CommandResult.Failure.class,
-        failure -> assertThat(failure.cause()).contains("sequence 3, expected 2"));
+        failure -> assertThat(failure.cause()).contains("expected #2, found #3"));
     assertThat(results.get(1)).isInstanceOf(CommandResult.Success.class);
     assertThat(events.readValuesToList()).extracting(Event::getAggregateId).containsExactly("cart-2");
   }

@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.console.client.ConsoleViews.EventsPage;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.console.protocol.NodeStatus;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
@@ -113,6 +114,10 @@ class ConsoleService {
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
+    } catch (EventReplayException e) {
+      // The stored events can't be replayed: the application refuses the aggregate's commands for the same reason.
+      log.warn("Cannot replay aggregate {}: {}", aggregateId, e.getMessage());
+      return Result.unreadable(e.getMessage());
     } catch (Exception e) {
       log.error("Unexpected error querying event detail for aggregate {}", aggregateId, e);
       return Result.unavailable("Unexpected error");
@@ -135,6 +140,10 @@ class ConsoleService {
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
+    } catch (EventReplayException e) {
+      // The stored events can't be replayed: the application refuses the aggregate's commands for the same reason.
+      log.warn("Cannot replay aggregate {}: {}", aggregateId, e.getMessage());
+      return Result.unreadable(e.getMessage());
     } catch (Exception e) {
       log.error("Unexpected error querying state for aggregate {}", aggregateId, e);
       return Result.unavailable("Unexpected error");

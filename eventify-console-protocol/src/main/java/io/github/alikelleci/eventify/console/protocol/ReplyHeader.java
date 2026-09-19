@@ -5,7 +5,8 @@ package io.github.alikelleci.eventify.console.protocol;
  *
  * @param status the outcome
  * @param owner  for {@link Status#NOT_OWNER}: the {@link NodeInfo#nodeId()} of the instance that owns the aggregate
- * @param reason for {@link Status#UNAVAILABLE} and {@link Status#BAD_REQUEST}: why, readable for people
+ * @param reason for {@link Status#UNAVAILABLE}, {@link Status#BAD_REQUEST} and {@link Status#UNREADABLE}: why, readable
+ *               for people
  */
 public record ReplyHeader(Status status, String owner, String reason) {
 
@@ -16,7 +17,9 @@ public record ReplyHeader(Status status, String owner, String reason) {
     NOT_OWNER,
     /** Can't answer right now, e.g. Kafka Streams is starting or rebalancing. Worth trying again. */
     UNAVAILABLE,
-    BAD_REQUEST
+    BAD_REQUEST,
+    /** The stored data can't be answered from, e.g. an aggregate's events are incomplete. Trying again won't help. */
+    UNREADABLE
   }
 
   public static ReplyHeader ok() {
@@ -37,5 +40,9 @@ public record ReplyHeader(Status status, String owner, String reason) {
 
   public static ReplyHeader badRequest(String reason) {
     return new ReplyHeader(Status.BAD_REQUEST, null, reason);
+  }
+
+  public static ReplyHeader unreadable(String reason) {
+    return new ReplyHeader(Status.UNREADABLE, null, reason);
   }
 }
