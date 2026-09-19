@@ -25,14 +25,14 @@ class CommandViewTest {
   private final Command command = Command.builder().payload(new ShipOrder("order-1")).build();
 
   @Test
-  @DisplayName("Should show a failed command with its fields, result and cause")
+  @DisplayName("Should show a failed command with its fields, status and cause")
   void aFailure() {
     JsonNode json = objectMapper.valueToTree(CommandView.of(new CommandResult.Failure(command, "Order cannot be shipped.")));
 
     assertThat(json.path("id").asText()).isEqualTo(command.getId());
     assertThat(json.path("type").asText()).isEqualTo("ShipOrder");
     assertThat(json.path("payload").path("id").asText()).isEqualTo("order-1");
-    assertThat(json.path("result").asText()).isEqualTo("failure");
+    assertThat(json.path("status").asText()).isEqualTo("failure");
     assertThat(json.path("cause").asText()).isEqualTo("Order cannot be shipped.");
     assertThat(json.has("command")).isFalse();
   }
@@ -42,7 +42,7 @@ class CommandViewTest {
   void aSuccess() {
     JsonNode json = objectMapper.valueToTree(CommandView.of(new CommandResult.Success(command, List.of())));
 
-    assertThat(json.path("result").asText()).isEqualTo("success");
+    assertThat(json.path("status").asText()).isEqualTo("success");
     assertThat(json.has("cause")).isFalse();
   }
 
