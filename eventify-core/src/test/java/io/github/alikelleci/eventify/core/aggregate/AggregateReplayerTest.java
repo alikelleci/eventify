@@ -114,6 +114,18 @@ class AggregateReplayerTest {
         .hasMessageContaining("sequence 3, expected 2");
   }
 
+  /** E.g. an event written to the store by hand, without a sequence. */
+  @Test
+  @DisplayName("Should refuse a replay with an event without a sequence")
+  void refusesAReplayWithAnEventWithoutASequence() {
+    store(placed("order-1"));
+    storedEvents.put(StoreKeys.of("order-1", 2), confirmed("order-1")); // sequence 0
+
+    assertThatThrownBy(() -> replayed("order-1", null, null))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("sequence 0, expected 2");
+  }
+
   /** E.g. an event copied to another key: its sequence no longer matches its place. */
   @Test
   @DisplayName("Should refuse a replay with an event in the wrong place")
