@@ -125,6 +125,7 @@ const EXAMPLE_API: Partial<EventifyService> = {
                 <app-timeline-item [selected]="event === selected" [reached]="$index >= events.indexOf(selected)" [first]="$first" [last]="$last" [interactive]="false">
                   <div class="flex min-w-0 flex-1 flex-col">
                     <div class="flex h-[22px] items-center gap-2">
+                      <span class="shrink-0 font-mono text-xs tabular-nums text-surface-400">#{{ event.sequence }}</span>
                       <span class="truncate text-sm font-medium">{{ event.type }}</span>
                       @if (event.revision > 1) { <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" /> }
                     </div>

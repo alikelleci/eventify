@@ -15,6 +15,7 @@
                        (click)="select.emit(event)">
       <div class="flex flex-col flex-1 min-w-0">
         <div class="flex items-center gap-2 h-[22px]">
+          <span class="text-xs font-mono tabular-nums text-surface-400 shrink-0">#{{ event.sequence }}</span>
           <span class="font-medium text-sm truncate">{{ event.type }}</span>
           @if (event.revision > 1) { <p-tag [value]="'rev ' + event.revision" severity="secondary" styleClass="shrink-0" /> }
         </div>
