@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.plugin;
 
-import io.github.alikelleci.eventify.core.Eventify;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 
@@ -14,11 +13,11 @@ import org.apache.kafka.streams.processor.StateRestoreListener;
 public interface EventifyPlugin {
 
   /** Eventify has started; Kafka Streams is running. */
-  default void onStart(Eventify eventify) {
+  default void onStart(PluginContext context) {
   }
 
   /** Eventify is stopping. */
-  default void onStop(Eventify eventify) {
+  default void onStop(PluginContext context) {
   }
 
   /** Told when Kafka Streams changes state, e.g. to REBALANCING or ERROR; {@code null} to not be told. */

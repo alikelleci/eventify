@@ -24,7 +24,7 @@ public class PluginListeners {
     this.plugins = List.copyOf(plugins);
   }
 
-  /** Tells every plugin, e.g. {@code plugin -> plugin.onStart(eventify)}. */
+  /** Tells every plugin, e.g. {@code plugin -> plugin.onStart(context)}. */
   public void notifyPlugins(String hook, Consumer<EventifyPlugin> call) {
     tellAll(plugins, hook, call);
   }

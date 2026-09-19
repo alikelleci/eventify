@@ -5,12 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.console.protocol.InstanceStatus;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
-import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
 import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
@@ -107,14 +107,14 @@ class ConsoleService {
     }
   }
 
-  private final Eventify eventify;
+  private final PluginContext eventify;
   private final StatusTracker statusTracker;
   private final HostInfo thisHost;
   private final ObjectMapper objectMapper;
   private final Producer<String, Command> producer;
   private final AggregateHistory history;
 
-  ConsoleService(Eventify eventify, StatusTracker statusTracker) {
+  ConsoleService(PluginContext eventify, StatusTracker statusTracker) {
     this.eventify = eventify;
     this.statusTracker = statusTracker;
     this.objectMapper = eventify.getObjectMapper();
@@ -141,11 +141,11 @@ class ConsoleService {
   }
 
   /** This instance's {@code application.server}, which Eventify always sets. */
-  static HostInfo hostInfo(Eventify eventify) {
+  static HostInfo hostInfo(PluginContext eventify) {
     return HostInfo.buildFromEndpoint(eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG));
   }
 
-  /** How instances refer to each other: {@link #hostInfo(Eventify)} as {@code host:port}. */
+  /** How instances refer to each other: {@link #hostInfo(PluginContext)} as {@code host:port}. */
   static String nodeId(HostInfo hostInfo) {
     return hostInfo.host() + ":" + hostInfo.port();
   }
@@ -154,7 +154,7 @@ class ConsoleService {
    * The application's own Kafka client settings (security included, and its {@code producer.} settings), without the
    * ones Kafka Streams only adds for its exactly-once processing.
    */
-  static Map<String, Object> producerConfig(Eventify eventify) {
+  static Map<String, Object> producerConfig(PluginContext eventify) {
     Map<String, Object> config = new StreamsConfig(eventify.getStreamsConfig()).getProducerConfigs(clientId(eventify, "producer"));
     config.remove(ProducerConfig.DELIVERY_TIMEOUT_MS_CONFIG);
     config.remove(ProducerConfig.TRANSACTION_TIMEOUT_CONFIG);
@@ -163,7 +163,7 @@ class ConsoleService {
   }
 
   /** The application's own Kafka client settings (security included, and its {@code consumer.} settings), to read a topic without a group. */
-  static Map<String, Object> consumerConfig(Eventify eventify) {
+  static Map<String, Object> consumerConfig(PluginContext eventify) {
     Map<String, Object> config = new StreamsConfig(eventify.getStreamsConfig()).getRestoreConsumerConfigs(clientId(eventify, "commands"));
     config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");
     // Every read seeks to where it starts; this only applies when that offset is no longer there.
@@ -173,7 +173,7 @@ class ConsoleService {
     return config;
   }
 
-  private static String clientId(Eventify eventify, String purpose) {
+  private static String clientId(PluginContext eventify, String purpose) {
     return eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_ID_CONFIG) + "-console-" + purpose;
   }
 

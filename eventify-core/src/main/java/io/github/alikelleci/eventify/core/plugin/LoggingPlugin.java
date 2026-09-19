@@ -1,6 +1,5 @@
 package io.github.alikelleci.eventify.core.plugin;
 
-import io.github.alikelleci.eventify.core.Eventify;
 import lombok.Builder;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +25,7 @@ public class LoggingPlugin implements EventifyPlugin {
   private ScheduledExecutorService scheduler;
 
   @Override
-  public void onStart(Eventify eventify) {
+  public void onStart(PluginContext context) {
     scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
       Thread thread = new Thread(runnable, "eventify-restore-logger");
       thread.setDaemon(true);
@@ -36,7 +35,7 @@ public class LoggingPlugin implements EventifyPlugin {
   }
 
   @Override
-  public void onStop(Eventify eventify) {
+  public void onStop(PluginContext context) {
     if (scheduler != null) {
       scheduler.shutdown();
     }

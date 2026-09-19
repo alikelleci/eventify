@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.console.client;
 
 import io.github.alikelleci.eventify.console.protocol.ConsoleProtocol;
 import io.github.alikelleci.eventify.console.protocol.NodeInfo;
-import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import lombok.Builder;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.StreamsConfig;
@@ -36,7 +36,7 @@ public class EventifyConsoleClient implements EventifyPlugin {
   }
 
   @Override
-  public void onStart(Eventify eventify) {
+  public void onStart(PluginContext eventify) {
     NodeInfo nodeInfo = new NodeInfo(
         eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_ID_CONFIG),
         ConsoleService.nodeId(ConsoleService.hostInfo(eventify)),
@@ -61,7 +61,7 @@ public class EventifyConsoleClient implements EventifyPlugin {
   }
 
   @Override
-  public void onStop(Eventify eventify) {
+  public void onStop(PluginContext eventify) {
     if (connector != null) {
       connector.stop();
       connector = null;

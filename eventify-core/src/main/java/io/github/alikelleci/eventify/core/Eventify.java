@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.kafka.internal.EventifyTopology;
 import io.github.alikelleci.eventify.core.kafka.internal.StreamsConfigDefaults;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.LoggingPlugin;
+import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.plugin.internal.PluginListeners;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
@@ -31,7 +32,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public class Eventify {
+public class Eventify implements PluginContext {
   private final HandlerRegistry handlers = new HandlerRegistry();
 
   private final Properties streamsConfig;
@@ -75,15 +76,18 @@ public class Eventify {
     return handlers.upcasters();
   }
 
+  @Override
   public Properties getStreamsConfig() {
     return streamsConfig;
   }
 
+  @Override
   public ObjectMapper getObjectMapper() {
     return objectMapper;
   }
 
   /** The running Kafka Streams; {@code null} before the first {@link #start()}. */
+  @Override
   public KafkaStreams getKafkaStreams() {
     return kafkaStreams;
   }
@@ -94,16 +98,19 @@ public class Eventify {
   }
 
   /** The command classes this instance has a command handler for. */
+  @Override
   public Set<Class<?>> getCommandTypes() {
     return handlers.commandHandlers().keySet();
   }
 
   /** The topics of the commands this instance handles. */
+  @Override
   public Set<String> getCommandTopics() {
     return handlers.commandTopics();
   }
 
   /** Rebuilds the state of an aggregate from its events, with the event sourcing handlers of this instance. */
+  @Override
   public AggregateReplayer getAggregateReplayer() {
     return new AggregateReplayer(handlers.eventSourcingHandlers());
   }
@@ -114,6 +121,7 @@ public class Eventify {
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now, e.g.
    *                                                                    while Kafka Streams is rebalancing
    */
+  @Override
   public ReadOnlyEventStore getEventStore() {
     return ReadOnlyEventStore.of(runningKafkaStreams().store(
         StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore())));
@@ -124,12 +132,14 @@ public class Eventify {
    *
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now
    */
+  @Override
   public ReadOnlySnapshotStore getSnapshotStore() {
     return ReadOnlySnapshotStore.of(runningKafkaStreams().store(
         StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore())));
   }
 
   /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */
+  @Override
   public KeyQueryMetadata getAggregateMetadata(String aggregateId) {
     return runningKafkaStreams().queryMetadataForKey(StoreNames.EVENT_STORE, aggregateId, Serdes.String().serializer());
   }

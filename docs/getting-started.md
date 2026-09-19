@@ -61,10 +61,10 @@ A plugin runs along with Eventify. It starts and stops with it, and can follow w
 public class MyPlugin implements EventifyPlugin {
 
     @Override
-    public void onStart(Eventify eventify) { ... }
+    public void onStart(PluginContext context) { ... }
 
     @Override
-    public void onStop(Eventify eventify) { ... }
+    public void onStop(PluginContext context) { ... }
 
     /** Told when Kafka Streams changes state, e.g. to REBALANCING or ERROR. */
     @Override

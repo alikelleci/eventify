@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core;
 
 import io.github.alikelleci.eventify.core.order.OrderCommandHandler;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,7 +37,7 @@ class EventifyStopTest {
         .registerHandler(new OrderCommandHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
-          public void onStop(Eventify eventify) {
+          public void onStop(PluginContext context) {
             stops.incrementAndGet();
           }
         })
@@ -65,13 +66,13 @@ class EventifyStopTest {
         .registerHandler(new OrderCommandHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
-          public void onStop(Eventify eventify) {
+          public void onStop(PluginContext context) {
             throw new IllegalStateException("fails");
           }
         })
         .registerPlugin(new EventifyPlugin() {
           @Override
-          public void onStop(Eventify eventify) {
+          public void onStop(PluginContext context) {
             stops.incrementAndGet();
           }
         })
@@ -98,7 +99,7 @@ class EventifyStopTest {
         .registerHandler(new OrderCommandHandler())
         .registerPlugin(new EventifyPlugin() {
           @Override
-          public void onStop(Eventify eventify) {
+          public void onStop(PluginContext context) {
             stopping.countDown();
             try {
               Thread.sleep(500);
