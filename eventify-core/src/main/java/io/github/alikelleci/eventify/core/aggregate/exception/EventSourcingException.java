@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.aggregate.exception;
 
-public class EventSourcingException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class EventSourcingException extends EventifyException {
 
   public EventSourcingException(String message) {
     super(message);

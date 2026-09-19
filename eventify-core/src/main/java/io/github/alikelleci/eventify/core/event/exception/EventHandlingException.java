@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.event.exception;
 
-public class EventHandlingException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class EventHandlingException extends EventifyException {
 
   public EventHandlingException(String message) {
     super(message);

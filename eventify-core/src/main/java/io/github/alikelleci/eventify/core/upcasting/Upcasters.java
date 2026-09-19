@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.upcasting;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
 import io.github.alikelleci.eventify.core.upcasting.exception.UpcastingException;
@@ -29,7 +30,7 @@ public class Upcasters {
    * Adds the {@link Upcast} methods of the object. One upcaster per type and revision: with two, the chain would take
    * one of them, depending on the order they were registered in.
    *
-   * @throws IllegalStateException when there is already an upcaster for a type and revision of the object
+   * @throws HandlerRegistrationException when there is already an upcaster for a type and revision of the object
    */
   public Upcasters register(Object handler) {
     AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
@@ -49,7 +50,7 @@ public class Upcasters {
     UpcasterMethod existing = upcasters.computeIfAbsent(upcaster.type(), type -> new ConcurrentHashMap<>())
         .putIfAbsent(upcaster.revision(), upcaster);
     if (existing != null) {
-      throw new IllegalStateException("Two upcasters for " + upcaster.type() + " revision " + upcaster.revision() + ": " + existing.getMethod() + " and " + method);
+      throw new HandlerRegistrationException("Two upcasters for " + upcaster.type() + " revision " + upcaster.revision() + ": " + existing.getMethod() + " and " + method);
     }
   }
 

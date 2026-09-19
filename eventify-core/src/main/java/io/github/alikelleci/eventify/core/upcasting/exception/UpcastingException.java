@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.upcasting.exception;
 
-public class UpcastingException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class UpcastingException extends EventifyException {
 
   public UpcastingException(String message) {
     super(message);

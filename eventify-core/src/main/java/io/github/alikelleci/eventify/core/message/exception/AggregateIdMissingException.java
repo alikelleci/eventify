@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.message.exception;
 
-public class AggregateIdMissingException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class AggregateIdMissingException extends EventifyException {
 
   public AggregateIdMissingException(String message) {
     super(message);

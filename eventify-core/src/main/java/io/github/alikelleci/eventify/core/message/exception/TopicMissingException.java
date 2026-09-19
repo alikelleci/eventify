@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.message.exception;
 
-public class TopicMissingException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class TopicMissingException extends EventifyException {
 
   public TopicMissingException(String message) {
     super(message);

@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.message.exception;
 
-public class AggregateIdMismatchException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class AggregateIdMismatchException extends EventifyException {
 
   public AggregateIdMismatchException(String message) {
     super(message);

@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.command.internal.CommandHandlerMethod;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
 import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
+import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
@@ -147,7 +148,7 @@ public class HandlerRegistry {
         && previousMethod.getName().equals(method.getName())
         && Arrays.equals(previousMethod.getParameterTypes(), method.getParameterTypes());
     if (!sameHandler) {
-      throw new IllegalStateException("Two " + annotation + " handlers for " + type.getName() + ": " + previousMethod + " and " + method);
+      throw new HandlerRegistrationException("Two " + annotation + " handlers for " + type.getName() + ": " + previousMethod + " and " + method);
     }
   }
 

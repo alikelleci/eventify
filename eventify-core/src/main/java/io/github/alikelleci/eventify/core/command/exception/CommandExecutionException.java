@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.command.exception;
 
-public class CommandExecutionException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class CommandExecutionException extends EventifyException {
 
   public CommandExecutionException(String message) {
     super(message);

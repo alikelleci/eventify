@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
+import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import lombok.Value;
@@ -110,7 +111,7 @@ class HandlerRegistrationTest {
         .registerHandler(new LightHandler())
         .registerHandler(new OtherCommandHandler())
         .build())
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining(SwitchOn.class.getName());
   }
 
@@ -120,7 +121,7 @@ class HandlerRegistrationTest {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new TwiceApplyingHandler())
         .build())
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining(SwitchedOn.class.getName());
   }
 

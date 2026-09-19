@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.message.exception;
 
-public class PayloadMissingException extends RuntimeException {
+import io.github.alikelleci.eventify.core.EventifyException;
+
+public class PayloadMissingException extends EventifyException {
 
   public PayloadMissingException(String message) {
     super(message);

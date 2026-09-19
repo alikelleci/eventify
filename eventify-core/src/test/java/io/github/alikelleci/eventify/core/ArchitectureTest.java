@@ -39,23 +39,23 @@ class ArchitectureTest {
   }
 
   @Test
-  @DisplayName("Should keep only exceptions in exception packages")
+  @DisplayName("Should keep only Eventify exceptions in exception packages")
   void exceptionPackagesHoldExceptions() {
     classes().that().resideInAPackage("..core..exception")
-        .should(beThrowable())
+        .should(beEventifyException())
         .check(CORE);
   }
 
   /**
    * Checked on the loaded class, not on ArchUnit's view of the hierarchy: ArchUnit can't read the class files of every
-   * JDK, and then doesn't know that {@code RuntimeException} is a {@code Throwable}.
+   * JDK, and then doesn't know what a JDK class extends.
    */
-  private static ArchCondition<JavaClass> beThrowable() {
-    return new ArchCondition<>("be a Throwable") {
+  private static ArchCondition<JavaClass> beEventifyException() {
+    return new ArchCondition<>("be an EventifyException") {
       @Override
       public void check(JavaClass javaClass, ConditionEvents events) {
-        if (!Throwable.class.isAssignableFrom(javaClass.reflect())) {
-          events.add(SimpleConditionEvent.violated(javaClass, javaClass.getName() + " is not a Throwable"));
+        if (!EventifyException.class.isAssignableFrom(javaClass.reflect())) {
+          events.add(SimpleConditionEvent.violated(javaClass, javaClass.getName() + " is not an EventifyException"));
         }
       }
     };

@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.node.TextNode;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.annotation.Revision;
+import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -159,7 +160,7 @@ class UpcastingChainTest {
   @DisplayName("Should refuse two upcasters for the same type and revision in a serde")
   void twoUpcastersForTheSameTypeAndRevisionAreRefusedBySerde() {
     assertThatThrownBy(() -> new JsonDeserializer<>(Event.class).registerUpcaster(new TwoForRevision1()))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
   }
 
@@ -171,7 +172,7 @@ class UpcastingChainTest {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(properties).registerHandler(new TwoForRevision1()).build())
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
   }
 
