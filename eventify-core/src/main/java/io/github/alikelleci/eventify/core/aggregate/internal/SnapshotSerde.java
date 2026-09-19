@@ -13,7 +13,7 @@ import org.apache.kafka.common.serialization.Serializer;
 /**
  * The serde of the snapshot store. A snapshot whose aggregate can't be read (its class was moved, or a field no longer
  * fits) is read without it: its payload is {@code null}, and the aggregate is rebuilt from its events instead of every
- * command of it failing. What the snapshot points to (its event, its version) is still read.
+ * command of it failing. Its version is still read.
  */
 public class SnapshotSerde implements Serde<AggregateState> {
 
