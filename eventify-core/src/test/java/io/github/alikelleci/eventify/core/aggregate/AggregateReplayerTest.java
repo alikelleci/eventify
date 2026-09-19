@@ -151,7 +151,7 @@ class AggregateReplayerTest {
     List<String> seen = new ArrayList<>();
 
     AggregateReplayer.Result result = replayed("ada", null, null,
-        (event, state, version) -> seen.add(event.getAggregateId()));
+        (event, state) -> seen.add(event.getAggregateId()));
 
     assertThat(seen).containsExactly("ada", "ada");
     assertThat(order(result).getStatus()).isEqualTo("CONFIRMED");
@@ -168,7 +168,7 @@ class AggregateReplayerTest {
     List<String> seen = new ArrayList<>();
 
     AggregateReplayer.Result result = replayed("order-1", null, null,
-        (event, state, version) -> seen.add(event.getType() + "@v" + version));
+        (event, state) -> seen.add(event.getType() + "@v" + (state != null ? state.getVersion() : 0)));
 
     assertThat(seen).containsExactly("OrderPlaced@v0", "OrderViewed@v1", "OrderConfirmed@v2");
     assertThat(order(result).getStatus()).isEqualTo("CONFIRMED");

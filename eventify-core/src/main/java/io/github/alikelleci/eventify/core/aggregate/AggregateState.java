@@ -78,16 +78,7 @@ public class AggregateState {
         .timestamp(event.getTimestamp())
         .payload(payload)
         .metadata(event.getMetadata())
-        .build();
-  }
-
-  /** This state, at the given version. */
-  public AggregateState withVersion(long version) {
-    return AggregateState.builder()
-        .timestamp(timestamp)
-        .payload(payload)
-        .metadata(metadata)
-        .version(version)
+        .version(event.getSequence())
         .build();
   }
 }

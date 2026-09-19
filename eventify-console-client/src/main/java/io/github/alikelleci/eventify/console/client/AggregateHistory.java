@@ -122,9 +122,10 @@ class AggregateHistory {
   private ConsoleViews.EventDetail withStates(Event event, ReadOnlyEventStore events, String aggregateId,
                                               AggregateState start, long sequence) {
     RawValue[] before = {null};
-    AggregateReplayer.Result result = replay(events, aggregateId, start, sequence, (current, state, version) -> {
+    AggregateReplayer.Result result = replay(events, aggregateId, start, sequence, (current, state) -> {
       if (current.getSequence() == sequence) {
-        before[0] = versioned(state, version);
+        // Written now, before the next event sourcing handler can change the state it is given.
+        before[0] = json(state);
       }
     });
     return ConsoleViews.EventDetail.known(event, json(result.state()), before[0]);
@@ -147,11 +148,6 @@ class AggregateHistory {
     try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
       return replay.replay(toApply, start, listener);
     }
-  }
-
-  /** The state at this version, as JSON written now: before the next handler can change it. */
-  private RawValue versioned(AggregateState state, long version) {
-    return state != null ? json(state.withVersion(version)) : null;
   }
 
   private RawValue json(AggregateState state) {

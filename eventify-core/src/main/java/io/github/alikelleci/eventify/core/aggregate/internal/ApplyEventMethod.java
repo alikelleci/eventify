@@ -62,10 +62,12 @@ public class ApplyEventMethod implements BiFunction<AggregateState, Event, Aggre
       return null;
     }
 
+    // The state after this event is the state at its place in the aggregate: its version is the event's sequence.
     AggregateState state = AggregateState.builder()
         .timestamp(event.getTimestamp())
         .payload(result)
         .metadata(event.getMetadata())
+        .version(event.getSequence())
         .build();
 
     // The state is stored as the snapshot of its own aggregate id: another id would overwrite that aggregate's snapshot.

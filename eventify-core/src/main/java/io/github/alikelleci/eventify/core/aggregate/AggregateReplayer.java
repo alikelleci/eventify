@@ -39,11 +39,10 @@ public class AggregateReplayer {
   @FunctionalInterface
   public interface Listener {
     /**
-     * @param event   the event about to be applied
-     * @param state         the state before this event, without its version set; {@code null} when there is none
-     * @param versionBefore the version of that state: one below this event's sequence
+     * @param event the event about to be applied
+     * @param state the state before this event, at the sequence one below it; {@code null} when there is none
      */
-    void beforeEvent(Event event, AggregateState state, long versionBefore);
+    void beforeEvent(Event event, AggregateState state);
   }
 
   public AggregateReplayer(Map<Class<?>, ApplyEventMethod> eventSourcingHandlers) {
@@ -81,19 +80,19 @@ public class AggregateReplayer {
         throw new EventReplayException("The stored events of aggregate " + event.getAggregateId() + " are incomplete or out of order: expected #" + (version + 1) + ", found #" + event.getSequence() + " (" + event.getType() + ", event " + event.getId() + ").");
       }
       if (listener != null) {
-        listener.beforeEvent(event, state, version);
+        listener.beforeEvent(event, state);
       }
       state = apply(state, event);
       version = event.getSequence();
       replayed++;
     }
 
-    return new Result(state != null ? state.withVersion(version) : null, replayed);
+    return new Result(state, replayed);
   }
 
   /**
-   * The state after one event: what its event sourcing handler returns, or the state unchanged when it has none. The
-   * version is not set.
+   * The state after one event: what its event sourcing handler returns, or the state unchanged when it has none. Its
+   * version is the event's sequence: the place in the aggregate it is the state at.
    */
   public AggregateState apply(AggregateState state, Event event) {
     ApplyEventMethod handler = eventSourcingHandlers.get(event.getPayload().getClass());
