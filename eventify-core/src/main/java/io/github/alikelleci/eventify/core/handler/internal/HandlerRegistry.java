@@ -78,11 +78,6 @@ public class HandlerRegistry {
     return Collections.unmodifiableMap(commandHandlers);
   }
 
-  /** The event sourcing handler for this event class; {@code null} when there is none. */
-  public ApplyEventMethod eventSourcingHandler(Class<?> eventType) {
-    return eventSourcingHandlers.get(eventType);
-  }
-
   public Map<Class<?>, ApplyEventMethod> eventSourcingHandlers() {
     return Collections.unmodifiableMap(eventSourcingHandlers);
   }
