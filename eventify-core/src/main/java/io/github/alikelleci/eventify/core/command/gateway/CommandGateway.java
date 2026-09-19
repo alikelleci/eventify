@@ -1,17 +1,21 @@
 package io.github.alikelleci.eventify.core.command.gateway;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.alikelleci.eventify.core.EventifyException;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
+import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
 import io.github.alikelleci.eventify.core.command.gateway.internal.DefaultCommandGateway;
 import io.github.alikelleci.eventify.core.kafka.KafkaClientConfigs;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
-import lombok.SneakyThrows;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 public interface CommandGateway extends AutoCloseable {
 
@@ -27,27 +31,53 @@ public interface CommandGateway extends AutoCloseable {
         .build());
   }
 
-  @SneakyThrows
+  /**
+   * Sends the command and waits for its result.
+   *
+   * @throws CommandExecutionException when the command failed
+   * @throws CommandTimeoutException   when no result arrived in time; the command may still be handled
+   * @throws EventifyException         when the wait was interrupted; the thread's interrupt flag is set again
+   */
   default <R> R sendAndWait(Command command, long timeout, TimeUnit unit) {
     CompletableFuture<R> future = send(command);
-    return future.get(timeout, unit);
+    try {
+      return future.get(timeout, unit);
+    } catch (ExecutionException e) {
+      throw resultFailure(command, e.getCause());
+    } catch (TimeoutException e) {
+      throw new CommandTimeoutException("No result for command " + command.getId() + " within " + timeout + " " + unit.name().toLowerCase(), e);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new EventifyException("Interrupted while waiting for the result of command " + command.getId(), e);
+    }
   }
 
-  @SneakyThrows
   default <R> R sendAndWait(Object payload, long timeout, TimeUnit unit) {
     return sendAndWait(Command.builder()
         .payload(payload)
         .build(), timeout, unit);
   }
 
-  @SneakyThrows
   default <R> R sendAndWait(Command command) {
     return sendAndWait(command, 1, TimeUnit.MINUTES);
   }
 
-  @SneakyThrows
   default <R> R sendAndWait(Object payload) {
     return sendAndWait(payload, 1, TimeUnit.MINUTES);
+  }
+
+  /**
+   * What a failed result is thrown as: the failure itself when it is unchecked (e.g. a
+   * {@link CommandExecutionException}); a {@link CommandTimeoutException} when the gateway stopped waiting.
+   */
+  private static RuntimeException resultFailure(Command command, Throwable failure) {
+    if (failure instanceof TimeoutException) {
+      return new CommandTimeoutException("No result for command " + command.getId() + ": " + failure.getMessage(), failure);
+    }
+    if (failure instanceof RuntimeException runtimeException) {
+      return runtimeException;
+    }
+    return new EventifyException("Command " + command.getId() + " failed: " + failure.getMessage(), failure);
   }
 
   public static CommandGatewayBuilder builder() {

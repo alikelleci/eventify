@@ -43,4 +43,6 @@ PlaceOrder result = gateway.sendAndWait(
 
 If the command fails, `sendAndWait` throws a `CommandExecutionException` containing the failure message. When using `send`, the returned future completes exceptionally with the same exception.
 
+When no result arrives in time, `sendAndWait` throws a `CommandTimeoutException`. The command may still be handled: only the wait for its result ended. When using `send`, the future completes exceptionally with a `TimeoutException` after five minutes without a result.
+
 Sending the same `Command` object again while it still waits for its result fails with an `IllegalStateException`: it would otherwise be handled twice.
