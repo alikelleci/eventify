@@ -60,7 +60,12 @@ class CommandResultTest {
       assertThat(success.command().getId()).isEqualTo(command.getId());
       assertThat(success.events()).extracting(Event::getId).containsExactly(sent.get(0).getId());
       assertThat(success.events().get(0).getPayload()).isEqualTo(sent.get(0).getPayload());
+      assertThat(success.events().get(0).getMetadata()).doesNotContainKey(MetadataKeys.REPLY_TO);
     });
+    // Where to reply to is for the command's sender only: the event keeps the rest of the command's metadata.
+    assertThat(sent.get(0).getMetadata())
+        .doesNotContainKey(MetadataKeys.REPLY_TO)
+        .containsEntry(MetadataKeys.CORRELATION_ID, command.getMetadata().getCorrelationId());
     assertThat(results.readValue()).isEqualTo(reply);
   }
 

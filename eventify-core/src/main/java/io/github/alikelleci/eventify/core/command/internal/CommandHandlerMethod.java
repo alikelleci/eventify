@@ -24,12 +24,15 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.REPLY_TO;
 
 @Slf4j
 @Getter
@@ -87,12 +90,16 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
       list.add(result);
     }
 
+    // An event takes over its command's metadata, but not where to reply to: that is for the command's sender only.
+    Map<String, String> inherited = new HashMap<>(command.getMetadata());
+    inherited.remove(REPLY_TO);
+
     List<Event> events = list.stream()
         .filter(Objects::nonNull)
         .map(payload -> Event.builder()
             .timestamp(command.getTimestamp())
             .payload(payload)
-            .metadata(command.getMetadata())
+            .metadata(inherited)
             .metadata(CAUSATION_ID, command.getId())
             .build())
         .toList();
