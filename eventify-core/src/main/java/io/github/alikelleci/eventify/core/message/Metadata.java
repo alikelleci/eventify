@@ -1,21 +1,20 @@
 package io.github.alikelleci.eventify.core.message;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Delegate;
 
-import java.beans.Transient;
 import java.util.HashMap;
 import java.util.Map;
 
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSE;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.RESULT;
+
 @EqualsAndHashCode
 public class Metadata implements Map<String, String> {
-  public static final String CORRELATION_ID = "$correlationId";
-  /** On an event: the id of the command that produced it. */
-  public static final String CAUSATION_ID = "$causationId";
-  public static final String REPLY_TO = "$replyTo";
-  public static final String RESULT = "$result";
-  public static final String CAUSE = "$cause";
 
   @Delegate
   private final Map<String, String> entries;
@@ -35,12 +34,12 @@ public class Metadata implements Map<String, String> {
   }
 
 
-  @Transient
+  @JsonIgnore
   public String getCorrelationId() {
     return this.entries.get(CORRELATION_ID);
   }
 
-  @Transient
+  @JsonIgnore
   public String getCausationId() {
     return this.entries.get(CAUSATION_ID);
   }

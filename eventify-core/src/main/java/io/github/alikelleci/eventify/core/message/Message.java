@@ -1,11 +1,11 @@
 package io.github.alikelleci.eventify.core.message;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
 
-import java.beans.Transient;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -22,7 +22,7 @@ public interface Message {
 
   Metadata getMetadata();
 
-  @Transient
+  @JsonIgnore
   default Topic getTopic() {
     return Optional.ofNullable(getPayload())
         .map(p -> AnnotationScanner.findAnnotation(p.getClass(), Topic.class))

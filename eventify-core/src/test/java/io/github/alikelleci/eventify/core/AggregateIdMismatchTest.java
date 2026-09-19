@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshottin
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -120,7 +120,7 @@ class AggregateIdMismatchTest {
     send("ada", Increment.builder().id("ada").stateId("ada").build()); // "ada" is still at version 1, and goes on
 
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(Metadata.RESULT))
+        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT))
         .containsExactly("ad success", "ada success", "ada failure", "ada success");
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(3);
     assertThat(snapshotStore.get("ad")).isNull();
@@ -128,7 +128,7 @@ class AggregateIdMismatchTest {
 
     // "ad" is untouched: its next command loads its own state.
     send("ad", Increment.builder().id("ad").stateId("ad").build());
-    assertThat(results.readValue().getMetadata().get(Metadata.RESULT)).isEqualTo("success");
+    assertThat(results.readValue().getMetadata().get(MetadataKeys.RESULT)).isEqualTo("success");
   }
 
   @Test
@@ -138,7 +138,7 @@ class AggregateIdMismatchTest {
     send("ada", Increment.builder().id("bob").stateId("bob").build()); // record key "ada", command for "bob"
 
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(Metadata.RESULT) + " " + result.getMetadata().get(Metadata.CAUSE))
+        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
         .containsExactly(
             "ada success null",
             "bob failure AggregateIdMismatchException: Record key does not match the aggregate identifier of command Increment. Expected bob, but was ada");

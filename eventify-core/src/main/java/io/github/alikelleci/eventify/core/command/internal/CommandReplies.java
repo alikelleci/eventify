@@ -5,8 +5,8 @@ import io.github.alikelleci.eventify.core.command.exception.CommandExecutionExce
 import io.github.alikelleci.eventify.core.command.internal.CommandResult.Failure;
 import io.github.alikelleci.eventify.core.message.Metadata;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.core.message.Metadata.RESULT;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSE;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.RESULT;
 
 /**
  * How the outcome of a command is sent to its result topic and to the reply topic of its sender: as the command

@@ -47,7 +47,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.REPLY_TO;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.REPLY_TO;
 
 @Slf4j
 class ConsoleService {

@@ -9,7 +9,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
@@ -378,9 +378,9 @@ class AggregateHistoryTest {
   @DisplayName("Should give the events a command produced, not those of other commands with the same correlation id")
   void theEventsOfACommand() {
     Event one = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        Metadata.CORRELATION_ID, "saga", Metadata.CAUSATION_ID, "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA")).build());
+        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA")).build());
     Event two = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        Metadata.CORRELATION_ID, "saga", Metadata.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
+        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
 
     assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "saga")).containsExactly(one);
     assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB", "saga")).containsExactly(two);
@@ -390,9 +390,9 @@ class AggregateHistoryTest {
   @Test
   @DisplayName("Should find events without a causation id by the command's correlation id")
   void theEventsOfACommandWithoutCausationIds() {
-    Event legacy = store(Event.builder().payload(new Incremented("counter-1")).metadata(Metadata.CORRELATION_ID, "old").build());
+    Event legacy = store(Event.builder().payload(new Incremented("counter-1")).metadata(MetadataKeys.CORRELATION_ID, "old").build());
     store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        Metadata.CORRELATION_ID, "old", Metadata.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
+        MetadataKeys.CORRELATION_ID, "old", MetadataKeys.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
 
     assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "old")).containsExactly(legacy);
     assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", null)).isEmpty();

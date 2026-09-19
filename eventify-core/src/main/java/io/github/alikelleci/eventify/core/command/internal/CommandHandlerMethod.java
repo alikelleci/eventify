@@ -5,8 +5,8 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
@@ -29,7 +29,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiFunction;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CAUSATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
 
 @Slf4j
 @Getter

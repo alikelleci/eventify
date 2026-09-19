@@ -13,7 +13,7 @@ import io.github.alikelleci.eventify.core.order.OrderEvent.OrderShipped;
 
 import java.time.Instant;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
 
 public class OrderEventSourcingHandler {
 

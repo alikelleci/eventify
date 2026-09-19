@@ -5,7 +5,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -336,7 +336,7 @@ class CommandRejectionTest {
 
   private java.util.List<String> results() {
     return results.readValuesToList().stream()
-        .map(result -> result.getType() + " " + result.getMetadata().get(Metadata.RESULT) + " " + result.getMetadata().get(Metadata.CAUSE))
+        .map(result -> result.getType() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
         .toList();
   }
 

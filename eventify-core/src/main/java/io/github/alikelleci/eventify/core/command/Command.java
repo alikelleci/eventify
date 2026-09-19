@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CORRELATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
 
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

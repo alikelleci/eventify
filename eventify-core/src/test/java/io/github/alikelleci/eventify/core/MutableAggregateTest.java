@@ -5,7 +5,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -178,7 +178,7 @@ class MutableAggregateTest {
 
     Command result = results.readValue();
     assertThat(result.getType()).isEqualTo("Touch");
-    assertThat(result.getMetadata().get(Metadata.RESULT)).isEqualTo("success");
+    assertThat(result.getMetadata().get(MetadataKeys.RESULT)).isEqualTo("success");
     assertThat(events.isEmpty()).isTrue();
   }
 
@@ -186,7 +186,7 @@ class MutableAggregateTest {
   @Test
   @DisplayName("Should name the command that produced an event, and keep its correlation id")
   void anEventNamesItsCommand() {
-    Command command = Command.builder().payload(new AddItem("cart", "apple")).metadata(Metadata.CORRELATION_ID, "saga").build();
+    Command command = Command.builder().payload(new AddItem("cart", "apple")).metadata(MetadataKeys.CORRELATION_ID, "saga").build();
     commands.pipeInput(command.getAggregateId(), command);
 
     Event event = events.readValue();

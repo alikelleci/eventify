@@ -5,9 +5,9 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CAUSATION_ID;
-import static io.github.alikelleci.eventify.core.message.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.core.message.Metadata.RESULT;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSE;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.RESULT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class Matchers {

@@ -20,7 +20,11 @@ import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public abstract class ReplyConsumer {
+/**
+ * Receives the replies to the commands a gateway sent, on its own thread, and hands them to the gateway. Reads
+ * partition 0 of the reply topic: the replies are written there.
+ */
+public class ReplyConsumer {
 
   /** How long to wait before polling again after an unexpected error, so a lasting one isn't retried in a busy loop. */
   private static final Duration ERROR_PAUSE = Duration.ofSeconds(1);
@@ -30,11 +34,14 @@ public abstract class ReplyConsumer {
 
   private final Consumer<String, Command> consumer;
   private final String replyTopic;
+  /** Handles a batch of replies. It must not throw: a record it can't handle is skipped by it. */
+  private final java.util.function.Consumer<ConsumerRecords<String, Command>> onReplies;
   private final AtomicBoolean closed = new AtomicBoolean(false);
   private Thread thread;
   private Thread shutdownHook;
 
-  protected ReplyConsumer(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
+  public ReplyConsumer(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper,
+                       java.util.function.Consumer<ConsumerRecords<String, Command>> onReplies) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 //    consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
@@ -47,13 +54,14 @@ public abstract class ReplyConsumer {
         new JsonDeserializer<>(Command.class, objectMapper));
 
     this.replyTopic = replyTopic;
+    this.onReplies = onReplies;
   }
 
   /**
-   * Starts listening for replies. Called by the subclass once it is fully constructed: replies are handed to
-   * {@link #onMessage} on another thread, which must not see the subclass's fields before they are set.
+   * Starts listening for replies. Called once the gateway is fully constructed: replies are handed to it on another
+   * thread, which must not see the gateway's fields before they are set.
    */
-  protected void start() {
+  public void start() {
     thread = new Thread(() -> {
       consumer.assign(Collections.singletonList(new TopicPartition(replyTopic, 0)));
 //      consumer.subscribe(Collections.singletonList(this.replyTopic));
@@ -78,7 +86,7 @@ public abstract class ReplyConsumer {
             continue;
           }
           try {
-            onMessage(consumerRecords);
+            onReplies.accept(consumerRecords);
           } catch (Exception e) {
             log.error("Failed to handle replies from {}", replyTopic, e);
           }
@@ -103,7 +111,7 @@ public abstract class ReplyConsumer {
    * Stops listening: ends the poll loop, closes the consumer and waits (a while) for that to finish. Replies that
    * arrive afterwards are not received.
    */
-  protected void stopListening() {
+  public void stopListening() {
     signalStop();
     if (shutdownHook != null) {
       try {
@@ -127,7 +135,7 @@ public abstract class ReplyConsumer {
     }
   }
 
-  protected boolean isClosed() {
+  public boolean isClosed() {
     return closed.get();
   }
 
@@ -142,10 +150,8 @@ public abstract class ReplyConsumer {
     }
   }
 
-  /** Handles a batch of replies. It must not throw: a record it can't handle is skipped by it. */
-  protected abstract void onMessage(ConsumerRecords<String, Command> consumerRecords);
 
-  protected String getReplyTopic() {
+  public String getReplyTopic() {
     return replyTopic;
   }
 }

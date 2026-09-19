@@ -24,10 +24,10 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.REPLY_TO;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.REPLY_TO;
 
 @Slf4j
-public class DefaultCommandGateway extends ReplyConsumer implements CommandGateway {
+public class DefaultCommandGateway implements CommandGateway {
 
   /** How long a command waits for its reply before its future fails. */
   private static final Duration TIMEOUT = Duration.ofMinutes(5);
@@ -39,13 +39,13 @@ public class DefaultCommandGateway extends ReplyConsumer implements CommandGatew
 
   private final Producer<String, Command> producer;
 
+  private final ReplyConsumer replies;
+
   public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
     this(producerConfig, consumerConfig, replyTopic, objectMapper, TIMEOUT);
   }
 
   DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic, ObjectMapper objectMapper, Duration timeout) {
-    super(consumerConfig, replyTopic, objectMapper);
-
     this.cache = Caffeine.newBuilder()
         .expireAfterWrite(timeout)
         // Expires on time: without a scheduler, entries only expire when the cache is used, e.g. by the next command.
@@ -61,15 +61,16 @@ public class DefaultCommandGateway extends ReplyConsumer implements CommandGatew
         new StringSerializer(),
         new JsonSerializer<>(objectMapper));
 
-    start();
+    this.replies = new ReplyConsumer(consumerConfig, replyTopic, objectMapper, this::onReplies);
+    replies.start();
   }
 
   @Override
   public <R> CompletableFuture<R> send(Command command) {
-    if (isClosed()) {
+    if (replies.isClosed()) {
       throw new IllegalStateException("The command gateway is closed.");
     }
-    command.getMetadata().put(REPLY_TO, getReplyTopic());
+    command.getMetadata().put(REPLY_TO, replies.getReplyTopic());
 
     // Built first: a command that can't be sent (e.g. without @Topic) fails here, without leaving a future behind.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopic().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
@@ -112,18 +113,18 @@ public class DefaultCommandGateway extends ReplyConsumer implements CommandGatew
    */
   @Override
   public void close() {
-    if (isClosed()) {
+    if (replies.isClosed()) {
       return;
     }
-    stopListening();
+    replies.stopListening();
     producer.close(CLOSE_TIMEOUT);
     cache.asMap().forEach((id, future) ->
         future.completeExceptionally(new CancellationException("The command gateway was closed before command " + id + " got its result.")));
     cache.invalidateAll();
   }
 
-  @Override
-  protected void onMessage(ConsumerRecords<String, Command> consumerRecords) {
+  /** Completes the futures of the commands the replies are for. Doesn't throw: a reply it can't handle is skipped. */
+  private void onReplies(ConsumerRecords<String, Command> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
       try {
         onReply(consumerRecord);

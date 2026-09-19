@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.core.account.AccountMessages.OpenAccount;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.commons.collections4.IteratorUtils;
@@ -19,7 +19,6 @@ import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -56,7 +55,7 @@ class AggregateIdWithAtTest {
 
     // Placing "ada" fails with "Order already exists." when it loads the order of "ada@example.com".
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(Metadata.RESULT) + " " + result.getMetadata().get(Metadata.CAUSE))
+        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
         .containsExactly("ada@example.com success null", "ada success null");
   }
 
@@ -79,7 +78,7 @@ class AggregateIdWithAtTest {
     send(commands, Command.builder().payload(Deposit.builder().id("ada").amount(7).build()).build());
 
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(Metadata.RESULT) + " " + result.getMetadata().get(Metadata.CAUSE))
+        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
         .containsExactly(
             "ada@-team success null", "ada@-team success null",
             "ada success null", "ada success null", "ada success null");

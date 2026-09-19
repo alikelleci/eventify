@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.console.client.item.ItemHandler;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.message.Metadata;
+import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -156,10 +156,10 @@ class ConsoleServiceRoutingIT {
         List<Command> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
         assertThat(commands).hasSize(2);
         Command retry = commands.get(0); // newest first
-        assertThat(retry.getMetadata()).containsEntry(ConsoleService.RETRY_OF, original.getId()).doesNotContainKey(Metadata.REPLY_TO);
+        assertThat(retry.getMetadata()).containsEntry(ConsoleService.RETRY_OF, original.getId()).doesNotContainKey(MetadataKeys.REPLY_TO);
         assertThat(retry.getId()).isNotEqualTo(original.getId());
         assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isEqualTo(original.getMetadata().getCorrelationId());
-        assertThat(retry.getMetadata()).containsEntry(Metadata.RESULT, "success");
+        assertThat(retry.getMetadata()).containsEntry(MetadataKeys.RESULT, "success");
       });
 
       // Only a command this application handles: the JSON names the class to create.

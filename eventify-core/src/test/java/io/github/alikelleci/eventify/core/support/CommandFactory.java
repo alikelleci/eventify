@@ -11,9 +11,9 @@ import io.github.alikelleci.eventify.core.order.OrderCommand.ShipOrder;
 
 import java.util.UUID;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.core.message.Metadata.CORRELATION_ID;
-import static io.github.alikelleci.eventify.core.message.Metadata.RESULT;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSE;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.RESULT;
 
 public class CommandFactory {
 

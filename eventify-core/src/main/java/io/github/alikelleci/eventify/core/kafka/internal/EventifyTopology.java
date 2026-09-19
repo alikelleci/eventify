@@ -27,7 +27,7 @@ import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
 
-import static io.github.alikelleci.eventify.core.message.Metadata.REPLY_TO;
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.REPLY_TO;
 
 /**
  * The Kafka Streams topology of an Eventify application: the event and snapshot stores, command handling (results,
