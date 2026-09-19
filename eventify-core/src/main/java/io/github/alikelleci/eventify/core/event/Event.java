@@ -37,7 +37,9 @@ public class Event implements Message {
   private Event(Instant timestamp, Object payload, Metadata metadata) {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
-    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
+    // A copy with the flow this event belongs to: the metadata that was given stays as it is.
+    this.metadata = Optional.ofNullable(metadata).orElseGet(() -> Metadata.builder().build())
+        .withDefault(CORRELATION_ID, UUID.randomUUID().toString());
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
@@ -45,8 +47,6 @@ public class Event implements Message {
 
     this.revision = Revisions.of(getPayload().getClass());
     this.sequence = 0; // given when stored
-
-    getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }
 
   /** This event at the given position in its aggregate. */

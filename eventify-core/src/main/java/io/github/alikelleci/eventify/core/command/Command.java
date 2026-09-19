@@ -30,13 +30,13 @@ public class Command implements Message {
   private Command(Instant timestamp, Object payload, Metadata metadata) {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
-    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
+    // A copy with the flow this command belongs to: the metadata that was given stays as it is.
+    this.metadata = Optional.ofNullable(metadata).orElseGet(() -> Metadata.builder().build())
+        .withDefault(CORRELATION_ID, UUID.randomUUID().toString());
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
     this.id = UUID.randomUUID().toString();
-
-    getMetadata().putIfAbsent(CORRELATION_ID, UUID.randomUUID().toString());
   }
 
   public static class CommandBuilder {
