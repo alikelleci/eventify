@@ -112,7 +112,7 @@ export class CommandDetailComponent {
   }
 
   result(): 'success' | 'failure' | null {
-    return this.command()?.status ?? null;
+    return this.command()?.result ?? null;
   }
 
   cause(): string | null {

@@ -11,7 +11,7 @@ export interface CommandMessage {
   metadata: Record<string, string>;
   aggregateId: string;
   /** How its handling ended. */
-  status?: 'success' | 'failure';
+  result?: 'success' | 'failure';
   /** Why it failed; only on a failure. */
   cause?: string;
 }

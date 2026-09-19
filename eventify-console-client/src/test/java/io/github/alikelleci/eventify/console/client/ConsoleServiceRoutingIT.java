@@ -155,7 +155,7 @@ class ConsoleServiceRoutingIT {
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
         List<ConsoleViews.CommandView> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
         assertThat(commands).hasSize(2);
-        assertThat(commands.get(0).status()).isEqualTo("success");
+        assertThat(commands.get(0).result()).isEqualTo("success");
         Command retry = commands.get(0).command(); // newest first
         assertThat(retry.getMetadata()).containsEntry(CommandRetry.RETRY_OF, original.getId()).doesNotContainKey(MetadataKeys.REPLY_TO);
         assertThat(retry.getId()).isNotEqualTo(original.getId());

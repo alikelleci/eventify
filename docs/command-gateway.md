@@ -43,6 +43,8 @@ CommandResult.Success result = gateway.sendAndWait(
 
 A result holds the command and the events it produced, as they were stored and sent: `result.command()` and `result.events()`. A command accepted without events has an empty list.
 
+The result is sent as one Kafka message, with all its events. A command that produces very many events can make it larger than Kafka's maximum message size (`max.request.size`, 1 MB by default): keep commands to one decision each, or raise the limit.
+
 In a Spring controller, return only what the caller needs, e.g. the ids of the events:
 
 ```java

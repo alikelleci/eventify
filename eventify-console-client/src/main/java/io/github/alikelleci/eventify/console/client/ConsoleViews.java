@@ -27,10 +27,10 @@ final class ConsoleViews {
   /**
    * A command as the console shows it: the command's own fields, with how its handling ended.
    *
-   * @param status "success" or "failure", as in the command's {@link CommandResult}
+   * @param result "success" or "failure", as in the command's {@link CommandResult}
    * @param cause  why it failed; {@code null} when it succeeded
    */
-  record CommandView(@JsonUnwrapped Command command, String status, String cause) {
+  record CommandView(@JsonUnwrapped Command command, String result, String cause) {
 
     static CommandView of(CommandResult result) {
       return result instanceof CommandResult.Failure failure

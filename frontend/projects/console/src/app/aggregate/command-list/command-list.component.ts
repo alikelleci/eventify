@@ -70,7 +70,7 @@ export class CommandListComponent implements OnInit {
   }
 
   result(command: CommandMessage): 'success' | 'failure' | null {
-    return command.status ?? null;
+    return command.result ?? null;
   }
 
   tone(command: CommandMessage): TimelineTone {

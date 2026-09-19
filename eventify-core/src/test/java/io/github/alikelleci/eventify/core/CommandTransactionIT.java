@@ -282,7 +282,7 @@ class CommandTransactionIT {
   }
 
   private static String result(String json) {
-    return json.contains("\"status\":\"failure\"") ? "failure" : json.contains("\"status\":\"success\"") ? "success" : json;
+    return json.contains("\"result\":\"failure\"") ? "failure" : json.contains("\"result\":\"success\"") ? "success" : json;
   }
 
   private static void await(String what, BooleanSupplier condition) {

@@ -8,9 +8,9 @@ import java.util.List;
 
 /**
  * The outcome of handling a command. It is written to the command's result topic and, when its sender waits for it, to
- * the sender's reply topic, as JSON with a {@code "status"} of {@code "success"} or {@code "failure"}.
+ * the sender's reply topic, as JSON with a {@code "result"} of {@code "success"} or {@code "failure"}.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "status")
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "result")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = CommandResult.Success.class, name = "success"),
     @JsonSubTypes.Type(value = CommandResult.Failure.class, name = "failure")
