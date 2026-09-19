@@ -141,7 +141,7 @@ public class EventifyKafkaListenerAutoConfiguration {
   /** The Eventify bean's, so events are read as they were written; one of Eventify's own without one. */
   private static ObjectMapper objectMapper(ObjectProvider<Eventify> apps) {
     Eventify eventify = apps.getIfUnique();
-    return eventify != null ? eventify.getObjectMapper() : EventifyObjectMapper.get();
+    return eventify != null ? eventify.getObjectMapper() : EventifyObjectMapper.create();
   }
 
   /** Where to connect to: an Eventify bean, or Spring Kafka's consumer factory. */

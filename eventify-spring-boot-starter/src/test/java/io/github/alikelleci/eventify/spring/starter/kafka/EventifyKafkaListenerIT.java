@@ -70,7 +70,7 @@ class EventifyKafkaListenerIT {
   @Container
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
 
-  private static final ObjectMapper objectMapper = EventifyObjectMapper.get();
+  private static final ObjectMapper objectMapper = EventifyObjectMapper.create();
 
   /** What the listeners got, in order. */
   static final BlockingQueue<Object> received = new LinkedBlockingQueue<>();

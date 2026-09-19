@@ -66,7 +66,7 @@ class CommandGatewayTimingIT {
     Properties consumerConfig = new Properties();
     consumerConfig.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     DefaultCommandGateway gateway = new DefaultCommandGateway(producerConfig, consumerConfig, REPLY_TOPIC,
-        EventifyObjectMapper.get(), Duration.ofSeconds(2));
+        EventifyObjectMapper.create(), Duration.ofSeconds(2));
 
     CompletableFuture<Object> future = gateway.send(Command.builder().payload(Ping.builder().id("ping-1").build()).build());
 

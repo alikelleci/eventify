@@ -278,7 +278,7 @@ public class Eventify implements PluginContext {
       }
 
       if (this.objectMapper == null) {
-        this.objectMapper = EventifyObjectMapper.get();
+        this.objectMapper = EventifyObjectMapper.create();
       }
 
       // What happens underneath is logged by a plugin, so it can be seen, replaced or joined by others.

@@ -26,7 +26,7 @@ class MessageJsonTest {
     Event event = Event.builder().payload(new Thing("a")).metadata(MetadataKeys.CAUSATION_ID, command.getId()).build();
 
     for (Object message : new Object[]{command, event}) {
-      JsonNode json = EventifyObjectMapper.get().valueToTree(message);
+      JsonNode json = EventifyObjectMapper.create().valueToTree(message);
       assertThat(json.has("topic")).as("topic").isFalse();
       assertThat(json.path("metadata").has("correlationId")).as("correlationId").isFalse();
       assertThat(json.path("metadata").has("causationId")).as("causationId").isFalse();

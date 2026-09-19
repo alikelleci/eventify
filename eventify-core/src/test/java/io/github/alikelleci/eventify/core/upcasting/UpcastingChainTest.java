@@ -246,12 +246,12 @@ class UpcastingChainTest {
   /** The event as it was stored at revision 1: with {@code name}, before it was renamed. */
   private static String storedAtRevision1() {
     Event event = Event.builder().payload(Renamed.builder().id("ada").name("Ada Lovelace").build()).build();
-    String json = new String(new JsonSerializer<Event>(EventifyObjectMapper.get()).serialize("events", event));
+    String json = new String(new JsonSerializer<Event>(EventifyObjectMapper.create()).serialize("events", event));
     return json.replace("\"revision\":3", "\"revision\":1");
   }
 
   private static Event read(String stored, Object upcasters) {
-    return new JsonDeserializer<>(Event.class, EventifyObjectMapper.get(), new Upcasters())
+    return new JsonDeserializer<>(Event.class, EventifyObjectMapper.create(), new Upcasters())
         .registerUpcaster(upcasters)
         .deserialize("events", stored.getBytes());
   }

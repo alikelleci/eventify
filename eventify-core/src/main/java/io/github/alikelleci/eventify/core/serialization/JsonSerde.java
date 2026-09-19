@@ -13,7 +13,7 @@ public class JsonSerde<T> implements Serde<T> {
   private final JsonDeserializer<T> deserializer;
 
   public JsonSerde(Class<T> targetType) {
-    this(targetType, EventifyObjectMapper.get(), new Upcasters());
+    this(targetType, EventifyObjectMapper.create(), new Upcasters());
   }
 
   public JsonSerde(Class<T> targetType, ObjectMapper objectMapper) {

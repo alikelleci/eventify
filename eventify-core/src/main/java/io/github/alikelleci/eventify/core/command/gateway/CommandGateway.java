@@ -92,7 +92,7 @@ public interface CommandGateway extends AutoCloseable {
       Properties consumerConfig = KafkaClientConfigs.consumerConnectionOf(this.producerConfig);
 
       if (this.objectMapper == null) {
-        this.objectMapper = EventifyObjectMapper.get();
+        this.objectMapper = EventifyObjectMapper.create();
       }
 
       return new DefaultCommandGateway(

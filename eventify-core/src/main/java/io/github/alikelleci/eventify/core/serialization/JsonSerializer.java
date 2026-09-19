@@ -11,7 +11,7 @@ public class JsonSerializer<T> implements Serializer<T> {
   private final ObjectMapper objectMapper;
 
   public JsonSerializer() {
-    this(EventifyObjectMapper.get());
+    this(EventifyObjectMapper.create());
   }
 
   public JsonSerializer(ObjectMapper objectMapper) {

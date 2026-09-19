@@ -15,7 +15,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
   private final Upcasters upcasters;
 
   public JsonDeserializer(Class<T> targetType) {
-    this(targetType, EventifyObjectMapper.get(), new Upcasters());
+    this(targetType, EventifyObjectMapper.create(), new Upcasters());
   }
 
   public JsonDeserializer(Class<T> targetType, ObjectMapper objectMapper) {
