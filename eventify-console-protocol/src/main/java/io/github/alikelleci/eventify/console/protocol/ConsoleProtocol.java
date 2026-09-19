@@ -17,7 +17,7 @@ package io.github.alikelleci.eventify.console.protocol;
 public final class ConsoleProtocol {
 
   /** Raised when the messages change in a way older consoles or applications can't handle. */
-  public static final int VERSION = 2;
+  public static final int VERSION = 1;
 
   public static final String RSOCKET_PATH = "/rsocket";
 
