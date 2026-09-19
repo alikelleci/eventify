@@ -25,9 +25,33 @@ public class SnapshotStore implements ReadOnlySnapshotStore {
     return new SnapshotStore(store, null);
   }
 
+  /** The aggregate's snapshot when it can be used; {@code null} when it has none, or it is outdated (see {@link #whyOutdated}). */
   @Override
   public AggregateState get(String aggregateId) {
+    AggregateState snapshot = find(aggregateId);
+    return snapshot != null && whyOutdated(snapshot) == null ? snapshot : null;
+  }
+
+  /** The aggregate's snapshot as it is stored, also when it is outdated; {@code null} when it has none. */
+  public AggregateState find(String aggregateId) {
     return reads.get(aggregateId);
+  }
+
+  /**
+   * Why the snapshot can't be used; {@code null} when it can. It can't when its aggregate can't be read (e.g. its
+   * class was moved), or when it was made with another {@code @Revision} of the aggregate class: then the aggregate's
+   * fields or event sourcing handlers changed, and the snapshot may hold a state the current code would not compute.
+   */
+  public static String whyOutdated(AggregateState snapshot) {
+    if (snapshot.getPayload() == null) {
+      return "its aggregate can't be read, e.g. its class was moved or a field no longer fits";
+    }
+    int stored = snapshot.getRevision() == 0 ? 1 : snapshot.getRevision();
+    int current = AggregateState.revisionOf(snapshot.getPayload().getClass());
+    if (stored != current) {
+      return "it was made with revision " + stored + " of " + snapshot.getPayload().getClass().getSimpleName() + ", the code is revision " + current;
+    }
+    return null;
   }
 
   /** Replaces the aggregate's snapshot. */

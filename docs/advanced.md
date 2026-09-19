@@ -23,6 +23,34 @@ public class Order {
 
 Snapshotting is transparent to your handlers—you do not need to change any handler code.
 
+### When the aggregate changes: `@Revision`
+
+A snapshot holds the aggregate's state as your code computed it. When you change the aggregate's fields or its `@ApplyEvent` methods, a snapshot made before may no longer match what the current code would compute from the same events. Raise the aggregate's `@Revision` then:
+
+```java
+@AggregateRoot
+@Revision(2)
+@EnableSnapshotting(threshold = 500)
+public class Order { ... }
+```
+
+A snapshot remembers the revision it was made with. A snapshot of another revision is not used: the aggregate is rebuilt from all its events, with the current code, and snapshotted again at the next threshold. The same happens to a snapshot that can't be read at all, e.g. after moving the aggregate class to another package.
+
+| Change | Raise `@Revision`? |
+|---|---|
+| An `@ApplyEvent` method computes differently | Yes |
+| A field is added that the events fill | Yes |
+| A field is renamed or changes type | Yes |
+| The aggregate class is moved or renamed | Not needed: its snapshots can't be read and are rebuilt anyway |
+| A new event with a new `@ApplyEvent` method, not touching old events | No |
+| A command handler changes | No: it isn't part of the snapshot |
+
+The number itself doesn't matter: only whether it differs from the snapshot's. Without `@Revision` an aggregate is revision 1, and snapshots made before revisions were stored count as revision 1 too. When in doubt, raise it: it only costs rebuilding each aggregate once, at its next command.
+
+The revision is not the aggregate's version: the version counts the events the aggregate went through, the revision is the version of your code.
+
+**With `deleteEvents = true`** the events before a snapshot are gone, so an outdated snapshot can't be rebuilt. Commands of such an aggregate fail with a `SnapshotOutdatedException` instead of going on with a state the current code would not compute. Think twice before combining `deleteEvents` with changes to an aggregate.
+
 ## Event Upcasting
 
 As your application evolves, the structure of your events may change. Upcasting lets you transparently migrate older stored event data to a newer schema without modifying the event store.
@@ -144,3 +172,13 @@ public JsonNode addChannel(ObjectNode payload) {
   Serde<Event> eventSerde = new JsonSerde<>(Event.class)
       .registerUpcaster(new OrderEventUpcaster());
   ```
+
+### Where upcasters are registered
+
+An upcaster runs only where it is registered, so every service that reads the events needs it:
+
+- **Eventify**: register the class with `@Upcast` methods like a handler, with `registerHandler(new OrderEventUpcaster())`. With the Spring Boot starter, a bean with `@Upcast` methods is registered by itself.
+- **A Kafka Streams service** that reads the events topic itself: `new JsonSerde<>(Event.class).registerUpcaster(new OrderEventUpcaster())`.
+- **`@KafkaListener` methods** with the Spring Boot starter use the upcasters of your `Eventify` bean, or the beans with `@Upcast` methods when there is no `Eventify` bean.
+
+With the Spring Boot starter, an upcaster from a shared library is only picked up when it is a bean: declare it with `@Bean`, or include its package in the component scan.

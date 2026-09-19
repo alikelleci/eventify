@@ -6,7 +6,7 @@
 | `@AggregateId` | Field | Marks the `String` field that identifies the aggregate. |
 | `@AggregateRoot` | Class | Marks a class as an aggregate root. |
 | `@EnableSnapshotting` | Aggregate class | Enables periodic snapshotting. |
-| `@Revision(n)` | Event payload class | Declares the current schema revision. Defaults to `1`. |
+| `@Revision(n)` | Event payload class, aggregate class | On an event: its current schema revision, for upcasting. On an aggregate: the revision of its fields and `@ApplyEvent` methods; snapshots of another revision are not used. Defaults to `1`. |
 | `@HandleCommand` | Method | Marks a command-handler method. |
 | `@ApplyEvent` | Method | Marks an event-sourcing handler method. |
 | `@HandleEvent` | Method | Marks an event-handler method. |

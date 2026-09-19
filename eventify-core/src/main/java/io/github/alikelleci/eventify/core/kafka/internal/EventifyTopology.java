@@ -10,6 +10,7 @@ import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
 import io.github.alikelleci.eventify.core.serialization.JsonSerde;
+import io.github.alikelleci.eventify.core.store.internal.SnapshotSerde;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.Serde;
@@ -48,7 +49,7 @@ public final class EventifyTopology {
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
     Serde<CommandResult> resultSerde = new JsonSerde<>(CommandResult.class, objectMapper);
     Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, handlers.upcasters());
-    Serde<AggregateState> snapshotSerde = new JsonSerde<>(AggregateState.class, objectMapper);
+    Serde<AggregateState> snapshotSerde = new SnapshotSerde(objectMapper);
 
     /*
      * -------------------------------------------------------------

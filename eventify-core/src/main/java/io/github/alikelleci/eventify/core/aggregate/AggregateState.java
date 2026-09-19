@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.aggregate;
 
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.event.annotation.Revision;
+import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.MessageIds;
 import io.github.alikelleci.eventify.core.message.Metadata;
@@ -26,6 +28,12 @@ public class AggregateState implements Message {
   String aggregateId;
   String eventId;
   long version;
+  /**
+   * The {@link Revision} of the aggregate class this state was made with: of its fields and its event sourcing
+   * handlers. A snapshot made with another revision is not used. 0 in a snapshot made before revisions were stored: it
+   * counts as 1, the revision of a class without {@code @Revision}.
+   */
+  int revision;
 
   @Builder
   private AggregateState(Instant timestamp, Object payload, Metadata metadata, String eventId, long version) {
@@ -39,6 +47,14 @@ public class AggregateState implements Message {
 
     this.eventId = eventId;
     this.version = version;
+    this.revision = revisionOf(getPayload().getClass());
+  }
+
+  /** The {@link Revision} of an aggregate class; 1 without the annotation. */
+  public static int revisionOf(Class<?> aggregateType) {
+    return Optional.ofNullable(AnnotationScanner.findAnnotation(aggregateType, Revision.class))
+        .map(Revision::value)
+        .orElse(1);
   }
 
   public static class AggregateStateBuilder {

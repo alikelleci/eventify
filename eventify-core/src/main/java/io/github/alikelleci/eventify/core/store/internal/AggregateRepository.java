@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.exception.SnapshotOutdatedException;
 import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotPolicy;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
@@ -35,7 +36,7 @@ public class AggregateRepository {
   public AggregateState load(String aggregateId) {
     Instant startTime = Instant.now();
 
-    AggregateState snapshot = snapshotStore.get(aggregateId);
+    AggregateState snapshot = usableSnapshot(aggregateId);
     if (snapshot != null) {
       log.debug("Snapshot found: {} ({}) at version {}", snapshot.getType(), aggregateId, snapshot.getVersion());
     }
@@ -66,6 +67,38 @@ public class AggregateRepository {
     }
 
     return state;
+  }
+
+  /**
+   * The aggregate's snapshot, when it can be used. An outdated one (see {@link SnapshotStore#whyOutdated}) is left out:
+   * the aggregate is rebuilt from all its events, and snapshotted again. That can't be done when the events before the
+   * snapshot were deleted: then the command fails, instead of going on with a state the current code would not compute.
+   */
+  private AggregateState usableSnapshot(String aggregateId) {
+    AggregateState snapshot = snapshotStore.find(aggregateId);
+    String whyOutdated = snapshot != null ? SnapshotStore.whyOutdated(snapshot) : null;
+    if (whyOutdated == null) {
+      return snapshot;
+    }
+    if (eventsBeforeWereDeleted(aggregateId, snapshot)) {
+      throw new SnapshotOutdatedException("The snapshot of aggregate " + aggregateId + " can't be used: " + whyOutdated
+          + ". The aggregate can't be rebuilt without it: the events before it were deleted (@EnableSnapshotting(deleteEvents = true)).");
+    }
+    log.info("Snapshot of aggregate {} not used: {}. Rebuilding it from its events.", aggregateId, whyOutdated);
+    return null;
+  }
+
+  /**
+   * Whether events before the snapshot's event are gone. Deleting them keeps the snapshot's event, so it is then the
+   * aggregate's first stored event, while the snapshot came after more events than that one.
+   */
+  private boolean eventsBeforeWereDeleted(String aggregateId, AggregateState snapshot) {
+    if (snapshot.getVersion() <= 1) {
+      return false;
+    }
+    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId)) {
+      return !events.hasNext() || events.next().getId().equals(snapshot.getEventId());
+    }
   }
 
   /** The events under ids after the aggregate's last stored event: see {@link EventStore#assignIds}. */
