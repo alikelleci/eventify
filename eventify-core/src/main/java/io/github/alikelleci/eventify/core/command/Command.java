@@ -20,6 +20,7 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATIO
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Command implements Message {
   String id;
+  /** When this command was made, by the clock of the application that made it. */
   Instant timestamp;
   String type;
   Object payload;
@@ -27,8 +28,8 @@ public class Command implements Message {
   String aggregateId;
 
   @Builder
-  private Command(Instant timestamp, Object payload, Metadata metadata) {
-    this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
+  private Command(Object payload, Metadata metadata) {
+    this.timestamp = Instant.now();
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     // A copy with the flow this command belongs to: the metadata that was given stays as it is.
     this.metadata = Optional.ofNullable(metadata).orElseGet(() -> Metadata.builder().build())
@@ -56,7 +57,7 @@ public class Command implements Message {
 
     public Command build() {
       Metadata metadata = metadataBuilder.build();
-      return new Command(timestamp, payload, metadata);
+      return new Command(payload, metadata);
     }
   }
 

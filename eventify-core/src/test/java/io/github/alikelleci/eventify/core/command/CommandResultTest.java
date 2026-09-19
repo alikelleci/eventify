@@ -142,12 +142,12 @@ class CommandResultTest {
   }
 
   @Test
-  @DisplayName("Should number the events of an aggregate in the order they were handled, whatever the commands' timestamps")
+  @DisplayName("Should number the events of an aggregate in the order they were handled, whatever the clocks of their senders")
   void eventsAreNumberedInTheOrderTheyWereHandled() {
     Instant now = Instant.now();
-    send(Command.builder().payload(new AddItem("cart-1", "apple")).timestamp(now).build());
-    send(Command.builder().payload(new AddItem("cart-2", "pear")).timestamp(now).build());
-    send(Command.builder().payload(new AddItem("cart-1", "bread")).timestamp(now.minusSeconds(60)).build()); // a clock behind
+    send(Command.builder().payload(new AddItem("cart-1", "apple")).build(), now);
+    send(Command.builder().payload(new AddItem("cart-2", "pear")).build(), now);
+    send(Command.builder().payload(new AddItem("cart-1", "bread")).build(), now.minusSeconds(60)); // a clock behind
 
     assertThat(events.readValuesToList())
         .extracting(event -> event.getAggregateId() + " " + event.getSequence())
@@ -187,6 +187,11 @@ class CommandResultTest {
 
   private void send(Command command) {
     commands.pipeInput(command.getAggregateId(), command);
+  }
+
+  /** Sends the command as a host whose clock says this: the timestamp of its record. */
+  private void send(Command command, Instant recordTime) {
+    commands.pipeInput(command.getAggregateId(), command, recordTime);
   }
 
   /** Sends the command the way a sender that waits for its result does: with the reply topic as a record header. */

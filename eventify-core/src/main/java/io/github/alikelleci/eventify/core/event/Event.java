@@ -21,6 +21,7 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATIO
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Event implements Message {
   String id;
+  /** When Eventify recorded this event. Not when what it tells about happened: that belongs in the payload. */
   Instant timestamp;
   String type;
   Object payload;

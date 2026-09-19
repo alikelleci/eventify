@@ -19,6 +19,7 @@ import java.util.Optional;
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class AggregateState {
+  /** When the last event applied to this state was recorded. */
   Instant timestamp;
   String type;
   @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")

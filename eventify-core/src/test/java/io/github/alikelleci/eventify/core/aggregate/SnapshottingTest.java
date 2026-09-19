@@ -118,9 +118,10 @@ class SnapshottingTest {
     send(commands, payload, Instant.now());
   }
 
+  /** The timestamp is the record's: the clock of the host that sent the command. */
   private static void send(TestInputTopic<String, Command> commands, Object payload, Instant timestamp) {
-    Command command = Command.builder().payload(payload).timestamp(timestamp).build();
-    commands.pipeInput(command.getAggregateId(), command);
+    Command command = Command.builder().payload(payload).build();
+    commands.pipeInput(command.getAggregateId(), command, timestamp);
   }
 
   private static List<String> sourceTopics(Topology topology) {

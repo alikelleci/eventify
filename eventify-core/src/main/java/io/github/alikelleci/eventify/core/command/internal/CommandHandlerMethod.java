@@ -90,7 +90,6 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
     List<Event> events = list.stream()
         .filter(Objects::nonNull)
         .map(payload -> Event.builder()
-            .timestamp(command.getTimestamp())
             .payload(payload)
             .metadata(command.getMetadata())
             .metadata(CAUSATION_ID, command.getId())
