@@ -20,12 +20,9 @@ export class EventifyService {
     return this.http.get<EventDetail>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/${sequence}`);
   }
 
-  /** The correlation id also finds the events stored before events named the command that produced them. */
+  /** The events that name this command as their cause. */
   getEventsOfCommand(command: CommandMessage): Observable<CommandEventsPage> {
-    let params = new HttpParams();
-    const correlationId = command.metadata['$correlationId'];
-    if (correlationId) params = params.set('correlationId', correlationId);
-    return this.http.get<CommandEventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(command.aggregateId)}/commands/${encodeURIComponent(command.id)}/events`, { params });
+    return this.http.get<CommandEventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(command.aggregateId)}/commands/${encodeURIComponent(command.id)}/events`);
   }
 
   getCommands(aggregateId: string, limit = 500): Observable<CommandsPage> {

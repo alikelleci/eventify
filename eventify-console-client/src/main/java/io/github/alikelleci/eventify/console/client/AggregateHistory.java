@@ -6,7 +6,6 @@ import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
 import io.github.alikelleci.eventify.console.protocol.Requests;
@@ -61,28 +60,19 @@ class AggregateHistory {
 
   /**
    * The events the command produced, oldest first: the ones whose {@code $causationId} is the command's id. Not by
-   * correlation id: that is shared with the other commands of the same flow, e.g. a saga. Only an event stored before
-   * events named their cause is found by its correlation id, when the request gives one.
+   * correlation id: that is shared with the other commands of the same flow, e.g. a saga.
    */
   List<Event> eventsOfCommand(ReadOnlyEventStore events, Requests.EventsOfCommand request) {
     List<Event> produced = new ArrayList<>();
     try (ReadOnlyEventStore.Events all = events.events(request.aggregateId())) {
       while (all.hasNext()) {
         Event event = all.next();
-        if (isCausedBy(event.getMetadata(), request.commandId(), request.correlationId())) {
+        if (request.commandId().equals(event.getMetadata().getCausationId())) {
           produced.add(event);
         }
       }
     }
     return produced;
-  }
-
-  private static boolean isCausedBy(Metadata metadata, String commandId, String correlationId) {
-    String causationId = metadata.getCausationId();
-    if (causationId != null) {
-      return causationId.equals(commandId);
-    }
-    return correlationId != null && correlationId.equals(metadata.getCorrelationId());
   }
 
   /**

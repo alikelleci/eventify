@@ -42,12 +42,11 @@ public class ConsoleApiController {
     return toOwner(app, Route.EVENT_DETAIL, aggregateId, new Requests.EventDetail(aggregateId, sequence));
   }
 
-  /** The events the command produced; {@code correlationId} also finds the ones stored before events named their command. */
+  /** The events the command produced: the ones that name it as their cause. */
   @GetMapping("/{app}/aggregates/{aggregateId}/commands/{commandId}/events")
   public Mono<ResponseEntity<byte[]>> eventsOfCommand(@PathVariable String app, @PathVariable String aggregateId,
-                                                      @PathVariable String commandId,
-                                                      @RequestParam(required = false) String correlationId) {
-    return toOwner(app, Route.EVENTS_OF_COMMAND, aggregateId, new Requests.EventsOfCommand(aggregateId, commandId, correlationId));
+                                                      @PathVariable String commandId) {
+    return toOwner(app, Route.EVENTS_OF_COMMAND, aggregateId, new Requests.EventsOfCommand(aggregateId, commandId));
   }
 
   @GetMapping("/{app}/aggregates/{aggregateId}/state")

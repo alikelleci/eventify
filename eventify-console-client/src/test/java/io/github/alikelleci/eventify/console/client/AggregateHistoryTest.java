@@ -333,7 +333,7 @@ class AggregateHistoryTest {
     assertThat(key(foreign)).isBetween(StoreKeys.first("counter-1"), StoreKeys.last("counter-1"));
 
     assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(third, second, first);
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", foreign.getMetadata().getCausationId(), foreign.getMetadata().getCorrelationId()))).isEmpty();
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", String.valueOf(foreign.getMetadata().getCausationId())))).isEmpty();
     assertValue(history.stateAt(events, snapshots, "counter-1", null), 3, 3);
     assertDetail(first, 0, 1);
     assertThat(history.events(events, "counter-1@1", null, 50).events()).containsExactly(foreign);
@@ -431,29 +431,26 @@ class AggregateHistoryTest {
     storedSnapshots.put("counter-1", replayed("counter-1", null, event.getSequence()).state());
   }
 
-  /** Two commands of one saga share the correlation id: each shows only its own events. */
+  /** Two commands of one saga share the correlation id: each shows only the events that name it as their cause. */
   @Test
   @DisplayName("Should give the events a command produced, not those of other commands with the same correlation id")
   void theEventsOfACommand() {
     Event one = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA")).build());
+        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-a")).build());
     Event two = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
+        MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-b")).build());
 
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "saga"))).containsExactly(one);
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB", "saga"))).containsExactly(two);
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-a"))).containsExactly(one);
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-b"))).containsExactly(two);
   }
 
-  /** Stored before events named their command: found by the correlation id, without taking events that do name another. */
+  /** E.g. an event stored before events named their command: which command produced it isn't known. */
   @Test
-  @DisplayName("Should find events without a causation id by the command's correlation id")
-  void theEventsOfACommandWithoutCausationIds() {
-    Event legacy = store(Event.builder().payload(new Incremented("counter-1")).metadata(MetadataKeys.CORRELATION_ID, "old").build());
-    store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
-        MetadataKeys.CORRELATION_ID, "old", MetadataKeys.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
+  @DisplayName("Should give no events for a command when no event names it as its cause")
+  void anEventWithoutACausationIdIsOfNoCommand() {
+    store(Event.builder().payload(new Incremented("counter-1")).metadata(MetadataKeys.CORRELATION_ID, "old").build());
 
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "old"))).containsExactly(legacy);
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", null))).isEmpty();
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-a"))).isEmpty();
   }
 
   /** Stores the event as its aggregate's next one. */

@@ -14,12 +14,8 @@ public final class Requests {
   public record EventDetail(String aggregateId, Long sequence) {
   }
 
-  /**
-   * @param commandId     the command whose events are asked for
-   * @param correlationId the command's correlation id, optional: finds the events of the command stored before events
-   *                      named the command that produced them
-   */
-  public record EventsOfCommand(String aggregateId, String commandId, String correlationId) {
+  /** @param commandId the command whose events are asked for: the events that name it as their cause */
+  public record EventsOfCommand(String aggregateId, String commandId) {
   }
 
   /** @param sequence the event to take the state after; {@code null} for the current state */
