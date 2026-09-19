@@ -16,6 +16,7 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
 import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.console.protocol.Requests;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -332,7 +333,7 @@ class AggregateHistoryTest {
     assertThat(key(foreign)).isBetween(StoreKeys.first("counter-1"), StoreKeys.last("counter-1"));
 
     assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(third, second, first);
-    assertThat(history.eventsOfCommand(events, "counter-1", foreign.getMetadata().getCausationId(), foreign.getMetadata().getCorrelationId())).isEmpty();
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", foreign.getMetadata().getCausationId(), foreign.getMetadata().getCorrelationId()))).isEmpty();
     assertValue(history.stateAt(events, snapshots, "counter-1", null), 3, 3);
     assertDetail(first, 0, 1);
     assertThat(history.events(events, "counter-1@1", null, 50).events()).containsExactly(foreign);
@@ -439,8 +440,8 @@ class AggregateHistoryTest {
     Event two = store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
         MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
 
-    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "saga")).containsExactly(one);
-    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB", "saga")).containsExactly(two);
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "saga"))).containsExactly(one);
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB", "saga"))).containsExactly(two);
   }
 
   /** Stored before events named their command: found by the correlation id, without taking events that do name another. */
@@ -451,8 +452,8 @@ class AggregateHistoryTest {
     store(Event.builder().payload(new Incremented("counter-1")).metadata(Map.of(
         MetadataKeys.CORRELATION_ID, "old", MetadataKeys.CAUSATION_ID, "counter-1@01BBBBBBBBBBBBBBBBBBBBBBBB")).build());
 
-    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "old")).containsExactly(legacy);
-    assertThat(history.eventsOfCommand(events, "counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", null)).isEmpty();
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", "old"))).containsExactly(legacy);
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "counter-1@01AAAAAAAAAAAAAAAAAAAAAAAA", null))).isEmpty();
   }
 
   /** Stores the event as its aggregate's next one. */

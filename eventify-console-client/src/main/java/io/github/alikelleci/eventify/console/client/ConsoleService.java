@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.console.client.ConsoleViews.EventDetail;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.EventsPage;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.console.protocol.NodeStatus;
+import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.event.Event;
@@ -67,17 +68,18 @@ class ConsoleService {
     return commandHistory.read(aggregateId, limit, cancel);
   }
 
-  Result<CommandEventsPage> getEventsOfCommand(String aggregateId, String commandId, String correlationId) {
+  Result<CommandEventsPage> getEventsOfCommand(Requests.EventsOfCommand request) {
+    String aggregateId = request.aggregateId();
     Result<CommandEventsPage> routing = ownership.check(aggregateId);
     if (routing != null) return routing;
 
     try {
-      return Result.ok(new CommandEventsPage(history.eventsOfCommand(eventStore(), aggregateId, commandId, correlationId)));
+      return Result.ok(new CommandEventsPage(history.eventsOfCommand(eventStore(), request)));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
     } catch (Exception e) {
-      log.error("Unexpected error querying the events of command {} of aggregate {}", commandId, aggregateId, e);
+      log.error("Unexpected error querying the events of command {} of aggregate {}", request.commandId(), aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
   }

@@ -45,7 +45,23 @@ final class ConsoleViews {
    * deleted at a snapshot. The states are {@link AggregateState}s as JSON, see {@link AggregateHistory}.
    */
   record EventDetail(Event event, RawValue state, RawValue previousState,
-                     boolean stateKnown, boolean previousStateKnown) {}
+                     boolean stateKnown, boolean previousStateKnown) {
+
+    /** Both states are known; either can still be {@code null}, which then means there is no state. */
+    static EventDetail known(Event event, RawValue state, RawValue previousState) {
+      return new EventDetail(event, state, previousState, true, true);
+    }
+
+    /** The state after the event is known, the one before it isn't: the events before it were deleted at a snapshot. */
+    static EventDetail withUnknownPreviousState(Event event, RawValue state) {
+      return new EventDetail(event, state, null, true, false);
+    }
+
+    /** Neither state can be rebuilt: the events before this one were deleted at a snapshot. */
+    static EventDetail withUnknownStates(Event event) {
+      return new EventDetail(event, null, null, false, false);
+    }
+  }
   record CommandEventsPage(List<Event> events) {}
 
   /** The outcome of a query, as the console is told it, with the answer when it's {@link ReplyHeader.Status#OK}. */

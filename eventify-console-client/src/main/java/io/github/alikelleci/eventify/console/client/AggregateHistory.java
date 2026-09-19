@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
 import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.console.protocol.Requests;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -59,16 +60,16 @@ class AggregateHistory {
   }
 
   /**
-   * The events the command produced, oldest first: the ones that name it as their cause. Not by correlation id: that is
-   * shared with the other commands of the same flow, e.g. a saga. Only an event stored before events named their cause
-   * is found by its correlation id, when one is given.
+   * The events the command produced, oldest first: the ones whose {@code $causationId} is the command's id. Not by
+   * correlation id: that is shared with the other commands of the same flow, e.g. a saga. Only an event stored before
+   * events named their cause is found by its correlation id, when the request gives one.
    */
-  List<Event> eventsOfCommand(ReadOnlyEventStore events, String aggregateId, String commandId, String correlationId) {
+  List<Event> eventsOfCommand(ReadOnlyEventStore events, Requests.EventsOfCommand request) {
     List<Event> produced = new ArrayList<>();
-    try (ReadOnlyEventStore.Events all = events.events(aggregateId)) {
+    try (ReadOnlyEventStore.Events all = events.events(request.aggregateId())) {
       while (all.hasNext()) {
         Event event = all.next();
-        if (isCausedBy(event.getMetadata(), commandId, correlationId)) {
+        if (isCausedBy(event.getMetadata(), request.commandId(), request.correlationId())) {
           produced.add(event);
         }
       }
@@ -122,9 +123,9 @@ class AggregateHistory {
     }
     if (snapshot != null && snapshot.getVersion() == sequence) {
       // The snapshot is the state after this very event; what came before it is gone.
-      return new ConsoleViews.EventDetail(event, json(snapshot), null, true, false);
+      return ConsoleViews.EventDetail.withUnknownPreviousState(event, json(snapshot));
     }
-    return new ConsoleViews.EventDetail(event, null, null, false, false);
+    return ConsoleViews.EventDetail.withUnknownStates(event);
   }
 
   /** The event with the states before and after it, replayed from {@code start} up to the event. */
@@ -136,7 +137,7 @@ class AggregateHistory {
         before[0] = versioned(state, version);
       }
     });
-    return new ConsoleViews.EventDetail(event, json(result.state()), before[0], true, true);
+    return ConsoleViews.EventDetail.known(event, json(result.state()), before[0]);
   }
 
   /**

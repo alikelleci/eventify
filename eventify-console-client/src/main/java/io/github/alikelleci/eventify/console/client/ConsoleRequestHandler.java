@@ -51,8 +51,9 @@ class ConsoleRequestHandler {
         }
         case EVENTS_OF_COMMAND -> {
           Requests.EventsOfCommand request = read(data, Requests.EventsOfCommand.class);
-          String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getEventsOfCommand(aggregateId, require("commandId", request.commandId()), request.correlationId()));
+          requireAggregateId(request.aggregateId());
+          require("commandId", request.commandId());
+          yield toReply(service.getEventsOfCommand(request));
         }
         case STATE -> {
           Requests.State request = read(data, Requests.State.class);
