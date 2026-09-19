@@ -69,7 +69,6 @@ const REJECTED_ORDER: Step[] = [
 
 // Fixed at startup, so times and IDs stay the same between requests.
 const NOW = Date.now();
-const REPLY_TO = 'orders.replies';
 
 interface History {
   commands: CommandMessage[];               // newest first, like the backend
@@ -94,9 +93,9 @@ function buildHistory(orderId: string, steps: Step[]): History {
     // A retry names the command it retries: the last one of the same type before it.
     const retried = [...commands].reverse().find(command => command.type === step.command);
     const metadata: Record<string, string> = step.retried && retried
-      // Resubmitted from the console: marked like ConsoleService.retryCommand does, without $replyTo.
+      // Resubmitted from the console: marked like ConsoleService.retryCommand does.
       ? { '$correlationId': correlationId, '$retryOf': retried.id }
-      : { '$correlationId': correlationId, '$replyTo': REPLY_TO };
+      : { '$correlationId': correlationId };
 
     commands.push({
       id: commandId,

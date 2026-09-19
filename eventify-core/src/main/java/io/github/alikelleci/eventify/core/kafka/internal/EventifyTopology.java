@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
+import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
@@ -14,7 +15,6 @@ import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
 import io.github.alikelleci.eventify.core.serialization.JsonSerde;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -27,8 +27,6 @@ import org.apache.kafka.streams.state.Stores;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
-
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.REPLY_TO;
 
 /**
  * The Kafka Streams topology of an Eventify application: the event and snapshot stores, command handling (results,
@@ -95,8 +93,8 @@ public final class EventifyTopology {
 
       // Results --> Push to reply topic
       commandResults
-          .filter((key, result) -> StringUtils.isNotBlank(result.command().getMetadata().get(REPLY_TO)))
-          .to((key, result, recordContext) -> result.command().getMetadata().get(REPLY_TO),
+          .processValues(ReplyTo.Awaited::new)
+          .to((key, result, recordContext) -> ReplyTo.topic(recordContext.headers()),
               Produced.with(Serdes.String(), resultSerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> Optional.of(Set.of(0))));
 

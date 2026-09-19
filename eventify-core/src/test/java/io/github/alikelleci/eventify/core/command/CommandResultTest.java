@@ -6,11 +6,13 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
+import io.github.alikelleci.eventify.core.kafka.HeaderNames;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.store.StoreKeys;
+import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -18,11 +20,13 @@ import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.TopologyTestDriver;
 import org.apache.kafka.streams.state.KeyValueStore;
+import org.apache.kafka.streams.test.TestRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
@@ -98,9 +102,8 @@ class CommandResultTest {
   @DisplayName("Should give the sender the events of the command, as they are stored and sent")
   void theSenderGetsTheEvents() {
     Command command = Command.builder().payload(new AddItem("cart-1", "apple")).build();
-    command.getMetadata().put(MetadataKeys.REPLY_TO, REPLY_TOPIC);
 
-    send(command);
+    sendAwaitingReply(command);
 
     List<Event> sent = events.readValuesToList();
     CommandResult reply = replies.readValue();
@@ -109,11 +112,11 @@ class CommandResultTest {
       assertThat(success.command().getId()).isEqualTo(command.getId());
       assertThat(success.events()).extracting(Event::getId).containsExactly(sent.get(0).getId());
       assertThat(success.events().get(0).getPayload()).isEqualTo(sent.get(0).getPayload());
-      assertThat(success.events().get(0).getMetadata()).doesNotContainKey(MetadataKeys.REPLY_TO);
     });
-    // Where to reply to is for the command's sender only: the event keeps the rest of the command's metadata.
+    // An event takes over its command's metadata, and names the command as its cause. Where to reply to is not in it:
+    // it travels as a header on the command record, and is only for the command's sender.
     assertThat(sent.get(0).getMetadata())
-        .doesNotContainKey(MetadataKeys.REPLY_TO)
+        .containsOnlyKeys(MetadataKeys.CORRELATION_ID, MetadataKeys.CAUSATION_ID)
         .containsEntry(MetadataKeys.CORRELATION_ID, command.getMetadata().getCorrelationId());
     assertThat(results.readValue()).isEqualTo(reply);
   }
@@ -184,5 +187,11 @@ class CommandResultTest {
 
   private void send(Command command) {
     commands.pipeInput(command.getAggregateId(), command);
+  }
+
+  /** Sends the command the way a sender that waits for its result does: with the reply topic as a record header. */
+  private void sendAwaitingReply(Command command) {
+    commands.pipeInput(new TestRecord<>(command.getAggregateId(), command,
+        new RecordHeaders().add(HeaderNames.REPLY_TO, REPLY_TOPIC.getBytes(StandardCharsets.UTF_8)), command.getTimestamp()));
   }
 }

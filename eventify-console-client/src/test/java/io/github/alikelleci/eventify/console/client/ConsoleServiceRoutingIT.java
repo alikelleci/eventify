@@ -7,7 +7,6 @@ import io.github.alikelleci.eventify.console.client.item.ItemHandler;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -157,7 +156,7 @@ class ConsoleServiceRoutingIT {
         assertThat(commands).hasSize(2);
         assertThat(commands.get(0).result()).isEqualTo("success");
         Command retry = commands.get(0).command(); // newest first
-        assertThat(retry.getMetadata()).containsEntry(CommandRetry.RETRY_OF, original.getId()).doesNotContainKey(MetadataKeys.REPLY_TO);
+        assertThat(retry.getMetadata()).containsEntry(CommandRetry.RETRY_OF, original.getId());
         assertThat(retry.getId()).isNotEqualTo(original.getId());
         assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isEqualTo(original.getMetadata().getCorrelationId());
       });

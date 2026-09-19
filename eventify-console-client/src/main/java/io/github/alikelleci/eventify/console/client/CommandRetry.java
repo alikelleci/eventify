@@ -20,8 +20,6 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.REPLY_TO;
-
 /** Sends a command again, as the console asks: as a new command, on the topic of the command it retries. */
 @Slf4j
 class CommandRetry {
@@ -87,7 +85,6 @@ class CommandRetry {
         .putAll(original.getMetadata())
         .put(RETRY_OF, original.getId())
         .build();
-    retryMetadata.remove(REPLY_TO);
 
     Command retryCommand = Command.builder()
         .payload(original.getPayload())

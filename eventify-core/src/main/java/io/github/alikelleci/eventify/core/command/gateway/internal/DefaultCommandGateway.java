@@ -10,6 +10,7 @@ import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
+import io.github.alikelleci.eventify.core.kafka.HeaderNames;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -17,15 +18,16 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.StringSerializer;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeoutException;
-
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.REPLY_TO;
 
 @Slf4j
 public class DefaultCommandGateway implements CommandGateway {
@@ -71,10 +73,11 @@ public class DefaultCommandGateway implements CommandGateway {
     if (replies.isClosed()) {
       throw new IllegalStateException("The command gateway is closed.");
     }
-    command.getMetadata().put(REPLY_TO, replies.getReplyTopic());
 
     // Built first: a command that can't be sent (e.g. without @Topic) fails here, without leaving a future behind.
-    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopic().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
+    // Where to reply to travels as a header: it says where this sender waits, and nothing about the command itself.
+    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopic().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command,
+        List.of(new RecordHeader(HeaderNames.REPLY_TO, replies.getReplyTopic().getBytes(StandardCharsets.UTF_8))));
 
     CompletableFuture<CommandResult.Success> future = new CompletableFuture<>();
     // One future per command id. The same command sent again while it still waits for its reply would be handled twice,

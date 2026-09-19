@@ -7,8 +7,6 @@ public final class MetadataKeys {
   public static final String CORRELATION_ID = "$correlationId";
   /** On an event: the id of the command that produced it. */
   public static final String CAUSATION_ID = "$causationId";
-  /** On a command: the topic its sender waits for the result on. */
-  public static final String REPLY_TO = "$replyTo";
 
   private MetadataKeys() {
   }
