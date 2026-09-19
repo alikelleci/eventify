@@ -40,10 +40,10 @@ public class AggregateReplayer {
   public interface Listener {
     /**
      * @param event   the event about to be applied
-     * @param state   the state before this event, without its version set; {@code null} when there is none
-     * @param version the version of that state
+     * @param state         the state before this event, without its version set; {@code null} when there is none
+     * @param versionBefore the version of that state: one below this event's sequence
      */
-    void beforeEvent(Event event, AggregateState state, long version);
+    void beforeEvent(Event event, AggregateState state, long versionBefore);
   }
 
   public AggregateReplayer(Map<Class<?>, ApplyEventMethod> eventSourcingHandlers) {

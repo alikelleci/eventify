@@ -75,7 +75,7 @@ public class AggregateRepository {
    * snapshot were deleted: then the command fails, instead of going on with a state the current code would not compute.
    */
   private AggregateState usableSnapshot(String aggregateId) {
-    AggregateState snapshot = snapshotStore.find(aggregateId);
+    AggregateState snapshot = snapshotStore.get(aggregateId);
     String whyOutdated = snapshot != null ? SnapshotStore.whyOutdated(snapshot) : null;
     if (whyOutdated == null) {
       return snapshot;

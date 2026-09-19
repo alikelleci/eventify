@@ -92,7 +92,7 @@ class AggregateHistory {
     if (sequence != null && events.get(aggregateId, sequence) == null) {
       return null;
     }
-    AggregateState snapshot = snapshots.get(aggregateId);
+    AggregateState snapshot = snapshots.getUsable(aggregateId);
     long until = sequence != null ? sequence : Long.MAX_VALUE;
     if (snapshot != null && snapshot.getVersion() <= until) {
       return json(replay(events, aggregateId, snapshot, until, null).state());
@@ -112,7 +112,7 @@ class AggregateHistory {
       return null;
     }
 
-    AggregateState snapshot = snapshots.get(aggregateId);
+    AggregateState snapshot = snapshots.getUsable(aggregateId);
     if (snapshot != null && snapshot.getVersion() < sequence) {
       // The snapshot is before the event: start there. The state before the event is seen on the way.
       return withStates(event, events, aggregateId, snapshot, sequence);

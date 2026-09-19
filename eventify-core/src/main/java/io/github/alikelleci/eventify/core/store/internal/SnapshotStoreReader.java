@@ -19,13 +19,13 @@ public class SnapshotStoreReader implements ReadOnlySnapshotStore {
 
   /** The aggregate's snapshot when it can be used; {@code null} when it has none, or it is outdated (see {@link #whyOutdated}). */
   @Override
-  public AggregateState get(String aggregateId) {
-    AggregateState snapshot = find(aggregateId);
+  public AggregateState getUsable(String aggregateId) {
+    AggregateState snapshot = get(aggregateId);
     return snapshot != null && whyOutdated(snapshot) == null ? snapshot : null;
   }
 
   @Override
-  public AggregateState find(String aggregateId) {
+  public AggregateState get(String aggregateId) {
     return store.get(aggregateId);
   }
 
