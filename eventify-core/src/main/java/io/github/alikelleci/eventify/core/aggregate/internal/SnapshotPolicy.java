@@ -22,9 +22,9 @@ public record SnapshotPolicy(int threshold, boolean deleteEvents) {
    * Not only when it is exactly one: a command with several events can step over it.
    *
    * @param lastSnapshotVersion the version of its last snapshot; 0 when it has none
-   * @param currentVersion      the version it is at now: the sequence of its last event
+   * @param aggregateVersion    the version the aggregate is at now: the sequence of its last event
    */
-  public boolean isSnapshotDue(long lastSnapshotVersion, long currentVersion) {
-    return threshold > 0 && currentVersion / threshold > lastSnapshotVersion / threshold;
+  public boolean isSnapshotDue(long lastSnapshotVersion, long aggregateVersion) {
+    return threshold > 0 && aggregateVersion / threshold > lastSnapshotVersion / threshold;
   }
 }
