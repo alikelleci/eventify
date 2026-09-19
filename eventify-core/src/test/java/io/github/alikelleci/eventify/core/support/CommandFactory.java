@@ -11,9 +11,7 @@ import io.github.alikelleci.eventify.core.order.OrderCommand.ShipOrder;
 
 import java.util.UUID;
 
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSE;
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.RESULT;
 
 public class CommandFactory {
 
@@ -23,8 +21,6 @@ public class CommandFactory {
     return Metadata.builder()
         .put("custom-key", "custom-value")
         .put(CORRELATION_ID, UUID.randomUUID().toString())
-        .put(RESULT, "should-be-overwritten")
-        .put(CAUSE, "should-be-overwritten")
         .build();
   }
 

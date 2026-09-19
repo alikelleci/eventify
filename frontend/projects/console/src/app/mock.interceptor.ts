@@ -104,7 +104,8 @@ function buildHistory(orderId: string, steps: Step[]): History {
       type: step.command,
       aggregateId: orderId,
       payload: { '@class': `com.example.order.OrderCommand$${step.command}`, id: orderId, ...step.payload },
-      metadata: { ...metadata, ...(step.failure ? { '$result': 'failure', '$cause': step.failure } : { '$result': 'success' }) },
+      metadata,
+      ...(step.failure ? { result: 'failure' as const, cause: step.failure } : { result: 'success' as const }),
     });
 
     if (step.failure) return;

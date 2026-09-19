@@ -2,30 +2,36 @@ package io.github.alikelleci.eventify.core.support;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
 
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSE;
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.RESULT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class Matchers {
 
-  public static void assertCommandResult(Command command, Command commandResult, boolean isSuccess) {
-    assertThat(commandResult)
-        .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
-            .withIgnoredFields("metadata.$result", "metadata.$cause")
-            .build())
+  public static void assertCommandResult(Command command, CommandResult commandResult, boolean isSuccess) {
+    assertThat(commandResult.command())
+        .usingRecursiveComparison()
         .isEqualTo(command);
 
     if (isSuccess) {
-      assertThat(commandResult.getMetadata()).containsEntry(RESULT, "success");
-      assertThat(commandResult.getMetadata()).doesNotContainKey(CAUSE);
+      assertThat(commandResult).isInstanceOf(CommandResult.Success.class);
     } else {
-      assertThat(commandResult.getMetadata()).containsEntry(RESULT, "failure");
-      assertThat(commandResult.getMetadata()).hasEntrySatisfying(CAUSE, value -> assertThat(value).isNotBlank());
+      assertThat(commandResult).isInstanceOf(CommandResult.Failure.class);
+      assertThat(causeOf(commandResult)).isNotBlank();
     }
+  }
+
+  /** "success" or "failure", as the result is written. */
+  public static String outcome(CommandResult result) {
+    return result instanceof CommandResult.Success ? "success" : "failure";
+  }
+
+  /** Why the command failed; {@code null} when it succeeded. */
+  public static String causeOf(CommandResult result) {
+    return result instanceof CommandResult.Failure failure ? failure.cause() : null;
   }
 
 

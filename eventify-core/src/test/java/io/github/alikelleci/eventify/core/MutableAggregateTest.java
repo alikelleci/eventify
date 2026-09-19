@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
@@ -134,7 +135,7 @@ class MutableAggregateTest {
 
   private TopologyTestDriver driver;
   private TestInputTopic<String, Command> commands;
-  private TestOutputTopic<String, Command> results;
+  private TestOutputTopic<String, CommandResult> results;
   private TestOutputTopic<String, Event> events;
 
   @BeforeEach
@@ -144,7 +145,7 @@ class MutableAggregateTest {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     driver = new TopologyTestDriver(Eventify.builder().streamsConfig(properties).registerHandler(new CartHandler()).build().topology());
     commands = driver.createInputTopic("commands.cart", new StringSerializer(), new JsonSerializer<>());
-    results = driver.createOutputTopic("commands.cart.results", new StringDeserializer(), new JsonDeserializer<>(Command.class));
+    results = driver.createOutputTopic("commands.cart.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
     events = driver.createOutputTopic("events.cart", new StringDeserializer(), new JsonDeserializer<>(Event.class));
   }
 
@@ -176,9 +177,9 @@ class MutableAggregateTest {
 
     send(new Touch("cart"));
 
-    Command result = results.readValue();
-    assertThat(result.getType()).isEqualTo("Touch");
-    assertThat(result.getMetadata().get(MetadataKeys.RESULT)).isEqualTo("success");
+    CommandResult result = results.readValue();
+    assertThat(result.command().getType()).isEqualTo("Touch");
+    assertThat(result).isInstanceOfSatisfying(CommandResult.Success.class, success -> assertThat(success.events()).isEmpty());
     assertThat(events.isEmpty()).isTrue();
   }
 

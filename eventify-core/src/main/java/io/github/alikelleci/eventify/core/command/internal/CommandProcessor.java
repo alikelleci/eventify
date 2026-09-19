@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.internal.CommandResult.Failure;
-import io.github.alikelleci.eventify.core.command.internal.CommandResult.Success;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
@@ -62,10 +61,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     } catch (Exception e) {
       logFailure(e);
 
-      context.forward(fixedKeyRecord.withValue(Failure.builder()
-          .command(command)
-          .cause(ExceptionUtils.getRootCauseMessage(e))
-          .build()));
+      context.forward(fixedKeyRecord.withValue(new CommandResult.Failure(command, ExceptionUtils.getRootCauseMessage(e))));
       return;
     }
 
@@ -79,10 +75,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
     // Runs the topology after it on this call: the sends to the result and event topics. Also without events: the
     // command is accepted, and its caller waits for that answer.
-    context.forward(fixedKeyRecord.withValue(Success.builder()
-        .command(command)
-        .events(events)
-        .build()));
+    context.forward(fixedKeyRecord.withValue(new CommandResult.Success(command, events)));
   }
 
   /**

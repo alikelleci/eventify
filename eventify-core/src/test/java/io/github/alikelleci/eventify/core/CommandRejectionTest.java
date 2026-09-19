@@ -3,13 +3,14 @@ package io.github.alikelleci.eventify.core;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.support.Matchers;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -233,7 +234,7 @@ class CommandRejectionTest {
 
   private TopologyTestDriver driver;
   private TestInputTopic<String, Command> commands;
-  private TestOutputTopic<String, Command> results;
+  private TestOutputTopic<String, CommandResult> results;
   private TestOutputTopic<String, Event> events;
   private KeyValueStore<String, Event> eventStore;
 
@@ -244,7 +245,7 @@ class CommandRejectionTest {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     driver = new TopologyTestDriver(Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).build().topology());
     commands = driver.createInputTopic("commands.counter", new StringSerializer(), new JsonSerializer<>());
-    results = driver.createOutputTopic("commands.counter.results", new StringDeserializer(), new JsonDeserializer<>(Command.class));
+    results = driver.createOutputTopic("commands.counter.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
     events = driver.createOutputTopic("events.counter", new StringDeserializer(), new JsonDeserializer<>(Event.class));
     eventStore = driver.getKeyValueStore("event-store");
   }
@@ -336,7 +337,7 @@ class CommandRejectionTest {
 
   private java.util.List<String> results() {
     return results.readValuesToList().stream()
-        .map(result -> result.getType() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
+        .map(result -> result.command().getType() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .toList();
   }
 

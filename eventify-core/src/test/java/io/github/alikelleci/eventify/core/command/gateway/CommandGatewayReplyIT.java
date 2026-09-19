@@ -2,8 +2,7 @@ package io.github.alikelleci.eventify.core.command.gateway;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.internal.CommandReplies;
-import io.github.alikelleci.eventify.core.command.internal.CommandResult;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
@@ -82,7 +81,7 @@ class CommandGatewayReplyIT {
 
     // Larger than the producer sends (max.request.size, 1 MB by default).
     Upload upload = Upload.builder().id("upload-1").content("x".repeat(2 * 1024 * 1024)).build();
-    CompletableFuture<Object> future = gateway.send(Command.builder().payload(upload).build());
+    CompletableFuture<CommandResult.Success> future = gateway.send(Command.builder().payload(upload).build());
 
     assertThat(future)
         .failsWithin(Duration.ofSeconds(30))
@@ -99,8 +98,8 @@ class CommandGatewayReplyIT {
 
     // Nothing handles the command: it waits for its reply.
     Command command = Command.builder().payload(Ping.builder().id("ping-closing").build()).build();
-    CompletableFuture<Object> waiting = gateway.send(command);
-    CompletableFuture<Object> again = gateway.send(command);
+    CompletableFuture<CommandResult.Success> waiting = gateway.send(command);
+    CompletableFuture<CommandResult.Success> again = gateway.send(command);
 
     assertThat(again)
         .failsWithin(Duration.ofSeconds(1))
@@ -127,9 +126,9 @@ class CommandGatewayReplyIT {
     CommandGateway gateway = CommandGateway.builder().producerConfig(producerConfig).replyTopic(REPLY_TOPIC).build();
 
     Command command = Command.builder().payload(Ping.builder().id("ping-1").build()).build();
-    CompletableFuture<Object> future = gateway.send(command);
+    CompletableFuture<CommandResult.Success> future = gateway.send(command);
     // The reply as Eventify writes it: the command itself, with its result.
-    byte[] reply = new JsonSerializer<Command>().serialize(REPLY_TOPIC, CommandReplies.toReply(CommandResult.Success.builder().command(command).build()));
+    byte[] reply = new JsonSerializer<CommandResult>().serialize(REPLY_TOPIC, new CommandResult.Success(command, List.of()));
 
     Properties rawConfig = new Properties();
     rawConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
@@ -145,6 +144,6 @@ class CommandGatewayReplyIT {
     }
 
     assertThat(future).isCompleted();
-    assertThat(future.get()).isEqualTo(command.getPayload());
+    assertThat(future.get().command().getPayload()).isEqualTo(command.getPayload());
   }
 }

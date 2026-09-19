@@ -149,17 +149,17 @@ class ConsoleServiceRoutingIT {
 
       // Retried from the console: a new command, pointing to the one it retries. It keeps the correlation id: it belongs
       // to the same flow (e.g. a saga) as the original.
-      Command original = service.getCommands(id, 50, new CancelSignal()).value().commands().get(0);
+      Command original = service.getCommands(id, 50, new CancelSignal()).value().commands().get(0).command();
       byte[] json = first.getObjectMapper().writeValueAsBytes(original);
       assertThat(service.retryCommand(json)).isEqualTo(Result.ok(null));
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
-        List<Command> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
+        List<ConsoleViews.CommandView> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
         assertThat(commands).hasSize(2);
-        Command retry = commands.get(0); // newest first
+        assertThat(commands.get(0).result()).isEqualTo("success");
+        Command retry = commands.get(0).command(); // newest first
         assertThat(retry.getMetadata()).containsEntry(CommandRetry.RETRY_OF, original.getId()).doesNotContainKey(MetadataKeys.REPLY_TO);
         assertThat(retry.getId()).isNotEqualTo(original.getId());
         assertThat(retry.getMetadata().getCorrelationId()).isNotBlank().isEqualTo(original.getMetadata().getCorrelationId());
-        assertThat(retry.getMetadata()).containsEntry(MetadataKeys.RESULT, "success");
       });
 
       // Only a command this application handles: the JSON names the class to create.

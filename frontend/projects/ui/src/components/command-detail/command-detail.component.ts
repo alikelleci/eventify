@@ -112,12 +112,11 @@ export class CommandDetailComponent {
   }
 
   result(): 'success' | 'failure' | null {
-    const r = this.command()?.metadata['$result'];
-    return r === 'success' ? 'success' : r === 'failure' ? 'failure' : null;
+    return this.command()?.result ?? null;
   }
 
   cause(): string | null {
-    return this.command()?.metadata['$cause'] ?? null;
+    return this.command()?.cause ?? null;
   }
 
   copy(text: string, key: string) {

@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.command.gateway.internal;
 
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
@@ -68,7 +69,7 @@ class CommandGatewayTimingIT {
     DefaultCommandGateway gateway = new DefaultCommandGateway(producerConfig, consumerConfig, REPLY_TOPIC,
         EventifyObjectMapper.create(), Duration.ofSeconds(2));
 
-    CompletableFuture<Object> future = gateway.send(Command.builder().payload(Ping.builder().id("ping-1").build()).build());
+    CompletableFuture<CommandResult.Success> future = gateway.send(Command.builder().payload(Ping.builder().id("ping-1").build()).build());
 
     assertThat(future)
         .failsWithin(Duration.ofSeconds(15))

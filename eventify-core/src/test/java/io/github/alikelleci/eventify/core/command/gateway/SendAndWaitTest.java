@@ -2,12 +2,14 @@ package io.github.alikelleci.eventify.core.command.gateway;
 
 import io.github.alikelleci.eventify.core.EventifyException;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -27,9 +29,9 @@ class SendAndWaitTest {
   @Test
   @DisplayName("Should return the result")
   void returnsTheResult() {
-    Ship result = answering(CompletableFuture.completedFuture(new Ship("order-1"))).sendAndWait(command);
+    CommandResult.Success success = new CommandResult.Success(command, List.of());
 
-    assertThat(result).isEqualTo(new Ship("order-1"));
+    assertThat(answering(CompletableFuture.completedFuture(success)).sendAndWait(command)).isSameAs(success);
   }
 
   @Test
@@ -52,7 +54,7 @@ class SendAndWaitTest {
   @Test
   @DisplayName("Should throw CommandTimeoutException when the gateway stopped waiting for the result")
   void throwsATimeoutWhenTheGatewayStoppedWaiting() {
-    CompletableFuture<Object> timedOut = CompletableFuture.failedFuture(new TimeoutException("Command timed out"));
+    CompletableFuture<CommandResult.Success> timedOut = CompletableFuture.failedFuture(new TimeoutException("Command timed out"));
 
     assertThatThrownBy(() -> answering(timedOut).sendAndWait(command))
         .isInstanceOf(CommandTimeoutException.class);
@@ -72,12 +74,11 @@ class SendAndWaitTest {
     }
   }
 
-  private static CommandGateway answering(CompletableFuture<?> future) {
+  private static CommandGateway answering(CompletableFuture<CommandResult.Success> future) {
     return new CommandGateway() {
       @Override
-      @SuppressWarnings("unchecked")
-      public <R> CompletableFuture<R> send(Command command) {
-        return (CompletableFuture<R>) future;
+      public CompletableFuture<CommandResult.Success> send(Command command) {
+        return future;
       }
 
       @Override

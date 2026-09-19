@@ -3,10 +3,8 @@ package io.github.alikelleci.eventify.core.kafka.internal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
-import io.github.alikelleci.eventify.core.command.internal.CommandReplies;
-import io.github.alikelleci.eventify.core.command.internal.CommandResult.Success;
-import io.github.alikelleci.eventify.core.command.internal.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
@@ -48,6 +46,7 @@ public final class EventifyTopology {
      */
 
     Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
+    Serde<CommandResult> resultSerde = new JsonSerde<>(CommandResult.class, objectMapper);
     Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, handlers.upcasters());
     Serde<AggregateState> snapshotSerde = new JsonSerde<>(AggregateState.class, objectMapper);
 
@@ -88,23 +87,20 @@ public final class EventifyTopology {
 
       // Results --> Push
       commandResults
-          .mapValues(CommandReplies::toReply)
-          .to((key, command, recordContext) -> TopicNames.resultTopicOf(command.getTopic().value()),
-              Produced.with(Serdes.String(), commandSerde));
+          .to((key, result, recordContext) -> TopicNames.resultTopicOf(result.command().getTopic().value()),
+              Produced.with(Serdes.String(), resultSerde));
 
       // Results --> Push to reply topic
       commandResults
-          .mapValues(CommandReplies::toReply)
-          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
-          .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
-              Produced.with(Serdes.String(), commandSerde)
+          .filter((key, result) -> StringUtils.isNotBlank(result.command().getMetadata().get(REPLY_TO)))
+          .to((key, result, recordContext) -> result.command().getMetadata().get(REPLY_TO),
+              Produced.with(Serdes.String(), resultSerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> Optional.of(Set.of(0))));
 
       // Events --> Push
       commandResults
-          .filter((key, result) -> result instanceof Success)
-          .mapValues((key, result) -> (Success) result)
-          .flatMapValues(Success::getEvents)
+          .filter((key, result) -> result instanceof CommandResult.Success)
+          .flatMapValues(result -> ((CommandResult.Success) result).events())
           .filter((key, event) -> event != null)
           .to((key, event, recordContext) -> event.getTopic().value(),
               Produced.with(Serdes.String(), eventSerde));

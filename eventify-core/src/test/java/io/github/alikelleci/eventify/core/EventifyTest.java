@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -73,10 +74,10 @@ class EventifyTest {
         new StringSerializer(), new JsonSerializer<>());
   }
 
-  static TestOutputTopic<String, Command> commandResultsTopic(TopologyTestDriver driver) {
+  static TestOutputTopic<String, CommandResult> commandResultsTopic(TopologyTestDriver driver) {
     return driver.createOutputTopic(
         OrderCommand.class.getAnnotation(Topic.class).value().concat(".results"),
-        new StringDeserializer(), new JsonDeserializer<>(Command.class));
+        new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
   }
 
   static TestOutputTopic<String, Event> eventsTopic(TopologyTestDriver driver) {
@@ -101,7 +102,7 @@ class EventifyTest {
 
     TopologyTestDriver driver;
     TestInputTopic<String, Command> commands;
-    TestOutputTopic<String, Command> results;
+    TestOutputTopic<String, CommandResult> results;
     TestOutputTopic<String, Event> events;
     KeyValueStore<String, Event> eventStore;
 
@@ -127,7 +128,7 @@ class EventifyTest {
 
       commands.pipeInput(command.getAggregateId(), command);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(1);
       assertCommandResult(command, resultList.get(0), true);
 
@@ -150,7 +151,7 @@ class EventifyTest {
       commands.pipeInput(command1.getAggregateId(), command1);
       commands.pipeInput(command2.getAggregateId(), command2);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(2);
       assertCommandResult(command1, resultList.get(0), true);
       assertCommandResult(command2, resultList.get(1), false);
@@ -164,7 +165,7 @@ class EventifyTest {
       Command command = buildConfirmOrderCommand("order-1");
       commands.pipeInput(command.getAggregateId(), command);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(1);
       assertCommandResult(command, resultList.get(0), false);
 
@@ -181,7 +182,7 @@ class EventifyTest {
       commands.pipeInput(place.getAggregateId(), place);
       commands.pipeInput(confirm.getAggregateId(), confirm);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(2);
       assertCommandResult(place, resultList.get(0), true);
       assertCommandResult(confirm, resultList.get(1), true);
@@ -202,7 +203,7 @@ class EventifyTest {
       commands.pipeInput(confirm.getAggregateId(), confirm);
       commands.pipeInput(confirmAgain.getAggregateId(), confirmAgain);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(3);
       assertCommandResult(confirmAgain, resultList.get(2), false);
 
@@ -218,7 +219,7 @@ class EventifyTest {
       commands.pipeInput(place.getAggregateId(), place);
       commands.pipeInput(ship.getAggregateId(), ship);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(2);
       assertCommandResult(ship, resultList.get(1), false);
 
@@ -237,7 +238,7 @@ class EventifyTest {
       commands.pipeInput(confirm.getAggregateId(), confirm);
       commands.pipeInput(ship.getAggregateId(), ship);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(3);
       assertCommandResult(ship, resultList.get(2), true);
 
@@ -258,7 +259,7 @@ class EventifyTest {
       commands.pipeInput(confirm.getAggregateId(), confirm);
       commands.pipeInput(deliver.getAggregateId(), deliver);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(3);
       assertCommandResult(deliver, resultList.get(2), false);
 
@@ -278,7 +279,7 @@ class EventifyTest {
       commands.pipeInput(ship.getAggregateId(), ship);
       commands.pipeInput(deliver.getAggregateId(), deliver);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(4);
       assertCommandResult(deliver, resultList.get(3), true);
 
@@ -300,7 +301,7 @@ class EventifyTest {
       commands.pipeInput(ship.getAggregateId(), ship);
       commands.pipeInput(cancel.getAggregateId(), cancel);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(4);
       assertCommandResult(cancel, resultList.get(3), false);
 
@@ -322,7 +323,7 @@ class EventifyTest {
       commands.pipeInput(deliver.getAggregateId(), deliver);
       commands.pipeInput(cancel.getAggregateId(), cancel);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(5);
       assertCommandResult(cancel, resultList.get(4), false);
 
@@ -340,7 +341,7 @@ class EventifyTest {
       commands.pipeInput(cancel.getAggregateId(), cancel);
       commands.pipeInput(confirmAfterCancel.getAggregateId(), confirmAfterCancel);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(3);
       assertCommandResult(place, resultList.get(0), true);
       assertCommandResult(cancel, resultList.get(1), true);
@@ -363,7 +364,7 @@ class EventifyTest {
       List<Command> commandList = List.of(place, confirm, ship, deliver);
       commandList.forEach(cmd -> commands.pipeInput(cmd.getAggregateId(), cmd));
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(4);
       for (int i = 0; i < commandList.size(); i++) {
         assertCommandResult(commandList.get(i), resultList.get(i), true);
@@ -387,7 +388,7 @@ class EventifyTest {
 
     TopologyTestDriver driver;
     TestInputTopic<String, Command> commands;
-    TestOutputTopic<String, Command> results;
+    TestOutputTopic<String, CommandResult> results;
     TestOutputTopic<String, Event> events;
     KeyValueStore<String, AggregateState> snapshotStore;
     KeyValueStore<String, Event> eventStore;
@@ -420,7 +421,7 @@ class EventifyTest {
       );
       commandList.forEach(cmd -> commands.pipeInput(cmd.getAggregateId(), cmd));
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(4);
       for (int i = 0; i < commandList.size(); i++) {
         assertCommandResult(commandList.get(i), resultList.get(i), true);
@@ -450,7 +451,7 @@ class EventifyTest {
       commands.pipeInput(ship.getAggregateId(), ship);
       commands.pipeInput(deliver.getAggregateId(), deliver);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(4);
       // If the snapshot at version 3 (status=SHIPPED) had NOT been resumed correctly,
       // this command would fail its "must be SHIPPED" validation in OrderCommandHandler.
@@ -476,7 +477,7 @@ class EventifyTest {
 
     TopologyTestDriver driver;
     TestInputTopic<String, Command> commands;
-    TestOutputTopic<String, Command> results;
+    TestOutputTopic<String, CommandResult> results;
     KeyValueStore<String, Event> eventStore;
 
     @BeforeEach
@@ -526,7 +527,7 @@ class EventifyTest {
       Command confirm = buildConfirmOrderCommand("order-1");
       commands.pipeInput(confirm.getAggregateId(), confirm);
 
-      List<Command> resultList = results.readValuesToList();
+      List<CommandResult> resultList = results.readValuesToList();
       assertThat(resultList).hasSize(1);
       assertCommandResult(confirm, resultList.get(0), true);
 

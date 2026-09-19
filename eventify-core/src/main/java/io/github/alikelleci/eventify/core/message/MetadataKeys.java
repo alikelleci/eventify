@@ -9,10 +9,6 @@ public final class MetadataKeys {
   public static final String CAUSATION_ID = "$causationId";
   /** On a command: the topic its sender waits for the result on. */
   public static final String REPLY_TO = "$replyTo";
-  /** On a command's result: "success" or "failure". */
-  public static final String RESULT = "$result";
-  /** On a failed command's result: why it failed. */
-  public static final String CAUSE = "$cause";
 
   private MetadataKeys() {
   }

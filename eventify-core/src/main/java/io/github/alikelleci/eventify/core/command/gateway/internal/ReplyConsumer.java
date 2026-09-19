@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.command.gateway.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -32,16 +32,16 @@ public class ReplyConsumer {
   /** How long {@link #stopListening()} waits for the listening thread to finish its poll and close the consumer. */
   private static final Duration STOP_TIMEOUT = Duration.ofSeconds(10);
 
-  private final Consumer<String, Command> consumer;
+  private final Consumer<String, CommandResult> consumer;
   private final String replyTopic;
   /** Handles a batch of replies. It must not throw: a record it can't handle is skipped by it. */
-  private final java.util.function.Consumer<ConsumerRecords<String, Command>> onReplies;
+  private final java.util.function.Consumer<ConsumerRecords<String, CommandResult>> onReplies;
   private final AtomicBoolean closed = new AtomicBoolean(false);
   private Thread thread;
   private Thread shutdownHook;
 
   public ReplyConsumer(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper,
-                       java.util.function.Consumer<ConsumerRecords<String, Command>> onReplies) {
+                       java.util.function.Consumer<ConsumerRecords<String, CommandResult>> onReplies) {
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 //    consumerConfig.putIfAbsent(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
@@ -51,7 +51,7 @@ public class ReplyConsumer {
 
     this.consumer = new KafkaConsumer<>(consumerConfig,
         new StringDeserializer(),
-        new JsonDeserializer<>(Command.class, objectMapper));
+        new JsonDeserializer<>(CommandResult.class, objectMapper));
 
     this.replyTopic = replyTopic;
     this.onReplies = onReplies;
@@ -67,7 +67,7 @@ public class ReplyConsumer {
 //      consumer.subscribe(Collections.singletonList(this.replyTopic));
       try {
         while (!closed.get()) {
-          ConsumerRecords<String, Command> consumerRecords;
+          ConsumerRecords<String, CommandResult> consumerRecords;
           try {
             consumerRecords = consumer.poll(Duration.ofMillis(1000));
           } catch (RecordDeserializationException e) {

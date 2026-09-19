@@ -70,8 +70,7 @@ export class CommandListComponent implements OnInit {
   }
 
   result(command: CommandMessage): 'success' | 'failure' | null {
-    const r = command.metadata['$result'];
-    return r === 'success' ? 'success' : r === 'failure' ? 'failure' : null;
+    return command.result ?? null;
   }
 
   tone(command: CommandMessage): TimelineTone {

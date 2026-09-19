@@ -5,13 +5,14 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.support.Matchers;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.commons.collections4.IteratorUtils;
@@ -89,7 +90,7 @@ class AggregateIdMismatchTest {
   private TopologyTestDriver driver;
   private CounterHandler handler;
   private TestInputTopic<String, Command> commands;
-  private TestOutputTopic<String, Command> results;
+  private TestOutputTopic<String, CommandResult> results;
   private KeyValueStore<String, Event> eventStore;
   private KeyValueStore<String, AggregateState> snapshotStore;
 
@@ -101,7 +102,7 @@ class AggregateIdMismatchTest {
     handler = new CounterHandler();
     driver = new TopologyTestDriver(Eventify.builder().streamsConfig(properties).registerHandler(handler).build().topology());
     commands = driver.createInputTopic("commands.counter", new StringSerializer(), new JsonSerializer<>());
-    results = driver.createOutputTopic("commands.counter.results", new StringDeserializer(), new JsonDeserializer<>(Command.class));
+    results = driver.createOutputTopic("commands.counter.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
     eventStore = driver.getKeyValueStore("event-store");
     snapshotStore = driver.getKeyValueStore("snapshot-store");
   }
@@ -120,7 +121,7 @@ class AggregateIdMismatchTest {
     send("ada", Increment.builder().id("ada").stateId("ada").build()); // "ada" is still at version 1, and goes on
 
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT))
+        .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result))
         .containsExactly("ad success", "ada success", "ada failure", "ada success");
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(3);
     assertThat(snapshotStore.get("ad")).isNull();
@@ -128,7 +129,7 @@ class AggregateIdMismatchTest {
 
     // "ad" is untouched: its next command loads its own state.
     send("ad", Increment.builder().id("ad").stateId("ad").build());
-    assertThat(results.readValue().getMetadata().get(MetadataKeys.RESULT)).isEqualTo("success");
+    assertThat(Matchers.outcome(results.readValue())).isEqualTo("success");
   }
 
   @Test
@@ -138,7 +139,7 @@ class AggregateIdMismatchTest {
     send("ada", Increment.builder().id("bob").stateId("bob").build()); // record key "ada", command for "bob"
 
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
+        .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .containsExactly(
             "ada success null",
             "bob failure AggregateIdMismatchException: Record key does not match the aggregate identifier of command Increment. Expected bob, but was ada");

@@ -1,9 +1,11 @@
 package io.github.alikelleci.eventify.console.client;
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 
 import java.util.List;
@@ -20,7 +22,22 @@ final class ConsoleViews {
    * @param lookbackDays how far back the commands were read: older commands are not in the page
    * @param truncated    whether more commands were found than the page holds: the oldest ones are left out
    */
-  record CommandsPage(List<Command> commands, long lookbackDays, boolean truncated) {}
+  record CommandsPage(List<CommandView> commands, long lookbackDays, boolean truncated) {}
+
+  /**
+   * A command as the console shows it: the command's own fields, with how its handling ended.
+   *
+   * @param result "success" or "failure"
+   * @param cause  why it failed; {@code null} when it succeeded
+   */
+  record CommandView(@JsonUnwrapped Command command, String result, String cause) {
+
+    static CommandView of(CommandResult result) {
+      return result instanceof CommandResult.Failure failure
+          ? new CommandView(failure.command(), "failure", failure.cause())
+          : new CommandView(result.command(), "success", null);
+    }
+  }
   record EventsPage(List<Event> events, String nextCursor) {}
   /**
    * An event with the state after and before it. A state is {@code null} when there is none, or when it is unknown:

@@ -7,7 +7,7 @@ class OrderTest {
 
     TopologyTestDriver driver;
     TestInputTopic<String, Command> commands;
-    TestOutputTopic<String, Command> results;
+    TestOutputTopic<String, CommandResult> results;
     TestOutputTopic<String, Event> events;
 
     @BeforeEach
@@ -30,7 +30,7 @@ class OrderTest {
 
         results = driver.createOutputTopic(
             "commands.order.results",
-            new StringDeserializer(), new JsonDeserializer<>(Command.class));
+            new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
 
         events = driver.createOutputTopic(
             "events.order",
@@ -53,9 +53,9 @@ class OrderTest {
 
         commands.pipeInput(command.getAggregateId(), command);
 
-        List<Command> resultList = results.readValuesToList();
+        List<CommandResult> resultList = results.readValuesToList();
         assertThat(resultList).hasSize(1);
-        assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
+        assertThat(resultList.get(0)).isInstanceOf(CommandResult.Success.class);
 
         List<Event> eventList = events.readValuesToList();
         assertThat(eventList).hasSize(1);
@@ -74,9 +74,9 @@ class OrderTest {
         commands.pipeInput(place1.getAggregateId(), place1);
         commands.pipeInput(place2.getAggregateId(), place2);
 
-        List<Command> resultList = results.readValuesToList();
-        assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
-        assertThat(resultList.get(1).getMetadata().get("$result")).isEqualTo("failure");
+        List<CommandResult> resultList = results.readValuesToList();
+        assertThat(resultList.get(0)).isInstanceOf(CommandResult.Success.class);
+        assertThat(resultList.get(1)).isInstanceOf(CommandResult.Failure.class);
     }
 }
 ```

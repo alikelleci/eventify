@@ -1,9 +1,10 @@
 package io.github.alikelleci.eventify.console.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.alikelleci.eventify.console.client.ConsoleViews.CommandView;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.CommandsPage;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
-import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -69,8 +70,8 @@ class CommandHistory {
       return Result.ok(new CommandsPage(List.of(), COMMANDS_LOOKBACK.toDays(), false));
     }
 
-    List<Command> results = new ArrayList<>();
-    JsonDeserializer<Command> commandDeserializer = new JsonDeserializer<>(Command.class, objectMapper);
+    List<CommandView> results = new ArrayList<>();
+    JsonDeserializer<CommandResult> resultDeserializer = new JsonDeserializer<>(CommandResult.class, objectMapper);
     Instant deadline = Instant.now().plus(MAX_COMMANDS_READ);
 
     // Closed in reverse order: the wakeup is unregistered before the consumer closes.
@@ -78,7 +79,7 @@ class CommandHistory {
          AutoCloseable stopOnCancel = cancel.onCancel(consumer::wakeup)) {
       for (String topic : resultTopics) {
         try {
-          readCommands(consumer, topic, aggregateId, commandDeserializer, deadline, results);
+          readCommands(consumer, topic, aggregateId, resultDeserializer, deadline, results);
         } catch (WakeupException e) {
           throw e;
         } catch (CommandsReadTimeout e) {
@@ -98,9 +99,9 @@ class CommandHistory {
       return Result.unavailable("Unexpected error");
     }
 
-    results.sort((a, b) -> b.getTimestamp().compareTo(a.getTimestamp()));
+    results.sort((a, b) -> b.command().getTimestamp().compareTo(a.command().getTimestamp()));
     boolean truncated = results.size() > limit;
-    List<Command> limited = truncated ? results.subList(0, limit) : results;
+    List<CommandView> limited = truncated ? results.subList(0, limit) : results;
     return Result.ok(new CommandsPage(limited, COMMANDS_LOOKBACK.toDays(), truncated));
   }
 
@@ -109,7 +110,7 @@ class CommandHistory {
    * key is written to, up to the end of that partition when the read starts.
    */
   private static void readCommands(KafkaConsumer<String, byte[]> consumer, String topic, String aggregateId,
-                                   JsonDeserializer<Command> commandDeserializer, Instant deadline, List<Command> results) {
+                                   JsonDeserializer<CommandResult> resultDeserializer, Instant deadline, List<CommandView> results) {
     int numPartitions = consumer.partitionsFor(topic).size();
     if (numPartitions == 0) {
       return;
@@ -140,9 +141,9 @@ class CommandHistory {
           continue;
         }
         try {
-          Command command = commandDeserializer.deserialize(topic, record.value());
-          if (command != null) {
-            results.add(command);
+          CommandResult result = resultDeserializer.deserialize(topic, record.value());
+          if (result != null && result.command() != null) {
+            results.add(CommandView.of(result));
           }
         } catch (Exception e) {
           log.warn("Failed to deserialize command record on topic {} at offset {}", topic, record.offset(), e);

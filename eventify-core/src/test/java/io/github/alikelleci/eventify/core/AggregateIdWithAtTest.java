@@ -6,10 +6,11 @@ import io.github.alikelleci.eventify.core.account.AccountMessages.Deposit;
 import io.github.alikelleci.eventify.core.account.AccountMessages.OpenAccount;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.support.Matchers;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -48,14 +49,14 @@ class AggregateIdWithAtTest {
   void anAggregateDoesNotLoadTheEventsOfAnAggregateWhoseIdStartsWithItsIdAndAt() {
     driver = new TopologyTestDriver(EventifyTest.baseBuilder().build().topology());
     TestInputTopic<String, Command> commands = EventifyTest.commandsTopic(driver);
-    TestOutputTopic<String, Command> results = EventifyTest.commandResultsTopic(driver);
+    TestOutputTopic<String, CommandResult> results = EventifyTest.commandResultsTopic(driver);
 
     send(commands, buildPlaceOrderCommandFor("ada@example.com"));
     send(commands, buildPlaceOrderCommandFor("ada"));
 
     // Placing "ada" fails with "Order already exists." when it loads the order of "ada@example.com".
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
+        .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .containsExactly("ada@example.com success null", "ada success null");
   }
 
@@ -64,7 +65,7 @@ class AggregateIdWithAtTest {
   void aSnapshotThatDeletesEventsOnlyDeletesTheAggregatesOwnEvents() {
     driver = new TopologyTestDriver(accounts());
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
-    TestOutputTopic<String, Command> results = driver.createOutputTopic("commands.account.results", new StringDeserializer(), new JsonDeserializer<>(Command.class));
+    TestOutputTopic<String, CommandResult> results = driver.createOutputTopic("commands.account.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
     KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
     KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
 
@@ -78,7 +79,7 @@ class AggregateIdWithAtTest {
     send(commands, Command.builder().payload(Deposit.builder().id("ada").amount(7).build()).build());
 
     assertThat(results.readValuesToList())
-        .extracting(result -> result.getAggregateId() + " " + result.getMetadata().get(MetadataKeys.RESULT) + " " + result.getMetadata().get(MetadataKeys.CAUSE))
+        .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .containsExactly(
             "ada@-team success null", "ada@-team success null",
             "ada success null", "ada success null", "ada success null");

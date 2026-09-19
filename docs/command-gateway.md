@@ -25,20 +25,32 @@ CommandGateway gateway = CommandGateway.builder()
 ## Sending Commands
 
 ```java
-// Async — returns a CompletableFuture
-CompletableFuture<PlaceOrder> future = gateway.send(
+// Async — returns a CompletableFuture with the result
+CompletableFuture<CommandResult.Success> future = gateway.send(
     PlaceOrder.builder().id("order-1").customer("John Doe").build()
 );
 
 // Blocking — waits up to 1 minute by default
-PlaceOrder result = gateway.sendAndWait(
+CommandResult.Success result = gateway.sendAndWait(
     PlaceOrder.builder().id("order-1").customer("John Doe").build()
 );
 
 // Blocking with a custom timeout
-PlaceOrder result = gateway.sendAndWait(
+CommandResult.Success result = gateway.sendAndWait(
     PlaceOrder.builder().id("order-1").customer("John Doe").build(),
     30, TimeUnit.SECONDS);
+```
+
+A result holds the command and the events it produced, as they were stored and sent: `result.command()` and `result.events()`. A command accepted without events has an empty list.
+
+In a Spring controller, return only what the caller needs, e.g. the ids of the events:
+
+```java
+@PostMapping("/orders")
+public CompletableFuture<List<String>> placeOrder(@RequestBody PlaceOrder placeOrder) {
+  return gateway.send(placeOrder)
+      .thenApply(result -> result.events().stream().map(Event::getId).toList());
+}
 ```
 
 If the command fails, `sendAndWait` throws a `CommandExecutionException` containing the failure message. When using `send`, the returned future completes exceptionally with the same exception.

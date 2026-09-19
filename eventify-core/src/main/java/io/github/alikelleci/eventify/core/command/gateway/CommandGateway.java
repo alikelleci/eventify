@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core.command.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.EventifyException;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
 import io.github.alikelleci.eventify.core.command.gateway.internal.DefaultCommandGateway;
@@ -19,27 +20,31 @@ import java.util.concurrent.TimeoutException;
 
 public interface CommandGateway extends AutoCloseable {
 
-  <R> CompletableFuture<R> send(Command command);
+  /**
+   * Sends the command. The future completes with its result: the events it produced. It fails with a
+   * {@link CommandExecutionException} when the command is rejected.
+   */
+  CompletableFuture<CommandResult.Success> send(Command command);
 
   /** Releases the gateway's Kafka clients and thread. */
   @Override
   void close();
 
-  default <R> CompletableFuture<R> send(Object payload) {
+  default CompletableFuture<CommandResult.Success> send(Object payload) {
     return send(Command.builder()
         .payload(payload)
         .build());
   }
 
   /**
-   * Sends the command and waits for its result.
+   * Sends the command and waits for its result: the events it produced.
    *
    * @throws CommandExecutionException when the command failed
    * @throws CommandTimeoutException   when no result arrived in time; the command may still be handled
    * @throws EventifyException         when the wait was interrupted; the thread's interrupt flag is set again
    */
-  default <R> R sendAndWait(Command command, long timeout, TimeUnit unit) {
-    CompletableFuture<R> future = send(command);
+  default CommandResult.Success sendAndWait(Command command, long timeout, TimeUnit unit) {
+    CompletableFuture<CommandResult.Success> future = send(command);
     try {
       return future.get(timeout, unit);
     } catch (ExecutionException e) {
@@ -52,17 +57,17 @@ public interface CommandGateway extends AutoCloseable {
     }
   }
 
-  default <R> R sendAndWait(Object payload, long timeout, TimeUnit unit) {
+  default CommandResult.Success sendAndWait(Object payload, long timeout, TimeUnit unit) {
     return sendAndWait(Command.builder()
         .payload(payload)
         .build(), timeout, unit);
   }
 
-  default <R> R sendAndWait(Command command) {
+  default CommandResult.Success sendAndWait(Command command) {
     return sendAndWait(command, 1, TimeUnit.MINUTES);
   }
 
-  default <R> R sendAndWait(Object payload) {
+  default CommandResult.Success sendAndWait(Object payload) {
     return sendAndWait(payload, 1, TimeUnit.MINUTES);
   }
 

@@ -6,8 +6,9 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.Scheduler;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.CommandResult;
+import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
-import io.github.alikelleci.eventify.core.command.internal.CommandReplies;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -35,7 +36,7 @@ public class DefaultCommandGateway implements CommandGateway {
   /** How long {@link #close()} waits for the commands still being sent to reach Kafka. */
   private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
-  private final Cache<String, CompletableFuture<Object>> cache;
+  private final Cache<String, CompletableFuture<CommandResult.Success>> cache;
 
   private final Producer<String, Command> producer;
 
@@ -50,7 +51,7 @@ public class DefaultCommandGateway implements CommandGateway {
         .expireAfterWrite(timeout)
         // Expires on time: without a scheduler, entries only expire when the cache is used, e.g. by the next command.
         .scheduler(Scheduler.systemScheduler())
-        .removalListener((String key, CompletableFuture<Object> future, RemovalCause cause) -> {
+        .removalListener((String key, CompletableFuture<CommandResult.Success> future, RemovalCause cause) -> {
           if (cause.wasEvicted()) {
             future.completeExceptionally(new TimeoutException("Command timed out: no reply received within the allowed time."));
           }
@@ -66,7 +67,7 @@ public class DefaultCommandGateway implements CommandGateway {
   }
 
   @Override
-  public <R> CompletableFuture<R> send(Command command) {
+  public CompletableFuture<CommandResult.Success> send(Command command) {
     if (replies.isClosed()) {
       throw new IllegalStateException("The command gateway is closed.");
     }
@@ -75,10 +76,10 @@ public class DefaultCommandGateway implements CommandGateway {
     // Built first: a command that can't be sent (e.g. without @Topic) fails here, without leaving a future behind.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopic().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command);
 
-    CompletableFuture<Object> future = new CompletableFuture<>();
+    CompletableFuture<CommandResult.Success> future = new CompletableFuture<>();
     // One future per command id. The same command sent again while it still waits for its reply would be handled twice,
     // and would replace the first future, which then never completes: it is refused instead.
-    CompletableFuture<Object> waiting = cache.asMap().putIfAbsent(command.getId(), future);
+    CompletableFuture<CommandResult.Success> waiting = cache.asMap().putIfAbsent(command.getId(), future);
     if (waiting != null) {
       return CompletableFuture.failedFuture(new IllegalStateException("Command " + command.getId() + " was already sent and still waits for its result."));
     }
@@ -97,10 +98,10 @@ public class DefaultCommandGateway implements CommandGateway {
       throw e;
     }
 
-    return (CompletableFuture<R>) future;
+    return future;
   }
 
-  private void failSend(Command command, CompletableFuture<Object> future, Exception exception) {
+  private void failSend(Command command, CompletableFuture<CommandResult.Success> future, Exception exception) {
     log.warn("Failed to send command: {} ({})", command.getType(), command.getAggregateId(), exception);
     cache.asMap().remove(command.getId(), future);
     future.completeExceptionally(exception);
@@ -124,7 +125,7 @@ public class DefaultCommandGateway implements CommandGateway {
   }
 
   /** Completes the futures of the commands the replies are for. Doesn't throw: a reply it can't handle is skipped. */
-  private void onReplies(ConsumerRecords<String, Command> consumerRecords) {
+  private void onReplies(ConsumerRecords<String, CommandResult> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
       try {
         onReply(consumerRecord);
@@ -134,20 +135,20 @@ public class DefaultCommandGateway implements CommandGateway {
     });
   }
 
-  private void onReply(ConsumerRecord<String, Command> consumerRecord) {
-    Command command = consumerRecord.value();
-    if (command == null || StringUtils.isBlank(command.getId())) {
+  private void onReply(ConsumerRecord<String, CommandResult> consumerRecord) {
+    CommandResult result = consumerRecord.value();
+    if (result == null || result.command() == null || StringUtils.isBlank(result.command().getId())) {
       return;
     }
-    CompletableFuture<Object> future = cache.getIfPresent(command.getId());
+    String commandId = result.command().getId();
+    CompletableFuture<CommandResult.Success> future = cache.getIfPresent(commandId);
     if (future != null) {
-      Exception exception = CommandReplies.failureOf(command);
-      if (exception == null) {
-        future.complete(command.getPayload());
+      if (result instanceof CommandResult.Failure failure) {
+        future.completeExceptionally(new CommandExecutionException(failure.cause()));
       } else {
-        future.completeExceptionally(exception);
+        future.complete((CommandResult.Success) result);
       }
-      cache.invalidate(command.getId());
+      cache.invalidate(commandId);
     }
   }
 

@@ -10,6 +10,10 @@ export interface CommandMessage {
   payload: Record<string, unknown> & { '@class'?: string };
   metadata: Record<string, string>;
   aggregateId: string;
+  /** How its handling ended. */
+  result?: 'success' | 'failure';
+  /** Why it failed; only on a failure. */
+  cause?: string;
 }
 
 export interface CommandsPage {
