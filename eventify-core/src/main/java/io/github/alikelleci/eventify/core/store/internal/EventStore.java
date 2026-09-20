@@ -3,7 +3,6 @@ package io.github.alikelleci.eventify.core.store.internal;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.store.StoreKeys;
-import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
@@ -44,11 +43,7 @@ public class EventStore extends EventStoreReader {
     String aggregateId = snapshot.getAggregateId();
     try (KeyValueIterator<String, Event> iterator = store.range(StoreKeys.first(aggregateId), StoreKeys.of(aggregateId, snapshot.getVersion() - 1))) {
       while (iterator.hasNext()) {
-        KeyValue<String, Event> entry = iterator.next();
-        if (!StoreKeys.isKeyOf(aggregateId, entry.key)) {
-          continue; // another aggregate's event in the range: never ours to delete
-        }
-        store.delete(entry.key);
+        store.delete(iterator.next().key);
         deleted++;
       }
     }

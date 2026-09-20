@@ -30,10 +30,11 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * An aggregate id that is another aggregate id followed by "@", like "ada" and "ada@example.com". Events are stored
- * under aggregateId@sequence, so the keys of the second start with the keys' prefix of the first. After "@" and a
- * digit, e.g. "ada@1", they are even in the key range of the first: each aggregate must still only see, and delete, its
- * own events.
+ * An aggregate id that is another aggregate id followed by "@", like "ada" and "ada@example.com" or "ada@1". The keys
+ * of the second start where the keys of the first start, and with "@" between the id and the sequence the keys of
+ * "ada@1" even fell inside the key range of "ada". Each aggregate must only see, and delete, its own events.
+ *
+ * <p>The separator is what keeps them apart, so an identifier that contains it is the one an aggregate cannot have.
  */
 @DisplayName("Aggregate ids that start with another id and '@'")
 class AggregateIdWithAtTest {
@@ -71,10 +72,10 @@ class AggregateIdWithAtTest {
     KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
     KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
 
-    // An id whose keys sort between the first two keys of "ada": inside the range that is deleted.
-    String between = StoreKeys.of("ada", 1);
-    send(commands, Command.builder().payload(OpenAccount.builder().id(between).build()).build());
-    send(commands, Command.builder().payload(Deposit.builder().id(between).amount(100).build()).build());
+    // An id whose keys sort right after the keys of "ada": next to the range that is deleted.
+    String neighbour = "ada@1";
+    send(commands, Command.builder().payload(OpenAccount.builder().id(neighbour).build()).build());
+    send(commands, Command.builder().payload(Deposit.builder().id(neighbour).amount(100).build()).build());
 
     // "ada": the third command loads two events, takes a snapshot and deletes the events before it.
     send(commands, Command.builder().payload(OpenAccount.builder().id("ada").build()).build());
@@ -84,7 +85,7 @@ class AggregateIdWithAtTest {
     assertThat(results.readValuesToList())
         .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .containsExactly(
-            between + " success null", between + " success null",
+            neighbour + " success null", neighbour + " success null",
             "ada success null", "ada success null", "ada success null");
 
     AggregateState snapshot = snapshotStore.get("ada");
@@ -93,9 +94,26 @@ class AggregateIdWithAtTest {
     assertThat(snapshot.getVersion()).isEqualTo(2);
 
     // The other aggregate keeps all its events.
-    assertThat(StoreKeys.of(between, 1)).isBetween(StoreKeys.of("ada", 1), StoreKeys.of("ada", 2));
-    assertThat(eventsOf(eventStore, between)).hasSize(2);
+    assertThat(StoreKeys.of(neighbour, 1)).isGreaterThan(StoreKeys.last("ada"));
+    assertThat(eventsOf(eventStore, neighbour)).hasSize(2);
     assertThat(eventsOf(eventStore, "ada")).hasSize(2); // its first event was deleted at the snapshot
+  }
+
+  /** The separator is the one character an identifier cannot hold: the command is refused, the application goes on. */
+  @Test
+  @DisplayName("Should refuse an aggregate whose id contains the separator, and say so")
+  void anIdThatContainsTheSeparatorIsRefused() {
+    driver = new TopologyTestDriver(accounts());
+    TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
+    TestOutputTopic<String, CommandResult> results = driver.createOutputTopic("commands.account.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
+
+    send(commands, Command.builder().payload(OpenAccount.builder().id("ada\u00001").build()).build());
+    send(commands, Command.builder().payload(OpenAccount.builder().id("ada").build()).build());
+
+    List<CommandResult> answers = results.readValuesToList();
+    assertThat(Matchers.outcome(answers.get(0))).isEqualTo("failure");
+    assertThat(Matchers.causeOf(answers.get(0))).contains("NUL");
+    assertThat(Matchers.outcome(answers.get(1))).isEqualTo("success");
   }
 
   private static void send(TestInputTopic<String, Command> commands, Command command) {

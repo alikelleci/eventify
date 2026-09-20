@@ -325,13 +325,15 @@ class AggregateHistoryTest {
     assertValue(history.stateAt(events, snapshots, "counter-1", third.getSequence()), 3, 3);
   }
 
-  /** "counter-1@1": its keys ("counter-1@1@000…1") are in the key range of "counter-1"; "counter-1@x" sorts after it. */
+  /** "counter-1@1" and "counter-1@x": their keys start where the keys of "counter-1" start, and must stay out of it. */
   @Test
   @DisplayName("Should not show the events of an aggregate whose id starts with this id and '@'")
   void theEventsOfAnAggregateWhoseIdStartsWithThisIdAndAtAreNotThisAggregates() {
     Event foreign = store(new Incremented("counter-1@1"));
     Event foreignAfter = store(new Incremented("counter-1@x"));
-    assertThat(key(foreign)).isBetween(StoreKeys.first("counter-1"), StoreKeys.last("counter-1"));
+    // Their keys start where the keys of "counter-1" start, and the separator keeps them out of its range.
+    assertThat(key(foreign)).isGreaterThan(StoreKeys.last("counter-1"));
+    assertThat(key(foreignAfter)).isGreaterThan(StoreKeys.last("counter-1"));
 
     assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(third, second, first);
     assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", String.valueOf(foreign.getMetadata().getCausationId())))).isEmpty();
@@ -344,7 +346,7 @@ class AggregateHistoryTest {
   @Test
   @DisplayName("Should page the events newest first")
   void theEventsArePagedNewestFirst() {
-    store(new Incremented("counter-1@1")); // in the range, not on a page
+    store(new Incremented("counter-1@1")); // next to the range, not on a page
 
     ConsoleViews.EventsPage page = history.events(events, "counter-1", null, 2);
     assertThat(page.events()).containsExactly(third, second);

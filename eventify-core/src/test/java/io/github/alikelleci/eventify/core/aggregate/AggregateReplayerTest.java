@@ -145,7 +145,7 @@ class AggregateReplayerTest {
   @DisplayName("Should not apply the events of an aggregate whose id starts with this id and '@'")
   void theEventsOfAnAggregateWhoseIdStartsWithThisIdAndAtAreNotApplied() {
     store(placed("ada"));
-    store(placed("ada@1"));           // key "ada@1@000…1": in the key range of "ada"
+    store(placed("ada@1"));           // its keys fell inside the range of "ada" when "@" was the separator
     store(placed("ada@example.com")); // after the key range of "ada"
     store(confirmed("ada"));
     List<String> seen = new ArrayList<>();
