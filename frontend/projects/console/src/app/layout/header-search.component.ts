@@ -11,39 +11,6 @@ import { BackendService } from '@eventify/ui/services/backend.service';
   template: `
     <div class="relative">
       <div class="flex items-stretch">
-        @if (types().length > 1) {
-          <!-- One application can hold several aggregates, and two of them can have the same identifier. -->
-          <!-- On the narrow bar the button is as wide as the name needs, up to a share of the row; the search box gets the rest. -->
-          <div class="relative min-w-0" [class]="dark() ? '' : 'max-w-[45%]'">
-            <button #typeButton type="button" aria-haspopup="listbox" [attr.aria-expanded]="typesOpen()" [attr.aria-controls]="typeListId()"
-                    class="flex items-center justify-between gap-1.5 shrink-0 border border-r-0 transition-colors cursor-pointer outline-none"
-                    [class]="dark()
-                      ? 'h-8 w-24 pl-2.5 pr-2 text-sm rounded-l border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600'
-                      : 'h-11 w-full pl-3.5 pr-2 text-base rounded-l-md border-surface-200 bg-surface-50 text-surface-600 hover:border-surface-300 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'"
-                    (click)="typesOpen.set(!typesOpen())" (blur)="typesOpen.set(false)"
-                    (keydown.escape)="typesOpen.set(false)">
-              <span class="truncate">{{ selectedType() }}</span>
-              <i class="pi pi-chevron-down text-[10px] transition-transform" [class.rotate-180]="typesOpen()"
-                 [class]="dark() ? 'text-slate-400' : 'text-surface-400'"></i>
-            </button>
-
-            @if (typesOpen()) {
-              <div [id]="typeListId()" role="listbox" aria-label="Aggregate"
-                   class="absolute top-full left-0 mt-1 min-w-full w-44 bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
-                <div class="px-3 py-2 text-xs font-medium text-surface-400 uppercase tracking-widest border-b border-surface-100 dark:border-surface-800">Aggregate</div>
-                @for (type of types(); track type) {
-                  <div role="option" [attr.aria-selected]="type === selectedType()"
-                       class="px-3 py-2 border-l-2 cursor-pointer transition-colors"
-                       [class]="type === selectedType() ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-transparent hover:bg-surface-100 dark:hover:bg-surface-800'"
-                       (mousedown)="$event.preventDefault(); chooseType(type)">
-                    <span class="text-sm"
-                          [class]="type === selectedType() ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-surface-900 dark:text-surface-100'">{{ type }}</span>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
         <div class="relative" [class]="dark() ? 'w-80 max-w-full' : 'flex-1 min-w-0'">
           <i class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
              [class]="(search.loading() ? 'pi pi-spin pi-spinner ' : 'pi pi-search ') + (dark() ? 'left-2.5 text-xs text-slate-400' : 'left-3.5 text-sm text-surface-400')"></i>
@@ -60,6 +27,39 @@ import { BackendService } from '@eventify/ui/services/backend.service';
             <kbd class="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 pb-[1.5px] rounded border border-slate-600 text-[10px] leading-4 font-sans text-slate-400 pointer-events-none">/</kbd>
           }
         </div>
+        @if (types().length > 1) {
+          <!-- One application can hold several aggregates, and two of them can have the same identifier. -->
+          <!-- On the narrow bar the button is as wide as the name needs, up to a share of the row; the search box gets the rest. -->
+          <div class="relative min-w-0" [class]="dark() ? '' : 'max-w-[45%]'">
+            <button #typeButton type="button" aria-haspopup="listbox" [attr.aria-expanded]="typesOpen()" [attr.aria-controls]="typeListId()"
+                    class="flex items-center justify-between gap-1.5 shrink-0 border border-l-0 transition-colors cursor-pointer outline-none"
+                    [class]="dark()
+                      ? 'h-8 w-24 pl-2.5 pr-2 text-sm rounded-r border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600'
+                      : 'h-11 w-full pl-3.5 pr-2 text-base rounded-r-md border-surface-200 bg-surface-50 text-surface-600 hover:border-surface-300 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'"
+                    (click)="typesOpen.set(!typesOpen())" (blur)="typesOpen.set(false)"
+                    (keydown.escape)="typesOpen.set(false)">
+              <span class="truncate">{{ selectedType() }}</span>
+              <i class="pi pi-chevron-down text-[10px] transition-transform" [class.rotate-180]="typesOpen()"
+                 [class]="dark() ? 'text-slate-400' : 'text-surface-400'"></i>
+            </button>
+
+            @if (typesOpen()) {
+              <div [id]="typeListId()" role="listbox" aria-label="Aggregate"
+                   class="absolute top-full right-0 mt-1 min-w-full w-44 bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                <div class="px-3 py-2 text-xs font-medium text-surface-400 uppercase tracking-widest border-b border-surface-100 dark:border-surface-800">Aggregate</div>
+                @for (type of types(); track type) {
+                  <div role="option" [attr.aria-selected]="type === selectedType()"
+                       class="px-3 py-2 border-l-2 cursor-pointer transition-colors"
+                       [class]="type === selectedType() ? 'border-primary-500 bg-primary-50 dark:bg-primary-950' : 'border-transparent hover:bg-surface-100 dark:hover:bg-surface-800'"
+                       (mousedown)="$event.preventDefault(); chooseType(type)">
+                    <span class="text-sm"
+                          [class]="type === selectedType() ? 'text-primary-600 dark:text-primary-400 font-medium' : 'text-surface-900 dark:text-surface-100'">{{ type }}</span>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        }
       </div>
 
       @if (dropdownOpen()) {
@@ -113,11 +113,11 @@ export class HeaderSearchComponent {
   readonly selectedType = signal('');
   readonly typesOpen = signal(false);
   readonly typeListId = computed(() => `aggregate-types-${this.variant()}`);
-  /** Against the type button the box is square, so the two read as one control; the dark bar has tighter corners. */
+  /** Against the type button on its right the box is square, so the two read as one control; the dark bar has tighter corners. */
   readonly roundingClass = computed(() => {
     const joined = this.types().length > 1;
-    if (this.dark()) return joined ? 'rounded-r ' : 'rounded ';
-    return joined ? 'rounded-r-md ' : 'rounded-md ';
+    if (this.dark()) return joined ? 'rounded-l ' : 'rounded ';
+    return joined ? 'rounded-l-md ' : 'rounded-md ';
   });
 
   constructor() {
