@@ -2,18 +2,18 @@ package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.message.internal.Revisions;
-import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.SnapshotStore;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 /**
- * Reads the snapshot store, stored by aggregate id: the latest snapshot of each aggregate. {@link SnapshotStore} also
- * writes it.
+ * Reads the snapshot store, stored by aggregate id: the latest snapshot of each aggregate.
+ * {@link WritableSnapshotStore} also writes it.
  */
-public class SnapshotStoreReader implements ReadOnlySnapshotStore {
+public class ReadableSnapshotStore implements SnapshotStore {
 
   private final ReadOnlyKeyValueStore<String, AggregateState> store;
 
-  public SnapshotStoreReader(ReadOnlyKeyValueStore<String, AggregateState> store) {
+  public ReadableSnapshotStore(ReadOnlyKeyValueStore<String, AggregateState> store) {
     this.store = store;
   }
 

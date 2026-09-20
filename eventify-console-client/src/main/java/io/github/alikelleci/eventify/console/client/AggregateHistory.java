@@ -6,8 +6,8 @@ import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
-import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
+import io.github.alikelleci.eventify.core.store.SnapshotStore;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 
 import java.util.ArrayList;
@@ -42,10 +42,10 @@ class AggregateHistory {
    * @param cursor the sequence the page starts at, included: the {@link ConsoleViews.EventsPage#nextCursor()} of the
    *               page before it, or {@code null} for the newest events
    */
-  ConsoleViews.EventsPage events(ReadOnlyEventStore events, String aggregateId, Long cursor, int limit) {
+  ConsoleViews.EventsPage events(EventStore events, String aggregateId, Long cursor, int limit) {
     // One more than the page, to know whether there is a next page and where it starts.
     List<Event> page = new ArrayList<>();
-    try (ReadOnlyEventStore.Events newestFirst = events.eventsNewestFirst(aggregateId, cursor != null ? cursor : Long.MAX_VALUE, 1)) {
+    try (EventStore.Events newestFirst = events.eventsNewestFirst(aggregateId, cursor != null ? cursor : Long.MAX_VALUE, 1)) {
       while (newestFirst.hasNext() && page.size() <= limit) {
         page.add(newestFirst.next());
       }
@@ -62,9 +62,9 @@ class AggregateHistory {
    * The events the command produced, oldest first: the ones whose {@code $causationId} is the command's id. Not by
    * correlation id: that is shared with the other commands of the same flow, e.g. a saga.
    */
-  List<Event> eventsOfCommand(ReadOnlyEventStore events, Requests.EventsOfCommand request) {
+  List<Event> eventsOfCommand(EventStore events, Requests.EventsOfCommand request) {
     List<Event> produced = new ArrayList<>();
-    try (ReadOnlyEventStore.Events all = events.events(request.aggregateId())) {
+    try (EventStore.Events all = events.events(request.aggregateId())) {
       while (all.hasNext()) {
         Event event = all.next();
         if (request.commandId().equals(event.getMetadata().getCausationId())) {
@@ -79,7 +79,7 @@ class AggregateHistory {
    * The state after the event with this sequence, or the current state when it is {@code null}; {@code null} when there
    * is none, the event isn't there, or the state at it is unknown because earlier events were deleted.
    */
-  RawValue stateAt(ReadOnlyEventStore events, ReadOnlySnapshotStore snapshots, String aggregateId, Long sequence) {
+  RawValue stateAt(EventStore events, SnapshotStore snapshots, String aggregateId, Long sequence) {
     if (sequence != null && events.get(aggregateId, sequence) == null) {
       return null;
     }
@@ -96,7 +96,7 @@ class AggregateHistory {
   }
 
   /** The event with the state before and after it; {@code null} when the event isn't there. */
-  ConsoleViews.EventDetail eventDetail(ReadOnlyEventStore events, ReadOnlySnapshotStore snapshots,
+  ConsoleViews.EventDetail eventDetail(EventStore events, SnapshotStore snapshots,
                                        String aggregateId, long sequence) {
     Event event = events.get(aggregateId, sequence);
     if (event == null) {
@@ -119,7 +119,7 @@ class AggregateHistory {
   }
 
   /** The event with the states before and after it, replayed from {@code start} up to the event. */
-  private ConsoleViews.EventDetail withStates(Event event, ReadOnlyEventStore events, String aggregateId,
+  private ConsoleViews.EventDetail withStates(Event event, EventStore events, String aggregateId,
                                               AggregateState start, long sequence) {
     RawValue[] before = {null};
     AggregateReplayer.Result result = replay(events, aggregateId, start, sequence, (current, state) -> {
@@ -136,16 +136,16 @@ class AggregateHistory {
    * deletes its events at a snapshot ({@code @EnableSnapshotting(deleteEvents = true)}): then its first stored event
    * comes after sequence 1.
    */
-  private static boolean allEventsStored(ReadOnlyEventStore events, String aggregateId) {
-    try (ReadOnlyEventStore.Events all = events.events(aggregateId)) {
+  private static boolean allEventsStored(EventStore events, String aggregateId) {
+    try (EventStore.Events all = events.events(aggregateId)) {
       return !all.hasNext() || all.next().getSequence() == 1;
     }
   }
 
   /** The aggregate's events after {@code start}, up to and including {@code untilSequence}, applied to {@code start}. */
-  private AggregateReplayer.Result replay(ReadOnlyEventStore events, String aggregateId, AggregateState start,
+  private AggregateReplayer.Result replay(EventStore events, String aggregateId, AggregateState start,
                                           long untilSequence, AggregateReplayer.Listener listener) {
-    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
+    try (EventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
       return replay.replay(toApply, start, listener);
     }
   }

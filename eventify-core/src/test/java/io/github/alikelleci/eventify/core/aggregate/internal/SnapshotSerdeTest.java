@@ -6,7 +6,7 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
-import io.github.alikelleci.eventify.core.store.internal.SnapshotStore;
+import io.github.alikelleci.eventify.core.store.internal.ReadableSnapshotStore;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +38,7 @@ class SnapshotSerdeTest {
 
     assertThat(read.getPayload()).isNull();
     assertThat(read.getVersion()).isEqualTo(40);
-    assertThat(SnapshotStore.whyOutdated(read)).contains("can't be read");
+    assertThat(ReadableSnapshotStore.whyOutdated(read)).contains("can't be read");
   }
 
   @Test
@@ -62,7 +62,7 @@ class SnapshotSerdeTest {
     AggregateState read = read(json);
 
     assertThat(read.getPayload()).isEqualTo(new Cart("cart-1", 3));
-    assertThat(SnapshotStore.whyOutdated(read)).isNull();
+    assertThat(ReadableSnapshotStore.whyOutdated(read)).isNull();
   }
 
   private AggregateState read(ObjectNode json) throws Exception {

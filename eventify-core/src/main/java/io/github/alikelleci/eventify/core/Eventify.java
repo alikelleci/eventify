@@ -10,8 +10,8 @@ import io.github.alikelleci.eventify.core.plugin.LoggingPlugin;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.plugin.internal.PluginListeners;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
-import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
+import io.github.alikelleci.eventify.core.store.SnapshotStore;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
@@ -122,8 +122,8 @@ public class Eventify implements PluginContext {
    *                                                                    while Kafka Streams is rebalancing
    */
   @Override
-  public ReadOnlyEventStore getEventStore() {
-    return ReadOnlyEventStore.of(runningKafkaStreams().store(
+  public EventStore getEventStore() {
+    return EventStore.of(runningKafkaStreams().store(
         StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore())));
   }
 
@@ -133,8 +133,8 @@ public class Eventify implements PluginContext {
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now
    */
   @Override
-  public ReadOnlySnapshotStore getSnapshotStore() {
-    return ReadOnlySnapshotStore.of(runningKafkaStreams().store(
+  public SnapshotStore getSnapshotStore() {
+    return SnapshotStore.of(runningKafkaStreams().store(
         StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore())));
   }
 

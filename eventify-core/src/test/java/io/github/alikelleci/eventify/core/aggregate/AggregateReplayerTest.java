@@ -6,7 +6,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
 import io.github.alikelleci.eventify.core.store.StoreKeys;
 import io.github.alikelleci.eventify.core.support.InMemoryStore;
 import io.github.alikelleci.eventify.core.testdomain.order.Order;
@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AggregateReplayerTest {
 
   private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
-  private final ReadOnlyEventStore eventStore = ReadOnlyEventStore.of(storedEvents);
+  private final EventStore eventStore = EventStore.of(storedEvents);
   private final AggregateReplayer replay = eventify().getAggregateReplayer();
   private final Map<String, Long> lastSequences = new HashMap<>();
 
@@ -267,7 +267,7 @@ class AggregateReplayerTest {
 
   private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, Long untilSequence,
                                             AggregateReplayer.Listener listener) {
-    try (ReadOnlyEventStore.Events toApply = eventStore.events(aggregateId, start != null ? start.getVersion() + 1 : 1,
+    try (EventStore.Events toApply = eventStore.events(aggregateId, start != null ? start.getVersion() + 1 : 1,
         untilSequence != null ? untilSequence : Long.MAX_VALUE)) {
       return replay.replay(toApply, start, listener);
     }

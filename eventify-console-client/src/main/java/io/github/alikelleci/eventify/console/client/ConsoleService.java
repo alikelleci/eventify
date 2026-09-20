@@ -12,8 +12,8 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
-import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
+import io.github.alikelleci.eventify.core.store.SnapshotStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
@@ -152,11 +152,11 @@ class ConsoleService {
     }
   }
 
-  private ReadOnlyEventStore eventStore() {
+  private EventStore eventStore() {
     return eventify.getEventStore();
   }
 
-  private ReadOnlySnapshotStore snapshotStore() {
+  private SnapshotStore snapshotStore() {
     return eventify.getSnapshotStore();
   }
 

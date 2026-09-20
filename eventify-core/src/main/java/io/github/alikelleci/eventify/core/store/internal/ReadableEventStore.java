@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
 import io.github.alikelleci.eventify.core.store.StoreKeys;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
@@ -10,13 +10,13 @@ import java.util.NoSuchElementException;
 
 /**
  * Reads the event store, keyed by {@link StoreKeys}. The events of one aggregate are in one key range, and nothing
- * else is, in the order of their sequence: the order they were handled in. {@link EventStore} also writes it.
+ * else is, in the order of their sequence: the order they were handled in. {@link WritableEventStore} also writes it.
  */
-public class EventStoreReader implements ReadOnlyEventStore {
+public class ReadableEventStore implements EventStore {
 
   private final ReadOnlyKeyValueStore<String, Event> store;
 
-  public EventStoreReader(ReadOnlyKeyValueStore<String, Event> store) {
+  public ReadableEventStore(ReadOnlyKeyValueStore<String, Event> store) {
     this.store = store;
   }
 

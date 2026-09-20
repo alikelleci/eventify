@@ -15,8 +15,8 @@ import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
-import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
+import io.github.alikelleci.eventify.core.store.SnapshotStore;
 import io.github.alikelleci.eventify.core.store.StoreKeys;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import org.apache.kafka.streams.StreamsConfig;
@@ -141,8 +141,8 @@ class AggregateHistoryTest {
   private final AggregateReplayer replay = eventify.getAggregateReplayer();
   private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
   private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
-  private final ReadOnlyEventStore events = ReadOnlyEventStore.of(storedEvents);
-  private final ReadOnlySnapshotStore snapshots = ReadOnlySnapshotStore.of(storedSnapshots);
+  private final EventStore events = EventStore.of(storedEvents);
+  private final SnapshotStore snapshots = SnapshotStore.of(storedSnapshots);
 
   private final Map<String, Long> lastSequences = new HashMap<>();
 
@@ -494,7 +494,7 @@ class AggregateHistoryTest {
 
   private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, long untilSequence,
                                             AggregateReplayer.Listener listener) {
-    try (ReadOnlyEventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
+    try (EventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
       return replay.replay(toApply, start, listener);
     }
   }

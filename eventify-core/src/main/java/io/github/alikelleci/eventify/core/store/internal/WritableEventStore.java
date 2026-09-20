@@ -7,12 +7,12 @@ import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
 
-/** The event store as command handling uses it: read (see {@link EventStoreReader}) and written. */
-public class EventStore extends EventStoreReader {
+/** The event store as command handling uses it: read (see {@link ReadableEventStore}) and written. */
+public class WritableEventStore extends ReadableEventStore {
 
   private final KeyValueStore<String, Event> store;
 
-  public EventStore(KeyValueStore<String, Event> store) {
+  public WritableEventStore(KeyValueStore<String, Event> store) {
     super(store);
     this.store = store;
   }

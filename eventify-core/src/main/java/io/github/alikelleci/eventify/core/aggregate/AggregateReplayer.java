@@ -58,7 +58,7 @@ public class AggregateReplayer {
    * Applies the events to the starting state.
    *
    * @param events   the aggregate's events after {@code start}, in the order they were handled: e.g. from
-   *                 {@code ReadOnlyEventStore.events(aggregateId, start.getVersion() + 1, untilSequence)}
+   *                 {@code EventStore.events(aggregateId, start.getVersion() + 1, untilSequence)}
    * @param start    the state to start from, e.g. a snapshot; {@code null} to start before the first event
    * @param listener told about each event before it is applied; may be {@code null}
    */

@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.core.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
-import io.github.alikelleci.eventify.core.store.ReadOnlySnapshotStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
+import io.github.alikelleci.eventify.core.store.SnapshotStore;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyQueryMetadata;
 
@@ -33,10 +33,10 @@ public interface PluginContext {
   AggregateReplayer getAggregateReplayer();
 
   /** The events stored on this instance: only those of the aggregates it owns (see {@link #getAggregateMetadata}). */
-  ReadOnlyEventStore getEventStore();
+  EventStore getEventStore();
 
   /** The snapshots stored on this instance: only those of the aggregates it owns. */
-  ReadOnlySnapshotStore getSnapshotStore();
+  SnapshotStore getSnapshotStore();
 
   /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */
   KeyQueryMetadata getAggregateMetadata(String aggregateId);

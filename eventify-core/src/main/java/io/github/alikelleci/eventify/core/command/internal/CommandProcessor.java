@@ -10,8 +10,8 @@ import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.store.exception.EventStoreException;
 import io.github.alikelleci.eventify.core.store.internal.AggregateRepository;
-import io.github.alikelleci.eventify.core.store.internal.EventStore;
-import io.github.alikelleci.eventify.core.store.internal.SnapshotStore;
+import io.github.alikelleci.eventify.core.store.internal.WritableEventStore;
+import io.github.alikelleci.eventify.core.store.internal.WritableSnapshotStore;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
@@ -44,8 +44,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   public void init(FixedKeyProcessorContext<String, CommandResult> context) {
     this.context = context;
     this.aggregates = new AggregateRepository(replayer, objectMapper,
-        new EventStore(context.getStateStore(StoreNames.EVENT_STORE)),
-        new SnapshotStore(context.getStateStore(StoreNames.SNAPSHOT_STORE)));
+        new WritableEventStore(context.getStateStore(StoreNames.EVENT_STORE)),
+        new WritableSnapshotStore(context.getStateStore(StoreNames.SNAPSHOT_STORE)));
   }
 
   @Override

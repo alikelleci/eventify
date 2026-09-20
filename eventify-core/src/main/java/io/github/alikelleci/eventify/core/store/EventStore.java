@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.store;
 
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.internal.EventStoreReader;
+import io.github.alikelleci.eventify.core.store.internal.ReadableEventStore;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 import java.util.Iterator;
@@ -11,11 +11,11 @@ import java.util.Iterator;
  * its first event, then one more for each next one. That is the order they were handled in, and the order they are
  * read in.
  */
-public interface ReadOnlyEventStore {
+public interface EventStore {
 
   /** Reads the events of a key-value store that holds them by {@link StoreKeys}, e.g. a state store of Kafka Streams. */
-  static ReadOnlyEventStore of(ReadOnlyKeyValueStore<String, Event> store) {
-    return new EventStoreReader(store);
+  static EventStore of(ReadOnlyKeyValueStore<String, Event> store) {
+    return new ReadableEventStore(store);
   }
 
   /** The aggregate's event with this sequence; {@code null} when there is none. */

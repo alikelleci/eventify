@@ -8,7 +8,7 @@ import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotPolicy;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.serialization.internal.JsonRoundTrip;
-import io.github.alikelleci.eventify.core.store.ReadOnlyEventStore;
+import io.github.alikelleci.eventify.core.store.EventStore;
 import io.github.alikelleci.eventify.core.store.exception.EventStoreException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -27,10 +27,10 @@ public class AggregateRepository {
 
   private final AggregateReplayer replayer;
   private final ObjectMapper objectMapper;
-  private final EventStore eventStore;
-  private final SnapshotStore snapshotStore;
+  private final WritableEventStore eventStore;
+  private final WritableSnapshotStore snapshotStore;
 
-  public AggregateRepository(AggregateReplayer replayer, ObjectMapper objectMapper, EventStore eventStore, SnapshotStore snapshotStore) {
+  public AggregateRepository(AggregateReplayer replayer, ObjectMapper objectMapper, WritableEventStore eventStore, WritableSnapshotStore snapshotStore) {
     this.replayer = replayer;
     this.objectMapper = objectMapper;
     this.eventStore = eventStore;
@@ -51,7 +51,7 @@ public class AggregateRepository {
 
     log.debug("Loading aggregate state by replaying events...");
     AggregateReplayer.Result replay;
-    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId, snapshot != null ? snapshot.getVersion() + 1 : 1, Long.MAX_VALUE)) {
+    try (EventStore.Events events = eventStore.events(aggregateId, snapshot != null ? snapshot.getVersion() + 1 : 1, Long.MAX_VALUE)) {
       replay = replayer.replay(events, snapshot);
     }
     AggregateState state = replay.state();
@@ -78,13 +78,13 @@ public class AggregateRepository {
   }
 
   /**
-   * The aggregate's snapshot, when it can be used. An outdated one (see {@link SnapshotStore#whyOutdated}) is left out:
+   * The aggregate's snapshot, when it can be used. An outdated one (see {@link ReadableSnapshotStore#whyOutdated}) is left out:
    * the aggregate is rebuilt from all its events, and snapshotted again. That can't be done when the events before the
    * snapshot were deleted: then the command fails, instead of going on with a state the current code would not compute.
    */
   private AggregateState usableSnapshot(String aggregateId) {
     AggregateState snapshot = snapshotStore.get(aggregateId);
-    String whyOutdated = snapshot != null ? SnapshotStore.whyOutdated(snapshot) : null;
+    String whyOutdated = snapshot != null ? ReadableSnapshotStore.whyOutdated(snapshot) : null;
     if (whyOutdated == null) {
       return snapshot;
     }
@@ -104,7 +104,7 @@ public class AggregateRepository {
     if (snapshot.getVersion() <= 1) {
       return false;
     }
-    try (ReadOnlyEventStore.Events events = eventStore.events(aggregateId)) {
+    try (EventStore.Events events = eventStore.events(aggregateId)) {
       return !events.hasNext() || events.next().getSequence() > 1;
     }
   }
