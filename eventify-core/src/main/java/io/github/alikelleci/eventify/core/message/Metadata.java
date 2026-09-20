@@ -15,12 +15,19 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATIO
 /**
  * What a message carries besides its payload: where it came from, and whatever the application adds.
  *
- * <p>A Metadata never changes. {@link #with} and {@link #withDefault} give a new one with the entry, and the methods
- * of {@link Map} that would change it throw: the metadata of a message stays the one it was made with, also when the
- * same Metadata is given to more than one message.
+ * <p>A Metadata never changes. {@link #with} gives a new one with the entries added, the way {@code Map.of()} and the
+ * {@code with...} methods of a record do:
+ *
+ * <pre>{@code Metadata.of("tenant", "acme").with("user", "ada")}</pre>
+ *
+ * <p>So the metadata of a message stays the one it was made with, also when the same Metadata is given to more than
+ * one message. The methods of {@link Map} that would change it throw, as they do on {@code Map.of()}.
  */
 @EqualsAndHashCode
 public class Metadata implements Map<String, String> {
+
+  /** No metadata at all. */
+  public static final Metadata EMPTY = new Metadata(Map.of());
 
   @Delegate
   private final Map<String, String> entries;
@@ -30,14 +37,31 @@ public class Metadata implements Map<String, String> {
     this.entries = Collections.unmodifiableMap(new HashMap<>(entries));
   }
 
-  @Override
-  public String toString() {
-    return entries.toString();
+  /** Metadata with this one entry. */
+  public static Metadata of(String key, String value) {
+    return EMPTY.with(key, value);
+  }
+
+  /** Metadata with these entries; {@link #EMPTY} when there are none. */
+  public static Metadata of(Map<String, String> entries) {
+    return EMPTY.with(entries);
   }
 
   /** This metadata with the entry; the value replaces the one that was there. */
   public Metadata with(String key, String value) {
-    return builder().putAll(this).put(key, value).build();
+    Map<String, String> copy = new HashMap<>(entries);
+    copy.put(key, value);
+    return new Metadata(copy);
+  }
+
+  /** This metadata with the entries; their values replace the ones that were there. Nothing to add gives this one. */
+  public Metadata with(Map<String, String> entries) {
+    if (entries == null || entries.isEmpty()) {
+      return this;
+    }
+    Map<String, String> copy = new HashMap<>(this.entries);
+    copy.putAll(entries);
+    return new Metadata(copy);
   }
 
   /** This metadata with the entry, when it has no value for that key yet. */
@@ -55,36 +79,8 @@ public class Metadata implements Map<String, String> {
     return this.entries.get(CAUSATION_ID);
   }
 
-  public static MetadataBuilder builder() {
-    return new MetadataBuilder();
+  @Override
+  public String toString() {
+    return entries.toString();
   }
-
-  public static class MetadataBuilder {
-
-    private final Map<String, String> entries = new HashMap<>();
-
-    public MetadataBuilder put(String key, String value) {
-      this.entries.put(key, value);
-      return this;
-    }
-
-    public MetadataBuilder putAll(Map<String, String> metadata) {
-      if (metadata != null) {
-        this.entries.putAll(metadata);
-      }
-      return this;
-    }
-
-    public MetadataBuilder putAll(Metadata metadata) {
-      if (metadata != null) {
-        this.entries.putAll(metadata);
-      }
-      return this;
-    }
-
-    public Metadata build() {
-      return new Metadata(this.entries);
-    }
-  }
-
 }

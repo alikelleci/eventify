@@ -40,7 +40,7 @@ public class Event implements Message {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     // A copy with the flow this event belongs to: the metadata that was given stays as it is.
-    this.metadata = Optional.ofNullable(metadata).orElseGet(() -> Metadata.builder().build())
+    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.EMPTY)
         .withDefault(CORRELATION_ID, UUID.randomUUID().toString());
 
     this.type = getPayload().getClass().getSimpleName();
@@ -55,22 +55,19 @@ public class Event implements Message {
   }
 
   public static class EventBuilder {
-    Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
+    Metadata metadata = Metadata.EMPTY;
 
     public EventBuilder metadata(String key, String value) {
-      metadataBuilder.put(key, value);
+      metadata = metadata.with(key, value);
       return this;
     }
 
     public EventBuilder metadata(Map<String, String> metadata) {
-      if (metadata != null) {
-        metadataBuilder = metadataBuilder.putAll(metadata);
-      }
+      this.metadata = this.metadata.with(metadata);
       return this;
     }
 
     public Event build() {
-      Metadata metadata = metadataBuilder.build();
       return new Event(timestamp, payload, metadata, sequence);
     }
   }

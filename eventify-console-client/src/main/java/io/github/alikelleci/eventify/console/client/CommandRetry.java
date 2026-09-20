@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
-import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.KafkaProducer;
@@ -81,14 +80,9 @@ class CommandRetry {
 
     // The correlation id stays: the retry belongs to the same flow (e.g. a saga) as the command it retries, and its
     // events can be traced with the rest of that flow. RETRY_OF tells the retry apart from the original.
-    Metadata retryMetadata = Metadata.builder()
-        .putAll(original.getMetadata())
-        .put(RETRY_OF, original.getId())
-        .build();
-
     Command retryCommand = Command.builder()
         .payload(original.getPayload())
-        .metadata(retryMetadata)
+        .metadata(original.getMetadata().with(RETRY_OF, original.getId()))
         .build();
 
     String commandTopic = original.getTopic().value();

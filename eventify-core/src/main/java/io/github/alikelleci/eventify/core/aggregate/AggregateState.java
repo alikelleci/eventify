@@ -39,7 +39,7 @@ public class AggregateState {
   private AggregateState(Instant timestamp, Object payload, Metadata metadata, long version) {
     this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
-    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.builder().build());
+    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.EMPTY);
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
@@ -48,22 +48,19 @@ public class AggregateState {
   }
 
   public static class AggregateStateBuilder {
-    Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
+    Metadata metadata = Metadata.EMPTY;
 
     public AggregateStateBuilder metadata(String key, String value) {
-      metadataBuilder = metadataBuilder.put(key, value);
+      metadata = metadata.with(key, value);
       return this;
     }
 
     public AggregateStateBuilder metadata(Map<String, String> metadata) {
-      if (metadata != null) {
-        metadataBuilder = metadataBuilder.putAll(metadata);
-      }
+      this.metadata = this.metadata.with(metadata);
       return this;
     }
 
     public AggregateState build() {
-      Metadata metadata = metadataBuilder.build();
       return new AggregateState(timestamp, payload, metadata, version);
     }
   }

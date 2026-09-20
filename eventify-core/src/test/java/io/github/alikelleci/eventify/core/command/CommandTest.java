@@ -39,7 +39,7 @@ class CommandTest {
   @Test
   @DisplayName("Should take metadata as a map too, next to single entries")
   void metadataCanComeFromAMap() {
-    Metadata incoming = Metadata.builder().put("tenant", "acme").build();
+    Metadata incoming = Metadata.of("tenant", "acme");
 
     Command command = Command.builder()
         .payload(new PlaceOrder("order-1", "Ada"))

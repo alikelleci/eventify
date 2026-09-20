@@ -32,7 +32,7 @@ public class Command implements Message {
     this.timestamp = Instant.now();
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     // A copy with the flow this command belongs to: the metadata that was given stays as it is.
-    this.metadata = Optional.ofNullable(metadata).orElseGet(() -> Metadata.builder().build())
+    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.EMPTY)
         .withDefault(CORRELATION_ID, UUID.randomUUID().toString());
 
     this.type = getPayload().getClass().getSimpleName();
@@ -41,22 +41,19 @@ public class Command implements Message {
   }
 
   public static class CommandBuilder {
-    Metadata.MetadataBuilder metadataBuilder = Metadata.builder();
+    Metadata metadata = Metadata.EMPTY;
 
     public CommandBuilder metadata(String key, String value) {
-      metadataBuilder = metadataBuilder.put(key, value);
+      metadata = metadata.with(key, value);
       return this;
     }
 
     public CommandBuilder metadata(Map<String, String> metadata) {
-      if (metadata != null) {
-        metadataBuilder = metadataBuilder.putAll(metadata);
-      }
+      this.metadata = this.metadata.with(metadata);
       return this;
     }
 
     public Command build() {
-      Metadata metadata = metadataBuilder.build();
       return new Command(payload, metadata);
     }
   }
