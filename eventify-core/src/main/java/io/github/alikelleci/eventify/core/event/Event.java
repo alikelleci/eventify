@@ -38,7 +38,6 @@ public class Event implements Message {
 
   @Builder
   private Event(String aggregateType, Object payload, Metadata metadata, long sequence) {
-    // The moment Eventify records it: an event is made where it is recorded, by the repository.
     this.timestamp = Instant.now();
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     // A copy with the flow this event belongs to: the metadata that was given stays as it is.

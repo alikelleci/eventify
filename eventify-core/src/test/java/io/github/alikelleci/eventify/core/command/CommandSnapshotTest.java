@@ -1,0 +1,166 @@
+package io.github.alikelleci.eventify.core.command;
+
+import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
+import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
+import jakarta.validation.constraints.NotBlank;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.TestInputTopic;
+import org.apache.kafka.streams.TestOutputTopic;
+import org.apache.kafka.streams.TopologyTestDriver;
+import org.apache.kafka.streams.state.KeyValueStore;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.List;
+import java.util.Properties;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/** The processor checkpoints history on rejection and the resulting state on success, including deletion. */
+@DisplayName("Command snapshots")
+class CommandSnapshotTest {
+  @AggregateRoot("counter")
+  @EnableSnapshotting(threshold = 2, deleteEvents = true)
+  public static class Counter {
+    @AggregateId public String id;
+    public int value;
+    public Counter() {}
+    public Counter(String id, int value) { this.id = id; this.value = value; }
+  }
+
+  @Topic("commands.counter")
+  public record Change(@AggregateId String id, @NotBlank String mode) {}
+  @Topic("events.counter")
+  public record Created(@AggregateId String id) {}
+  @Topic("events.counter")
+  public record Added(@AggregateId String id, int amount) {}
+  @Topic("events.counter")
+  public record Broken(@AggregateId String id) {}
+  @Topic("events.counter")
+  public record Removed(@AggregateId String id) {}
+
+  public static class Handler {
+    @HandleCommand
+    public List<Object> handle(Change command, Counter state) {
+      return switch (command.mode()) {
+        case "command-failure" -> {
+          state.value += 100;
+          throw new IllegalStateException("command rejected after mutation");
+        }
+        case "apply-failure" -> List.of(new Added(command.id(), 100), new Broken(command.id()));
+        case "remove" -> List.of(new Removed(command.id()));
+        case "no-events" -> List.of();
+        default -> List.of(new Added(command.id(), 5));
+      };
+    }
+    @ApplyEvent public Counter apply(Created event, Counter state) { return new Counter(event.id(), 1); }
+    @ApplyEvent public Counter apply(Added event, Counter state) { state.value += event.amount(); return state; }
+    @ApplyEvent public Counter apply(Broken event, Counter state) { throw new IllegalStateException("event rejected"); }
+    @ApplyEvent public Counter apply(Removed event, Counter state) { return null; }
+  }
+
+  private TopologyTestDriver driver;
+  private TestInputTopic<String, Command> commands;
+  private TestOutputTopic<String, CommandResult> results;
+  private KeyValueStore<String, Event> events;
+  private KeyValueStore<String, AggregateState> snapshots;
+
+  @BeforeEach
+  void setUp() {
+    Properties config = new Properties();
+    config.put(StreamsConfig.APPLICATION_ID_CONFIG, "command-snapshot-test");
+    config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    driver = new TopologyTestDriver(Eventify.builder().streamsConfig(config).registerHandler(new Handler()).build().topology());
+    commands = driver.createInputTopic("commands.counter", new StringSerializer(), new JsonSerializer<>());
+    results = driver.createOutputTopic("commands.counter.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
+    events = driver.getKeyValueStore("event-store");
+    snapshots = driver.getKeyValueStore("snapshot-store");
+    // Existing history without a snapshot, as when snapshotting is enabled for an existing aggregate.
+    store(new Created("one"), 1);
+    store(new Added("one", 1), 2);
+  }
+
+  @AfterEach void close() { driver.close(); }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"command-failure", "apply-failure", ""})
+  void rejectionSnapshotsOnlyTheReconstructedHistory(String mode) {
+    send(mode);
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Failure.class);
+    AggregateState snapshot = snapshot();
+    assertThat(snapshot.getVersion()).isEqualTo(2);
+    assertThat(((Counter) snapshot.getPayload()).value).isEqualTo(2);
+    assertThat(events.get(key(1))).isNull();
+    assertThat(events.get(key(2))).isNotNull();
+    assertThat(events.get(key(3))).isNull();
+
+    send("success"); // Subsequent commands must not observe an uncommitted mutation.
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
+    send("success");
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
+    assertThat(((Counter) snapshot().getPayload()).value).isEqualTo(12);
+    assertThat(snapshot().getVersion()).isEqualTo(4);
+  }
+
+  @Test
+  void rejectionBeforeThresholdDoesNotWriteASnapshot() {
+    events.delete(key(2));
+    send("apply-failure");
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Failure.class);
+    assertThat(snapshot()).isNull();
+    assertThat(events.get(key(1))).isNotNull();
+    assertThat(events.get(key(2))).isNull();
+  }
+
+  @Test
+  void successSnapshotsTheResultWithoutWaitingForAnotherCommand() {
+    send("success");
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
+    assertThat(snapshot().getVersion()).isEqualTo(3);
+    assertThat(((Counter) snapshot().getPayload()).value).isEqualTo(7);
+    assertThat(events.get(key(2))).isNull();
+    assertThat(events.get(key(3))).isNotNull();
+  }
+
+  @Test
+  void acceptedCommandWithoutEventsStillCheckpointsHistory() {
+    send("no-events");
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
+    assertThat(snapshot().getVersion()).isEqualTo(2);
+    assertThat(((Counter) snapshot().getPayload()).value).isEqualTo(2);
+  }
+
+  @Test
+  void deletionSnapshotsVersionWithoutPayload() {
+    send("remove");
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
+    assertThat(snapshot().getPayload()).isNull();
+    assertThat(snapshot().getVersion()).isEqualTo(3);
+    assertThat(snapshot().getAggregateId()).isEqualTo("one");
+    assertThat(events.get(key(2))).isNull();
+    assertThat(events.get(key(3))).isNotNull();
+  }
+
+  private void send(String mode) { commands.pipeInput("one", Command.builder().payload(new Change("one", mode)).build()); }
+  private AggregateState snapshot() { return snapshots.get(StoreKeys.snapshot("counter", "one")); }
+  private String key(long sequence) { return StoreKeys.of("counter", "one", sequence); }
+  private void store(Object payload, long sequence) {
+    events.put(key(sequence), Event.builder().aggregateType("counter").payload(payload).sequence(sequence).build());
+  }
+}

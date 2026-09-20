@@ -3,10 +3,11 @@ package io.github.alikelleci.eventify.core.aggregate.internal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
-import io.github.alikelleci.eventify.core.store.internal.ReadableSnapshotStore;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -23,10 +24,12 @@ class SnapshotSerdeTest {
   private final ObjectMapper objectMapper = EventifyObjectMapper.create();
   private final SnapshotSerde serde = new SnapshotSerde(objectMapper);
 
-  private final AggregateState snapshot = AggregateState.builder()
-      .payload(new Cart("cart-1", 3))
-      .version(40)
-      .build();
+  private final Cart cart = new Cart("cart-1", 3);
+  private final AggregateState snapshot = AggregateState.after(Event.builder()
+      .aggregateType("cart")
+      .payload(cart)
+      .sequence(40)
+      .build(), cart);
 
   @Test
   @DisplayName("Should read a snapshot whose aggregate class was moved, without its aggregate")
@@ -38,7 +41,7 @@ class SnapshotSerdeTest {
 
     assertThat(read.getPayload()).isNull();
     assertThat(read.getVersion()).isEqualTo(40);
-    assertThat(ReadableSnapshotStore.whyOutdated(read)).contains("can't be read");
+    assertThat(SnapshotStore.whyOutdated(read)).contains("can't be read");
   }
 
   @Test
@@ -62,7 +65,7 @@ class SnapshotSerdeTest {
     AggregateState read = read(json);
 
     assertThat(read.getPayload()).isEqualTo(new Cart("cart-1", 3));
-    assertThat(ReadableSnapshotStore.whyOutdated(read)).isNull();
+    assertThat(SnapshotStore.whyOutdated(read)).isNull();
   }
 
   private AggregateState read(ObjectNode json) throws Exception {

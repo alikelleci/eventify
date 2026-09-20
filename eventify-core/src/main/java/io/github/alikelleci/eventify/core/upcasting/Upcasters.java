@@ -75,7 +75,7 @@ public class Upcasters {
     // class, from the revision reached. Every step raises the revision, so the chain always ends.
     UpcasterMethod upcaster;
     while ((upcaster = upcasterOf(className, revision)) != null) {
-      JsonNode upcasted = upcaster.apply(payload);
+      JsonNode upcasted = upcaster.handle(payload);
       if (upcasted == null) {
         break; // no upcasting from here: the payload stays at this revision
       }

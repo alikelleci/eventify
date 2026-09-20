@@ -12,11 +12,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Optional;
-import java.util.function.Function;
 
 @Slf4j
 @Getter
-public class EventHandlerMethod implements Function<Event, Void> {
+public class EventHandlerMethod {
 
   private final Object handler;
   private final Method method;
@@ -26,17 +25,15 @@ public class EventHandlerMethod implements Function<Event, Void> {
     this.method = method;
   }
 
-  @Override
-  public Void apply(Event event) {
+  public void handle(Event event) {
     try {
-      Object result = invokeHandler(handler, event);
-      return null;
+      invokeHandler(event);
     } catch (Exception e) {
       throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Object invokeHandler(Object handler, Event event) throws InvocationTargetException, IllegalAccessException {
+  private Object invokeHandler(Event event) throws InvocationTargetException, IllegalAccessException {
     Object[] args = new Object[method.getParameterCount()];
     Parameter[] parameters = method.getParameters();
 

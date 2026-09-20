@@ -96,7 +96,7 @@ class AggregateIdWithAtTest {
 
     // The other aggregate keeps all its events.
     assertThat(StoreKeys.of("account", neighbour, 1)).isGreaterThan(StoreKeys.last("account", "ada"));
-    assertThat(eventsOf(eventStore, neighbour)).hasSize(2);
+    assertThat(eventsOf(eventStore, neighbour)).hasSize(1); // its second event was snapshotted immediately
     assertThat(eventsOf(eventStore, "ada")).hasSize(2); // its first event was deleted at the snapshot
   }
 

@@ -1,7 +1,9 @@
 package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
+import io.github.alikelleci.eventify.core.aggregate.AggregateDefinitions;
+import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
+import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.kafka.internal.EventifyTopology;
 import io.github.alikelleci.eventify.core.kafka.internal.StreamsConfigDefaults;
@@ -11,7 +13,6 @@ import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.plugin.internal.PluginListeners;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.store.EventStore;
-import io.github.alikelleci.eventify.core.store.SnapshotStore;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
@@ -103,12 +104,6 @@ public class Eventify implements PluginContext {
     return handlers.commandHandlers().keySet();
   }
 
-  /** Rebuilds the state of an aggregate from its events, with the event sourcing handlers of this instance. */
-  @Override
-  public AggregateReplayer getAggregateReplayer() {
-    return new AggregateReplayer(handlers.eventSourcingHandlers());
-  }
-
   /** The topics of the commands of one aggregate. */
   @Override
   public Set<String> getCommandTopics(String aggregateType) {
@@ -122,51 +117,24 @@ public class Eventify implements PluginContext {
   }
 
   /**
-   * The stored events of one aggregate on this instance: only those of the aggregates it owns (see
-   * {@link #getAggregateMetadata}).
+   * The public read model of this instance's aggregates, replayed with its event sourcing handlers. Only locally owned
+   * aggregates can be read; use {@link #getAggregateMetadata} to locate their owner.
    *
-   * @param aggregateType the name of the aggregate, as its {@code @AggregateRoot} gives it
-   *
-   * @throws IllegalArgumentException                                   when this instance has no aggregate of that name
-   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now, e.g.
-   *                                                                    while Kafka Streams is rebalancing
+   * @throws IllegalStateException when Eventify has not started
+   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the stores cannot be read, e.g. during rebalancing
    */
   @Override
-  public EventStore getEventStore(String aggregateType) {
-    requireAggregate(aggregateType);
-    return EventStore.of(runningKafkaStreams().store(
-        StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore())), aggregateType);
-  }
-
-  /**
-   * The stored snapshots of one aggregate on this instance: only those of the aggregates it owns.
-   *
-   * @param aggregateType the name of the aggregate, as its {@code @AggregateRoot} gives it
-   *
-   * @throws IllegalArgumentException                                   when this instance has no aggregate of that name
-   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now
-   */
-  @Override
-  public SnapshotStore getSnapshotStore(String aggregateType) {
-    requireAggregate(aggregateType);
-    return SnapshotStore.of(runningKafkaStreams().store(
-        StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore())), aggregateType);
+  public AggregateRepository getAggregateRepository() {
+    return new AggregateRepository(
+        new EventStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore()))),
+        new SnapshotStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()))),
+        handlers.eventSourcingHandlers(), new AggregateDefinitions(handlers.aggregateClasses()));
   }
 
   /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */
   @Override
   public KeyQueryMetadata getAggregateMetadata(String aggregateId) {
     return runningKafkaStreams().queryMetadataForKey(StoreNames.EVENT_STORE, aggregateId, Serdes.String().serializer());
-  }
-
-  /**
-   * A name this instance doesn't handle would read an empty store, which looks like an aggregate without a history.
-   * Said instead of answered with nothing, so a name that is spelled wrong is not mistaken for an empty aggregate.
-   */
-  private void requireAggregate(String aggregateType) {
-    if (!getAggregateTypes().contains(aggregateType)) {
-      throw new IllegalArgumentException("This Eventify instance has no aggregate named '" + aggregateType + "'. It handles " + getAggregateTypes() + ".");
-    }
   }
 
   private KafkaStreams runningKafkaStreams() {

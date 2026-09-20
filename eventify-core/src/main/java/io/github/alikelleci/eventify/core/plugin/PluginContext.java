@@ -1,9 +1,7 @@
 package io.github.alikelleci.eventify.core.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.aggregate.AggregateReplayer;
-import io.github.alikelleci.eventify.core.store.EventStore;
-import io.github.alikelleci.eventify.core.store.SnapshotStore;
+import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.KeyQueryMetadata;
 
@@ -29,26 +27,16 @@ public interface PluginContext {
   /** The topics of the commands of one aggregate: the commands another aggregate handles are not its own. */
   Set<String> getCommandTopics(String aggregateType);
 
-  /** Rebuilds the state of an aggregate from its events, with the event sourcing handlers of this instance. */
-  AggregateReplayer getAggregateReplayer();
-
   /** The names of the aggregates this instance handles, as their {@code @AggregateRoot} gives them. */
   Set<String> getAggregateTypes();
 
   /**
-   * The stored events of one aggregate on this instance: only those of the aggregates it owns (see
-   * {@link #getAggregateMetadata}).
+   * The public read model of locally owned aggregates; see {@link #getAggregateMetadata} for ownership. Repository
+   * operations reject unregistered aggregate types. Stores may be temporarily unavailable while rebalancing.
    *
-   * @throws IllegalArgumentException when this instance has no aggregate of that name
+   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the stores cannot be read right now
    */
-  EventStore getEventStore(String aggregateType);
-
-  /**
-   * The stored snapshots of one aggregate on this instance: only those of the aggregates it owns.
-   *
-   * @throws IllegalArgumentException when this instance has no aggregate of that name
-   */
-  SnapshotStore getSnapshotStore(String aggregateType);
+  AggregateRepository getAggregateRepository();
 
   /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */
   KeyQueryMetadata getAggregateMetadata(String aggregateId);

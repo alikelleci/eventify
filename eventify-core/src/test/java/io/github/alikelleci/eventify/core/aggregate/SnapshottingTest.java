@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.testdomain.account.Account;
 import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.AccountHandler;
@@ -13,6 +14,7 @@ import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.Dep
 import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.OpenAccount;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
 import org.apache.kafka.streams.Topology;
@@ -49,15 +51,15 @@ class SnapshottingTest {
     KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
 
     send(commands, OpenAccount.builder().id("ada").build());                              // version 1
-    send(commands, DepositEach.builder().id("ada").amounts(List.of(5, 7)).build());       // version 3: past 2
-    send(commands, Deposit.builder().id("ada").amount(1).build());                        // loads version 3: snapshot
+    send(commands, DepositEach.builder().id("ada").amounts(List.of(5, 7)).build());       // version 3: snapshot
+    send(commands, Deposit.builder().id("ada").amount(1).build());                        // version 4: next snapshot
 
     AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
     assertThat(snapshot).isNotNull();
-    assertThat(snapshot.getVersion()).isEqualTo(3);
-    assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(12);
+    assertThat(snapshot.getVersion()).isEqualTo(4);
+    assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(13);
     assertThat(eventStore.get(StoreKeys.of("account", "ada", snapshot.getVersion()))).isNotNull();
-    assertThat(IteratorUtils.toList(eventStore.all())).hasSize(2); // the snapshot's event and the last deposit
+    assertThat(IteratorUtils.toList(eventStore.all())).hasSize(1); // the snapshot's event
   }
 
   /**
@@ -76,11 +78,11 @@ class SnapshottingTest {
 
     send(commands, OpenAccount.builder().id("ada").build(), now);                          // version 1
     send(commands, Deposit.builder().id("ada").amount(5).build(), now.plusMillis(1));      // version 2
-    send(commands, Deposit.builder().id("ada").amount(7).build(), now.plusMillis(2));      // loads version 2: snapshot
+    send(commands, Deposit.builder().id("ada").amount(7).build(), now.plusMillis(2));      // version 3
     send(commands, Deposit.builder().id("ada").amount(100).build(), now.minusSeconds(60)); // version 4, older timestamp
-    send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(3));      // loads version 4: snapshot
+    send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(3));      // version 5
     send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(4));      // version 6
-    send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(5));      // loads version 6: snapshot
+    send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(5));      // version 7, snapshot remains at 6
 
     AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
     assertThat(snapshot.getVersion()).isEqualTo(6);
@@ -96,14 +98,21 @@ class SnapshottingTest {
     driver = new TopologyTestDriver(accounts());
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
     KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
+    var emitted = driver.createOutputTopic("events.account", new StringDeserializer(), new JsonDeserializer<>(Event.class));
     Instant now = Instant.now();
 
     send(commands, OpenAccount.builder().id("ada").build(), now);
     send(commands, DepositEach.builder().id("ada").amounts(List.of(3, 2, 1)).build(), now.minusSeconds(60));
 
+    // Pruning retains only the last stored event, so verify the full ordered sequence on the emitted events too.
+    List<Event> recorded = emitted.readValuesToList();
+    assertThat(recorded).extracting(Event::getSequence).containsExactly(1L, 2L, 3L, 4L);
+    assertThat(recorded).extracting(event -> event.getPayload() instanceof Deposited deposited ? deposited.getAmount() : 0)
+        .containsExactly(0, 3, 2, 1);
+
     assertThat(IteratorUtils.toList(eventStore.all()))
         .extracting(entry -> entry.value.getPayload() instanceof Deposited deposited ? deposited.getAmount() : 0)
-        .containsExactly(0, 3, 2, 1);
+        .containsExactly(1); // the command crossed a snapshot threshold, so older events were pruned
   }
 
   @Test

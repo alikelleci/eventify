@@ -26,7 +26,7 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** A command is validated (Bean Validation) before its handler runs: an invalid one is rejected, and nothing stored. */
+/** Bean Validation rejects an invalid command before its handler runs; it produces no events. */
 @DisplayName("Command validation")
 class CommandValidationTest {
 

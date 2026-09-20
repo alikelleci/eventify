@@ -4,16 +4,12 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.Revision;
-import io.github.alikelleci.eventify.core.message.exception.PayloadMissingException;
-import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.message.internal.Revisions;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
-import java.util.Optional;
 
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -34,30 +30,20 @@ public class AggregateState {
    */
   int revision;
 
-  @Builder
-  private AggregateState(Instant timestamp, Object payload, Metadata metadata, long version) {
-    this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
-    this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
-    this.metadata = Optional.ofNullable(metadata).orElse(Metadata.EMPTY);
-
-    this.type = getPayload().getClass().getSimpleName();
-    this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
-    this.version = version;
-    this.revision = Revisions.of(getPayload().getClass());
+  /** A replay starts here when no usable snapshot exists. */
+  public static AggregateState empty(String aggregateId) {
+    return new AggregateState(Instant.EPOCH, null, null, Metadata.EMPTY, aggregateId, 0, 0);
   }
 
-
-
   /**
-   * This state, unchanged, after the event: what a handler that returns the state it is given produces. Used for an
-   * event without an event sourcing handler.
+   * The state after an event. Its envelope always comes from that event. A null payload represents a removed
+   * aggregate; otherwise type and revision describe the resulting aggregate payload.
    */
-  public AggregateState after(Event event) {
-    return AggregateState.builder()
-        .timestamp(event.getTimestamp())
-        .payload(payload)
-        .metadata(event.getMetadata())
-        .version(event.getSequence())
-        .build();
+  public static AggregateState after(Event event, Object payload) {
+    if (payload == null) {
+      return new AggregateState(event.getTimestamp(), null, null, event.getMetadata(), event.getAggregateId(), event.getSequence(), 0);
+    }
+    return new AggregateState(event.getTimestamp(), payload.getClass().getSimpleName(), payload, event.getMetadata(),
+        event.getAggregateId(), event.getSequence(), Revisions.of(payload.getClass()));
   }
 }

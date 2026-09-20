@@ -2,11 +2,13 @@ package io.github.alikelleci.eventify.core;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -59,6 +61,7 @@ class CommandTransactionIT {
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
 
   @AggregateRoot("order")
+  @EnableSnapshotting(threshold = 1, deleteEvents = true)
   @Value
   @Builder(toBuilder = true)
   public static class Order {
@@ -186,6 +189,7 @@ class CommandTransactionIT {
     assertThat(committed("orders.results", "order-1")).as("committed results").containsExactly("failure");
     assertThat(committed("orders.events", "order-1")).as("committed events").isEmpty();
     assertThat(committed("orders-event-without-topic-event-store-changelog", "order-1")).as("committed event store").isEmpty();
+    assertThat(committed("orders-event-without-topic-snapshot-store-changelog", "order-1")).as("committed snapshot store").isEmpty();
   }
 
   /**
@@ -202,6 +206,10 @@ class CommandTransactionIT {
     send(EmitEventThatFailsWhenSent.builder().id("order-counting-writes").build());
     await("the counting command's result", () -> !committed("orders.results", "order-counting-writes").isEmpty());
     int writesPerCommand = EventThatFailsWhenSent.TIMES_WRITTEN.get();
+    assertThat(committed("orders-event-fails-when-sent-event-store-changelog", "order-counting-writes"))
+        .containsExactly(StoreKeys.of("order", "order-counting-writes", 1));
+    assertThat(committed("orders-event-fails-when-sent-snapshot-store-changelog", "order-counting-writes"))
+        .containsExactly(StoreKeys.snapshot("order", "order-counting-writes"));
 
     // The same command again, now failing on that last write.
     EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
@@ -218,11 +226,41 @@ class CommandTransactionIT {
     assertThat(committed("orders.results", "order-2")).as("committed results").isEmpty();
     assertThat(committed("orders.events", "order-2")).as("committed events").isEmpty();
     assertThat(committed("orders-event-fails-when-sent-event-store-changelog", "order-2")).as("committed event store").isEmpty();
+    assertThat(committed("orders-event-fails-when-sent-snapshot-store-changelog", "order-2")).as("committed snapshot store").isEmpty();
+  }
+
+  @Test
+  @DisplayName("Should roll back a new snapshot and event pruning together when sending fails")
+  void rollbackPreservesPreviousSnapshotAndHistory() {
+    String applicationId = "orders-snapshot-rollback";
+    String id = "order-retained";
+    eventify = start(applicationId);
+    EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
+    send(EmitEventThatFailsWhenSent.builder().id(id).build());
+    await("the initial command to commit", () -> committed("orders.results", id).size() == 1);
+    int writesPerCommand = EventThatFailsWhenSent.TIMES_WRITTEN.get();
+
+    EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
+    EventThatFailsWhenSent.FAIL_ON_WRITE = writesPerCommand;
+    try {
+      send(EmitEventThatFailsWhenSent.builder().id(id).build());
+      await("the next command to fail", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+          || committed("orders.results", id).size() > 1);
+    } finally {
+      EventThatFailsWhenSent.FAIL_ON_WRITE = Integer.MAX_VALUE;
+    }
+
+    assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.ERROR);
+    assertThat(committed("orders.results", id)).containsExactly("success");
+    assertThat(committed("orders.events", id)).containsExactly(id);
+    // Only the first committed entries survive. No new event, replacement snapshot or pruning tombstone was committed.
+    assertThat(committed(applicationId + "-event-store-changelog", id)).containsExactly(StoreKeys.of("order", id, 1));
+    assertThat(committed(applicationId + "-snapshot-store-changelog", id)).containsExactly(StoreKeys.snapshot("order", id));
   }
 
   private void report(String aggregateId, String applicationId) {
     System.out.println("TX " + aggregateId + " (" + eventify.getKafkaStreams().state() + ")");
-    for (String topic : List.of("orders.results", "orders.events", applicationId + "-event-store-changelog")) {
+    for (String topic : List.of("orders.results", "orders.events", applicationId + "-event-store-changelog", applicationId + "-snapshot-store-changelog")) {
       System.out.println("TX   " + topic + ": sent " + sent(topic, aggregateId) + ", committed " + committed(topic, aggregateId));
     }
   }
@@ -272,13 +310,19 @@ class CommandTransactionIT {
       long end = consumer.endOffsets(List.of(partition)).get(partition);
       while (consumer.position(partition) < end) {
         for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(500))) {
-          if (record.offset() < end && record.key() != null && record.key().startsWith(aggregateId)) {
+          if (record.offset() < end && belongsTo(record.key(), aggregateId)) {
             found.add(topic.endsWith(".results") ? result(record.value()) : record.key());
           }
         }
       }
     }
     return found;
+  }
+
+  private static boolean belongsTo(String key, String aggregateId) {
+    String snapshotKey = StoreKeys.snapshot("order", aggregateId);
+    return key != null && (key.equals(aggregateId) || key.equals(snapshotKey)
+        || key.startsWith(snapshotKey + StoreKeys.SEPARATOR));
   }
 
   private static String result(String json) {

@@ -4,8 +4,9 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
+import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
-import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
@@ -27,11 +28,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiFunction;
+
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
 
 @Slf4j
 @Getter
-public class CommandHandlerMethod implements BiFunction<AggregateState, Command, List<Object>> {
+public class CommandHandlerMethod {
 
   private final Object handler;
   private final Method method;
@@ -46,19 +48,18 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
     this.aggregateType = aggregateType;
   }
 
-  /** What the command changes about its aggregate: the payloads of the events to record, in the order returned. */
-  @Override
-  public List<Object> apply(AggregateState state, Command command) {
+  /** What the command changes about its aggregate: complete event envelopes, in the order returned. */
+  public List<Event> handle(Command command, AggregateState state) {
     try {
       validate(command.getPayload());
-      Object result = invokeHandler(handler, state, command);
-      return eventPayloads(command, result);
+      Object result = invokeHandler(command, state);
+      return events(state, command, eventPayloads(command, result));
     } catch (Exception e) {
       throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Object invokeHandler(Object handler, AggregateState state, Command command) throws InvocationTargetException, IllegalAccessException {
+  private Object invokeHandler(Command command, AggregateState state) throws InvocationTargetException, IllegalAccessException {
     Object[] args = new Object[method.getParameterCount()];
     Parameter[] parameters = method.getParameters();
 
@@ -67,7 +68,7 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
       if (i == 0) {
         args[i] = command.getPayload();
       } else if (parameter.getType().isAnnotationPresent(AggregateRoot.class)) {
-        args[i] = state != null ? state.getPayload() : null;
+        args[i] = state.getPayload();
       } else {
         args[i] = HandlerParameterResolver.resolve(parameter, command);
       }
@@ -101,6 +102,22 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
     });
 
     return payloads;
+  }
+
+  private List<Event> events(AggregateState state, Command command, List<Object> payloads) {
+    long sequence = state.getVersion();
+    Metadata metadata = command.getMetadata().with(CAUSATION_ID, command.getId());
+    List<Event> events = new ArrayList<>(payloads.size());
+    for (Object payload : payloads) {
+      Event event = Event.builder()
+          .aggregateType(aggregateType)
+          .payload(payload)
+          .metadata(metadata)
+          .sequence(++sequence)
+          .build();
+      events.add(event);
+    }
+    return events;
   }
 
   private void validate(Object payload) {

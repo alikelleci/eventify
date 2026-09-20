@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingExcep
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
+import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -14,11 +15,10 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.function.BiFunction;
 
 @Slf4j
 @Getter
-public class ApplyEventMethod implements BiFunction<AggregateState, Event, AggregateState> {
+public class ApplyEventMethod {
 
   private final Object handler;
   private final Method method;
@@ -28,17 +28,16 @@ public class ApplyEventMethod implements BiFunction<AggregateState, Event, Aggre
     this.method = method;
   }
 
-  @Override
-  public AggregateState apply(AggregateState state, Event event) {
+  public AggregateState handle(Event event, AggregateState state) {
     try {
-      Object result = invokeHandler(handler, state, event);
+      Object result = invokeHandler(event, state);
       return createState(event, result);
     } catch (Exception e) {
       throw new EventSourcingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
-  private Object invokeHandler(Object handler, AggregateState state, Event event) throws InvocationTargetException, IllegalAccessException {
+  private Object invokeHandler(Event event, AggregateState state) throws InvocationTargetException, IllegalAccessException {
     Object[] args = new Object[method.getParameterCount()];
     Parameter[] parameters = method.getParameters();
 
@@ -47,7 +46,7 @@ public class ApplyEventMethod implements BiFunction<AggregateState, Event, Aggre
       if (i == 0) {
         args[i] = event.getPayload();
       } else if (parameter.getType().isAnnotationPresent(AggregateRoot.class)) {
-        args[i] = state != null ? state.getPayload() : null;
+        args[i] = state.getPayload();
       } else {
         args[i] = HandlerParameterResolver.resolve(parameter, event);
       }
@@ -58,23 +57,14 @@ public class ApplyEventMethod implements BiFunction<AggregateState, Event, Aggre
   }
 
   private AggregateState createState(Event event, Object result) {
-    if (result == null) {
-      return null;
+    if (result != null) {
+      String stateAggregateId = AggregateIdResolver.getAggregateId(result);
+      // A state with another id would otherwise be stored under this event's aggregate id as a snapshot.
+      if (!StringUtils.equals(stateAggregateId, event.getAggregateId())) {
+        throw new AggregateIdMismatchException("Aggregate identifier does not match for state " + result.getClass().getSimpleName() + " after event " + event.getType() + ". Expected " + event.getAggregateId() + ", but was " + stateAggregateId);
+      }
     }
-
-    // The state after this event is the state at its place in the aggregate: its version is the event's sequence.
-    AggregateState state = AggregateState.builder()
-        .timestamp(event.getTimestamp())
-        .payload(result)
-        .metadata(event.getMetadata())
-        .version(event.getSequence())
-        .build();
-
-    // The state is stored as the snapshot of its own aggregate id: another id would overwrite that aggregate's snapshot.
-    if (!StringUtils.equals(state.getAggregateId(), event.getAggregateId())) {
-      throw new AggregateIdMismatchException("Aggregate identifier does not match for state " + state.getType() + " after event " + event.getType() + ". Expected " + event.getAggregateId() + ", but was " + state.getAggregateId());
-    }
-    return state;
+    return AggregateState.after(event, result);
   }
 
 }

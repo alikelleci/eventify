@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * One Eventify instance holding two aggregates, both given the SAME identifier. They share the stores, and their
@@ -114,21 +113,6 @@ class MultipleAggregatesTest {
   @AfterEach
   void tearDown() {
     driver.close();
-  }
-
-  /**
-   * Reading a name this instance doesn't handle would read an empty key range, which looks exactly like an aggregate
-   * that has no history yet. Refused instead, so a name that is spelled wrong is not mistaken for an empty aggregate.
-   */
-  @Test
-  @DisplayName("Should refuse to read the store of an aggregate this instance does not handle")
-  void theStoreOfAnotherAggregateCannotBeRead() {
-    assertThatThrownBy(() -> eventify.getEventStore("odrer"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("odrer");
-    assertThatThrownBy(() -> eventify.getSnapshotStore("odrer"))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("odrer");
   }
 
   /** Each aggregate counts its own events: a shared counter would number the invoice's first event #3. */
