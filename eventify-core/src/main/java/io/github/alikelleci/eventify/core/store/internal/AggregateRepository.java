@@ -37,6 +37,11 @@ public class AggregateRepository {
     this.snapshotStore = snapshotStore;
   }
 
+  /** The aggregate these are the events and snapshots of: one repository serves one aggregate. */
+  private String aggregateType() {
+    return eventStore.aggregateType();
+  }
+
   /**
    * The current state of the aggregate; {@code null} when it has none. Saves a snapshot when one is due, and deletes
    * the events before it when the aggregate asks for that.
@@ -89,10 +94,10 @@ public class AggregateRepository {
       return snapshot;
     }
     if (eventsBeforeWereDeleted(aggregateId, snapshot)) {
-      throw new SnapshotOutdatedException("The snapshot of aggregate " + aggregateId + " can't be used: " + whyOutdated
+      throw new SnapshotOutdatedException("The snapshot of aggregate " + aggregateType() + " " + aggregateId + " can't be used: " + whyOutdated
           + ". The aggregate can't be rebuilt without it: the events before it were deleted (@EnableSnapshotting(deleteEvents = true)).");
     }
-    log.info("Snapshot of aggregate {} not used: {}. Rebuilding it from its events.", aggregateId, whyOutdated);
+    log.info("Snapshot of aggregate {} {} not used: {}. Rebuilding it from its events.", aggregateType(), aggregateId, whyOutdated);
     return null;
   }
 
@@ -163,7 +168,7 @@ public class AggregateRepository {
     try {
       events.forEach(eventStore::append);
     } catch (Exception e) {
-      throw new EventStoreException("Not all events of aggregate " + aggregateId + " could be stored: "
+      throw new EventStoreException("Not all events of aggregate " + aggregateType() + " " + aggregateId + " could be stored: "
           + ExceptionUtils.getRootCauseMessage(e), e);
     }
   }

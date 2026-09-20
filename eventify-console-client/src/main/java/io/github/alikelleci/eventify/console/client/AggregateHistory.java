@@ -157,7 +157,7 @@ class AggregateHistory {
     try {
       return new RawValue(objectMapper.writeValueAsString(state));
     } catch (JsonProcessingException e) {
-      throw new IllegalStateException("Cannot write the state of aggregate '" + state.getAggregateId() + "' as JSON", e);
+      throw new IllegalStateException("Cannot write the state of " + state.getType() + " " + state.getAggregateId() + " as JSON", e);
     }
   }
 }

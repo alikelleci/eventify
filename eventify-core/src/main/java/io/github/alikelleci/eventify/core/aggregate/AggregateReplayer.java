@@ -77,7 +77,7 @@ public class AggregateReplayer {
       // A gap, or an event twice: the stored events are not the ones that were handled, and the state would be wrong
       // without a word. Fails the replay instead.
       if (event.getSequence() != version + 1) {
-        throw new EventReplayException("The stored events of aggregate " + event.getAggregateId() + " are incomplete or out of order: expected #" + (version + 1) + ", found #" + event.getSequence() + " (" + event.getType() + ", event " + event.getId() + ").");
+        throw new EventReplayException("The stored events of aggregate " + event.getAggregateType() + " " + event.getAggregateId() + " are incomplete or out of order: expected #" + (version + 1) + ", found #" + event.getSequence() + " (" + event.getType() + ", event " + event.getId() + ").");
       }
       if (listener != null) {
         listener.beforeEvent(event, state);

@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import org.apache.kafka.streams.state.KeyValueStore;
 
 /** The snapshot store as command handling uses it: read (see {@link ReadableSnapshotStore}) and written. */

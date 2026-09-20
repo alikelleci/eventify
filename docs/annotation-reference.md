@@ -3,7 +3,7 @@
 | Annotation | Where | Description |
 |---|---|---|
 | `@Topic("topic")` | Command / Event interface or class | Declares the Kafka topic. Inherited by all nested classes. |
-| `@AggregateId` | Field | Marks the `String` field that identifies the aggregate. |
+| `@AggregateId` | Field | Marks the field that identifies the aggregate: a `String`, a `UUID` or a number. |
 | `@AggregateRoot("order")` | Class | Marks a class as an aggregate root, under a name of your own choosing. |
 | `@EnableSnapshotting` | Aggregate class | Enables periodic snapshotting. |
 | `@Revision(n)` | Event payload class, aggregate class | On an event: its current schema revision, for upcasting. On an aggregate: the revision of its fields and `@ApplyEvent` methods; snapshots of another revision are not used. Defaults to `1`. |

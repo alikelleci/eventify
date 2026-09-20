@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.store.EventStore;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
@@ -65,9 +64,9 @@ public class ReadableEventStore implements EventStore {
     return new OfAggregate(store.reverseRange(StoreKeys.of(aggregateType, aggregateId, to), StoreKeys.of(aggregateType, aggregateId, from)));
   }
 
-  private static void requireSequences(String aggregateId, long from, long to) {
+  private void requireSequences(String aggregateId, long from, long to) {
     if (from < 1 || to < 1) {
-      throw new IllegalArgumentException("Cannot read the events of aggregate '" + aggregateId + "' from sequence " + from + " to sequence " + to + ": a sequence starts at 1.");
+      throw new IllegalArgumentException("Cannot read the events of aggregate " + aggregateType + " " + aggregateId + " from sequence " + from + " to sequence " + to + ": a sequence starts at 1.");
     }
   }
 

@@ -63,10 +63,11 @@ class CommandHistory {
    * other. When the request is cancelled, only this call's consumer stops, the way Kafka intends: with a wakeup.
    */
   Result<CommandsPage> read(Requests.Commands request, CancelSignal cancel) {
+    String aggregateType = request.aggregateType();
     String aggregateId = request.aggregateId();
     int limit = request.limit();
     // Eventify writes the result of every handled command to a result topic of its own.
-    Set<String> resultTopics = eventify.getCommandTopics(request.aggregateType()).stream()
+    Set<String> resultTopics = eventify.getCommandTopics(aggregateType).stream()
         .map(TopicNames::resultTopicOf)
         .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {
@@ -86,19 +87,19 @@ class CommandHistory {
         } catch (WakeupException e) {
           throw e;
         } catch (CommandsReadTimeout e) {
-          log.warn("Reading the commands of aggregate {} took longer than {}", aggregateId, MAX_COMMANDS_READ);
+          log.warn("Reading the commands of aggregate {} {} took longer than {}", aggregateType, aggregateId, MAX_COMMANDS_READ);
           return Result.unavailable("Reading the commands took too long");
         } catch (Exception e) {
           // Not an empty list: that would look like the aggregate has no commands.
-          log.warn("Failed to read commands of aggregate {} from topic {}", aggregateId, topic, e);
+          log.warn("Failed to read commands of aggregate {} {} from topic {}", aggregateType, aggregateId, topic, e);
           return Result.unavailable("Failed to read commands from topic " + topic + ": " + e.getMessage());
         }
       }
     } catch (WakeupException e) {
-      log.debug("Stopped reading commands for aggregate {}: the request was cancelled", aggregateId);
+      log.debug("Stopped reading commands for aggregate {} {}: the request was cancelled", aggregateType, aggregateId);
       return Result.unavailable("Cancelled");
     } catch (Exception e) {
-      log.error("Unexpected error querying commands for aggregate {}", aggregateId, e);
+      log.error("Unexpected error querying commands for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
 

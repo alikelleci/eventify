@@ -103,12 +103,6 @@ public class Eventify implements PluginContext {
     return handlers.commandHandlers().keySet();
   }
 
-  /** The topics of the commands this instance handles. */
-  @Override
-  public Set<String> getCommandTopics() {
-    return handlers.commandTopics();
-  }
-
   /** Rebuilds the state of an aggregate from its events, with the event sourcing handlers of this instance. */
   @Override
   public AggregateReplayer getAggregateReplayer() {
@@ -133,11 +127,13 @@ public class Eventify implements PluginContext {
    *
    * @param aggregateType the name of the aggregate, as its {@code @AggregateRoot} gives it
    *
+   * @throws IllegalArgumentException                                   when this instance has no aggregate of that name
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now, e.g.
    *                                                                    while Kafka Streams is rebalancing
    */
   @Override
   public EventStore getEventStore(String aggregateType) {
+    requireAggregate(aggregateType);
     return EventStore.of(runningKafkaStreams().store(
         StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore())), aggregateType);
   }
@@ -147,10 +143,12 @@ public class Eventify implements PluginContext {
    *
    * @param aggregateType the name of the aggregate, as its {@code @AggregateRoot} gives it
    *
+   * @throws IllegalArgumentException                                   when this instance has no aggregate of that name
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now
    */
   @Override
   public SnapshotStore getSnapshotStore(String aggregateType) {
+    requireAggregate(aggregateType);
     return SnapshotStore.of(runningKafkaStreams().store(
         StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore())), aggregateType);
   }
@@ -159,6 +157,16 @@ public class Eventify implements PluginContext {
   @Override
   public KeyQueryMetadata getAggregateMetadata(String aggregateId) {
     return runningKafkaStreams().queryMetadataForKey(StoreNames.EVENT_STORE, aggregateId, Serdes.String().serializer());
+  }
+
+  /**
+   * A name this instance doesn't handle would read an empty store, which looks like an aggregate without a history.
+   * Said instead of answered with nothing, so a name that is spelled wrong is not mistaken for an empty aggregate.
+   */
+  private void requireAggregate(String aggregateType) {
+    if (!getAggregateTypes().contains(aggregateType)) {
+      throw new IllegalArgumentException("This Eventify instance has no aggregate named '" + aggregateType + "'. It handles " + getAggregateTypes() + ".");
+    }
   }
 
   private KafkaStreams runningKafkaStreams() {

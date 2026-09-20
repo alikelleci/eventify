@@ -69,22 +69,24 @@ class ConsoleService {
   }
 
   Result<CommandEventsPage> getEventsOfCommand(Requests.EventsOfCommand request) {
+    String aggregateType = request.aggregateType();
     String aggregateId = request.aggregateId();
     Result<CommandEventsPage> routing = ownership.check(aggregateId);
     if (routing != null) return routing;
 
     try {
-      return Result.ok(new CommandEventsPage(history.eventsOfCommand(eventStore(request.aggregateType()), request)));
+      return Result.ok(new CommandEventsPage(history.eventsOfCommand(eventStore(aggregateType), request)));
     } catch (InvalidStateStoreException e) {
-      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      log.warn("Event store not ready for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Event store not ready");
     } catch (Exception e) {
-      log.error("Unexpected error querying the events of command {} of aggregate {}", request.commandId(), aggregateId, e);
+      log.error("Unexpected error querying the events of command {} of aggregate {} {}", request.commandId(), aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
   }
 
   Result<EventsPage> getEvents(Requests.Events request) {
+    String aggregateType = request.aggregateType();
     String aggregateId = request.aggregateId();
     Result<EventsPage> routing = ownership.check(aggregateId);
     if (routing != null) {
@@ -92,17 +94,18 @@ class ConsoleService {
     }
 
     try {
-      return Result.ok(history.events(eventStore(request.aggregateType()), aggregateId, request.cursor(), request.limit()));
+      return Result.ok(history.events(eventStore(aggregateType), aggregateId, request.cursor(), request.limit()));
     } catch (InvalidStateStoreException e) {
-      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      log.warn("Event store not ready for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Event store not ready");
     } catch (Exception e) {
-      log.error("Unexpected error querying events for aggregate {}", aggregateId, e);
+      log.error("Unexpected error querying events for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
   }
 
   Result<EventDetail> getEventDetail(Requests.EventDetail request) {
+    String aggregateType = request.aggregateType();
     String aggregateId = request.aggregateId();
     Result<EventDetail> routing = ownership.check(aggregateId);
     if (routing != null) {
@@ -110,26 +113,27 @@ class ConsoleService {
     }
 
     try {
-      EventDetail detail = history.eventDetail(eventStore(request.aggregateType()), snapshotStore(request.aggregateType()), aggregateId, request.sequence());
+      EventDetail detail = history.eventDetail(eventStore(aggregateType), snapshotStore(aggregateType), aggregateId, request.sequence());
       if (detail == null) {
         return ownership.notFound(aggregateId);
       }
       return Result.ok(detail);
     } catch (InvalidStateStoreException e) {
-      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      log.warn("Event store not ready for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Event store not ready");
     } catch (EventReplayException e) {
       // The stored events can't be replayed: the application refuses the aggregate's commands for the same reason.
-      log.warn("Cannot replay aggregate {}: {}", aggregateId, e.getMessage());
+      log.warn("Cannot replay aggregate {} {}: {}", aggregateType, aggregateId, e.getMessage());
       return Result.unreadable(e.getMessage());
     } catch (Exception e) {
-      log.error("Unexpected error querying event detail for aggregate {}", aggregateId, e);
+      log.error("Unexpected error querying event detail for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
   }
 
   /** The {@link AggregateState} as JSON, see {@link AggregateHistory}. */
   Result<RawValue> getState(Requests.State request) {
+    String aggregateType = request.aggregateType();
     String aggregateId = request.aggregateId();
     Result<RawValue> routing = ownership.check(aggregateId);
     if (routing != null) {
@@ -137,25 +141,25 @@ class ConsoleService {
     }
 
     try {
-      RawValue state = history.stateAt(eventStore(request.aggregateType()), snapshotStore(request.aggregateType()), aggregateId, request.sequence());
+      RawValue state = history.stateAt(eventStore(aggregateType), snapshotStore(aggregateType), aggregateId, request.sequence());
       if (state == null) {
         return ownership.notFound(aggregateId);
       }
       return Result.ok(state);
     } catch (InvalidStateStoreException e) {
-      log.warn("Event store not ready for aggregate {}", aggregateId, e);
+      log.warn("Event store not ready for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Event store not ready");
     } catch (EventReplayException e) {
       // The stored events can't be replayed: the application refuses the aggregate's commands for the same reason.
-      log.warn("Cannot replay aggregate {}: {}", aggregateId, e.getMessage());
+      log.warn("Cannot replay aggregate {} {}: {}", aggregateType, aggregateId, e.getMessage());
       return Result.unreadable(e.getMessage());
     } catch (Exception e) {
-      log.error("Unexpected error querying state for aggregate {}", aggregateId, e);
+      log.error("Unexpected error querying state for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
   }
 
-  /** An unknown aggregate type simply holds nothing, and is answered as an aggregate that is not here. */
+  /** The name is one this instance handles: {@link ConsoleRequestHandler} refuses the request otherwise. */
   private EventStore eventStore(String aggregateType) {
     return eventify.getEventStore(aggregateType);
   }

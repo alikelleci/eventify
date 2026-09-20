@@ -45,7 +45,7 @@ public class EventifyConsoleClient implements EventifyPlugin {
         eventify.getAggregateTypes());
 
     consoleService = new ConsoleService(eventify, statusTracker);
-    ConsoleRequestHandler handler = new ConsoleRequestHandler(consoleService, eventify.getObjectMapper());
+    ConsoleRequestHandler handler = new ConsoleRequestHandler(consoleService, eventify.getObjectMapper(), nodeInfo.aggregateTypes());
     connector = new ConsoleConnector(url, token, nodeInfo, handler::handle);
     connector.start();
   }

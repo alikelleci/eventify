@@ -2,7 +2,6 @@ package io.github.alikelleci.eventify.core.store.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
@@ -28,7 +27,7 @@ public class WritableEventStore extends ReadableEventStore {
   public void append(Event event) {
     Event taken = store.putIfAbsent(StoreKeys.of(aggregateType, event.getAggregateId(), event.getSequence()), event);
     if (taken != null) {
-      throw new IllegalStateException("Aggregate " + event.getAggregateId() + " already has an event with sequence " + event.getSequence() + ": event " + taken.getId() + ".");
+      throw new IllegalStateException("Aggregate " + aggregateType + " " + event.getAggregateId() + " already has an event with sequence " + event.getSequence() + ": event " + taken.getId() + ".");
     }
   }
 

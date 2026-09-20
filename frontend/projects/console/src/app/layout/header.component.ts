@@ -20,7 +20,7 @@ import { HeaderSearchComponent } from './header-search.component';
 
       <!-- Without connected applications there is nothing to search -->
       @if (!backend.noApps()) {
-        <app-header-search class="hidden sm:block ml-auto w-80" />
+        <app-header-search class="hidden sm:block ml-auto" />
       }
 
       @if (backend.apps().length > 0) {

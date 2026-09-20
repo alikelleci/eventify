@@ -87,7 +87,7 @@ Eventify eventify = Eventify.builder()
 
 The listeners are called on Kafka Streams' own threads, so keep them short: remember something, don't block. An exception from a plugin is logged and reaches neither Kafka Streams nor the other plugins.
 
-Eventify registers one plugin itself, which logs the state changes and the restoration progress. [Eventify Console](console.md) is a plugin too.
+Eventify registers one plugin itself, which logs the state changes and the restoration progress.
 
 ## Spring Boot Integration
 
@@ -148,4 +148,3 @@ Commands are always handled by `@HandleCommand`.
 
 - [Domain Modeling](domain-modeling.md): define your aggregates, commands, and events.
 - [Command Gateway](command-gateway.md): send commands from your API layer.
-- [Eventify Console](console.md): inspect your running applications.

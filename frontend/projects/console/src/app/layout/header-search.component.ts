@@ -13,12 +13,13 @@ import { BackendService } from '@eventify/ui/services/backend.service';
       <div class="flex items-stretch">
         @if (types().length > 1) {
           <!-- One application can hold several aggregates, and two of them can have the same identifier. -->
-          <div class="relative">
+          <!-- On the narrow bar the button is as wide as the name needs, up to a share of the row; the search box gets the rest. -->
+          <div class="relative min-w-0" [class]="dark() ? '' : 'max-w-[45%]'">
             <button #typeButton type="button" aria-haspopup="listbox" [attr.aria-expanded]="typesOpen()" [attr.aria-controls]="typeListId()"
-                    class="flex items-center justify-between gap-1.5 shrink-0 rounded-l border border-r-0 transition-colors cursor-pointer outline-none"
+                    class="flex items-center justify-between gap-1.5 shrink-0 border border-r-0 transition-colors cursor-pointer outline-none"
                     [class]="dark()
-                      ? 'h-8 w-24 pl-2.5 pr-2 text-sm border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600'
-                      : 'h-11 w-28 pl-3.5 pr-2 text-base border-surface-200 bg-surface-50 text-surface-600 hover:border-surface-300 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'"
+                      ? 'h-8 w-24 pl-2.5 pr-2 text-sm rounded-l border-slate-700 bg-slate-800 text-slate-300 hover:border-slate-600'
+                      : 'h-11 w-full pl-3.5 pr-2 text-base rounded-l-md border-surface-200 bg-surface-50 text-surface-600 hover:border-surface-300 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'"
                     (click)="typesOpen.set(!typesOpen())" (blur)="typesOpen.set(false)"
                     (keydown.escape)="typesOpen.set(false)">
               <span class="truncate">{{ selectedType() }}</span>
@@ -43,16 +44,16 @@ import { BackendService } from '@eventify/ui/services/backend.service';
             }
           </div>
         }
-        <div class="relative flex-1 min-w-0">
+        <div class="relative" [class]="dark() ? 'w-80 max-w-full' : 'flex-1 min-w-0'">
           <i class="absolute top-1/2 -translate-y-1/2 pointer-events-none"
              [class]="(search.loading() ? 'pi pi-spin pi-spinner ' : 'pi pi-search ') + (dark() ? 'left-2.5 text-xs text-slate-400' : 'left-3.5 text-sm text-surface-400')"></i>
           <input #input type="text" spellcheck="false" autocomplete="off" placeholder="Search aggregate ID…"
                  role="combobox" aria-autocomplete="list" [attr.aria-expanded]="dropdownOpen()" [attr.aria-controls]="listId()"
                  [attr.aria-activedescendant]="highlightedIndex() >= 0 ? listId() + '-' + highlightedIndex() : null"
                  class="w-full border focus:outline-none transition-colors"
-                 [class]="(types().length > 1 ? 'rounded-r ' : 'rounded ') + (dark()
+                 [class]="roundingClass() + (dark()
                    ? 'h-8 pl-8 pr-8 text-sm border-slate-700 bg-slate-800 text-slate-100 placeholder:text-slate-400 hover:border-slate-600 focus:border-slate-500 focus:bg-slate-700/60'
-                   : 'h-11 pl-10 pr-3 text-base rounded-md border-surface-200 bg-surface-50 text-surface-900 placeholder:text-surface-400 hover:border-surface-300 focus:border-primary-500 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-100')"
+                   : 'h-11 pl-10 pr-3 text-base border-surface-200 bg-surface-50 text-surface-900 placeholder:text-surface-400 hover:border-surface-300 focus:border-primary-500 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-100')"
                  [(ngModel)]="query" (input)="highlightedIndex.set(-1)" (keydown)="onInputKeydown($event)"
                  (focus)="focused.set(true); highlightedIndex.set(-1)" (blur)="focused.set(false)" />
           @if (!focused() && dark()) {
@@ -112,6 +113,12 @@ export class HeaderSearchComponent {
   readonly selectedType = signal('');
   readonly typesOpen = signal(false);
   readonly typeListId = computed(() => `aggregate-types-${this.variant()}`);
+  /** Against the type button the box is square, so the two read as one control; the dark bar has tighter corners. */
+  readonly roundingClass = computed(() => {
+    const joined = this.types().length > 1;
+    if (this.dark()) return joined ? 'rounded-r ' : 'rounded ';
+    return joined ? 'rounded-r-md ' : 'rounded-md ';
+  });
 
   constructor() {
     // Show the open aggregate in the box whenever the URL changes, and search in its aggregate.

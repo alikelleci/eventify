@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.console.protocol.Route;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.util.Set;
 
 /** Answers the console's requests with {@link ConsoleService}. Blocking: call it off the network threads. */
 @Slf4j
@@ -18,15 +19,18 @@ class ConsoleRequestHandler {
   static final int MAX_PAGE_SIZE = 500;
 
   private final ConsoleService service;
+  /** The aggregates this instance handles, fixed when it starts: a request for another one is answered as a bad one. */
+  private final Set<String> aggregateTypes;
   /** Eventify's own mapper, for the events and commands: the console shows them as the application writes them. */
   private final ObjectMapper eventifyMapper;
   /** For the protocol's own messages. */
   private final ObjectMapper protocolMapper = new ObjectMapper()
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-  ConsoleRequestHandler(ConsoleService service, ObjectMapper eventifyMapper) {
+  ConsoleRequestHandler(ConsoleService service, ObjectMapper eventifyMapper, Set<String> aggregateTypes) {
     this.service = service;
     this.eventifyMapper = eventifyMapper;
+    this.aggregateTypes = Set.copyOf(aggregateTypes);
   }
 
   Reply handle(String routeName, byte[] data, CancelSignal cancel) {
@@ -98,9 +102,17 @@ class ConsoleRequestHandler {
     return require("aggregateId", aggregateId);
   }
 
-  /** An aggregate is addressed by its type and its identifier: one application can hold several aggregates. */
-  private static String requireAggregateType(String aggregateType) {
-    return require("aggregateType", aggregateType);
+  /**
+   * An aggregate is addressed by its type and its identifier: one application can hold several aggregates. A name this
+   * instance doesn't handle is refused instead of answered with nothing: an empty history would read as an aggregate
+   * that has none, while the question itself is about an aggregate that isn't here.
+   */
+  private String requireAggregateType(String aggregateType) {
+    String name = require("aggregateType", aggregateType);
+    if (!aggregateTypes.contains(name)) {
+      throw new BadRequestException("This application has no aggregate named '" + name + "'");
+    }
+    return name;
   }
 
   /** An event's sequence: 1 for an aggregate's first event, so never below 1. */

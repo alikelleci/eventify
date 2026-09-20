@@ -26,9 +26,6 @@ public interface PluginContext {
   /** The command classes this instance has a command handler for. */
   Set<Class<?>> getCommandTypes();
 
-  /** The topics of the commands this instance handles. */
-  Set<String> getCommandTopics();
-
   /** The topics of the commands of one aggregate: the commands another aggregate handles are not its own. */
   Set<String> getCommandTopics(String aggregateType);
 
@@ -41,10 +38,16 @@ public interface PluginContext {
   /**
    * The stored events of one aggregate on this instance: only those of the aggregates it owns (see
    * {@link #getAggregateMetadata}).
+   *
+   * @throws IllegalArgumentException when this instance has no aggregate of that name
    */
   EventStore getEventStore(String aggregateType);
 
-  /** The stored snapshots of one aggregate on this instance: only those of the aggregates it owns. */
+  /**
+   * The stored snapshots of one aggregate on this instance: only those of the aggregates it owns.
+   *
+   * @throws IllegalArgumentException when this instance has no aggregate of that name
+   */
   SnapshotStore getSnapshotStore(String aggregateType);
 
   /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */

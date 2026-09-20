@@ -70,6 +70,20 @@ class ConsoleServerTest {
         .jsonPath("$[?(@.name == 'listing')].nodes[*].nodeId").isEqualTo(List.of("listing.a:0", "listing.b:0"));
   }
 
+  /** One application can hold several aggregates, and an instance that connected later may not report them all yet. */
+  @Test
+  @DisplayName("Should list the aggregates an application holds, from all its instances together")
+  void theAggregatesOfAnApplicationAreListedFromAllItsInstances() {
+    connect("aggregates", "aggregates.a:0", ok("{}"), Set.of("order", "invoice"));
+    connect("aggregates", "aggregates.b:0", ok("{}"), Set.of("order"));
+
+    awaitInstances("aggregates", 2);
+    client.get().uri("/api/apps").exchange()
+        .expectStatus().isOk()
+        .expectBody()
+        .jsonPath("$[?(@.name == 'aggregates')].aggregateTypes[*]").isEqualTo(List.of("invoice", "order"));
+  }
+
   @Test
   @DisplayName("Should send a query to the owning instance after a redirect")
   void aQueryGoesToTheOwnerAfterARedirect() {
@@ -201,7 +215,11 @@ class ConsoleServerTest {
   }
 
   private ConsoleConnector connect(String applicationId, String nodeId, ConsoleConnector.Handler handler) {
-    NodeInfo info = new NodeInfo(applicationId, nodeId, "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
+    return connect(applicationId, nodeId, handler, Set.of("order"));
+  }
+
+  private ConsoleConnector connect(String applicationId, String nodeId, ConsoleConnector.Handler handler, Set<String> aggregateTypes) {
+    NodeInfo info = new NodeInfo(applicationId, nodeId, "localhost", "test", ConsoleProtocol.VERSION, aggregateTypes);
     ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data, cancel) -> {
       if (!route.equals(Route.STATUS.name())) {
         calls.computeIfAbsent(nodeId, id -> new AtomicInteger()).incrementAndGet();

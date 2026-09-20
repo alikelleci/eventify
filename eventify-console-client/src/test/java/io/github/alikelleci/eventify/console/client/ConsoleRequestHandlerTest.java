@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -15,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Console request handler: bad requests")
 class ConsoleRequestHandlerTest {
 
-  private final ConsoleRequestHandler handler = new ConsoleRequestHandler(null, new ObjectMapper());
+  private final ConsoleRequestHandler handler = new ConsoleRequestHandler(null, new ObjectMapper(), Set.of("order", "invoice"));
 
   @Test
   @DisplayName("Should refuse a page of events whose cursor is not a sequence")
@@ -45,6 +46,24 @@ class ConsoleRequestHandlerTest {
 
     assertThat(reply.header().status()).isEqualTo(ReplyHeader.Status.BAD_REQUEST);
     assertThat(reply.header().reason()).contains("aggregateType");
+  }
+
+  /**
+   * A name this instance doesn't handle reads an empty store, which would look like an aggregate without a history.
+   * Refused instead, so a name that is spelled wrong is not mistaken for an aggregate that has nothing.
+   */
+  @Test
+  @DisplayName("Should refuse an aggregate this instance does not handle")
+  void refusesAnAggregateThisInstanceDoesNotHandle() {
+    Reply reply = handle(Route.EVENTS, "{\"aggregateType\":\"odrer\",\"aggregateId\":\"order-1\"}");
+
+    assertThat(reply.header().status()).isEqualTo(ReplyHeader.Status.BAD_REQUEST);
+    assertThat(reply.header().reason()).contains("odrer");
+    // The other routes ask the same question about the same aggregate, so they refuse it too.
+    assertThat(handle(Route.COMMANDS, "{\"aggregateType\":\"odrer\",\"aggregateId\":\"order-1\"}").header().status())
+        .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
+    assertThat(handle(Route.STATE, "{\"aggregateType\":\"odrer\",\"aggregateId\":\"order-1\"}").header().status())
+        .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
   }
 
   private Reply handle(Route route, String json) {
