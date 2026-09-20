@@ -121,6 +121,11 @@ public class AggregateRepository {
    * @return the events as they are stored and sent
    */
   public List<Event> record(String aggregateId, AggregateState state, List<Object> payloads, Metadata metadata) {
+    if (payloads.isEmpty()) {
+      // A command that changes nothing, e.g. a handler that returns nothing: it is accepted, and the store is not read.
+      return List.of();
+    }
+
     long sequence = eventStore.lastSequence(aggregateId);
 
     // Copied as they were given, before anything else runs: a payload may share objects with the aggregate (e.g. its
