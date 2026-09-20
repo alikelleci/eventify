@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.handler.internal;
 
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
@@ -19,10 +20,12 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The handlers of one Eventify instance: its command handlers, event sourcing handlers, event handlers and upcasters,
@@ -67,6 +70,19 @@ public class HandlerRegistry {
 
   public boolean isEmpty() {
     return commandHandlers.isEmpty() && eventSourcingHandlers.isEmpty() && eventHandlers.isEmpty() && upcasters.isEmpty();
+  }
+
+  /**
+   * The aggregates these handlers work on: the classes annotated with {@link AggregateRoot} that their methods take or
+   * return. Empty when no handler names one, e.g. handlers that only take the command.
+   */
+  public Set<Class<?>> aggregateTypes() {
+    return Stream.concat(
+            commandHandlers.values().stream().map(CommandHandlerMethod::getMethod),
+            eventSourcingHandlers.values().stream().map(ApplyEventMethod::getMethod))
+        .flatMap(method -> Stream.concat(Stream.of(method.getReturnType()), Arrays.stream(method.getParameterTypes())))
+        .filter(type -> type.isAnnotationPresent(AggregateRoot.class))
+        .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   /** The command handler for this command class; {@code null} when there is none. */

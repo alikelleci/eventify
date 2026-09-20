@@ -11,6 +11,7 @@ import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
+import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
 import io.github.alikelleci.eventify.core.serialization.JsonSerde;
@@ -27,6 +28,7 @@ import org.apache.kafka.streams.state.Stores;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * The Kafka Streams topology of an Eventify application: the event and snapshot stores, command handling (results,
@@ -38,6 +40,8 @@ public final class EventifyTopology {
   }
 
   public static Topology build(HandlerRegistry handlers, ObjectMapper objectMapper) {
+    requireOneAggregate(handlers);
+
     StreamsBuilder builder = new StreamsBuilder();
 
     /*
@@ -127,5 +131,21 @@ public final class EventifyTopology {
     }
 
     return builder.build();
+  }
+
+  /**
+   * One Eventify instance holds one aggregate. Its stores key an aggregate by its identifier alone, so two aggregates
+   * would share a key range, and two of them with the same identifier would share one history: the events of the one
+   * would be replayed into the other. Nothing can tell them apart afterwards, so they are kept apart beforehand.
+   */
+  private static void requireOneAggregate(HandlerRegistry handlers) {
+    Set<Class<?>> aggregates = handlers.aggregateTypes();
+    if (aggregates.size() > 1) {
+      throw new HandlerRegistrationException("These handlers work on more than one aggregate: "
+          + aggregates.stream().map(Class::getSimpleName).collect(Collectors.joining(" and "))
+          + ". One Eventify instance holds one aggregate, because its event store keys events by aggregate identifier"
+          + " alone: two aggregates with the same identifier would share one history. Give each aggregate its own"
+          + " Eventify instance, and register its own handlers on it.");
+    }
   }
 }

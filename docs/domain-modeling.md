@@ -21,6 +21,8 @@ public class Order {
 - `@Builder(toBuilder = true)` is recommended so that event-sourcing handlers can create updated state using `state.toBuilder()...build()`.
 - The class should be immutable—use Lombok `@Value` or make all fields `final`.
 
+One Eventify instance holds **one** aggregate: its stores key an aggregate by its identifier alone, so two aggregates with the same identifier would share one history. Eventify refuses to start when its handlers work on more than one. For several aggregates, give each one its own Eventify instance and register its own handlers on it.
+
 ## Commands and Events
 
 Commands and events are plain, immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@Topic`, which declares the Kafka topic used for those messages. Every command and event class must contain exactly one field annotated with `@AggregateId`. This field identifies the target aggregate instance, and may be a `String`, a `UUID` or a number.

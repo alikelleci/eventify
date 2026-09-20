@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
@@ -92,6 +93,37 @@ class HandlerRegistrationTest {
     }
   }
 
+  @Value
+  @AggregateRoot
+  public static class Fan {
+    @AggregateId
+    String id;
+  }
+
+  @Value
+  public static class SwitchOnFan {
+    @AggregateId
+    String id;
+  }
+
+  @Value
+  public static class FanSwitchedOn {
+    @AggregateId
+    String id;
+  }
+
+  public static class FanHandler {
+    @HandleCommand
+    public Object handle(SwitchOnFan command, Fan state) {
+      return new FanSwitchedOn(command.getId());
+    }
+
+    @ApplyEvent
+    public Fan apply(FanSwitchedOn event, Fan state) {
+      return new Fan(event.getId());
+    }
+  }
+
   public static class FirstEventHandler {
     @HandleEvent
     public void on(SwitchedOn event) {
@@ -123,6 +155,34 @@ class HandlerRegistrationTest {
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining(SwitchedOn.class.getName());
+  }
+
+  /** Both stores key an aggregate by its identifier alone, so two aggregates with the same id would share a history. */
+  @Test
+  @DisplayName("Should refuse handlers that work on more than one aggregate")
+  void handlersForMoreThanOneAggregateAreRefused() {
+    Eventify eventify = Eventify.builder().streamsConfig(config())
+        .registerHandler(new LightHandler())
+        .registerHandler(new FanHandler())
+        .build();
+
+    assertThatThrownBy(eventify::topology)
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("Light")
+        .hasMessageContaining("Fan")
+        .hasMessageContaining("one aggregate");
+  }
+
+  @Test
+  @DisplayName("Should accept handlers that all work on the same aggregate")
+  void handlersForOneAggregateAreAccepted() {
+    Eventify eventify = Eventify.builder().streamsConfig(config())
+        .registerHandler(new LightHandler())
+        .registerHandler(new FirstEventHandler())
+        .build();
+
+    assertThat(eventify.getHandlers().aggregateTypes()).containsExactly(Light.class);
+    assertThatCode(eventify::topology).doesNotThrowAnyException();
   }
 
   @Test
