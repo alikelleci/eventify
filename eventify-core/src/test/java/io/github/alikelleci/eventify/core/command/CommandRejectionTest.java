@@ -42,7 +42,7 @@ class CommandRejectionTest {
 
   @Value
   @Builder(toBuilder = true)
-  @AggregateRoot
+  @AggregateRoot("counter")
   public static class Counter {
     @AggregateId
     String id;

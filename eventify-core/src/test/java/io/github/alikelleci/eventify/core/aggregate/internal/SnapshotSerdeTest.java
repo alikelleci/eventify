@@ -16,7 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Snapshot serde")
 class SnapshotSerdeTest {
 
-  @AggregateRoot
+  @AggregateRoot("cart")
   public record Cart(@AggregateId String id, int items) {
   }
 

@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.console.client;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.client.item.ItemHandler;
+import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.NodeStatus;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
@@ -111,7 +112,7 @@ class StatusIT {
   }
 
   private boolean hasEvents(String aggregateId) {
-    Result<ConsoleViews.EventsPage> result = service.getEvents(aggregateId, null, 1);
+    Result<ConsoleViews.EventsPage> result = service.getEvents(new Requests.Events("item", aggregateId, null, 1));
     return result.isOk() && !result.value().events().isEmpty();
   }
 

@@ -56,7 +56,7 @@ class UpcastingOnReplayTest {
   public record Greeted(@AggregateId String id, String greeting) implements ProfileEvent {
   }
 
-  @AggregateRoot
+  @AggregateRoot("profile")
   public record Profile(@AggregateId String id, String name) {
   }
 
@@ -113,7 +113,7 @@ class UpcastingOnReplayTest {
     TestInputTopic<String, Command> commands = driver.createInputTopic("commands.profile", new StringSerializer(), new CommandSerde().serializer());
     TestOutputTopic<String, Event> events = driver.createOutputTopic("events.profile", new StringDeserializer(), new EventSerde().deserializer());
 
-    Event current = Event.builder().payload(new Registered("ada", "Ada")).sequence(1).build();
+    Event current = Event.builder().aggregateType("profile").payload(new Registered("ada", "Ada")).sequence(1).build();
     ObjectNode stored = EventifyObjectMapper.create().valueToTree(current);
     ObjectNode payload = (ObjectNode) stored.get("payload");
     payload.set("fullName", payload.remove("name"));
@@ -121,7 +121,7 @@ class UpcastingOnReplayTest {
     stored.put("sequence", 1);
     // The event store's own serde writes it: the JSON as an older version of the application stored it.
     KeyValueStore<String, Object> eventStore = driver.getKeyValueStore("event-store");
-    eventStore.put(StoreKeys.of("ada", 1), stored);
+    eventStore.put(StoreKeys.of("profile", "ada", 1), stored);
 
     Command greet = Command.builder().payload(new Greet("ada")).build();
     commands.pipeInput(greet.getAggregateId(), greet);

@@ -7,7 +7,7 @@ An aggregate is a plain, immutable class annotated with `@AggregateRoot`. It rep
 ```java
 @Value
 @Builder(toBuilder = true)
-@AggregateRoot
+@AggregateRoot("order")
 public class Order {
     @AggregateId
     String id;
@@ -17,11 +17,11 @@ public class Order {
 }
 ```
 
-- `@AggregateRoot` marks the class as an aggregate. Eventify also uses it to identify the aggregate state that can be injected into handler methods.
+- `@AggregateRoot("order")` marks the class as an aggregate, under the name its events and snapshots are stored by. Choose it yourself and keep it: renaming the class must not move the data, and two aggregates of one application cannot share a name. Eventify also uses the annotation to identify the aggregate state that can be injected into handler methods.
 - `@Builder(toBuilder = true)` is recommended so that event-sourcing handlers can create updated state using `state.toBuilder()...build()`.
 - The class should be immutable—use Lombok `@Value` or make all fields `final`.
 
-One Eventify instance holds **one** aggregate: its stores key an aggregate by its identifier alone, so two aggregates with the same identifier would share one history. Eventify refuses to start when its handlers work on more than one. For several aggregates, give each one its own Eventify instance and register its own handlers on it.
+One Eventify instance can hold several aggregates: an event and a snapshot are stored under the aggregate's name and its identifier together, so two aggregates with the same identifier stay apart. Every `@HandleCommand` method takes its aggregate as a parameter, which is how Eventify knows whose events to read before the handler runs.
 
 ## Commands and Events
 

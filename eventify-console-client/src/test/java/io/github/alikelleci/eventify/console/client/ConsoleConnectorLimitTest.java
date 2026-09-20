@@ -18,6 +18,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.net.ServerSocket;
+import java.util.Set;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -58,7 +59,7 @@ class ConsoleConnectorLimitTest {
         .bind(WebsocketServerTransport.create("localhost", port))
         .block(Duration.ofSeconds(10));
 
-    NodeInfo info = new NodeInfo("limit-test", "limit-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
+    NodeInfo info = new NodeInfo("limit-test", "limit-test.a:0", "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data, cancel) -> {
       mostRunning.accumulateAndGet(running.incrementAndGet(), Math::max);
       try {

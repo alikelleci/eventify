@@ -21,6 +21,7 @@ import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
 
 import java.net.ServerSocket;
+import java.util.Set;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -54,7 +55,7 @@ class ConsoleConnectorCancelTest {
         .bind(WebsocketServerTransport.create("localhost", port))
         .block(Duration.ofSeconds(10));
 
-    NodeInfo info = new NodeInfo("cancel-test", "cancel-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
+    NodeInfo info = new NodeInfo("cancel-test", "cancel-test.a:0", "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data, cancel) -> {
       String name = new String(data, StandardCharsets.UTF_8);
       try {

@@ -245,7 +245,7 @@ class UpcastingChainTest {
 
   /** The event as it was stored at revision 1: with {@code name}, before it was renamed. */
   private static String storedAtRevision1() {
-    Event event = Event.builder().payload(Renamed.builder().id("ada").name("Ada Lovelace").build()).sequence(1).build();
+    Event event = Event.builder().aggregateType("profile").payload(Renamed.builder().id("ada").name("Ada Lovelace").build()).sequence(1).build();
     String json = new String(new JsonSerializer<Event>(EventifyObjectMapper.create()).serialize("events", event));
     return json.replace("\"revision\":3", "\"revision\":1");
   }

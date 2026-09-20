@@ -55,7 +55,7 @@ function buildOrder() {
     step.events.forEach((e, i) => {
       const event: EventMessage = {
         id: `8c1d4e2a-3b5f-4a6c-9d7e-${String(++sequence).padStart(12, '0')}`, sequence, timestamp: at(step.minutesAgo, (i + 1) * 4),
-        type: e.type, aggregateId: ORDER_ID, revision: e.revision ?? 1,
+        type: e.type, aggregateType: 'order', aggregateId: ORDER_ID, revision: e.revision ?? 1,
         payload: { id: ORDER_ID, ...e.payload }, metadata: { '$correlationId': correlationId },
       };
       order = e.apply(order, event.timestamp);
@@ -74,7 +74,7 @@ const ORDER = buildOrder();
 
 /** Stands in for the console API, so the real detail components show the example order. */
 const EXAMPLE_API: Partial<EventifyService> = {
-  getEventDetail: (_, sequence) => {
+  getEventDetail: (_type, _id, sequence) => {
     const detail: EventDetail = {
       event: ORDER.events.find(e => e.sequence === sequence)!,
       state: ORDER.states.get(sequence) ?? null,

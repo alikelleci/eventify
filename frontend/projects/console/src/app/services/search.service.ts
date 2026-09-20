@@ -6,42 +6,48 @@ import { Subject, filter, map } from 'rxjs';
 const RECENT_KEY = 'eventify.recentSearches';
 const MAX_RECENT = 8;
 
+/** An aggregate is addressed by its type and its identifier: one application can hold several aggregates. */
+export interface AggregateRef {
+  type: string;
+  id: string;
+}
+
 /** Aggregate search state shared by the header search and the aggregate page. */
 @Injectable({ providedIn: 'root' })
 export class SearchService {
   private readonly router = inject(Router);
 
-  /** The aggregate ID in the URL (/aggregates/:id), or '' on the landing page. */
-  readonly currentId = toSignal(
-    this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.idFromUrl())),
-    { initialValue: '' },
+  /** The aggregate in the URL (/aggregates/:type/:id), or null on the landing page. */
+  readonly current = toSignal(
+    this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.fromUrl())),
+    { initialValue: null as AggregateRef | null },
   );
-  readonly recent = signal<string[]>(this.loadRecent());
+  readonly recent = signal<AggregateRef[]>(this.loadRecent());
   /** True while the open aggregate is loading; drives the header progress bar. */
   readonly loading = signal(false);
   /** Emits when the already-open aggregate is searched again, so the page can reload it. */
-  readonly reload$ = new Subject<string>();
+  readonly reload$ = new Subject<AggregateRef>();
   /** Emits when something outside the header (e.g. the landing page) wants the search box focused. */
   readonly focus$ = new Subject<void>();
 
   constructor() {
     // Remember every aggregate that gets opened, also via a link, a bookmark or the back button.
     effect(() => {
-      const id = this.currentId();
+      const aggregate = this.current();
       // untracked: removing the open aggregate from the list must not re-add it.
-      if (id) untracked(() => this.saveRecent(id));
+      if (aggregate) untracked(() => this.saveRecent(aggregate));
     });
   }
 
-  open(rawId: string) {
+  open(type: string, rawId: string) {
     const id = rawId.trim();
-    if (!id) return;
-    const currentId = this.idFromUrl();
-    if (id === currentId) {
-      this.reload$.next(id);
+    if (!id || !type) return;
+    const current = this.fromUrl();
+    if (current && current.type === type && current.id === id) {
+      this.reload$.next({ type, id });
     } else {
       // From the landing page push a history entry, so the back button returns to it.
-      this.router.navigate(['/aggregates', id], { replaceUrl: !!currentId });
+      this.router.navigate(['/aggregates', type, id], { replaceUrl: !!current });
     }
   }
 
@@ -49,27 +55,43 @@ export class SearchService {
     this.focus$.next();
   }
 
-  removeRecent(id: string) {
-    this.storeRecent(this.recent().filter(r => r !== id));
+  removeRecent(aggregate: AggregateRef) {
+    this.storeRecent(this.recent().filter(r => !same(r, aggregate)));
   }
 
-  private idFromUrl(): string {
+  private fromUrl(): AggregateRef | null {
     let route = this.router.routerState.snapshot.root;
     while (route.firstChild) route = route.firstChild;
-    return (route.paramMap.get('id') ?? '').trim();
+    const type = (route.paramMap.get('type') ?? '').trim();
+    const id = (route.paramMap.get('id') ?? '').trim();
+    return type && id ? { type, id } : null;
   }
 
-  private saveRecent(id: string) {
-    this.storeRecent([id, ...this.recent().filter(r => r !== id)].slice(0, MAX_RECENT));
+  private saveRecent(aggregate: AggregateRef) {
+    this.storeRecent([aggregate, ...this.recent().filter(r => !same(r, aggregate))].slice(0, MAX_RECENT));
   }
 
-  private storeRecent(ids: string[]) {
-    this.recent.set(ids);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(ids));
+  private storeRecent(aggregates: AggregateRef[]) {
+    this.recent.set(aggregates);
+    localStorage.setItem(RECENT_KEY, JSON.stringify(aggregates));
   }
 
-  private loadRecent(): string[] {
-    try { return JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]'); }
-    catch { return []; }
+  private loadRecent(): AggregateRef[] {
+    try {
+      const stored: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+      // Entries stored before an aggregate had a type are dropped: they no longer say what they point at.
+      return Array.isArray(stored) ? stored.filter(isAggregate) : [];
+    } catch {
+      return [];
+    }
   }
+}
+
+function same(a: AggregateRef, b: AggregateRef): boolean {
+  return a.type === b.type && a.id === b.id;
+}
+
+function isAggregate(value: unknown): value is AggregateRef {
+  const aggregate = value as AggregateRef;
+  return !!aggregate && typeof aggregate.type === 'string' && typeof aggregate.id === 'string';
 }

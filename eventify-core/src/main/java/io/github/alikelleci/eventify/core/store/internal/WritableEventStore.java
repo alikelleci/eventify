@@ -11,10 +11,12 @@ import org.apache.kafka.streams.state.KeyValueStore;
 public class WritableEventStore extends ReadableEventStore {
 
   private final KeyValueStore<String, Event> store;
+  private final String aggregateType;
 
-  public WritableEventStore(KeyValueStore<String, Event> store) {
-    super(store);
+  public WritableEventStore(KeyValueStore<String, Event> store, String aggregateType) {
+    super(store, aggregateType);
     this.store = store;
+    this.aggregateType = aggregateType;
   }
 
   /**
@@ -24,7 +26,7 @@ public class WritableEventStore extends ReadableEventStore {
    *                               were handled
    */
   public void append(Event event) {
-    Event taken = store.putIfAbsent(StoreKeys.of(event.getAggregateId(), event.getSequence()), event);
+    Event taken = store.putIfAbsent(StoreKeys.of(aggregateType, event.getAggregateId(), event.getSequence()), event);
     if (taken != null) {
       throw new IllegalStateException("Aggregate " + event.getAggregateId() + " already has an event with sequence " + event.getSequence() + ": event " + taken.getId() + ".");
     }
@@ -41,7 +43,7 @@ public class WritableEventStore extends ReadableEventStore {
     }
     long deleted = 0;
     String aggregateId = snapshot.getAggregateId();
-    try (KeyValueIterator<String, Event> iterator = store.range(StoreKeys.first(aggregateId), StoreKeys.of(aggregateId, snapshot.getVersion() - 1))) {
+    try (KeyValueIterator<String, Event> iterator = store.range(StoreKeys.first(aggregateType, aggregateId), StoreKeys.of(aggregateType, aggregateId, snapshot.getVersion() - 1))) {
       while (iterator.hasNext()) {
         store.delete(iterator.next().key);
         deleted++;

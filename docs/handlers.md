@@ -71,7 +71,7 @@ public OrderEvent handle(PlaceOrder command,
 
 | Parameter | What is injected |
 |---|---|
-| Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. |
+| Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. Required on a command handler: Eventify reads that aggregate before the handler runs. |
 | `Metadata` | All metadata of the command. It never changes: `with(...)` gives you a new one. |
 | `@Timestamp Instant` | The command timestamp. |
 | `@MessageId String` | The unique ID of the command message. |
@@ -116,7 +116,7 @@ public class OrderEventSourcingHandler {
 
 | Parameter | What is injected |
 |---|---|
-| Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. |
+| Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. Required on a command handler: Eventify reads that aggregate before the handler runs. |
 | `Metadata` | All metadata of the event. It never changes: `with(...)` gives you a new one. |
 | `@Timestamp Instant` | The event timestamp. |
 | `@MessageId String` | The unique ID of the event message. |

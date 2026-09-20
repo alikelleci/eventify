@@ -135,6 +135,7 @@ public class AggregateRepository {
     List<Event> events = new ArrayList<>(payloads.size());
     for (Object payload : payloads) {
       Event event = Event.builder()
+          .aggregateType(eventStore.aggregateType())
           .payload(payload)
           .metadata(metadata)
           .sequence(++sequence)

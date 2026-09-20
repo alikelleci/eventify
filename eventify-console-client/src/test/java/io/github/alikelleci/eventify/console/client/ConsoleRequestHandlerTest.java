@@ -20,21 +20,31 @@ class ConsoleRequestHandlerTest {
   @Test
   @DisplayName("Should refuse a page of events whose cursor is not a sequence")
   void refusesACursorThatIsNotASequence() {
-    Reply reply = handle(Route.EVENTS, "{\"aggregateId\":\"order-1\",\"cursor\":0}");
+    Reply reply = handle(Route.EVENTS, "{\"aggregateType\":\"order\",\"aggregateId\":\"order-1\",\"cursor\":0}");
 
     assertThat(reply.header().status()).isEqualTo(ReplyHeader.Status.BAD_REQUEST);
     assertThat(reply.header().reason()).contains("cursor");
-    assertThat(handle(Route.EVENTS, "{\"aggregateId\":\"order-1\",\"cursor\":\"abc\"}").header().status())
+    assertThat(handle(Route.EVENTS, "{\"aggregateType\":\"order\",\"aggregateId\":\"order-1\",\"cursor\":\"abc\"}").header().status())
         .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
   }
 
   @Test
   @DisplayName("Should refuse an event without a sequence")
   void refusesAnEventWithoutASequence() {
-    assertThat(handle(Route.EVENT_DETAIL, "{\"aggregateId\":\"order-1\"}").header().status())
+    assertThat(handle(Route.EVENT_DETAIL, "{\"aggregateType\":\"order\",\"aggregateId\":\"order-1\"}").header().status())
         .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
-    assertThat(handle(Route.EVENT_DETAIL, "{\"aggregateId\":\"order-1\",\"sequence\":0}").header().reason())
+    assertThat(handle(Route.EVENT_DETAIL, "{\"aggregateType\":\"order\",\"aggregateId\":\"order-1\",\"sequence\":0}").header().reason())
         .contains("sequence");
+  }
+
+  /** An aggregate is addressed by its type and its identifier: without the type there is no aggregate to look in. */
+  @Test
+  @DisplayName("Should refuse a request without an aggregate type")
+  void refusesARequestWithoutAnAggregateType() {
+    Reply reply = handle(Route.EVENTS, "{\"aggregateId\":\"order-1\"}");
+
+    assertThat(reply.header().status()).isEqualTo(ReplyHeader.Status.BAD_REQUEST);
+    assertThat(reply.header().reason()).contains("aggregateType");
   }
 
   private Reply handle(Route route, String json) {

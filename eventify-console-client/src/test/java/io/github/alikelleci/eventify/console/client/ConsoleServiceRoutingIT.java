@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
 import io.github.alikelleci.eventify.console.client.item.ItemHandler;
+import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
@@ -73,7 +74,7 @@ class ConsoleServiceRoutingIT {
 
   @Test
   @DisplayName("Should name the owning instance when asked about an aggregate it does not own")
-  void anInstanceThatDoesNotOwnAnAggregateNamesTheOwner() throws Exception {
+  void anInstanceThatDoesNotOwnAnAggregateTypesTheOwner() throws Exception {
     first = start(APPLICATION_ID, "first");
     second = start(APPLICATION_ID, "second");
     assertThat(first.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG))
@@ -101,8 +102,8 @@ class ConsoleServiceRoutingIT {
     try {
       for (String id : aggregateIds) {
         await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
-          Result<ConsoleViews.EventsPage> fromFirst = firstService.getEvents(id, null, 50);
-          Result<ConsoleViews.EventsPage> fromSecond = secondService.getEvents(id, null, 50);
+          Result<ConsoleViews.EventsPage> fromFirst = firstService.getEvents(new Requests.Events("item", id, null, 50));
+          Result<ConsoleViews.EventsPage> fromSecond = secondService.getEvents(new Requests.Events("item", id, null, 50));
 
           // Exactly one answers with the event; the other names it as the owner.
           if (fromFirst.isOk()) {
@@ -143,16 +144,16 @@ class ConsoleServiceRoutingIT {
     ConsoleService service = new ConsoleService(first, new StatusTracker());
     try {
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() ->
-          assertThat(service.getCommands(id, 50, new CancelSignal()).value())
+          assertThat(service.getCommands(new Requests.Commands("item", id, 50), new CancelSignal()).value())
               .satisfies(page -> assertThat(page.commands()).isNotEmpty()));
 
       // Retried from the console: a new command, pointing to the one it retries. It keeps the correlation id: it belongs
       // to the same flow (e.g. a saga) as the original.
-      Command original = service.getCommands(id, 50, new CancelSignal()).value().commands().get(0).command();
+      Command original = service.getCommands(new Requests.Commands("item", id, 50), new CancelSignal()).value().commands().get(0).command();
       byte[] json = first.getObjectMapper().writeValueAsBytes(original);
       assertThat(service.retryCommand(json)).isEqualTo(Result.ok(null));
       await().atMost(Duration.ofSeconds(60)).untilAsserted(() -> {
-        List<ConsoleViews.CommandView> commands = service.getCommands(id, 50, new CancelSignal()).value().commands();
+        List<ConsoleViews.CommandView> commands = service.getCommands(new Requests.Commands("item", id, 50), new CancelSignal()).value().commands();
         assertThat(commands).hasSize(2);
         assertThat(commands.get(0).result()).isEqualTo("success");
         Command retry = commands.get(0).command(); // newest first
@@ -170,7 +171,7 @@ class ConsoleServiceRoutingIT {
       // Someone refreshed the page: the read stops instead of reading the topic.
       CancelSignal refreshed = new CancelSignal();
       refreshed.cancel();
-      assertThat(service.getCommands(id, 50, refreshed)).isEqualTo(Result.unavailable("Cancelled"));
+      assertThat(service.getCommands(new Requests.Commands("item", id, 50), refreshed)).isEqualTo(Result.unavailable("Cancelled"));
     } finally {
       service.close();
     }

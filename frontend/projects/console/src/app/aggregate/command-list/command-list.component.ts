@@ -24,6 +24,8 @@ export class CommandListComponent implements OnInit {
   private readonly messageService = inject(MessageService);
   private readonly destroyRef = inject(DestroyRef);
 
+  aggregateType = input.required<string>();
+
   aggregateId = input.required<string>();
   /** Whether this list's tab is open; only then does it respond to the arrow keys. */
   active = input(false);
@@ -42,7 +44,7 @@ export class CommandListComponent implements OnInit {
 
   ngOnInit() {
     const startedAt = Date.now();
-    this.svc.getCommands(this.aggregateId()).pipe(
+    this.svc.getCommands(this.aggregateType(), this.aggregateId()).pipe(
       takeUntilDestroyed(this.destroyRef),
       catchError(err => {
         this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load commands.') });

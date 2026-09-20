@@ -58,7 +58,7 @@ class CommandResultTest {
   public record ItemAdded(@AggregateId String id, String item) {
   }
 
-  @AggregateRoot
+  @AggregateRoot("cart")
   public record Cart(@AggregateId String id, int items) {
   }
 
@@ -75,7 +75,7 @@ class CommandResultTest {
 
     /** Works out metadata of its own; what it makes is its own copy, and the command keeps the metadata it came with. */
     @HandleCommand
-    public ItemAdded handle(AddItemForUser command, Metadata metadata) {
+    public ItemAdded handle(AddItemForUser command, Cart state, Metadata metadata) {
       Metadata mine = metadata.with("user", command.user());
       return new ItemAdded(command.id(), command.item() + " for " + mine.get("user"));
     }
@@ -170,8 +170,8 @@ class CommandResultTest {
   @DisplayName("Should reject the commands of an aggregate whose stored events have a gap, and say why")
   void anAggregateWithAGapIsRejected() {
     KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
-    eventStore.put(StoreKeys.of("cart-1", 1), Event.builder().payload(new ItemAdded("cart-1", "apple")).sequence(1).build());
-    eventStore.put(StoreKeys.of("cart-1", 3), Event.builder().payload(new ItemAdded("cart-1", "pear")).sequence(3).build());
+    eventStore.put(StoreKeys.of("cart", "cart-1", 1), Event.builder().aggregateType("cart").payload(new ItemAdded("cart-1", "apple")).sequence(1).build());
+    eventStore.put(StoreKeys.of("cart", "cart-1", 3), Event.builder().aggregateType("cart").payload(new ItemAdded("cart-1", "pear")).sequence(3).build());
 
     send(Command.builder().payload(new AddItem("cart-1", "bread")).build());
     send(Command.builder().payload(new AddItem("cart-2", "bread")).build());

@@ -19,7 +19,7 @@ class EventSerdeTest {
   @DisplayName("Should read an event back as it was written, without upcasters")
   void anEvent() {
     EventSerde serde = new EventSerde();
-    Event event = Event.builder().payload(new OrderPlaced("order-1", "Ada")).sequence(1).build();
+    Event event = Event.builder().aggregateType("order").payload(new OrderPlaced("order-1", "Ada")).sequence(1).build();
 
     Event read = serde.deserializer().deserialize("events.order", serde.serializer().serialize("events.order", event));
 

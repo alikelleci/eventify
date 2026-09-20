@@ -115,27 +115,44 @@ public class Eventify implements PluginContext {
     return new AggregateReplayer(handlers.eventSourcingHandlers());
   }
 
+  /** The topics of the commands of one aggregate. */
+  @Override
+  public Set<String> getCommandTopics(String aggregateType) {
+    return handlers.commandTopics(aggregateType);
+  }
+
+  /** The names of the aggregates this instance handles, as their {@code @AggregateRoot} gives them. */
+  @Override
+  public Set<String> getAggregateTypes() {
+    return handlers.aggregateTypes();
+  }
+
   /**
-   * The events stored on this instance: only those of the aggregates it owns (see {@link #getAggregateMetadata}).
+   * The stored events of one aggregate on this instance: only those of the aggregates it owns (see
+   * {@link #getAggregateMetadata}).
+   *
+   * @param aggregateType the name of the aggregate, as its {@code @AggregateRoot} gives it
    *
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now, e.g.
    *                                                                    while Kafka Streams is rebalancing
    */
   @Override
-  public EventStore getEventStore() {
+  public EventStore getEventStore(String aggregateType) {
     return EventStore.of(runningKafkaStreams().store(
-        StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore())));
+        StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore())), aggregateType);
   }
 
   /**
-   * The snapshots stored on this instance: only those of the aggregates it owns.
+   * The stored snapshots of one aggregate on this instance: only those of the aggregates it owns.
+   *
+   * @param aggregateType the name of the aggregate, as its {@code @AggregateRoot} gives it
    *
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the store can't be read right now
    */
   @Override
-  public SnapshotStore getSnapshotStore() {
+  public SnapshotStore getSnapshotStore(String aggregateType) {
     return SnapshotStore.of(runningKafkaStreams().store(
-        StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore())));
+        StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore())), aggregateType);
   }
 
   /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */

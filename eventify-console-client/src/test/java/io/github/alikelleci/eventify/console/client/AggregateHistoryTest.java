@@ -35,7 +35,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @DisplayName("Aggregate history (console time travel)")
 class AggregateHistoryTest {
 
-  @AggregateRoot
+  @AggregateRoot("counter")
   public static class Counter {
     @AggregateId
     final String id;
@@ -87,7 +87,7 @@ class AggregateHistoryTest {
   }
 
   /** An aggregate whose handlers change the state they are given, and return it. */
-  @AggregateRoot
+  @AggregateRoot("mutable-counter")
   public static class MutableCounter {
     @AggregateId
     String id;
@@ -141,8 +141,11 @@ class AggregateHistoryTest {
   private final AggregateReplayer replay = eventify.getAggregateReplayer();
   private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
   private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
-  private final EventStore events = EventStore.of(storedEvents);
-  private final SnapshotStore snapshots = SnapshotStore.of(storedSnapshots);
+  // One store view per aggregate, both over the same stored events: that is how an application holds two of them.
+  private final EventStore events = EventStore.of(storedEvents, "counter");
+  private final SnapshotStore snapshots = SnapshotStore.of(storedSnapshots, "counter");
+  private final EventStore mutableEvents = EventStore.of(storedEvents, "mutable-counter");
+  private final SnapshotStore mutableSnapshots = SnapshotStore.of(storedSnapshots, "mutable-counter");
 
   private final Map<String, Long> lastSequences = new HashMap<>();
 
@@ -210,7 +213,7 @@ class AggregateHistoryTest {
   @DisplayName("Should report every state as unknown when the snapshot is outdated and the events before it were deleted")
   void anOutdatedSnapshotWithTheEventsBeforeItDeleted() {
     snapshotAt(second);
-    storedSnapshots.put("counter-1", outdated(storedSnapshots.get("counter-1")));
+    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), outdated(storedSnapshots.get(StoreKeys.snapshot("counter", "counter-1"))));
     storedEvents.delete(key(first)); // @EnableSnapshotting(deleteEvents = true)
 
     ConsoleViews.EventDetail detail = detail(third);
@@ -225,7 +228,7 @@ class AggregateHistoryTest {
   @DisplayName("Should rebuild the states from the events when the snapshot is outdated and all events are kept")
   void anOutdatedSnapshotWithAllEventsKept() {
     snapshotAt(second);
-    storedSnapshots.put("counter-1", outdated(storedSnapshots.get("counter-1")));
+    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), outdated(storedSnapshots.get(StoreKeys.snapshot("counter", "counter-1"))));
 
     assertDetail(third, 2, 3);
   }
@@ -332,11 +335,11 @@ class AggregateHistoryTest {
     Event foreign = store(new Incremented("counter-1@1"));
     Event foreignAfter = store(new Incremented("counter-1@x"));
     // Their keys start where the keys of "counter-1" start, and the separator keeps them out of its range.
-    assertThat(key(foreign)).isGreaterThan(StoreKeys.last("counter-1"));
-    assertThat(key(foreignAfter)).isGreaterThan(StoreKeys.last("counter-1"));
+    assertThat(key(foreign)).isGreaterThan(StoreKeys.last("counter", "counter-1"));
+    assertThat(key(foreignAfter)).isGreaterThan(StoreKeys.last("counter", "counter-1"));
 
     assertThat(history.events(events, "counter-1", null, 50).events()).containsExactly(third, second, first);
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", String.valueOf(foreign.getMetadata().getCausationId())))).isEmpty();
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter", "counter-1", String.valueOf(foreign.getMetadata().getCausationId())))).isEmpty();
     assertValue(history.stateAt(events, snapshots, "counter-1", null), 3, 3);
     assertDetail(first, 0, 1);
     assertThat(history.events(events, "counter-1@1", null, 50).events()).containsExactly(foreign);
@@ -373,16 +376,17 @@ class AggregateHistoryTest {
     Event incremented = store(new MutableCounterIncremented("mutable-counter-1"));
     Event incrementedAgain = store(new MutableCounterIncremented("mutable-counter-1"));
 
-    ConsoleViews.EventDetail detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getSequence());
+    ConsoleViews.EventDetail detail = history.eventDetail(mutableEvents, mutableSnapshots, "mutable-counter-1", incremented.getSequence());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
 
     // With a snapshot after the event, the replay goes on past it.
-    storedSnapshots.put("mutable-counter-1", replayed("mutable-counter-1", null, incrementedAgain.getSequence()).state());
-    detail = history.eventDetail(events, snapshots, "mutable-counter-1", incremented.getSequence());
+    storedSnapshots.put(StoreKeys.snapshot("mutable-counter", "mutable-counter-1"),
+        replayed(mutableEvents, "mutable-counter-1", null, incrementedAgain.getSequence()).state());
+    detail = history.eventDetail(mutableEvents, mutableSnapshots, "mutable-counter-1", incremented.getSequence());
     assertValue(detail.previousState(), 1, 1);
     assertValue(detail.state(), 2, 2);
-    assertValue(history.stateAt(events, snapshots, "mutable-counter-1", incremented.getSequence()), 2, 2);
+    assertValue(history.stateAt(mutableEvents, mutableSnapshots, "mutable-counter-1", incremented.getSequence()), 2, 2);
   }
 
   /** The states are sent to the console as the JSON objects they are, as before: not as text. */
@@ -431,7 +435,7 @@ class AggregateHistoryTest {
 
   /** Stores the state after this event as the snapshot, as the application does. */
   private void snapshotAt(Event event) {
-    storedSnapshots.put("counter-1", replayed("counter-1", null, event.getSequence()).state());
+    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), replayed("counter-1", null, event.getSequence()).state());
   }
 
   /** Two commands of one saga share the correlation id: each shows only the events that name it as their cause. */
@@ -443,8 +447,8 @@ class AggregateHistoryTest {
     Event two = store(new Incremented("counter-1"), Map.of(
         MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-b"));
 
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-a"))).containsExactly(one);
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-b"))).containsExactly(two);
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter", "counter-1", "command-a"))).containsExactly(one);
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter", "counter-1", "command-b"))).containsExactly(two);
   }
 
   /** E.g. an event stored before events named their command: which command produced it isn't known. */
@@ -453,7 +457,7 @@ class AggregateHistoryTest {
   void anEventWithoutACausationIdIsOfNoCommand() {
     store(new Incremented("counter-1"), Map.of(MetadataKeys.CORRELATION_ID, "old"));
 
-    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter-1", "command-a"))).isEmpty();
+    assertThat(history.eventsOfCommand(events, new Requests.EventsOfCommand("counter", "counter-1", "command-a"))).isEmpty();
   }
 
   /** Stores the payload as its aggregate's next event. */
@@ -471,13 +475,18 @@ class AggregateHistoryTest {
   }
 
   private Event store(Object payload, Map<String, String> metadata, long sequence) {
-    Event event = Event.builder().payload(payload).metadata(Metadata.of(metadata)).sequence(sequence).build();
+    Event event = Event.builder().aggregateType(aggregateType(payload)).payload(payload).metadata(Metadata.of(metadata)).sequence(sequence).build();
     storedEvents.put(key(event), event);
     return event;
   }
 
   private static String key(Event event) {
-    return StoreKeys.of(event.getAggregateId(), event.getSequence());
+    return StoreKeys.of(event.getAggregateType(), event.getAggregateId(), event.getSequence());
+  }
+
+  /** Which of the two aggregates this payload belongs to. */
+  private static String aggregateType(Object payload) {
+    return payload.getClass().getSimpleName().startsWith("MutableCounter") ? "mutable-counter" : "counter";
   }
 
   private static Eventify eventify() {
@@ -489,11 +498,20 @@ class AggregateHistoryTest {
 
   /** The aggregate's stored events after {@code start}, up to and including {@code untilSequence}, applied to {@code start}. */
   private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, long untilSequence) {
-    return replayed(aggregateId, start, untilSequence, null);
+    return replayed(events, aggregateId, start, untilSequence, null);
+  }
+
+  private AggregateReplayer.Result replayed(EventStore events, String aggregateId, AggregateState start, long untilSequence) {
+    return replayed(events, aggregateId, start, untilSequence, null);
   }
 
   private AggregateReplayer.Result replayed(String aggregateId, AggregateState start, long untilSequence,
                                             AggregateReplayer.Listener listener) {
+    return replayed(events, aggregateId, start, untilSequence, listener);
+  }
+
+  private AggregateReplayer.Result replayed(EventStore events, String aggregateId, AggregateState start,
+                                            long untilSequence, AggregateReplayer.Listener listener) {
     try (EventStore.Events toApply = events.events(aggregateId, start != null ? start.getVersion() + 1 : 1, untilSequence)) {
       return replay.replay(toApply, start, listener);
     }

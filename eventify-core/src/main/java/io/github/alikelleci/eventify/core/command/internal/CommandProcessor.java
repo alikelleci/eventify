@@ -20,8 +20,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
+import org.apache.kafka.streams.state.KeyValueStore;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
 
@@ -32,7 +35,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   private final ObjectMapper objectMapper;
   private final AggregateReplayer replayer;
   private FixedKeyProcessorContext<String, CommandResult> context;
-  private AggregateRepository aggregates;
+  /** One repository per aggregate: they share the stores, each in its own part of them. */
+  private final Map<String, AggregateRepository> aggregates = new HashMap<>();
 
   public CommandProcessor(HandlerRegistry handlers, ObjectMapper objectMapper) {
     this.handlers = handlers;
@@ -43,9 +47,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   @Override
   public void init(FixedKeyProcessorContext<String, CommandResult> context) {
     this.context = context;
-    this.aggregates = new AggregateRepository(replayer, objectMapper,
-        new WritableEventStore(context.getStateStore(StoreNames.EVENT_STORE)),
-        new WritableSnapshotStore(context.getStateStore(StoreNames.SNAPSHOT_STORE)));
+
+    KeyValueStore<String, Event> events = context.getStateStore(StoreNames.EVENT_STORE);
+    KeyValueStore<String, AggregateState> snapshots = context.getStateStore(StoreNames.SNAPSHOT_STORE);
+    aggregates.clear();
+    handlers.aggregateTypes().forEach(name -> aggregates.put(name, new AggregateRepository(replayer, objectMapper,
+        new WritableEventStore(events, name), new WritableSnapshotStore(snapshots, name))));
   }
 
   @Override
@@ -94,10 +101,11 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
-    AggregateState state = aggregates.load(aggregateId);
+    AggregateRepository aggregate = aggregates.get(commandHandler.getAggregateType());
+    AggregateState state = aggregate.load(aggregateId);
     List<Object> payloads = commandHandler.apply(state, command);
     // The events take over the command's metadata, and name it as their cause.
-    return aggregates.record(aggregateId, state, payloads, command.getMetadata().with(CAUSATION_ID, command.getId()));
+    return aggregate.record(aggregateId, state, payloads, command.getMetadata().with(CAUSATION_ID, command.getId()));
   }
 
   private void logFailure(Exception e) {

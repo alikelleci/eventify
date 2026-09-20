@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.support.Matchers;
@@ -88,13 +89,13 @@ class AggregateIdWithAtTest {
             neighbour + " success null", neighbour + " success null",
             "ada success null", "ada success null", "ada success null");
 
-    AggregateState snapshot = snapshotStore.get("ada");
+    AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
     assertThat(snapshot).isNotNull();
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(5);
     assertThat(snapshot.getVersion()).isEqualTo(2);
 
     // The other aggregate keeps all its events.
-    assertThat(StoreKeys.of(neighbour, 1)).isGreaterThan(StoreKeys.last("ada"));
+    assertThat(StoreKeys.of("account", neighbour, 1)).isGreaterThan(StoreKeys.last("account", "ada"));
     assertThat(eventsOf(eventStore, neighbour)).hasSize(2);
     assertThat(eventsOf(eventStore, "ada")).hasSize(2); // its first event was deleted at the snapshot
   }

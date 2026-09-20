@@ -41,7 +41,8 @@ public class EventifyConsoleClient implements EventifyPlugin {
         NodeIdentity.nodeId(NodeIdentity.hostInfo(eventify)),
         NodeIdentity.hostname(),
         EventifyConsoleClient.class.getPackage().getImplementationVersion(),
-        ConsoleProtocol.VERSION);
+        ConsoleProtocol.VERSION,
+        eventify.getAggregateTypes());
 
     consoleService = new ConsoleService(eventify, statusTracker);
     ConsoleRequestHandler handler = new ConsoleRequestHandler(consoleService, eventify.getObjectMapper());

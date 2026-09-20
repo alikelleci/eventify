@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.handler.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.command.internal.CommandHandlerMethod;
@@ -18,6 +19,7 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -73,10 +75,39 @@ public class HandlerRegistry {
   }
 
   /**
+   * The aggregate a command handler works on: the one parameter whose type is an aggregate. A command is handled for
+   * one aggregate, and Eventify has to know which one before the handler runs, to read that aggregate's events.
+   */
+  private static Class<?> aggregateOf(Method method) {
+    List<Class<?>> aggregates = Arrays.stream(method.getParameterTypes())
+        .filter(type -> type.isAnnotationPresent(AggregateRoot.class))
+        .distinct()
+        .toList();
+    if (aggregates.size() != 1) {
+      throw new HandlerRegistrationException("A @HandleCommand method takes exactly one aggregate, a parameter whose type is annotated with @AggregateRoot; "
+          + method + " takes " + aggregates.size() + ". Eventify needs it to know which aggregate the command belongs to, also when the handler itself does not use it.");
+    }
+    return aggregates.get(0);
+  }
+
+  /** The topics of the commands of one aggregate: the commands another aggregate handles are not its own. */
+  public Set<String> commandTopics(String aggregateType) {
+    return commandHandlers.entrySet().stream()
+        .filter(entry -> entry.getValue().getAggregateType().equals(aggregateType))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.collectingAndThen(Collectors.toSet(), HandlerRegistry::topicsOf));
+  }
+
+  /** The names of the aggregates this instance handles. */
+  public Set<String> aggregateTypes() {
+    return aggregateClasses().stream().map(AggregateTypes::of).collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  /**
    * The aggregates the handlers of this instance work on together: the classes annotated with {@link AggregateRoot}
    * that their methods take or return. Empty when no handler names one, e.g. handlers that only take the command.
    */
-  public Set<Class<?>> aggregateTypes() {
+  public Set<Class<?>> aggregateClasses() {
     return Stream.concat(
             commandHandlers.values().stream().map(CommandHandlerMethod::getMethod),
             eventSourcingHandlers.values().stream().map(ApplyEventMethod::getMethod))
@@ -133,7 +164,8 @@ public class HandlerRegistry {
   private void addCommandHandler(Object handler, Method method) {
     if (method.getParameterCount() >= 1) {
       Class<?> type = method.getParameters()[0].getType();
-      CommandHandlerMethod previous = commandHandlers.put(type, new CommandHandlerMethod(handler, method));
+      String aggregateType = AggregateTypes.of(aggregateOf(method));
+      CommandHandlerMethod previous = commandHandlers.put(type, new CommandHandlerMethod(handler, method, aggregateType));
       if (previous != null) {
         requireSameHandler("@HandleCommand", type, previous.getHandler(), previous.getMethod(), handler, method);
       }

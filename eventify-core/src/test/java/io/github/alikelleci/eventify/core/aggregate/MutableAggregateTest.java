@@ -42,7 +42,7 @@ class MutableAggregateTest {
   @Data
   @NoArgsConstructor
   @AllArgsConstructor
-  @AggregateRoot
+  @AggregateRoot("cart")
   public static class Cart {
     @AggregateId
     String id;

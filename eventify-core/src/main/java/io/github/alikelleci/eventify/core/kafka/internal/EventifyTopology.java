@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.kafka.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
+import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
 import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotSerde;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
@@ -26,9 +27,10 @@ import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.state.Stores;
 
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * The Kafka Streams topology of an Eventify application: the event and snapshot stores, command handling (results,
@@ -40,7 +42,7 @@ public final class EventifyTopology {
   }
 
   public static Topology build(HandlerRegistry handlers, ObjectMapper objectMapper) {
-    requireOneAggregate(handlers);
+    requireDistinctAggregateTypes(handlers);
 
     StreamsBuilder builder = new StreamsBuilder();
 
@@ -134,18 +136,20 @@ public final class EventifyTopology {
   }
 
   /**
-   * One Eventify instance holds one aggregate. Its stores key an aggregate by its identifier alone, so two aggregates
-   * would share a key range, and two of them with the same identifier would share one history: the events of the one
-   * would be replayed into the other. Nothing can tell them apart afterwards, so they are kept apart beforehand.
+   * Two aggregates of one instance cannot be called the same: their events and snapshots would share a key, so two of
+   * them with the same identifier would share one history. Their name is what keeps them apart, so it has to be theirs
+   * alone.
    */
-  private static void requireOneAggregate(HandlerRegistry handlers) {
-    Set<Class<?>> aggregates = handlers.aggregateTypes();
-    if (aggregates.size() > 1) {
-      throw new HandlerRegistrationException("This Eventify instance has handlers for more than one aggregate: "
-          + aggregates.stream().map(Class::getSimpleName).collect(Collectors.joining(" and "))
-          + ". One Eventify instance holds one aggregate, because its event store keys events by aggregate identifier"
-          + " alone: two aggregates with the same identifier would share one history. Give each aggregate its own"
-          + " Eventify instance, and register its own handlers on it.");
+  private static void requireDistinctAggregateTypes(HandlerRegistry handlers) {
+    Map<String, Class<?>> byType = new HashMap<>();
+    for (Class<?> aggregate : handlers.aggregateClasses()) {
+      String type = AggregateTypes.of(aggregate);
+      Class<?> previous = byType.put(type, aggregate);
+      if (previous != null) {
+        throw new HandlerRegistrationException(previous.getName() + " and " + aggregate.getName() + " are both called '"
+            + type + "'. Two aggregates of one Eventify instance cannot share a name: their events and snapshots would"
+            + " share a key, and two of them with the same identifier would share one history.");
+      }
     }
   }
 }

@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.net.URI;
+import java.util.Set;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -77,7 +78,7 @@ class ConsoleServerTest {
     awaitInstances("redirect", 2);
 
     for (int i = 0; i < 3; i++) {
-      client.get().uri("/api/apps/redirect/aggregates/order-1/events").exchange()
+      client.get().uri("/api/apps/redirect/aggregates/order/order-1/events").exchange()
           .expectStatus().isOk()
           .expectBody().json("{\"events\":[],\"nextCursor\":null}");
     }
@@ -92,7 +93,7 @@ class ConsoleServerTest {
     connect("rebalance", "rebalance.a:0", notOwner("rebalance.gone:0"));
     awaitInstances("rebalance", 1);
 
-    client.get().uri("/api/apps/rebalance/aggregates/order-1/events").exchange()
+    client.get().uri("/api/apps/rebalance/aggregates/order/order-1/events").exchange()
         .expectStatus().isEqualTo(503);
   }
 
@@ -103,7 +104,7 @@ class ConsoleServerTest {
     connect("any", "any.b:0", ok("{\"commands\":[]}"));
     awaitInstances("any", 2);
 
-    client.get().uri("/api/apps/any/aggregates/order-1/commands").exchange()
+    client.get().uri("/api/apps/any/aggregates/order/order-1/commands").exchange()
         .expectStatus().isOk();
     assertThat(calls("any.a:0") + calls("any.b:0")).isEqualTo(1);
   }
@@ -149,7 +150,7 @@ class ConsoleServerTest {
     connect("large", "large.a:0", ok(large));
     awaitInstances("large", 1);
 
-    byte[] body = client.get().uri("/api/apps/large/aggregates/order-1/events").exchange()
+    byte[] body = client.get().uri("/api/apps/large/aggregates/order/order-1/events").exchange()
         .expectStatus().isOk()
         .expectBody().returnResult().getResponseBody();
     assertThat(new String(body, StandardCharsets.UTF_8)).isEqualTo(large);
@@ -163,7 +164,7 @@ class ConsoleServerTest {
 
     connector.stop();
     awaitInstances("stopping", 0);
-    client.get().uri("/api/apps/stopping/aggregates/order-1/events").exchange()
+    client.get().uri("/api/apps/stopping/aggregates/order/order-1/events").exchange()
         .expectStatus().isEqualTo(503);
   }
 
@@ -200,7 +201,7 @@ class ConsoleServerTest {
   }
 
   private ConsoleConnector connect(String applicationId, String nodeId, ConsoleConnector.Handler handler) {
-    NodeInfo info = new NodeInfo(applicationId, nodeId, "localhost", "test", ConsoleProtocol.VERSION);
+    NodeInfo info = new NodeInfo(applicationId, nodeId, "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
     ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info, (route, data, cancel) -> {
       if (!route.equals(Route.STATUS.name())) {
         calls.computeIfAbsent(nodeId, id -> new AtomicInteger()).incrementAndGet();

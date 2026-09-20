@@ -33,7 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class AggregateReplayerTest {
 
   private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
-  private final EventStore eventStore = EventStore.of(storedEvents);
+  private final EventStore eventStore = EventStore.of(storedEvents, "order");
   private final AggregateReplayer replay = eventify().getAggregateReplayer();
   private final Map<String, Long> lastSequences = new HashMap<>();
 
@@ -121,7 +121,7 @@ class AggregateReplayerTest {
   @DisplayName("Should refuse a replay with an event without a sequence")
   void refusesAReplayWithAnEventWithoutASequence() {
     store(placed("order-1"));
-    storedEvents.put(StoreKeys.of("order-1", 2), stored("{\"id\":\"old-1\",\"type\":\"OrderConfirmed\",\"aggregateId\":\"order-1\",\"revision\":1,"
+    storedEvents.put(StoreKeys.of("order", "order-1", 2), stored("{\"id\":\"old-1\",\"type\":\"OrderConfirmed\",\"aggregateId\":\"order-1\",\"revision\":1,"
         + "\"metadata\":{},\"payload\":{\"@class\":\"" + OrderConfirmed.class.getName() + "\",\"id\":\"order-1\"}}")); // no sequence
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
@@ -134,7 +134,7 @@ class AggregateReplayerTest {
   @DisplayName("Should refuse a replay with an event in the wrong place")
   void refusesAReplayWithAnEventInTheWrongPlace() {
     Event placed = store(placed("order-1"));
-    storedEvents.put(StoreKeys.of("order-1", 2), placed);
+    storedEvents.put(StoreKeys.of("order", "order-1", 2), placed);
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
         .isInstanceOf(EventReplayException.class)
@@ -211,7 +211,7 @@ class AggregateReplayerTest {
     String id = "archived-1";
     String json = "{\"id\":\"" + id + "\",\"type\":\"OrderArchived\",\"aggregateId\":\"order-1\",\"revision\":1,\"sequence\":2,"
         + "\"metadata\":{},\"payload\":{\"@class\":\"com.acme.OrderArchived\",\"id\":\"order-1\"}}";
-    storedEvents.put(StoreKeys.of("order-1", 2), stored(json));
+    storedEvents.put(StoreKeys.of("order", "order-1", 2), stored(json));
 
     assertThatThrownBy(() -> replayed("order-1", null, null))
         .isInstanceOf(EventReplayException.class)
@@ -227,8 +227,8 @@ class AggregateReplayerTest {
 
   /** Stores the payload as the event with this sequence, also when that is not the aggregate's next one. */
   private Event store(Object payload, long sequence) {
-    Event event = Event.builder().payload(payload).sequence(sequence).build();
-    storedEvents.put(StoreKeys.of(event.getAggregateId(), sequence), event);
+    Event event = Event.builder().aggregateType("order").payload(payload).sequence(sequence).build();
+    storedEvents.put(StoreKeys.of("order", event.getAggregateId(), sequence), event);
     return event;
   }
 

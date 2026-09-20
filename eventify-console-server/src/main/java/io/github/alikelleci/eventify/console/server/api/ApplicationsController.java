@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /** The applications connected to the console right now, with their instances and how each one is doing. */
 @RestController
@@ -23,6 +24,15 @@ public class ApplicationsController {
   private final NodeRegistry registry;
   private final NodeStatuses statuses;
 
+  /** What the instances of one application hold together: they run the same code, but one may have connected later. */
+  private static List<String> aggregateTypesOf(List<ConnectedNode> nodes) {
+    return nodes.stream()
+        .flatMap(node -> node.info().aggregateTypes() == null ? Stream.<String>empty() : node.info().aggregateTypes().stream())
+        .distinct()
+        .sorted()
+        .toList();
+  }
+
   @GetMapping
   public Mono<List<ApplicationView>> applications() {
     return Flux.fromIterable(registry.nodes().stream().collect(Collectors.groupingBy(ConnectedNode::applicationId)).entrySet())
@@ -30,7 +40,7 @@ public class ApplicationsController {
             .flatMap(node -> statuses.of(node).map(status ->
                 new ApplicationView.NodeView(node.nodeId(), node.info().hostname(), node.info().version(), node.connectedAt(), status.orElse(null))))
             .collectSortedList(Comparator.comparing(ApplicationView.NodeView::nodeId))
-            .map(nodes -> new ApplicationView(entry.getKey(), nodes)))
+            .map(nodes -> new ApplicationView(entry.getKey(), aggregateTypesOf(entry.getValue()), nodes)))
         .collectSortedList(Comparator.comparing(ApplicationView::name));
   }
 }

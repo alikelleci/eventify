@@ -16,4 +16,10 @@ import java.lang.annotation.Target;
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, property = "@class")
 public @interface AggregateRoot {
 
+  /**
+   * What this aggregate is called in its stores, e.g. "order". It is part of the key of every event and snapshot, so
+   * it is a name of your own choosing and NOT the class name: renaming the class must not move the data. Two
+   * aggregates of one application cannot share a name.
+   */
+  String value();
 }

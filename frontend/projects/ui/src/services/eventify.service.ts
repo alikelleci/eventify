@@ -9,25 +9,31 @@ export class EventifyService {
   private readonly http = inject(HttpClient);
   private readonly backend = inject(BackendService);
 
-  getEvents(aggregateId: string, cursor?: number | null, limit = 50): Observable<EventsPage> {
+  getEvents(aggregateType: string, aggregateId: string, cursor?: number | null, limit = 50): Observable<EventsPage> {
     let params = new HttpParams().set('limit', limit);
     if (cursor != null) params = params.set('cursor', cursor);
-    return this.http.get<EventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events`, { params });
+    return this.http.get<EventsPage>(`${this.aggregateUrl(aggregateType, aggregateId)}/events`, { params });
   }
 
   /** An event is found by its aggregate and its sequence in it. */
-  getEventDetail(aggregateId: string, sequence: number): Observable<EventDetail> {
-    return this.http.get<EventDetail>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/events/${sequence}`);
+  getEventDetail(aggregateType: string, aggregateId: string, sequence: number): Observable<EventDetail> {
+    return this.http.get<EventDetail>(`${this.aggregateUrl(aggregateType, aggregateId)}/events/${sequence}`);
   }
 
-  /** The events that name this command as their cause. */
-  getEventsOfCommand(command: CommandMessage): Observable<CommandEventsPage> {
-    return this.http.get<CommandEventsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(command.aggregateId)}/commands/${encodeURIComponent(command.id)}/events`);
+  /** The events that name this command as their cause. A command does not say which aggregate it is for. */
+  getEventsOfCommand(aggregateType: string, command: CommandMessage): Observable<CommandEventsPage> {
+    return this.http.get<CommandEventsPage>(
+      `${this.aggregateUrl(aggregateType, command.aggregateId)}/commands/${encodeURIComponent(command.id)}/events`);
   }
 
-  getCommands(aggregateId: string, limit = 500): Observable<CommandsPage> {
+  getCommands(aggregateType: string, aggregateId: string, limit = 500): Observable<CommandsPage> {
     const params = new HttpParams().set('limit', limit);
-    return this.http.get<CommandsPage>(`${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateId)}/commands`, { params });
+    return this.http.get<CommandsPage>(`${this.aggregateUrl(aggregateType, aggregateId)}/commands`, { params });
+  }
+
+  /** One application can hold several aggregates, so both parts address it. */
+  private aggregateUrl(aggregateType: string, aggregateId: string): string {
+    return `${this.backend.baseUrl()}/aggregates/${encodeURIComponent(aggregateType)}/${encodeURIComponent(aggregateId)}`;
   }
 
   retryCommand(command: CommandMessage): Observable<void> {

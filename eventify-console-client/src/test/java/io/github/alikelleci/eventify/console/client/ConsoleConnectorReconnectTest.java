@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 import java.net.ServerSocket;
+import java.util.Set;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
@@ -47,7 +48,7 @@ class ConsoleConnectorReconnectTest {
     int port = freePort();
     console = startConsole(port);
 
-    NodeInfo info = new NodeInfo("reconnect-test", "reconnect-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
+    NodeInfo info = new NodeInfo("reconnect-test", "reconnect-test.a:0", "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
         (route, data, cancel) -> Reply.of(ReplyHeader.ok()));
     connector.start();
@@ -72,7 +73,7 @@ class ConsoleConnectorReconnectTest {
     rejecting = true;
     console = startConsole(port);
 
-    NodeInfo info = new NodeInfo("reject-test", "reject-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
+    NodeInfo info = new NodeInfo("reject-test", "reject-test.a:0", "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
     connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
         (route, data, cancel) -> Reply.of(ReplyHeader.ok()));
     connector.start();

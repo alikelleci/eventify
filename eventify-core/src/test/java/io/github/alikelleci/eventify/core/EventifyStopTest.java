@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core;
 
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -27,9 +28,13 @@ class EventifyStopTest {
   public record Ping(@AggregateId String id) {
   }
 
+  @AggregateRoot("pinged")
+  public record Pinged(@AggregateId String id) {
+  }
+
   public static class PingHandler {
     @HandleCommand
-    public Object handle(Ping command) {
+    public Object handle(Ping command, Pinged state) {
       return null;
     }
   }

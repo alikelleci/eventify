@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
@@ -38,7 +39,7 @@ class AggregateIdMismatchTest {
 
   @Value
   @Builder
-  @AggregateRoot
+  @AggregateRoot("counter")
   @EnableSnapshotting(threshold = 2)
   public static class Counter {
     @AggregateId
@@ -123,8 +124,8 @@ class AggregateIdMismatchTest {
         .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result))
         .containsExactly("ad success", "ada success", "ada failure", "ada success");
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(3);
-    assertThat(snapshotStore.get("ad")).isNull();
-    assertThat(snapshotStore.get("ada")).isNull();
+    assertThat(snapshotStore.get(StoreKeys.snapshot("counter", "ad"))).isNull();
+    assertThat(snapshotStore.get(StoreKeys.snapshot("counter", "ada"))).isNull();
 
     // "ad" is untouched: its next command loads its own state.
     send("ad", Increment.builder().id("ad").stateId("ad").build());

@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -49,7 +50,7 @@ class SnapshotRevisionTest {
   public record Incremented(@AggregateId String id) {
   }
 
-  @AggregateRoot
+  @AggregateRoot("counter")
   @Revision(2)
   @EnableSnapshotting(threshold = 2)
   public record Counter(@AggregateId String id, int count) {
@@ -83,7 +84,7 @@ class SnapshotRevisionTest {
 
     increment(commands, 3); // the third loads version 2: a snapshot
 
-    assertThat(snapshots.get("c-1").getRevision()).isEqualTo(2);
+    assertThat(snapshots.get(StoreKeys.snapshot("counter", "c-1")).getRevision()).isEqualTo(2);
   }
 
   @Test
@@ -92,11 +93,11 @@ class SnapshotRevisionTest {
     TestInputTopic<String, Command> commands = counters();
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
     increment(commands, 3);
-    snapshots.put("c-1", changed(snapshots.get("c-1"), 1, 999));
+    snapshots.put(StoreKeys.snapshot("counter", "c-1"), changed(snapshots.get(StoreKeys.snapshot("counter", "c-1")), 1, 999));
 
     increment(commands, 1); // loads version 3
 
-    AggregateState snapshot = snapshots.get("c-1");
+    AggregateState snapshot = snapshots.get(StoreKeys.snapshot("counter", "c-1"));
     assertThat(((Counter) snapshot.getPayload()).count()).isEqualTo(3); // from the events, not 999
     assertThat(snapshot.getRevision()).isEqualTo(2);
   }
@@ -107,11 +108,11 @@ class SnapshotRevisionTest {
     TestInputTopic<String, Command> commands = counters();
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
     increment(commands, 3);
-    snapshots.put("c-1", changed(snapshots.get("c-1"), 2, 999));
+    snapshots.put(StoreKeys.snapshot("counter", "c-1"), changed(snapshots.get(StoreKeys.snapshot("counter", "c-1")), 2, 999));
 
     increment(commands, 2); // the second loads version 4: a new snapshot
 
-    assertThat(((Counter) snapshots.get("c-1").getPayload()).count()).isEqualTo(1001);
+    assertThat(((Counter) snapshots.get(StoreKeys.snapshot("counter", "c-1")).getPayload()).count()).isEqualTo(1001);
   }
 
   @Test
@@ -124,7 +125,7 @@ class SnapshotRevisionTest {
     send(commands, OpenAccount.builder().id("ada").build());
     send(commands, Deposit.builder().id("ada").amount(5).build());
     send(commands, Deposit.builder().id("ada").amount(7).build()); // loads version 2: a snapshot, the events before it deleted
-    snapshots.put("ada", changed(snapshots.get("ada"), 5, null));
+    snapshots.put(StoreKeys.snapshot("account", "ada"), changed(snapshots.get(StoreKeys.snapshot("account", "ada")), 5, null));
     results.readValuesToList();
 
     send(commands, Deposit.builder().id("ada").amount(1).build());

@@ -15,14 +15,21 @@ import java.util.NoSuchElementException;
 public class ReadableEventStore implements EventStore {
 
   private final ReadOnlyKeyValueStore<String, Event> store;
+  private final String aggregateType;
 
-  public ReadableEventStore(ReadOnlyKeyValueStore<String, Event> store) {
+  public ReadableEventStore(ReadOnlyKeyValueStore<String, Event> store, String aggregateType) {
     this.store = store;
+    this.aggregateType = aggregateType;
+  }
+
+  /** The aggregate this store holds, as its {@code @AggregateRoot} names it. */
+  public String aggregateType() {
+    return aggregateType;
   }
 
   @Override
   public Event get(String aggregateId, long sequence) {
-    return sequence < 1 ? null : store.get(StoreKeys.of(aggregateId, sequence));
+    return sequence < 1 ? null : store.get(StoreKeys.of(aggregateType, aggregateId, sequence));
   }
 
   /**
@@ -35,8 +42,8 @@ public class ReadableEventStore implements EventStore {
   @Override
   public long lastSequence(String aggregateId) {
     // reverseRange starts at the end of the aggregate's key range: its first key is the aggregate's last event.
-    try (KeyValueIterator<String, Event> keys = store.reverseRange(StoreKeys.first(aggregateId), StoreKeys.last(aggregateId))) {
-      return keys.hasNext() ? StoreKeys.sequenceOf(aggregateId, keys.next().key) : 0;
+    try (KeyValueIterator<String, Event> keys = store.reverseRange(StoreKeys.first(aggregateType, aggregateId), StoreKeys.last(aggregateType, aggregateId))) {
+      return keys.hasNext() ? StoreKeys.sequenceOf(aggregateType, aggregateId, keys.next().key) : 0;
     }
   }
 
@@ -46,7 +53,7 @@ public class ReadableEventStore implements EventStore {
     if (to < from) {
       return new OfAggregate(null); // an empty range: its start would come after its end
     }
-    return new OfAggregate(store.range(StoreKeys.of(aggregateId, from), StoreKeys.of(aggregateId, to)));
+    return new OfAggregate(store.range(StoreKeys.of(aggregateType, aggregateId, from), StoreKeys.of(aggregateType, aggregateId, to)));
   }
 
   @Override
@@ -55,7 +62,7 @@ public class ReadableEventStore implements EventStore {
     if (from < to) {
       return new OfAggregate(null);
     }
-    return new OfAggregate(store.reverseRange(StoreKeys.of(aggregateId, to), StoreKeys.of(aggregateId, from)));
+    return new OfAggregate(store.reverseRange(StoreKeys.of(aggregateType, aggregateId, to), StoreKeys.of(aggregateType, aggregateId, from)));
   }
 
   private static void requireSequences(String aggregateId, long from, long to) {

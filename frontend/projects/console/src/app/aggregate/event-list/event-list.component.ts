@@ -25,6 +25,8 @@ export class EventListComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
+  aggregateType = input.required<string>();
+
   aggregateId = input.required<string>();
   /** Whether this list's tab is open; only then does it respond to the arrow keys. */
   active = input(false);
@@ -66,7 +68,7 @@ export class EventListComponent implements OnInit {
     const flag = firstPage ? this.loading : this.loadingMore;
     const startedAt = Date.now();
     flag.set(true);
-    this.svc.getEvents(this.aggregateId(), cursor).pipe(
+    this.svc.getEvents(this.aggregateType(), this.aggregateId(), cursor).pipe(
       takeUntilDestroyed(this.destroyRef),
       catchError(err => {
         this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load events.') });

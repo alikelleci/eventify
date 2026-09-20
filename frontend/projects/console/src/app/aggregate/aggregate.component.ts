@@ -45,7 +45,7 @@ export class AggregateComponent {
    * The aggregate being shown. A new object on every search, which recreates the lists and
    * detail panes in the template, so each search starts from scratch.
    */
-  load = signal({ id: '' });
+  load = signal({ type: '', id: '' });
   /** A new object on every refresh, which recreates both lists so they load again. */
   lists = signal({});
   /** The tab that was open when refresh was clicked; the spinner follows its list, so switching tabs doesn't change it. */
@@ -80,14 +80,15 @@ export class AggregateComponent {
   constructor() {
     // Angular reuses this component when navigating from one aggregate to another, so reload on every ID change.
     this.route.paramMap.pipe(
-      map(p => (p.get('id') ?? '').trim()),
-      distinctUntilChanged(),
+      map(p => ({ type: (p.get('type') ?? '').trim(), id: (p.get('id') ?? '').trim() })),
+      distinctUntilChanged((a, b) => a.type === b.type && a.id === b.id),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(id => this.reload(id));
-    this.searchSvc.reload$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(id => this.reload(id));
+    ).subscribe(aggregate => this.reload(aggregate.type, aggregate.id));
+    this.searchSvc.reload$.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(aggregate => this.reload(aggregate.type, aggregate.id));
     // Picking another app in the header shows the same aggregate from that app.
     toObservable(inject(BackendService).activeApp).pipe(skip(1), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.reload(this.load().id));
+      .subscribe(() => this.reload(this.load().type, this.load().id));
 
     effect(() => {
       if (this.opening() && this.openingMinElapsed() && this.eventCount() !== null && !this.awaitingDetail())
@@ -151,8 +152,8 @@ export class AggregateComponent {
   }
 
   /** Every search starts from scratch: new lists and details, nothing selected, back on the Events tab. */
-  private reload(id: string) {
-    const load = { id };
+  private reload(type: string, id: string) {
+    const load = { type, id };
     this.load.set(load);
     this.tab.set('events');
     this.refreshedTab.set(null);

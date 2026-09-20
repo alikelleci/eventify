@@ -43,7 +43,7 @@ class HandlerParameterResolverTest {
   private static final int ALL_METADATA = 6;
   private static final int UNSUPPORTED = 7;
 
-  private final Event event = Event.builder()
+  private final Event event = Event.builder().aggregateType("order")
       .payload(new OrderPlaced("order-1"))
       .metadata(Metadata.of("userId", "ada"))
       .sequence(1)

@@ -10,7 +10,7 @@ export const routes: Routes = [
     children: [
       { path: '', component: HomeComponent },
       // A separate chunk, so the home page doesn't wait for the aggregate views (and jsondiffpatch).
-      { path: 'aggregates/:id', loadComponent: () => import('./aggregate/aggregate.component').then(m => m.AggregateComponent) },
+      { path: 'aggregates/:type/:id', loadComponent: () => import('./aggregate/aggregate.component').then(m => m.AggregateComponent) },
     ],
   },
   { path: '**', redirectTo: '' },

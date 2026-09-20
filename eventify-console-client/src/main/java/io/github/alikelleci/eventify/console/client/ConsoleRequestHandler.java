@@ -41,28 +41,39 @@ class ConsoleRequestHandler {
       return switch (route) {
         case EVENTS -> {
           Requests.Events request = read(data, Requests.Events.class);
-          String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getEvents(aggregateId, request.cursor() == null ? null : requireSequence("cursor", request.cursor()), clampLimit(request.limit(), DEFAULT_PAGE_SIZE)));
+          yield toReply(service.getEvents(new Requests.Events(
+              requireAggregateType(request.aggregateType()),
+              requireAggregateId(request.aggregateId()),
+              request.cursor() == null ? null : requireSequence("cursor", request.cursor()),
+              clampLimit(request.limit(), DEFAULT_PAGE_SIZE))));
         }
         case EVENT_DETAIL -> {
           Requests.EventDetail request = read(data, Requests.EventDetail.class);
-          String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getEventDetail(aggregateId, requireSequence("sequence", request.sequence())));
+          yield toReply(service.getEventDetail(new Requests.EventDetail(
+              requireAggregateType(request.aggregateType()),
+              requireAggregateId(request.aggregateId()),
+              requireSequence("sequence", request.sequence()))));
         }
         case EVENTS_OF_COMMAND -> {
           Requests.EventsOfCommand request = read(data, Requests.EventsOfCommand.class);
-          requireAggregateId(request.aggregateId());
-          require("commandId", request.commandId());
-          yield toReply(service.getEventsOfCommand(request));
+          yield toReply(service.getEventsOfCommand(new Requests.EventsOfCommand(
+              requireAggregateType(request.aggregateType()),
+              requireAggregateId(request.aggregateId()),
+              require("commandId", request.commandId()))));
         }
         case STATE -> {
           Requests.State request = read(data, Requests.State.class);
-          String aggregateId = requireAggregateId(request.aggregateId());
-          yield toReply(service.getState(aggregateId, request.sequence() == null ? null : requireSequence("sequence", request.sequence())));
+          yield toReply(service.getState(new Requests.State(
+              requireAggregateType(request.aggregateType()),
+              requireAggregateId(request.aggregateId()),
+              request.sequence() == null ? null : requireSequence("sequence", request.sequence()))));
         }
         case COMMANDS -> {
           Requests.Commands request = read(data, Requests.Commands.class);
-          yield toReply(service.getCommands(requireAggregateId(request.aggregateId()), clampLimit(request.limit(), MAX_PAGE_SIZE), cancel));
+          yield toReply(service.getCommands(new Requests.Commands(
+              requireAggregateType(request.aggregateType()),
+              requireAggregateId(request.aggregateId()),
+              clampLimit(request.limit(), MAX_PAGE_SIZE)), cancel));
         }
         case RETRY_COMMAND -> toReply(service.retryCommand(data));
         case STATUS -> toReply(service.getStatus());
@@ -85,6 +96,11 @@ class ConsoleRequestHandler {
   /** Every query is about one aggregate; without its id there is nothing to look up. */
   private static String requireAggregateId(String aggregateId) {
     return require("aggregateId", aggregateId);
+  }
+
+  /** An aggregate is addressed by its type and its identifier: one application can hold several aggregates. */
+  private static String requireAggregateType(String aggregateType) {
+    return require("aggregateType", aggregateType);
   }
 
   /** An event's sequence: 1 for an aggregate's first event, so never below 1. */

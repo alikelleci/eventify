@@ -9,7 +9,7 @@ Enable snapshotting by adding `@EnableSnapshotting` to your aggregate class:
 ```java
 @Value
 @Builder(toBuilder = true)
-@AggregateRoot
+@AggregateRoot("order")
 @EnableSnapshotting(threshold = 500)
 public class Order {
     // ...
@@ -28,7 +28,7 @@ Snapshotting is transparent to your handlers—you do not need to change any han
 A snapshot holds the aggregate's state as your code computed it. When you change the aggregate's fields or its `@ApplyEvent` methods, a snapshot made before may no longer match what the current code would compute from the same events. Raise the aggregate's `@Revision` then:
 
 ```java
-@AggregateRoot
+@AggregateRoot("order")
 @Revision(2)
 @EnableSnapshotting(threshold = 500)
 public class Order { ... }

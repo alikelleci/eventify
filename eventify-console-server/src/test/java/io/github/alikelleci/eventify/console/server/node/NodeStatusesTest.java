@@ -13,6 +13,7 @@ import reactor.core.publisher.Mono;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
@@ -32,7 +33,7 @@ class NodeStatusesTest {
   private final NodeGateway gateway = mock(NodeGateway.class);
   private final NodeStatuses statuses = new NodeStatuses(gateway, JsonMapper.builder().build());
   private final ConnectedNode node = new ConnectedNode(
-      new NodeInfo("app", "app.a:0", "localhost", "test", ConsoleProtocol.VERSION), null, Instant.now());
+      new NodeInfo("app", "app.a:0", "localhost", "test", ConsoleProtocol.VERSION, Set.of("order")), null, Instant.now());
 
   @Test
   @DisplayName("Should not cancel the answer for another page when one page stops waiting")

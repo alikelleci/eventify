@@ -64,8 +64,8 @@ class ConsoleService {
   }
 
   /** @see CommandHistory#read */
-  Result<CommandsPage> getCommands(String aggregateId, int limit, CancelSignal cancel) {
-    return commandHistory.read(aggregateId, limit, cancel);
+  Result<CommandsPage> getCommands(Requests.Commands request, CancelSignal cancel) {
+    return commandHistory.read(request, cancel);
   }
 
   Result<CommandEventsPage> getEventsOfCommand(Requests.EventsOfCommand request) {
@@ -74,7 +74,7 @@ class ConsoleService {
     if (routing != null) return routing;
 
     try {
-      return Result.ok(new CommandEventsPage(history.eventsOfCommand(eventStore(), request)));
+      return Result.ok(new CommandEventsPage(history.eventsOfCommand(eventStore(request.aggregateType()), request)));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
@@ -84,14 +84,15 @@ class ConsoleService {
     }
   }
 
-  Result<EventsPage> getEvents(String aggregateId, Long cursor, int limit) {
+  Result<EventsPage> getEvents(Requests.Events request) {
+    String aggregateId = request.aggregateId();
     Result<EventsPage> routing = ownership.check(aggregateId);
     if (routing != null) {
       return routing;
     }
 
     try {
-      return Result.ok(history.events(eventStore(), aggregateId, cursor, limit));
+      return Result.ok(history.events(eventStore(request.aggregateType()), aggregateId, request.cursor(), request.limit()));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {}", aggregateId, e);
       return Result.unavailable("Event store not ready");
@@ -101,14 +102,15 @@ class ConsoleService {
     }
   }
 
-  Result<EventDetail> getEventDetail(String aggregateId, long sequence) {
+  Result<EventDetail> getEventDetail(Requests.EventDetail request) {
+    String aggregateId = request.aggregateId();
     Result<EventDetail> routing = ownership.check(aggregateId);
     if (routing != null) {
       return routing;
     }
 
     try {
-      EventDetail detail = history.eventDetail(eventStore(), snapshotStore(), aggregateId, sequence);
+      EventDetail detail = history.eventDetail(eventStore(request.aggregateType()), snapshotStore(request.aggregateType()), aggregateId, request.sequence());
       if (detail == null) {
         return ownership.notFound(aggregateId);
       }
@@ -127,14 +129,15 @@ class ConsoleService {
   }
 
   /** The {@link AggregateState} as JSON, see {@link AggregateHistory}. */
-  Result<RawValue> getState(String aggregateId, Long sequence) {
+  Result<RawValue> getState(Requests.State request) {
+    String aggregateId = request.aggregateId();
     Result<RawValue> routing = ownership.check(aggregateId);
     if (routing != null) {
       return routing;
     }
 
     try {
-      RawValue state = history.stateAt(eventStore(), snapshotStore(), aggregateId, sequence);
+      RawValue state = history.stateAt(eventStore(request.aggregateType()), snapshotStore(request.aggregateType()), aggregateId, request.sequence());
       if (state == null) {
         return ownership.notFound(aggregateId);
       }
@@ -152,12 +155,13 @@ class ConsoleService {
     }
   }
 
-  private EventStore eventStore() {
-    return eventify.getEventStore();
+  /** An unknown aggregate type simply holds nothing, and is answered as an aggregate that is not here. */
+  private EventStore eventStore(String aggregateType) {
+    return eventify.getEventStore(aggregateType);
   }
 
-  private SnapshotStore snapshotStore() {
-    return eventify.getSnapshotStore();
+  private SnapshotStore snapshotStore(String aggregateType) {
+    return eventify.getSnapshotStore(aggregateType);
   }
 
 }

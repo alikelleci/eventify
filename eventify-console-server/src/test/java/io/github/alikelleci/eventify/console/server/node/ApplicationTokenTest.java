@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.net.URI;
+import java.util.Set;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +57,7 @@ class ApplicationTokenTest {
   }
 
   private void connect(String nodeId, String token) {
-    NodeInfo info = new NodeInfo("token-test", nodeId, "localhost", "test", ConsoleProtocol.VERSION);
+    NodeInfo info = new NodeInfo("token-test", nodeId, "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
     ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), token, info,
         (route, data, cancel) -> new Reply(ReplyHeader.ok(), new byte[0]));
     connector.start();

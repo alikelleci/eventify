@@ -58,7 +58,7 @@ class AggregateRemovalTest {
   public record Probed(@AggregateId String id, boolean hadState) implements TabEvent {
   }
 
-  @AggregateRoot
+  @AggregateRoot("tab")
   public record Tab(@AggregateId String id) {
   }
 

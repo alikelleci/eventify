@@ -35,12 +35,15 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
 
   private final Object handler;
   private final Method method;
+  /** The aggregate this handler's commands belong to, as its {@code @AggregateRoot} gives it. */
+  private final String aggregateType;
 
   private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
 
-  public CommandHandlerMethod(Object handler, Method method) {
+  public CommandHandlerMethod(Object handler, Method method, String aggregateType) {
     this.handler = handler;
     this.method = method;
+    this.aggregateType = aggregateType;
   }
 
   /** What the command changes about its aggregate: the payloads of the events to record, in the order returned. */

@@ -16,6 +16,8 @@ export interface AppNode {
 /** An application: the instances with the same application id. */
 export interface AppEntry {
   name: string;
+  /** The aggregates it holds, as their @AggregateRoot names them; empty while no instance is connected. */
+  aggregateTypes: string[];
   nodes: AppNode[];
 }
 
@@ -42,7 +44,7 @@ export class BackendService {
     const apps = this._apps();
     const active = this._activeName();
     return active && !apps.some(app => app.name === active)
-      ? [...apps, { name: active, nodes: [] }].sort((a, b) => a.name.localeCompare(b.name))
+      ? [...apps, { name: active, aggregateTypes: [], nodes: [] }].sort((a, b) => a.name.localeCompare(b.name))
       : apps;
   });
   /** No application has connected to the console (yet). */

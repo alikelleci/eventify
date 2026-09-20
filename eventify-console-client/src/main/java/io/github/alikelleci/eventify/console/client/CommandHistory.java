@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.console.client.ConsoleViews.CommandsPage;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
+import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import lombok.extern.slf4j.Slf4j;
@@ -61,9 +62,11 @@ class CommandHistory {
    * Reads the aggregate's commands from the result topics. Every call has its own consumer, so calls never affect each
    * other. When the request is cancelled, only this call's consumer stops, the way Kafka intends: with a wakeup.
    */
-  Result<CommandsPage> read(String aggregateId, int limit, CancelSignal cancel) {
+  Result<CommandsPage> read(Requests.Commands request, CancelSignal cancel) {
+    String aggregateId = request.aggregateId();
+    int limit = request.limit();
     // Eventify writes the result of every handled command to a result topic of its own.
-    Set<String> resultTopics = eventify.getCommandTopics().stream()
+    Set<String> resultTopics = eventify.getCommandTopics(request.aggregateType()).stream()
         .map(TopicNames::resultTopicOf)
         .collect(Collectors.toSet());
     if (resultTopics.isEmpty()) {

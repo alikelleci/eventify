@@ -52,11 +52,11 @@ class SnapshottingTest {
     send(commands, DepositEach.builder().id("ada").amounts(List.of(5, 7)).build());       // version 3: past 2
     send(commands, Deposit.builder().id("ada").amount(1).build());                        // loads version 3: snapshot
 
-    AggregateState snapshot = snapshotStore.get("ada");
+    AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
     assertThat(snapshot).isNotNull();
     assertThat(snapshot.getVersion()).isEqualTo(3);
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(12);
-    assertThat(eventStore.get(StoreKeys.of("ada", snapshot.getVersion()))).isNotNull();
+    assertThat(eventStore.get(StoreKeys.of("account", "ada", snapshot.getVersion()))).isNotNull();
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(2); // the snapshot's event and the last deposit
   }
 
@@ -82,7 +82,7 @@ class SnapshottingTest {
     send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(4));      // version 6
     send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(5));      // loads version 6: snapshot
 
-    AggregateState snapshot = snapshotStore.get("ada");
+    AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
     assertThat(snapshot.getVersion()).isEqualTo(6);
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(114);
     assertThat(IteratorUtils.toList(eventStore.all()))

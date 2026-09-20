@@ -27,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class HandlerRegistrationTest {
 
   @Value
-  @AggregateRoot
+  @AggregateRoot("light")
   public static class Light {
     @AggregateId
     String id;
@@ -94,7 +94,7 @@ class HandlerRegistrationTest {
   }
 
   @Value
-  @AggregateRoot
+  @AggregateRoot("fan")
   public static class Fan {
     @AggregateId
     String id;
@@ -121,6 +121,42 @@ class HandlerRegistrationTest {
     @ApplyEvent
     public Fan apply(FanSwitchedOn event, Fan state) {
       return new Fan(event.getId());
+    }
+  }
+
+  /** Another aggregate that is called the same as Light. */
+  @Value
+  @AggregateRoot("light")
+  public static class Lamp {
+    @AggregateId
+    String id;
+  }
+
+  public static class LampHandler {
+    @HandleCommand
+    public Object handle(SwitchOnFan command, Lamp state) {
+      return null;
+    }
+  }
+
+  @Value
+  @AggregateRoot("  ")
+  public static class Nameless {
+    @AggregateId
+    String id;
+  }
+
+  public static class NamelessHandler {
+    @HandleCommand
+    public Object handle(SwitchOnFan command, Nameless state) {
+      return null;
+    }
+  }
+
+  public static class HandlerWithoutAggregate {
+    @HandleCommand
+    public Object handle(SwitchOn command) {
+      return null;
     }
   }
 
@@ -157,32 +193,55 @@ class HandlerRegistrationTest {
         .hasMessageContaining(SwitchedOn.class.getName());
   }
 
-  /** Both stores key an aggregate by its identifier alone, so two aggregates with the same id would share a history. */
   @Test
-  @DisplayName("Should refuse an instance whose handlers cover more than one aggregate together")
-  void moreThanOneAggregateInOneInstanceIsRefused() {
+  @DisplayName("Should accept an instance with handlers for several aggregates")
+  void severalAggregatesInOneInstanceAreAccepted() {
     Eventify eventify = Eventify.builder().streamsConfig(config())
         .registerHandler(new LightHandler())
         .registerHandler(new FanHandler())
         .build();
 
+    assertThat(eventify.getHandlers().aggregateTypes()).containsExactlyInAnyOrder("light", "fan");
+    assertThatCode(eventify::topology).doesNotThrowAnyException();
+  }
+
+  /** Their name is what keeps their events and snapshots apart, so it has to be theirs alone. */
+  @Test
+  @DisplayName("Should refuse two aggregates that are called the same")
+  void twoAggregatesWithTheSameNameAreRefused() {
+    Eventify eventify = Eventify.builder().streamsConfig(config())
+        .registerHandler(new LightHandler())
+        .registerHandler(new LampHandler())
+        .build();
+
     assertThatThrownBy(eventify::topology)
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("Light")
-        .hasMessageContaining("Fan")
-        .hasMessageContaining("one aggregate");
+        .hasMessageContaining("Lamp")
+        .hasMessageContaining("'light'");
   }
 
+  /** The compiler catches a missing name; a blank one it cannot, and a nameless aggregate has no key of its own. */
   @Test
-  @DisplayName("Should accept an instance whose handlers all work on the same aggregate")
-  void oneAggregateInOneInstanceIsAccepted() {
-    Eventify eventify = Eventify.builder().streamsConfig(config())
-        .registerHandler(new LightHandler())
-        .registerHandler(new FirstEventHandler())
-        .build();
+  @DisplayName("Should refuse an aggregate without a name")
+  void anAggregateWithoutANameIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new NamelessHandler())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("Nameless")
+        .hasMessageContaining("@AggregateRoot");
+  }
 
-    assertThat(eventify.getHandlers().aggregateTypes()).containsExactly(Light.class);
-    assertThatCode(eventify::topology).doesNotThrowAnyException();
+  /** Eventify reads the aggregate's events before the handler runs, so it has to know which aggregate that is. */
+  @Test
+  @DisplayName("Should refuse a command handler that does not take its aggregate")
+  void aCommandHandlerWithoutItsAggregateIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new HandlerWithoutAggregate())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@AggregateRoot");
   }
 
   @Test

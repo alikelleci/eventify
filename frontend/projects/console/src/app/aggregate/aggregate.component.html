@@ -31,7 +31,7 @@
           <div class="h-full px-4 pt-3 pb-4">
             @for (_ of [lists()]; track _) {
             <app-event-list class="max-h-full rounded-lg border border-surface-100 dark:border-surface-800"
-                            [aggregateId]="current.id" [active]="tab() === 'events'" [selected]="selected()"
+                            [aggregateType]="current.type" [aggregateId]="current.id" [active]="tab() === 'events'" [selected]="selected()"
                             (select)="selectItem($event)" (loaded)="onEventsLoaded($event)" />
             }
           </div>
@@ -40,7 +40,7 @@
           <div class="h-full px-4 pt-3 pb-4">
             @for (_ of [lists()]; track _) {
             <app-command-list class="max-h-full rounded-lg border border-surface-100 dark:border-surface-800"
-                              [aggregateId]="current.id" [active]="tab() === 'commands'" [selected]="selected()"
+                              [aggregateType]="current.type" [aggregateId]="current.id" [active]="tab() === 'commands'" [selected]="selected()"
                               (select)="selectItem($event)" (loaded)="onCommandsLoaded($event)" />
             }
           </div>
@@ -58,7 +58,7 @@
         </div>
       } @else if (isCommand(selected())) {
         <div class="px-6 py-5">
-          <app-command-detail [command]="selectedCommand()" (loaded)="onDetailLoaded()" />
+          <app-command-detail [aggregateType]="load().type" [command]="selectedCommand()" (loaded)="onDetailLoaded()" />
         </div>
       } @else if (activeListHasItems()) {
         <div class="flex flex-col items-center justify-center h-full gap-3 text-surface-400">
@@ -85,7 +85,7 @@
     @if (isEvent(selected())) {
       <app-event-detail [event]="selectedEvent()" />
     } @else {
-      <app-command-detail [command]="selectedCommand()" />
+      <app-command-detail [aggregateType]="load().type" [command]="selectedCommand()" />
     }
   </p-drawer>
 }

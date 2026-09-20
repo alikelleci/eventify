@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core.store.internal;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.message.internal.Revisions;
 import io.github.alikelleci.eventify.core.store.SnapshotStore;
+import io.github.alikelleci.eventify.core.store.StoreKeys;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 /**
@@ -12,9 +13,16 @@ import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 public class ReadableSnapshotStore implements SnapshotStore {
 
   private final ReadOnlyKeyValueStore<String, AggregateState> store;
+  private final String aggregateType;
 
-  public ReadableSnapshotStore(ReadOnlyKeyValueStore<String, AggregateState> store) {
+  public ReadableSnapshotStore(ReadOnlyKeyValueStore<String, AggregateState> store, String aggregateType) {
     this.store = store;
+    this.aggregateType = aggregateType;
+  }
+
+  /** The name of the aggregate this store holds, as its {@code @AggregateRoot} gives it. */
+  protected String aggregateType() {
+    return aggregateType;
   }
 
   /** The aggregate's snapshot when it can be used; {@code null} when it has none, or it is outdated (see {@link #whyOutdated}). */
@@ -26,7 +34,7 @@ public class ReadableSnapshotStore implements SnapshotStore {
 
   @Override
   public AggregateState get(String aggregateId) {
-    return store.get(aggregateId);
+    return store.get(StoreKeys.snapshot(aggregateType, aggregateId));
   }
 
   /**

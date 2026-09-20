@@ -38,7 +38,7 @@ class CommandValidationTest {
   public record Registered(@AggregateId String id, String name) {
   }
 
-  @AggregateRoot
+  @AggregateRoot("customer")
   public record Customer(@AggregateId String id, String name) {
   }
 

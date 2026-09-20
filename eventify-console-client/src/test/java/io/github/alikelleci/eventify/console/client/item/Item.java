@@ -7,7 +7,7 @@ import lombok.Value;
 
 @Value
 @Builder
-@AggregateRoot
+@AggregateRoot("item")
 public class Item {
   @AggregateId
   String id;

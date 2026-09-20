@@ -29,36 +29,36 @@ public class ConsoleApiController {
   private final NodeGateway gateway;
   private final JsonMapper jsonMapper;
 
-  @GetMapping("/{app}/aggregates/{aggregateId}/events")
-  public Mono<ResponseEntity<byte[]>> events(@PathVariable String app, @PathVariable String aggregateId,
+  @GetMapping("/{app}/aggregates/{aggregateType}/{aggregateId}/events")
+  public Mono<ResponseEntity<byte[]>> events(@PathVariable String app, @PathVariable String aggregateType, @PathVariable String aggregateId,
                                              @RequestParam(required = false) Long cursor,
                                              @RequestParam(required = false) Integer limit) {
-    return toOwner(app, Route.EVENTS, aggregateId, new Requests.Events(aggregateId, cursor, limit));
+    return toOwner(app, Route.EVENTS, aggregateId, new Requests.Events(aggregateType, aggregateId, cursor, limit));
   }
 
-  @GetMapping("/{app}/aggregates/{aggregateId}/events/{sequence}")
-  public Mono<ResponseEntity<byte[]>> eventDetail(@PathVariable String app, @PathVariable String aggregateId,
+  @GetMapping("/{app}/aggregates/{aggregateType}/{aggregateId}/events/{sequence}")
+  public Mono<ResponseEntity<byte[]>> eventDetail(@PathVariable String app, @PathVariable String aggregateType, @PathVariable String aggregateId,
                                                   @PathVariable long sequence) {
-    return toOwner(app, Route.EVENT_DETAIL, aggregateId, new Requests.EventDetail(aggregateId, sequence));
+    return toOwner(app, Route.EVENT_DETAIL, aggregateId, new Requests.EventDetail(aggregateType, aggregateId, sequence));
   }
 
   /** The events the command produced: the ones that name it as their cause. */
-  @GetMapping("/{app}/aggregates/{aggregateId}/commands/{commandId}/events")
-  public Mono<ResponseEntity<byte[]>> eventsOfCommand(@PathVariable String app, @PathVariable String aggregateId,
+  @GetMapping("/{app}/aggregates/{aggregateType}/{aggregateId}/commands/{commandId}/events")
+  public Mono<ResponseEntity<byte[]>> eventsOfCommand(@PathVariable String app, @PathVariable String aggregateType, @PathVariable String aggregateId,
                                                       @PathVariable String commandId) {
-    return toOwner(app, Route.EVENTS_OF_COMMAND, aggregateId, new Requests.EventsOfCommand(aggregateId, commandId));
+    return toOwner(app, Route.EVENTS_OF_COMMAND, aggregateId, new Requests.EventsOfCommand(aggregateType, aggregateId, commandId));
   }
 
-  @GetMapping("/{app}/aggregates/{aggregateId}/state")
-  public Mono<ResponseEntity<byte[]>> state(@PathVariable String app, @PathVariable String aggregateId,
+  @GetMapping("/{app}/aggregates/{aggregateType}/{aggregateId}/state")
+  public Mono<ResponseEntity<byte[]>> state(@PathVariable String app, @PathVariable String aggregateType, @PathVariable String aggregateId,
                                             @RequestParam(required = false) Long sequence) {
-    return toOwner(app, Route.STATE, aggregateId, new Requests.State(aggregateId, sequence));
+    return toOwner(app, Route.STATE, aggregateId, new Requests.State(aggregateType, aggregateId, sequence));
   }
 
-  @GetMapping("/{app}/aggregates/{aggregateId}/commands")
-  public Mono<ResponseEntity<byte[]>> commands(@PathVariable String app, @PathVariable String aggregateId,
+  @GetMapping("/{app}/aggregates/{aggregateType}/{aggregateId}/commands")
+  public Mono<ResponseEntity<byte[]>> commands(@PathVariable String app, @PathVariable String aggregateType, @PathVariable String aggregateId,
                                                @RequestParam(required = false) Integer limit) {
-    return gateway.sendToAny(app, Route.COMMANDS, jsonMapper.writeValueAsBytes(new Requests.Commands(aggregateId, limit)))
+    return gateway.sendToAny(app, Route.COMMANDS, jsonMapper.writeValueAsBytes(new Requests.Commands(aggregateType, aggregateId, limit)))
         .map(ConsoleApiController::toResponse);
   }
 

@@ -25,6 +25,8 @@ export interface CommandsPage {
 }
 
 export interface EventMessage {
+  /** The aggregate this event belongs to, e.g. "order". */
+  aggregateType: string;
   id: string;
   timestamp: string;
   type: string;

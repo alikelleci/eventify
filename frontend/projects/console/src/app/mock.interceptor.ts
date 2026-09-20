@@ -76,7 +76,7 @@ interface History {
   states: Record<number, AggregateState>;   // the order after each event, by its sequence
 }
 
-function buildHistory(orderId: string, steps: Step[]): History {
+function buildHistory(aggregateType: string, orderId: string, steps: Step[]): History {
   let ids = 0;
   const fakeUuid = (n: number) => `${(0x5f0c2b1e + n * 0x1a2b3c).toString(16).slice(-8)}-7d4a-4c8e-9b3f-${String(n).padStart(12, '0')}`;
   // Fake UUIDs, like the backend's message IDs; distinct from the correlation IDs.
@@ -116,6 +116,7 @@ function buildHistory(orderId: string, steps: Step[]): History {
       type: e.type,
       aggregateId: orderId,
       revision: e.revision ?? 1,
+      aggregateType,
       payload: { '@class': `com.example.order.OrderEvent$${e.type}`, id: orderId, ...e.payload },
       metadata: { '$correlationId': correlationId, '$causationId': commandId },
     }));
@@ -159,29 +160,30 @@ function applyEvent(order: Record<string, unknown>, event: EventMessage): Record
 
 const histories = new Map<string, History>();
 
-function historyOf(aggregateId: string): History {
-  if (!histories.has(aggregateId)) {
+function historyOf(aggregateType: string, aggregateId: string): History {
+  const key = `${aggregateType}\u0000${aggregateId}`;
+  if (!histories.has(key)) {
     const steps = aggregateId === NOT_FOUND_ID ? []
       : aggregateId === REJECTED_ID ? REJECTED_ORDER
       : aggregateId === CANCELLED_ID ? CANCELLED_ORDER
       : DELIVERED_ORDER;
-    histories.set(aggregateId, buildHistory(aggregateId, steps));
+    histories.set(key, buildHistory(aggregateType, aggregateId, steps));
   }
-  return histories.get(aggregateId)!;
+  return histories.get(key)!;
 }
 
 const respond = (body: unknown, ms: number) => of(new HttpResponse({ status: 200, body })).pipe(delay(ms));
 
 /** An example application, without how its instances are doing: apps() adds that. */
-type MockApp = { name: string; nodes: Omit<AppNode, 'status'>[] };
+type MockApp = { name: string; aggregateTypes: string[]; nodes: Omit<AppNode, 'status'>[] };
 
 /** Two example applications, as connected to the console. The same example data answers for both. */
 const APPS: MockApp[] = [
-  { name: 'orders', nodes: [
+  { name: 'orders', aggregateTypes: ['order'], nodes: [
     { nodeId: 'orders.3f2a9c1e-7b4d-4c1a-9f0e-5d8a2b6c1e44:0', hostname: 'orders-5d8f7-x2k4q', version: '1.0.0', connectedAt: new Date(NOW - 3_600_000).toISOString() },
     { nodeId: 'orders.b81e44d2-1c3f-4e8a-a2b7-9d6c5e4f3a21:0', hostname: 'orders-5d8f7-p9m2z', version: '1.0.0', connectedAt: new Date(NOW - 3_500_000).toISOString() },
   ] },
-  { name: 'payments', nodes: [
+  { name: 'payments', aggregateTypes: ['payment', 'refund'], nodes: [
     { nodeId: 'payments.7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f:0', hostname: 'payments-7b9c6-k4j8w', version: '1.0.0', connectedAt: new Date(NOW - 7_200_000).toISOString() },
   ] },
   // TEMP: many more applications, to preview the home dashboard with a long list. Remove this block afterwards.
@@ -202,6 +204,7 @@ const APPS: MockApp[] = [
     { name: 'warehouse-management-service-with-a-very-long-name', instances: 3 }, // a long name cut off on its home card
   ].map(({ name, instances, versions }): MockApp => ({
     name,
+    aggregateTypes: ['order'],
     nodes: Array.from({ length: instances }, (_, i) => ({
       nodeId: `${name}.${crypto.randomUUID()}:0`,
       hostname: `${name}-6c8d9-${(i + 10).toString(36)}x${i}q`,
@@ -241,8 +244,10 @@ export const mockInterceptor: HttpInterceptorFn = (req, next) => {
   if (req.method === 'POST' && req.url.endsWith('/commands/retry')) return respond(null, 150);
   if (!req.url.includes('/api/apps/') || !req.url.includes('/aggregates/')) return next(req);
 
-  const aggregateId = decodeURIComponent(req.url.match(/\/aggregates\/([^/?]+)/)?.[1] ?? '');
-  const { commands, events, states } = historyOf(aggregateId);
+  const aggregate = req.url.match(/\/aggregates\/([^/?]+)\/([^/?]+)/);
+  const aggregateType = decodeURIComponent(aggregate?.[1] ?? '');
+  const aggregateId = decodeURIComponent(aggregate?.[2] ?? '');
+  const { commands, events, states } = historyOf(aggregateType, aggregateId);
 
   const commandEventsMatch = req.url.match(/\/commands\/([^/?]+)\/events/);
   if (commandEventsMatch) {

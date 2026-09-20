@@ -35,6 +35,10 @@ export class CommandDetailComponent {
   // Provided by the aggregate page, so retry and copy messages show in its toast.
   private readonly messageService = inject(MessageService);
 
+  /** The aggregate the command is for: a command does not say so itself. */
+
+  aggregateType = input.required<string>();
+
   command = input<CommandMessage | null>(null);
   // Loading follows the id: a refreshed copy of the same command updates its fields without reloading or resetting the tabs.
   private readonly commandId = computed(() => this.command()?.id);
@@ -71,7 +75,7 @@ export class CommandDetailComponent {
       if (!cmd) { this.loading.set(false); return; }
       const startedAt = Date.now();
       this.loading.set(true);
-      this.request = this.svc.getEventsOfCommand(cmd).pipe(
+      this.request = this.svc.getEventsOfCommand(this.aggregateType(), cmd).pipe(
         takeUntilDestroyed(this.destroyRef),
         catchError(err => {
           this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load the events of this command.') });

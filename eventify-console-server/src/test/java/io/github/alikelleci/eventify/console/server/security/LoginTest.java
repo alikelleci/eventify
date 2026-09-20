@@ -19,6 +19,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.reactive.server.WebTestClient;
 
 import java.io.IOException;
+import java.util.Set;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
@@ -134,7 +135,7 @@ class LoginTest {
   @Test
   @DisplayName("Should let applications connect without a login")
   void applicationsConnectWithoutALogin() {
-    NodeInfo info = new NodeInfo("login-test", "login-test.a:0", "localhost", "test", ConsoleProtocol.VERSION);
+    NodeInfo info = new NodeInfo("login-test", "login-test.a:0", "localhost", "test", ConsoleProtocol.VERSION, Set.of("order"));
     ConsoleConnector connector = new ConsoleConnector(URI.create("http://localhost:" + port), null, info,
         (route, data, cancel) -> new Reply(ReplyHeader.ok(), new byte[0]));
     connector.start();

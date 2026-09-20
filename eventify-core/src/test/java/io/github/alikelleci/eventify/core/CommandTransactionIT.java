@@ -58,7 +58,7 @@ class CommandTransactionIT {
   @Container
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
 
-  @AggregateRoot
+  @AggregateRoot("order")
   @Value
   @Builder(toBuilder = true)
   public static class Order {
