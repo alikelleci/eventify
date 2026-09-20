@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.core.message;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.message.internal.Topics;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
 
 import java.time.Instant;
@@ -25,7 +25,7 @@ public interface Message {
   @JsonIgnore
   default Topic getTopic() {
     return Optional.ofNullable(getPayload())
-        .map(p -> AnnotationScanner.findAnnotation(p.getClass(), Topic.class))
+        .map(p -> Topics.of(p.getClass()))
         .orElseThrow(() -> new TopicMissingException("Topic information not found. Please annotate your payload class with @Topic."));
   }
 

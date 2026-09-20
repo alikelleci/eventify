@@ -5,11 +5,11 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
-import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
+import io.github.alikelleci.eventify.core.message.internal.Topics;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
@@ -92,7 +92,7 @@ public class CommandHandlerMethod implements BiFunction<AggregateState, Command,
       }
       // The topic an event is sent to is only looked up when it is sent, after it is stored: an event without one
       // is rejected here, before anything of the command is stored.
-      if (AnnotationScanner.findAnnotation(payload.getClass(), Topic.class) == null) {
+      if (Topics.of(payload.getClass()) == null) {
         throw new TopicMissingException("Event " + type + " has no topic. Please annotate its class, or an interface it implements, with @Topic.");
       }
     });
