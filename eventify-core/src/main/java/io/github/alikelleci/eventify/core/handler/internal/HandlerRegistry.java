@@ -73,8 +73,8 @@ public class HandlerRegistry {
   }
 
   /**
-   * The aggregates these handlers work on: the classes annotated with {@link AggregateRoot} that their methods take or
-   * return. Empty when no handler names one, e.g. handlers that only take the command.
+   * The aggregates the handlers of this instance work on together: the classes annotated with {@link AggregateRoot}
+   * that their methods take or return. Empty when no handler names one, e.g. handlers that only take the command.
    */
   public Set<Class<?>> aggregateTypes() {
     return Stream.concat(

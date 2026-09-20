@@ -159,8 +159,8 @@ class HandlerRegistrationTest {
 
   /** Both stores key an aggregate by its identifier alone, so two aggregates with the same id would share a history. */
   @Test
-  @DisplayName("Should refuse handlers that work on more than one aggregate")
-  void handlersForMoreThanOneAggregateAreRefused() {
+  @DisplayName("Should refuse an instance whose handlers cover more than one aggregate together")
+  void moreThanOneAggregateInOneInstanceIsRefused() {
     Eventify eventify = Eventify.builder().streamsConfig(config())
         .registerHandler(new LightHandler())
         .registerHandler(new FanHandler())
@@ -174,8 +174,8 @@ class HandlerRegistrationTest {
   }
 
   @Test
-  @DisplayName("Should accept handlers that all work on the same aggregate")
-  void handlersForOneAggregateAreAccepted() {
+  @DisplayName("Should accept an instance whose handlers all work on the same aggregate")
+  void oneAggregateInOneInstanceIsAccepted() {
     Eventify eventify = Eventify.builder().streamsConfig(config())
         .registerHandler(new LightHandler())
         .registerHandler(new FirstEventHandler())

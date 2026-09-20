@@ -141,7 +141,7 @@ public final class EventifyTopology {
   private static void requireOneAggregate(HandlerRegistry handlers) {
     Set<Class<?>> aggregates = handlers.aggregateTypes();
     if (aggregates.size() > 1) {
-      throw new HandlerRegistrationException("These handlers work on more than one aggregate: "
+      throw new HandlerRegistrationException("This Eventify instance has handlers for more than one aggregate: "
           + aggregates.stream().map(Class::getSimpleName).collect(Collectors.joining(" and "))
           + ". One Eventify instance holds one aggregate, because its event store keys events by aggregate identifier"
           + " alone: two aggregates with the same identifier would share one history. Give each aggregate its own"
