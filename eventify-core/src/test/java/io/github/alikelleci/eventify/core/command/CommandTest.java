@@ -25,8 +25,7 @@ class CommandTest {
   void metadataEntriesAddUp() {
     Command command = Command.builder()
         .payload(new PlaceOrder("order-1", "Ada"))
-        .metadata("tenant", "acme")
-        .metadata("user", "ada")
+        .metadata(Metadata.of("tenant", "acme").with("user", "ada"))
         .build();
 
     assertThat(command.getMetadata())
@@ -43,9 +42,7 @@ class CommandTest {
 
     Command command = Command.builder()
         .payload(new PlaceOrder("order-1", "Ada"))
-        .metadata(incoming)
-        .metadata(Map.of("source", "api"))
-        .metadata("user", "ada")
+        .metadata(incoming.with(Map.of("source", "api")).with("user", "ada"))
         .build();
 
     assertThat(command.getMetadata())

@@ -11,6 +11,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -468,7 +469,7 @@ class AggregateHistoryTest {
   }
 
   private Event store(Object payload, Map<String, String> metadata, long sequence) {
-    Event event = Event.builder().payload(payload).metadata(metadata).sequence(sequence).build();
+    Event event = Event.builder().payload(payload).metadata(Metadata.of(metadata)).sequence(sequence).build();
     storedEvents.put(key(event), event);
     return event;
   }

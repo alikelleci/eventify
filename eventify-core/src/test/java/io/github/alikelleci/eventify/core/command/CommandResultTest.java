@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.kafka.HeaderNames;
+import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -176,7 +177,7 @@ class CommandResultTest {
   @Test
   @DisplayName("Should name the command that produced an event, and keep its correlation id")
   void anEventNamesItsCommand() {
-    Command command = Command.builder().payload(new AddItem("cart-1", "apple")).metadata(MetadataKeys.CORRELATION_ID, "saga").build();
+    Command command = Command.builder().payload(new AddItem("cart-1", "apple")).metadata(Metadata.of(MetadataKeys.CORRELATION_ID, "saga")).build();
 
     send(command);
 

@@ -114,7 +114,7 @@ class EventifyKafkaListenerIT {
   @DisplayName("Should give the payload, upcasted, and the parameters Eventify handlers can have")
   void payloadAndParameters() throws Exception {
     Event event = Event.builder().payload(OrderPlaced.builder().id("order-1").total(10).build())
-        .metadata("user", "ali").sequence(1).build();
+        .metadata(Metadata.of("user", "ali")).sequence(1).build();
     send("parameters", atRevision1(event));
 
     run(ParameterListener.class, () -> {

@@ -43,11 +43,9 @@ class HandlerParameterResolverTest {
   private static final int ALL_METADATA = 6;
   private static final int UNSUPPORTED = 7;
 
-  private final Instant timestamp = Instant.parse("2026-09-19T10:15:30Z");
   private final Event event = Event.builder()
-      .timestamp(timestamp)
       .payload(new OrderPlaced("order-1"))
-      .metadata("userId", "ada")
+      .metadata(Metadata.of("userId", "ada"))
       .sequence(1)
       .build();
 
@@ -60,7 +58,7 @@ class HandlerParameterResolverTest {
   @Test
   @DisplayName("Should give the message's timestamp for @Timestamp")
   void timestamp() {
-    assertThat(resolve(TIMESTAMP)).isEqualTo(timestamp);
+    assertThat(resolve(TIMESTAMP)).isEqualTo(event.getTimestamp());
   }
 
   @Test

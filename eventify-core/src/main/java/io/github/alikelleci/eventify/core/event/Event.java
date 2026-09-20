@@ -11,7 +11,6 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -36,8 +35,9 @@ public class Event implements Message {
   long sequence;
 
   @Builder
-  private Event(Instant timestamp, Object payload, Metadata metadata, long sequence) {
-    this.timestamp = Optional.ofNullable(timestamp).orElse(Instant.now());
+  private Event(Object payload, Metadata metadata, long sequence) {
+    // The moment Eventify records it: an event is made where it is recorded, by the repository.
+    this.timestamp = Instant.now();
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
     // A copy with the flow this event belongs to: the metadata that was given stays as it is.
     this.metadata = Optional.ofNullable(metadata).orElse(Metadata.EMPTY)
@@ -54,21 +54,4 @@ public class Event implements Message {
     this.sequence = sequence;
   }
 
-  public static class EventBuilder {
-    Metadata metadata = Metadata.EMPTY;
-
-    public EventBuilder metadata(String key, String value) {
-      metadata = metadata.with(key, value);
-      return this;
-    }
-
-    public EventBuilder metadata(Map<String, String> metadata) {
-      this.metadata = this.metadata.with(metadata);
-      return this;
-    }
-
-    public Event build() {
-      return new Event(timestamp, payload, metadata, sequence);
-    }
-  }
 }

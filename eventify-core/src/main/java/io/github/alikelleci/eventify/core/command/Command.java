@@ -10,7 +10,6 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,22 +39,5 @@ public class Command implements Message {
     this.id = UUID.randomUUID().toString();
   }
 
-  public static class CommandBuilder {
-    Metadata metadata = Metadata.EMPTY;
-
-    public CommandBuilder metadata(String key, String value) {
-      metadata = metadata.with(key, value);
-      return this;
-    }
-
-    public CommandBuilder metadata(Map<String, String> metadata) {
-      this.metadata = this.metadata.with(metadata);
-      return this;
-    }
-
-    public Command build() {
-      return new Command(payload, metadata);
-    }
-  }
 
 }

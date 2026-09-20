@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -33,6 +34,21 @@ class MetadataTest {
     assertThat(metadata).containsOnlyKeys("tenant").containsEntry("tenant", "acme");
   }
 
+  /** The map an application gives stays its own: it may go on changing it, and the metadata must not change along. */
+  @Test
+  @DisplayName("Should not change with the map it was made from")
+  void theMapItWasMadeFromIsCopied() {
+    Map<String, String> changing = new HashMap<>(Map.of("tenant", "acme"));
+
+    Metadata made = Metadata.of(changing);
+    Metadata added = Metadata.of("user", "ada").with(changing);
+    changing.put("tenant", "other");
+    changing.put("source", "api");
+
+    assertThat(made).containsOnlyKeys("tenant").containsEntry("tenant", "acme");
+    assertThat(added).containsOnlyKeys("user", "tenant").containsEntry("tenant", "acme");
+  }
+
   @Test
   @DisplayName("Should refuse to be changed")
   void mapMethodsThatWouldChangeItThrow() {
@@ -58,7 +74,7 @@ class MetadataTest {
   @Test
   @DisplayName("Should keep the correlation id the application gave")
   void aGivenCorrelationIdIsKept() {
-    Command command = Command.builder().payload(new DoThing("a")).metadata(MetadataKeys.CORRELATION_ID, "saga").build();
+    Command command = Command.builder().payload(new DoThing("a")).metadata(Metadata.of(MetadataKeys.CORRELATION_ID, "saga")).build();
 
     assertThat(command.getMetadata().getCorrelationId()).isEqualTo("saga");
   }

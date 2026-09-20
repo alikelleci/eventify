@@ -13,7 +13,6 @@ import lombok.Builder;
 import lombok.Value;
 
 import java.time.Instant;
-import java.util.Map;
 import java.util.Optional;
 
 @Value
@@ -47,23 +46,6 @@ public class AggregateState {
     this.revision = Revisions.of(getPayload().getClass());
   }
 
-  public static class AggregateStateBuilder {
-    Metadata metadata = Metadata.EMPTY;
-
-    public AggregateStateBuilder metadata(String key, String value) {
-      metadata = metadata.with(key, value);
-      return this;
-    }
-
-    public AggregateStateBuilder metadata(Map<String, String> metadata) {
-      this.metadata = this.metadata.with(metadata);
-      return this;
-    }
-
-    public AggregateState build() {
-      return new AggregateState(timestamp, payload, metadata, version);
-    }
-  }
 
 
   /**
