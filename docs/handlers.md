@@ -72,7 +72,7 @@ public OrderEvent handle(PlaceOrder command,
 | Parameter | What is injected |
 |---|---|
 | Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. |
-| `Metadata` | The complete metadata map for the command. |
+| `Metadata` | All metadata of the command. It never changes: `with(...)` gives you a new one. |
 | `@Timestamp Instant` | The command timestamp. |
 | `@MessageId String` | The unique ID of the command message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |
@@ -117,7 +117,7 @@ public class OrderEventSourcingHandler {
 | Parameter | What is injected |
 |---|---|
 | Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. |
-| `Metadata` | The complete metadata map for the event. |
+| `Metadata` | All metadata of the event. It never changes: `with(...)` gives you a new one. |
 | `@Timestamp Instant` | The event timestamp. |
 | `@MessageId String` | The unique ID of the event message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |
@@ -162,7 +162,7 @@ public void on(OrderPlaced event) {
 
 | Parameter | What is injected |
 |---|---|
-| `Metadata` | The complete metadata map for the event. |
+| `Metadata` | All metadata of the event. It never changes: `with(...)` gives you a new one. |
 | `@Timestamp Instant` | The event timestamp. |
 | `@MessageId String` | The unique ID of the event message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |
@@ -250,7 +250,7 @@ The payload comes first, as with `@HandleEvent`. Then any of:
 | Parameter | What is injected |
 |---|---|
 | `Event` | The whole event: payload, id, timestamp, metadata, aggregate id. |
-| `Metadata` | The complete metadata map for the event. |
+| `Metadata` | All metadata of the event. It never changes: `with(...)` gives you a new one. |
 | `@Timestamp Instant` | The event timestamp. |
 | `@MessageId String` | The unique ID of the event message. |
 | `@MetadataValue("key") String` | A specific value from the metadata map. |

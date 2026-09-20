@@ -41,6 +41,21 @@ CommandResult.Success result = gateway.sendAndWait(
     30, TimeUnit.SECONDS);
 ```
 
+### Metadata
+
+To send something along with a command, such as the tenant or the user it is for, build the command yourself:
+
+```java
+gateway.send(Command.builder()
+    .payload(PlaceOrder.builder().id("order-1").customer("John Doe").build())
+    .metadata(Metadata.of("tenant", "acme").with("user", "ada"))
+    .build());
+```
+
+The events the command produces carry this metadata too. Eventify adds `$correlationId` and `$causationId` itself; pass a `$correlationId` of your own to make this command part of a flow you already started.
+
+A `Metadata` never changes: `with(...)` gives you a new one, so the same metadata can be used for more than one command.
+
 A result holds the command and the events it produced, as they were stored and sent: `result.command()` and `result.events()`. A command accepted without events has an empty list.
 
 The result is sent as one Kafka message, with all its events. A command that produces very many events can make it larger than Kafka's maximum message size (`max.request.size`, 1 MB by default): keep commands to one decision each, or raise the limit.

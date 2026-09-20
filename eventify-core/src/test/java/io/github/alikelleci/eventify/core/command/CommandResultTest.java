@@ -51,6 +51,9 @@ class CommandResultTest {
   public record Touch(@AggregateId String id) implements CartCommand {
   }
 
+  public record AddItemForUser(@AggregateId String id, String item, String user) implements CartCommand {
+  }
+
   @Topic("events.cart")
   public record ItemAdded(@AggregateId String id, String item) {
   }
@@ -68,6 +71,13 @@ class CommandResultTest {
     @HandleCommand
     public Object handle(Touch command, Cart state) {
       return null;
+    }
+
+    /** Works out metadata of its own; what it makes is its own copy, and the command keeps the metadata it came with. */
+    @HandleCommand
+    public ItemAdded handle(AddItemForUser command, Metadata metadata) {
+      Metadata mine = metadata.with("user", command.user());
+      return new ItemAdded(command.id(), command.item() + " for " + mine.get("user"));
     }
 
     @ApplyEvent
@@ -184,6 +194,20 @@ class CommandResultTest {
     Event event = events.readValue();
     assertThat(event.getMetadata().getCausationId()).isEqualTo(command.getId());
     assertThat(event.getMetadata().getCorrelationId()).isEqualTo("saga");
+  }
+
+  /** What a handler adds is for the handler: the events carry the metadata of the command, and nothing else. */
+  @Test
+  @DisplayName("Should not carry metadata a handler made for itself into the events")
+  void metadataAHandlerMakesStaysWithTheHandler() {
+    Command command = Command.builder().payload(new AddItemForUser("cart-1", "apple", "ada")).build();
+
+    send(command);
+
+    Event event = events.readValue();
+    assertThat(event.getPayload()).isEqualTo(new ItemAdded("cart-1", "apple for ada")); // the handler did use it
+    assertThat(event.getMetadata()).containsOnlyKeys(MetadataKeys.CORRELATION_ID, MetadataKeys.CAUSATION_ID);
+    assertThat(command.getMetadata()).containsOnlyKeys(MetadataKeys.CORRELATION_ID);
   }
 
   private void send(Command command) {
