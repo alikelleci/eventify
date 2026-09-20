@@ -147,8 +147,8 @@ public final class EventifyTopology {
       Class<?> previous = byType.put(type, aggregate);
       if (previous != null) {
         throw new HandlerRegistrationException(previous.getName() + " and " + aggregate.getName() + " are both called '"
-            + type + "'. Two aggregates of one Eventify instance cannot share a name: their events and snapshots would"
-            + " share a key, and two of them with the same identifier would share one history.");
+            + type + "'. Two aggregates of one Eventify instance cannot share a name: two of them with the same"
+            + " identifier would then be one aggregate, with one history.");
       }
     }
   }

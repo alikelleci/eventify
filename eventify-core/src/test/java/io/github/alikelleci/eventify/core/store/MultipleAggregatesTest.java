@@ -11,6 +11,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;

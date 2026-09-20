@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.core.store.internal;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.message.internal.Revisions;
 import io.github.alikelleci.eventify.core.store.SnapshotStore;
-import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
 /**

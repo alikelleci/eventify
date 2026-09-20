@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;

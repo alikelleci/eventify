@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;

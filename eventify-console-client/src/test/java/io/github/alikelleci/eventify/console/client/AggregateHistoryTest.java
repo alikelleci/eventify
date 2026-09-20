@@ -17,7 +17,7 @@ import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.store.EventStore;
 import io.github.alikelleci.eventify.core.store.SnapshotStore;
-import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;

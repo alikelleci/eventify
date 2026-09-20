@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.core.aggregate.internal;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.internal.reflection.PerClass;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
-import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 
 import java.util.function.Function;
 
@@ -34,7 +34,7 @@ public final class AggregateTypes {
       throw new HandlerRegistrationException(aggregateType.getName() + " has no name: @AggregateRoot needs a name of your own choosing, e.g. \"order\", that stays the same when the class is renamed.");
     }
     if (name.indexOf(StoreKeys.SEPARATOR) >= 0) {
-      throw new HandlerRegistrationException("The name of " + aggregateType.getName() + " cannot be used: it contains the character that separates the parts of a store key (NUL).");
+      throw new HandlerRegistrationException("The name of " + aggregateType.getName() + " cannot contain a NUL character.");
     }
     return name;
   }

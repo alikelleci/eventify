@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.store.EventStore;
-import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.support.InMemoryStore;
 import io.github.alikelleci.eventify.core.testdomain.order.Order;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderCancelled;

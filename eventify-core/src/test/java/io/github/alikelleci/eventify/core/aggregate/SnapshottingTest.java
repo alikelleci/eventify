@@ -4,7 +4,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
-import io.github.alikelleci.eventify.core.store.StoreKeys;
+import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.testdomain.account.Account;
 import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.AccountHandler;
 import io.github.alikelleci.eventify.core.testdomain.account.AccountMessages.Deposit;

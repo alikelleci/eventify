@@ -110,7 +110,7 @@ public class OrderEventSourcingHandler {
 - Always return a **new** state object—never mutate the existing one.
 - Return `null` to indicate that the aggregate has been deleted. Subsequent commands will receive `null` as the aggregate state.
 - An event without an `@ApplyEvent` method leaves the state as it was, the same as a method that returns `state`. It still counts for the aggregate's version, e.g. a failure event that only a saga reacts to.
-- Keep these methods **deterministic and free of side effects**. They run again every time the aggregate is loaded, and whenever the Eventify Console shows its history, so the same events must always give the same state. Use only the event, the state and the injected parameters: no `Instant.now()`, random values, database lookups or calls to other services.
+- Keep these methods **deterministic and free of side effects**. They run again every time the aggregate is loaded, and whenever its history is read back, so the same events must always give the same state. Use only the event, the state and the injected parameters: no `Instant.now()`, random values, database lookups or calls to other services.
 
 ### Injectable parameters
 
@@ -299,4 +299,4 @@ Commands can't be handled with `@KafkaListener`. Handling a command needs Eventi
 
 ## Thread safety
 
-One handler object is used by all stream threads (`num.stream.threads`) and by the Eventify Console at the same time. Keep handlers stateless: only `final` dependencies such as repositories or clients, and no fields that change.
+One handler object is used by all stream threads (`num.stream.threads`), and by more than one thread at the same time. Keep handlers stateless: only `final` dependencies such as repositories or clients, and no fields that change.

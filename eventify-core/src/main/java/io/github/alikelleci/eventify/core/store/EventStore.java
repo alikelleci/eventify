@@ -7,9 +7,9 @@ import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import java.util.Iterator;
 
 /**
- * The stored events of ONE aggregate type, read per aggregate. An aggregate's events are kept by their sequence
- * ({@link StoreKeys}): 1 for its first event, then one more for each next one. That is the order they were handled
- * in, and the order they are read in.
+ * The stored events of ONE aggregate type, read per aggregate. An aggregate's events are kept by their sequence: 1
+ * for its first event, then one more for each next one. That is the order they were handled in, and the order they
+ * are read in.
  *
  * <p>The aggregate's name belongs to the store, not to its methods: one store reads the orders, another the
  * customers, and no call can mix up which is which.
@@ -17,8 +17,8 @@ import java.util.Iterator;
 public interface EventStore {
 
   /**
-   * Reads the events of one aggregate type in a key-value store that holds them by {@link StoreKeys}, e.g. a state
-   * store of Kafka Streams.
+   * Reads the events of one aggregate type, as Eventify stores them in a key-value store, e.g. a state store of
+   * Kafka Streams.
    *
    * @param aggregateType the name of the aggregate whose events are read, as its {@code @AggregateRoot} gives it
    */
@@ -62,7 +62,7 @@ public interface EventStore {
    */
   Events eventsNewestFirst(String aggregateId, long from, long to);
 
-  /** Events read from the store. Close it once read, to release the store's iterator. */
+  /** Events read from the store. Close it once read, to release what it holds. */
   interface Events extends Iterator<Event>, AutoCloseable {
     @Override
     void close();

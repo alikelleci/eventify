@@ -11,8 +11,8 @@ import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 public interface SnapshotStore {
 
   /**
-   * Reads the snapshots of one aggregate type in a key-value store that holds them by {@link StoreKeys}, e.g. a state
-   * store of Kafka Streams.
+   * Reads the snapshots of one aggregate type, as Eventify stores them in a key-value store, e.g. a state store of
+   * Kafka Streams.
    *
    * @param aggregateType the name of the aggregate whose snapshots are read, as its {@code @AggregateRoot} gives it
    */
