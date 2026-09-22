@@ -27,6 +27,9 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
 
 @Slf4j
@@ -44,6 +47,17 @@ public class DefaultCommandGateway implements CommandGateway {
 
   private final ReplyConsumer replies;
 
+  /**
+   * Completes the futures, so what the caller chains to one runs here: not on the reply thread, which a callback that
+   * waits for the reply of another command would block, nor on the producer's or the cache's threads. Unbounded: a
+   * callback that waits holds its thread, and a bounded pool full of them would block again.
+   */
+  private final ExecutorService completions = Executors.newCachedThreadPool(runnable -> {
+    Thread thread = new Thread(runnable, "eventify-command-gateway-completion");
+    thread.setDaemon(true);
+    return thread;
+  });
+
   public DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic, ObjectMapper objectMapper) {
     this(producerConfig, consumerConfig, replyTopic, objectMapper, TIMEOUT);
   }
@@ -55,7 +69,7 @@ public class DefaultCommandGateway implements CommandGateway {
         .scheduler(Scheduler.systemScheduler())
         .removalListener((String key, CompletableFuture<CommandResult.Success> future, RemovalCause cause) -> {
           if (cause.wasEvicted()) {
-            future.completeExceptionally(new TimeoutException("Command timed out: no reply received within the allowed time."));
+            completeExceptionally(future, new TimeoutException("Command timed out: no reply received within the allowed time."));
           }
         })
         .build();
@@ -112,7 +126,19 @@ public class DefaultCommandGateway implements CommandGateway {
   private void failSend(Command command, CompletableFuture<CommandResult.Success> future, Exception exception) {
     log.warn("Failed to send command: {} ({})", command.getType(), command.getAggregateId(), exception);
     cache.asMap().remove(command.getId(), future);
-    future.completeExceptionally(exception);
+    completeExceptionally(future, exception);
+  }
+
+  private void completeExceptionally(CompletableFuture<CommandResult.Success> future, Throwable exception) {
+    complete(() -> future.completeExceptionally(exception));
+  }
+
+  private void complete(Runnable completion) {
+    try {
+      completions.execute(completion);
+    } catch (RejectedExecutionException e) {
+      completion.run(); // closed meanwhile: its future must still complete
+    }
   }
 
   /**
@@ -127,9 +153,12 @@ public class DefaultCommandGateway implements CommandGateway {
     }
     replies.stopListening();
     producer.close(CLOSE_TIMEOUT);
+    // On this thread: when close() returns, every waiting command has failed. Their callbacks run here too, like
+    // callbacks chained after that.
     cache.asMap().forEach((id, future) ->
         future.completeExceptionally(new CancellationException("The command gateway was closed before command " + id + " got its result.")));
     cache.invalidateAll();
+    completions.shutdown(); // still completes the replies and timeouts handed to it before
   }
 
   /** Completes the futures of the commands the replies are for. Doesn't throw: a reply it can't handle is skipped. */
@@ -148,15 +177,15 @@ public class DefaultCommandGateway implements CommandGateway {
     if (result == null || result.command() == null || StringUtils.isBlank(result.command().getId())) {
       return;
     }
-    String commandId = result.command().getId();
-    CompletableFuture<CommandResult.Success> future = cache.getIfPresent(commandId);
-    if (future != null) {
-      if (result instanceof CommandResult.Failure failure) {
-        future.completeExceptionally(new CommandExecutionException(failure.cause()));
-      } else {
-        future.complete((CommandResult.Success) result);
-      }
-      cache.invalidate(commandId);
+    // Removed before it completes: its callbacks may send the same command again.
+    CompletableFuture<CommandResult.Success> future = cache.asMap().remove(result.command().getId());
+    if (future == null) {
+      return;
+    }
+    if (result instanceof CommandResult.Failure failure) {
+      completeExceptionally(future, new CommandExecutionException(failure.cause()));
+    } else {
+      complete(() -> future.complete((CommandResult.Success) result));
     }
   }
 

@@ -30,6 +30,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -99,6 +100,25 @@ class SnapshotRevisionTest {
 
     AggregateState snapshot = snapshots.get(StoreKeys.snapshot("counter", "c-1"));
     assertThat(((Counter) snapshot.getPayload()).count()).isEqualTo(4); // from the events, not 999
+    assertThat(snapshot.getRevision()).isEqualTo(2);
+  }
+
+  @Test
+  @DisplayName("Should not use a snapshot of a removed aggregate made with another revision")
+  void anOutdatedSnapshotOfARemovedAggregateIsNotUsed() {
+    TestInputTopic<String, Command> commands = counters();
+    KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
+    increment(commands, 3);
+    // As an older revision stored a removal: no payload, no type, and before this fix no revision either.
+    ObjectNode removed = objectMapper.valueToTree(snapshots.get(StoreKeys.snapshot("counter", "c-1")));
+    removed.remove(List.of("payload", "type"));
+    removed.put("revision", 0);
+    snapshots.put(StoreKeys.snapshot("counter", "c-1"), objectMapper.convertValue(removed, AggregateState.class));
+
+    increment(commands, 1); // rebuilds version 3 and snapshots the successful version 4
+
+    AggregateState snapshot = snapshots.get(StoreKeys.snapshot("counter", "c-1"));
+    assertThat(((Counter) snapshot.getPayload()).count()).isEqualTo(4); // from the events, not a new counter at 1
     assertThat(snapshot.getRevision()).isEqualTo(2);
   }
 

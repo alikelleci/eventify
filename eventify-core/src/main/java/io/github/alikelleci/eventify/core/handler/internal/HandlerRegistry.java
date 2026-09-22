@@ -176,6 +176,7 @@ public class HandlerRegistry {
 
   private void addEventSourcingHandler(Object handler, Method method) {
     requireMessageParameter("@ApplyEvent", method);
+    requireMatchingAggregateReturnType(method);
     Class<?> type = method.getParameters()[0].getType();
     ApplyEventMethod previous = eventSourcingHandlers.put(type, new ApplyEventMethod(handler, method));
     if (previous != null) {
@@ -200,12 +201,37 @@ public class HandlerRegistry {
     requireMessageParameter("@HandleEvent", method);
     Class<?> type = method.getParameters()[0].getType();
     requireTopic("@HandleEvent", type, method);
-    eventHandlers.put(type, new EventHandlerMethod(handler, method));
+    // The same handler object registered again is still one handler: it must not handle each event twice. Other
+    // handlers of the same event are all called.
+    boolean registered = eventHandlers.get(type).stream()
+        .anyMatch(previous -> previous.getHandler() == handler && previous.getMethod().equals(method));
+    if (!registered) {
+      eventHandlers.put(type, new EventHandlerMethod(handler, method));
+    }
   }
 
   private static void requireMessageParameter(String annotation, Method method) {
     if (method.getParameterCount() == 0) {
       throw new HandlerRegistrationException(annotation + " method must take its message as its first parameter: " + method);
+    }
+  }
+
+  /**
+   * An apply method that receives an aggregate state must return that same aggregate type (or {@code null}).
+   * Rejecting a different declared type here gives a configuration error instead of discovering it while replaying.
+   */
+  private static void requireMatchingAggregateReturnType(Method method) {
+    List<Class<?>> aggregateParameters = Arrays.stream(method.getParameterTypes())
+        .filter(type -> type.isAnnotationPresent(AggregateRoot.class))
+        .distinct()
+        .toList();
+    Class<?> mismatchingAggregate = aggregateParameters.stream()
+        .filter(aggregate -> method.getReturnType() != aggregate)
+        .findFirst()
+        .orElse(null);
+    if (mismatchingAggregate != null) {
+      throw new HandlerRegistrationException("An @ApplyEvent method must return the same aggregate type as its @AggregateRoot parameter: "
+          + method + " returns " + method.getReturnType().getName() + ", but its aggregate parameter is " + mismatchingAggregate.getName() + ".");
     }
   }
 

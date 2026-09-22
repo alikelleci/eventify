@@ -40,15 +40,16 @@ public final class AggregateDefinitions {
 
   /** Why this snapshot cannot rebuild this aggregate type, or {@code null} when it can. */
   public String whySnapshotIsOutdated(String aggregateType, AggregateState snapshot) {
-    if (snapshot.getPayload() == null) {
-      // A removed state deliberately has no payload type. A type without a payload instead came from a snapshot whose
-      // aggregate could not be deserialized and must not silently become a deletion.
-      return snapshot.getType() == null ? null : "its aggregate can't be read, e.g. its class was moved or a field no longer fits";
+    // A removed state deliberately has no payload type. A type without a payload instead came from a snapshot whose
+    // aggregate could not be deserialized and must not silently become a deletion.
+    if (snapshot.getPayload() == null && snapshot.getType() != null) {
+      return "its aggregate can't be read, e.g. its class was moved or a field no longer fits";
     }
     String wrongPayload = whyPayloadDoesNotMatch(aggregateType, snapshot.getPayload());
     if (wrongPayload != null) {
       return wrongPayload;
     }
+    // Checked for a removed state too: a later revision of the event sourcing handlers may not remove it.
     int stored = snapshot.getRevision() == 0 ? 1 : snapshot.getRevision();
     Class<?> aggregateClass = aggregateClassOf(aggregateType);
     int current = Revisions.of(aggregateClass);
@@ -56,6 +57,11 @@ public final class AggregateDefinitions {
       return "it was made with revision " + stored + " of " + aggregateClass.getSimpleName() + ", the code is revision " + current;
     }
     return null;
+  }
+
+  /** The {@link io.github.alikelleci.eventify.core.message.annotation.Revision} of this aggregate type's class. */
+  public int revisionOf(String aggregateType) {
+    return Revisions.of(aggregateClassOf(aggregateType));
   }
 
   /** Why a payload cannot be the state of this aggregate type, or {@code null} when it can. */

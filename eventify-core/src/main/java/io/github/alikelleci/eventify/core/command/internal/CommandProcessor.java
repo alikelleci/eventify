@@ -10,6 +10,7 @@ import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
+import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.store.exception.EventStoreException;
 import io.github.alikelleci.eventify.core.store.EventStore;
@@ -24,7 +25,10 @@ import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.KeyValueStore;
 
+import java.util.ArrayList;
 import java.util.List;
+
+import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
 
 @Slf4j
 public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
@@ -104,8 +108,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AggregateState state = repository.replay(aggregateType, aggregateId);
     AggregateState checkpoint = checkpointBeforeCommand(aggregateType, state);
     try {
-      List<Event> events = copyEvents(commandHandler.handle(command, state));
-      AggregateState newState = repository.applyEvents(aggregateType, state, events);
+      List<Event> events = copyEvents(events(aggregateType, command, state, commandHandler.handle(command, state)));
+      // Applied to copies of their own: an apply method that changes its event must not change the one that is stored.
+      AggregateState newState = repository.applyEvents(aggregateType, state, copyEvents(events));
       save(events, aggregateType, newState);
       return events;
     } catch (EventStoreException e) {
@@ -136,8 +141,29 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   /**
-   * Copy before applying events: their payloads may share mutable objects with the aggregate. These copies are stored
-   * and sent. The JSON round trip also rejects an event that cannot be persisted and replayed before any writes.
+   * The command's events: they follow the history the command was handled on, so the first gets the sequence after the
+   * version of that state. The state is immutable, so its version is still the one the handler was given.
+   */
+  private List<Event> events(String aggregateType, Command command, AggregateState state, List<Object> payloads) {
+    long sequence = state.getVersion();
+    Metadata metadata = command.getMetadata().with(CAUSATION_ID, command.getId());
+    List<Event> events = new ArrayList<>(payloads.size());
+    for (Object payload : payloads) {
+      Event event = Event.builder()
+          .aggregateType(aggregateType)
+          .payload(payload)
+          .metadata(metadata)
+          .sequence(++sequence)
+          .build();
+      events.add(event);
+    }
+    return events;
+  }
+
+  /**
+   * Copies the events, with no object shared with the ones copied: their payloads may share mutable objects with the
+   * aggregate, or be changed by an apply method. The JSON round trip also rejects an event that cannot be persisted and
+   * replayed before any writes.
    */
   private List<Event> copyEvents(List<Event> events) {
     return events.stream()

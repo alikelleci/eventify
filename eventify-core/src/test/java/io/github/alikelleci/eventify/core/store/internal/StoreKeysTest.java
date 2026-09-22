@@ -4,6 +4,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -23,6 +24,18 @@ class StoreKeysTest {
     assertThat(StoreKeys.first("order", "order-1")).isEqualTo(StoreKeys.of("order", "order-1", 1));
     assertThat(StoreKeys.last("order", "order-1")).isEqualTo("order" + NUL + "order-1" + NUL + Long.MAX_VALUE);
     assertThat(StoreKeys.sequenceOf("order", "order-1", StoreKeys.of("order", "order-1", 42))).isEqualTo(42);
+  }
+
+  @Test
+  @DisplayName("Should write ASCII digits whatever the JVM's locale")
+  void keysDoNotDependOnTheLocale() {
+    Locale previous = Locale.getDefault();
+    try {
+      Locale.setDefault(Locale.forLanguageTag("ar-EG"));
+      assertThat(StoreKeys.of("order", "order-1", 42)).isEqualTo("order" + NUL + "order-1" + NUL + "0000000000000000042");
+    } finally {
+      Locale.setDefault(previous);
+    }
   }
 
   /** The keys of an aggregate start with the key of its snapshot, so both are found by the same two parts. */

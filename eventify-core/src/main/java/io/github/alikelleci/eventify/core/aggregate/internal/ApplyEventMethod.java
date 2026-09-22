@@ -29,10 +29,15 @@ public class ApplyEventMethod {
     this.method = method;
   }
 
-  public AggregateState handle(Event event, AggregateState state) {
+  /**
+   * Applies the event: the aggregate after it, {@code null} when the event removes it. The aggregate repository makes
+   * it a state: it knows which aggregate is rebuilt, and the revision of its class.
+   */
+  public Object apply(Event event, AggregateState state) {
     try {
       Object result = invokeHandler(event, state);
-      return createState(event, result);
+      requireSameAggregateId(event, result);
+      return result;
     } catch (Exception e) {
       throw new EventSourcingException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
     }
@@ -57,7 +62,7 @@ public class ApplyEventMethod {
     return method.invoke(handler, args);
   }
 
-  private AggregateState createState(Event event, Object result) {
+  private void requireSameAggregateId(Event event, Object result) {
     if (result != null) {
       String stateAggregateId = AggregateIdResolver.getAggregateId(result);
       // A state with another id would otherwise be stored under this event's aggregate id as a snapshot.
@@ -65,7 +70,6 @@ public class ApplyEventMethod {
         throw new AggregateIdMismatchException("Aggregate identifier does not match for state " + result.getClass().getSimpleName() + " after event " + event.getType() + ". Expected " + event.getAggregateId() + ", but was " + stateAggregateId);
       }
     }
-    return AggregateState.after(event, result);
   }
 
 }

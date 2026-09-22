@@ -4,7 +4,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.Revision;
-import io.github.alikelleci.eventify.core.message.internal.Revisions;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Value;
@@ -37,13 +36,14 @@ public class AggregateState {
 
   /**
    * The state after an event. Its envelope always comes from that event. A null payload represents a removed
-   * aggregate; otherwise type and revision describe the resulting aggregate payload.
+   * aggregate. The revision is the aggregate class's, also for a removed aggregate: the event sourcing handlers that
+   * removed it belong to that revision, so a later revision must rebuild it as well.
+   *
+   * <p>Package-private: only the aggregate repository makes states after an event, with the revision of the aggregate
+   * it rebuilds.
    */
-  public static AggregateState after(Event event, Object payload) {
-    if (payload == null) {
-      return new AggregateState(event.getTimestamp(), null, null, event.getMetadata(), event.getAggregateId(), event.getSequence(), 0);
-    }
-    return new AggregateState(event.getTimestamp(), payload.getClass().getSimpleName(), payload, event.getMetadata(),
-        event.getAggregateId(), event.getSequence(), Revisions.of(payload.getClass()));
+  static AggregateState after(Event event, Object payload, int revision) {
+    String type = payload != null ? payload.getClass().getSimpleName() : null;
+    return new AggregateState(event.getTimestamp(), type, payload, event.getMetadata(), event.getAggregateId(), event.getSequence(), revision);
   }
 }

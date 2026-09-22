@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.aggregate.AggregateDefinitions;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -27,17 +26,23 @@ class SnapshotSerdeTest {
   private final SnapshotSerde serde = new SnapshotSerde(objectMapper);
   private final AggregateDefinitions definitions = new AggregateDefinitions(List.of(Cart.class));
 
-  private final Cart cart = new Cart("cart-1", 3);
-  private final AggregateState snapshot = AggregateState.after(Event.builder()
-      .aggregateType("cart")
-      .payload(cart)
-      .sequence(40)
-      .build(), cart);
+  /** A snapshot as the snapshot store holds it: a cart of 3 items at version 40, made with revision 1. */
+  private ObjectNode snapshot() {
+    ObjectNode payload = objectMapper.valueToTree(new Cart("cart-1", 3));
+    payload.put("@class", Cart.class.getName());
+    ObjectNode json = objectMapper.createObjectNode();
+    json.put("type", "Cart");
+    json.set("payload", payload);
+    json.put("aggregateId", "cart-1");
+    json.put("version", 40);
+    json.put("revision", 1);
+    return json;
+  }
 
   @Test
   @DisplayName("Should read a snapshot whose aggregate class was moved, without its aggregate")
   void anAggregateClassThatWasMoved() throws Exception {
-    ObjectNode json = objectMapper.valueToTree(snapshot);
+    ObjectNode json = snapshot();
     ((ObjectNode) json.get("payload")).put("@class", "com.acme.old.Cart");
 
     AggregateState read = read(json);
@@ -50,7 +55,7 @@ class SnapshotSerdeTest {
   @Test
   @DisplayName("Should read a snapshot whose aggregate no longer fits its class, without its aggregate")
   void aFieldThatNoLongerFits() throws Exception {
-    ObjectNode json = objectMapper.valueToTree(snapshot);
+    ObjectNode json = snapshot();
     ((ObjectNode) json.get("payload")).put("items", "three");
 
     AggregateState read = read(json);
@@ -62,7 +67,7 @@ class SnapshotSerdeTest {
   @Test
   @DisplayName("Should use a snapshot stored before revisions were: it counts as revision 1")
   void aSnapshotWithoutARevisionCountsAsRevision1() throws Exception {
-    ObjectNode json = objectMapper.valueToTree(snapshot);
+    ObjectNode json = snapshot();
     json.remove("revision");
 
     AggregateState read = read(json);

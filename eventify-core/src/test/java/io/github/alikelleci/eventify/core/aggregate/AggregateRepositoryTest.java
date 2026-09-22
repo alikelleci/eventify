@@ -91,8 +91,8 @@ class AggregateRepositoryTest {
   void rejectsAnApplyHandlerThatReturnsAnotherAggregateType() {
     ApplyEventMethod wrongHandler = new ApplyEventMethod(null, null) {
       @Override
-      public AggregateState handle(Event event, AggregateState state) {
-        return AggregateState.after(event, new OtherAggregate(event.getAggregateId()));
+      public Object apply(Event event, AggregateState state) {
+        return new OtherAggregate(event.getAggregateId());
       }
     };
     AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents), new SnapshotStore(storedSnapshots),
@@ -118,7 +118,7 @@ class AggregateRepositoryTest {
   @Test
   @DisplayName("Should use a null-payload snapshot of a removed aggregate as the next replay start")
   void usesDeletedSnapshot() {
-    AggregateState removed = AggregateState.after(event(OrderCancelled.builder().id("order-1").build(), 2), null);
+    AggregateState removed = AggregateState.after(event(OrderCancelled.builder().id("order-1").build(), 2), null, 1);
     storedSnapshots.put(StoreKeys.snapshot("order", "order-1"), removed);
     store(placed("order-1"), 3);
 
@@ -134,7 +134,7 @@ class AggregateRepositoryTest {
     AggregateState before = AggregateState.empty("order-1");
     Event placed = event(placed("order-1"), 1);
 
-    AggregateState after = repository.applyEvents(before, List.of(placed));
+    AggregateState after = repository.applyEvents("order", before, List.of(placed));
 
     assertThat(((Order) after.getPayload()).getStatus()).isEqualTo("PLACED");
     assertThat(after.getVersion()).isOne();

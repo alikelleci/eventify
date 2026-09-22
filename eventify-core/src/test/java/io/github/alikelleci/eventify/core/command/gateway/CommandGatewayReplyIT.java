@@ -109,10 +109,9 @@ class CommandGatewayReplyIT {
 
     gateway.close();
 
-    assertThat(waiting)
-        .failsWithin(Duration.ofSeconds(1))
-        .withThrowableThat()
-        .isInstanceOf(CancellationException.class);
+    // Failed when close() returns, not some time after.
+    assertThat(waiting).isCompletedExceptionally();
+    assertThatThrownBy(waiting::join).isInstanceOf(CancellationException.class);
     assertThatThrownBy(() -> gateway.send(Command.builder().payload(Ping.builder().id("ping-after-close").build()).build()))
         .isInstanceOf(IllegalStateException.class);
   }
@@ -145,5 +144,35 @@ class CommandGatewayReplyIT {
 
     assertThat(future).isCompleted();
     assertThat(future.get().command().getPayload()).isEqualTo(command.getPayload());
+  }
+
+  @Test
+  @DisplayName("Should keep receiving replies while a callback of one command waits for another")
+  void aCallbackThatWaitsForAnotherCommandDoesNotBlockReplies() throws Exception {
+    Properties producerConfig = new Properties();
+    producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    CommandGateway gateway = CommandGateway.builder().producerConfig(producerConfig).replyTopic(REPLY_TOPIC).build();
+
+    Command first = Command.builder().payload(Ping.builder().id("ping-first").build()).build();
+    Command second = Command.builder().payload(Ping.builder().id("ping-second").build()).build();
+    // Chained without async: it runs on the thread that completes the first future, and waits for the second reply.
+    CompletableFuture<CommandResult.Success> chained = gateway.send(first).thenApply(result -> gateway.send(second).join());
+
+    Properties rawConfig = new Properties();
+    rawConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    try (KafkaProducer<String, byte[]> raw = new KafkaProducer<>(rawConfig, new StringSerializer(), new ByteArraySerializer())) {
+      Instant deadline = Instant.now().plusSeconds(30);
+      while (!chained.isDone() && Instant.now().isBefore(deadline)) {
+        for (Command command : List.of(first, second)) {
+          byte[] reply = new JsonSerializer<CommandResult>().serialize(REPLY_TOPIC, new CommandResult.Success(command, List.of()));
+          raw.send(new ProducerRecord<>(REPLY_TOPIC, 0, command.getAggregateId(), reply)).get();
+        }
+        Thread.sleep(Duration.ofSeconds(1).toMillis());
+      }
+    }
+
+    assertThat(chained).isCompleted();
+    assertThat(chained.get().command().getId()).isEqualTo(second.getId());
+    gateway.close();
   }
 }

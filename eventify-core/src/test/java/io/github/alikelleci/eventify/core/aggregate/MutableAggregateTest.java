@@ -92,6 +92,24 @@ class MutableAggregateTest {
     List<String> items;
   }
 
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class RemoveItems implements CartCommand {
+    @AggregateId
+    String id;
+    List<String> items;
+  }
+
+  @Data
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class ItemsRemoved implements CartEvent {
+    @AggregateId
+    String id;
+    List<String> items;
+  }
+
   public static class CartHandler {
     @HandleCommand
     public Object handle(AddItem command, Cart state) {
@@ -109,6 +127,19 @@ class MutableAggregateTest {
       Cart cart = state != null ? state : new Cart(event.getId(), new ArrayList<>());
       cart.getItems().add(event.getItem());
       return cart;
+    }
+
+    @HandleCommand
+    public Object handle(RemoveItems command, Cart state) {
+      return new ItemsRemoved(command.getId(), command.getItems());
+    }
+
+    /** Changes its own event: what it removed is taken out of the event's list too. */
+    @ApplyEvent
+    public Cart apply(ItemsRemoved event, Cart state) {
+      state.getItems().removeAll(event.getItems());
+      event.getItems().clear();
+      return state;
     }
 
     /** Changes the aggregate in place: the list the event was given. */
@@ -152,6 +183,19 @@ class MutableAggregateTest {
 
     Event sent = events.readValuesToList().get(2);
     assertThat(((CheckedOut) sent.getPayload()).getItems()).containsExactly("apple", "pear");
+  }
+
+  @Test
+  @DisplayName("Should store and send the event as the handler returned it, when its apply method changes it")
+  void anApplyMethodDoesNotChangeTheStoredEvent() {
+    send(new AddItem("cart", "apple"));
+    send(new RemoveItems("cart", new ArrayList<>(List.of("apple"))));
+
+    Event stored = IteratorUtils.toList(driver.<String, Event>getKeyValueStore("event-store").all()).get(1).value;
+    assertThat(((ItemsRemoved) stored.getPayload()).getItems()).containsExactly("apple");
+
+    Event sent = events.readValuesToList().get(1);
+    assertThat(((ItemsRemoved) sent.getPayload()).getItems()).containsExactly("apple");
   }
 
   private void send(Object payload) {

@@ -1,5 +1,7 @@
 package io.github.alikelleci.eventify.core.store.internal;
 
+import java.util.Locale;
+
 /**
  * The keys of the stores: the aggregate's name, its identifier, and for an event its sequence zero-padded to 19
  * digits, so the events of an aggregate sort the way their sequences do.
@@ -18,7 +20,7 @@ public final class StoreKeys {
   /** Between the parts of a key: the one character a name and an identifier cannot contain. */
   public static final char SEPARATOR = '\u0000';
 
-  /** Every long fits in 19 digits. */
+  /** Every long fits in 19 digits. ASCII digits in every locale: another JVM locale must not give other keys. */
   private static final int SEQUENCE_LENGTH = 19;
 
   private StoreKeys() {
@@ -29,7 +31,7 @@ public final class StoreKeys {
     if (sequence < 1) {
       throw new IllegalArgumentException("A sequence starts at 1, not " + sequence + ".");
     }
-    return snapshot(aggregateType, aggregateId) + SEPARATOR + String.format("%0" + SEQUENCE_LENGTH + "d", sequence);
+    return snapshot(aggregateType, aggregateId) + SEPARATOR + String.format(Locale.ROOT, "%0" + SEQUENCE_LENGTH + "d", sequence);
   }
 
   /** The key of the aggregate's snapshot, which is also what the keys of its events start with. */

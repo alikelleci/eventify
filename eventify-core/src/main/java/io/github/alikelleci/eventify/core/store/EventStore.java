@@ -49,7 +49,7 @@ public final class EventStore {
    * @throws IllegalArgumentException when either sequence is below 1
    */
   public EventIterator eventsNewestFirst(String aggregateType, String aggregateId, long from, long to) {
-    requireSequences(aggregateType, aggregateId, to, from);
+    requireSequences(aggregateType, aggregateId, from, to);
     if (from < to) {
       return new EventIterator(null);
     }

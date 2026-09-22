@@ -23,6 +23,7 @@ import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
+import org.apache.kafka.streams.processor.internals.StreamThread;
 import org.apache.kafka.streams.state.QueryableStoreTypes;
 
 import java.time.Duration;
@@ -44,6 +45,9 @@ public class Eventify implements PluginContext {
   private KafkaStreams kafkaStreams;
   /** The plugins of this run, as registered when it started. */
   private PluginListeners pluginListeners;
+  /** How long {@link #stop()} waits for Kafka Streams to stop before it says so, and waits again. */
+  private static final Duration CLOSE_WAIT = Duration.ofSeconds(30);
+
   /** Whether this run is stopped already: {@link #stop()} is called by the application and by the shutdown hook. */
   private final AtomicBoolean stopped = new AtomicBoolean();
   /** Stops this run when the JVM exits without {@link #stop()}; one per run, removed again by {@link #stop()}. */
@@ -203,9 +207,29 @@ public class Eventify implements PluginContext {
     }
     removeShutdownHook();
     log.info("Eventify is shutting down...");
-    kafkaStreams.close(Duration.ofSeconds(30));
+    boolean closed = closeKafkaStreams();
     pluginListeners.notifyPlugins("onStop", plugin -> plugin.onStop(this));
-    log.info("Eventify shut down complete.");
+    if (closed) {
+      log.info("Eventify shut down complete.");
+    } else {
+      log.error("Eventify shut down incomplete: stopped from one of its own stream threads, which can't wait for itself.");
+    }
+  }
+
+  /**
+   * Waits until Kafka Streams has stopped: until then a handler can still run, and what it uses (e.g. the beans Spring
+   * closes after this) must stay open. A handler that never returns keeps the process up, and the platform that stops
+   * it (e.g. Kubernetes' grace period) ends it. Only a stream thread itself can't wait for all of them to stop: it is
+   * one of them.
+   */
+  private boolean closeKafkaStreams() {
+    if (Thread.currentThread() instanceof StreamThread) {
+      return kafkaStreams.close(CLOSE_WAIT);
+    }
+    while (!kafkaStreams.close(CLOSE_WAIT)) {
+      log.warn("Eventify is still shutting down: Kafka Streams did not stop yet, a handler is still running.");
+    }
+    return true;
   }
 
   private void removeShutdownHook() {

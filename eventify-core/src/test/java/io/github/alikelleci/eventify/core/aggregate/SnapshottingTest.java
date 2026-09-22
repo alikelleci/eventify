@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core.aggregate;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
@@ -17,6 +18,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.TestInputTopic;
+import org.apache.kafka.streams.TestOutputTopic;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.TopologyDescription;
 import org.apache.kafka.streams.TopologyTestDriver;
@@ -60,6 +62,38 @@ class SnapshottingTest {
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(13);
     assertThat(eventStore.get(StoreKeys.of("account", "ada", snapshot.getVersion()))).isNotNull();
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(1); // the snapshot's event
+  }
+
+  /**
+   * One history without gaps or repeats: a command with several events numbers them in a row, a rejected command
+   * takes no number, and a snapshot that deleted the events before it doesn't restart the count.
+   */
+  @Test
+  @DisplayName("Should number the events of an aggregate without gaps, across rejected commands and deleted events")
+  void sequencesContinueAcrossRejectionsAndDeletedEvents() {
+    driver = new TopologyTestDriver(accounts());
+    TestInputTopic<String, Command> commands = driver.createInputTopic("commands.account", new StringSerializer(), new JsonSerializer<>());
+    TestOutputTopic<String, Event> events = driver.createOutputTopic("events.account", new StringDeserializer(), new JsonDeserializer<>(Event.class));
+    KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
+
+    Command open = send(commands, OpenAccount.builder().id("ada").build());                     // 1
+    Command both = send(commands, DepositEach.builder().id("ada").amounts(List.of(5, 7)).build()); // 2, 3: snapshot, 1 and 2 deleted
+    send(commands, OpenAccount.builder().id("ada").build());                                      // rejected: no number
+    Command one = send(commands, Deposit.builder().id("ada").amount(1).build());                   // 4
+    Command more = send(commands, DepositEach.builder().id("ada").amounts(List.of(2, 3)).build()); // 5, 6
+
+    List<Event> sent = events.readValuesToList();
+    assertThat(sent)
+        .extracting(event -> event.getAggregateType() + " " + event.getSequence() + " " + event.getMetadata().get(MetadataKeys.CAUSATION_ID))
+        .containsExactly(
+            "account 1 " + open.getId(),
+            "account 2 " + both.getId(), "account 3 " + both.getId(),
+            "account 4 " + one.getId(),
+            "account 5 " + more.getId(), "account 6 " + more.getId());
+    // Stored under the same number, as the same event: the last one, at the snapshot of version 6.
+    assertThat(IteratorUtils.toList(eventStore.all()))
+        .extracting(entry -> entry.key + " " + entry.value.getId())
+        .containsExactly(StoreKeys.of("account", "ada", 6) + " " + sent.get(5).getId());
   }
 
   /**
@@ -123,14 +157,15 @@ class SnapshottingTest {
     assertThat(sourceTopics(accounts())).containsExactly("commands.account");
   }
 
-  private static void send(TestInputTopic<String, Command> commands, Object payload) {
-    send(commands, payload, Instant.now());
+  private static Command send(TestInputTopic<String, Command> commands, Object payload) {
+    return send(commands, payload, Instant.now());
   }
 
   /** The timestamp is the record's: the clock of the host that sent the command. */
-  private static void send(TestInputTopic<String, Command> commands, Object payload, Instant timestamp) {
+  private static Command send(TestInputTopic<String, Command> commands, Object payload, Instant timestamp) {
     Command command = Command.builder().payload(payload).build();
     commands.pipeInput(command.getAggregateId(), command, timestamp);
+    return command;
   }
 
   private static List<String> sourceTopics(Topology topology) {

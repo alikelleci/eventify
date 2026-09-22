@@ -129,6 +129,14 @@ class HandlerRegistrationTest {
     }
   }
 
+  /** An apply method whose declared result does not match the aggregate state it receives. */
+  public static class WrongApplyResultHandler {
+    @ApplyEvent
+    public Fan apply(SwitchedOn event, Light state) {
+      return new Fan(event.getId());
+    }
+  }
+
   /** Another aggregate that is called the same as Light. */
   @Value
   @AggregateRoot("light")
@@ -173,6 +181,27 @@ class HandlerRegistrationTest {
 
   public static class SecondEventHandler {
     @HandleEvent
+    public void on(SwitchedOn event) {
+    }
+  }
+
+  /** Annotated on the interface and on its implementation: still one handler. */
+  public interface SwitchListener {
+    @HandleEvent
+    void on(SwitchedOn event);
+  }
+
+  public static class AnnotatedTwiceEventHandler implements SwitchListener {
+    @HandleEvent
+    @Override
+    public void on(SwitchedOn event) {
+    }
+  }
+
+  /** Annotated in the superclass and in the override: still one handler. */
+  public static class OverridingEventHandler extends FirstEventHandler {
+    @HandleEvent
+    @Override
     public void on(SwitchedOn event) {
     }
   }
@@ -281,6 +310,16 @@ class HandlerRegistrationTest {
   }
 
   @Test
+  @DisplayName("Should refuse an event sourcing handler that returns another aggregate type")
+  void anEventSourcingHandlerWithTheWrongAggregateResultIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new WrongApplyResultHandler())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@ApplyEvent", "Fan", "Light");
+  }
+
+  @Test
   @DisplayName("Should refuse an annotated handler without a message parameter")
   void aHandlerWithoutAMessageParameterIsRefused() {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
@@ -329,6 +368,21 @@ class HandlerRegistrationTest {
         .build();
 
     assertThat(eventify.getHandlers().eventHandlers(SwitchedOn.class)).hasSize(2);
+  }
+
+  @Test
+  @DisplayName("Should register an event handler once when it is annotated in its interface or superclass too, or registered twice")
+  void anEventHandlerIsRegisteredOnce() {
+    OverridingEventHandler registeredTwice = new OverridingEventHandler();
+    Eventify eventify = Eventify.builder().streamsConfig(config())
+        .registerHandler(new AnnotatedTwiceEventHandler())
+        .registerHandler(registeredTwice)
+        .registerHandler(registeredTwice)
+        .build();
+
+    assertThat(eventify.getHandlers().eventHandlers(SwitchedOn.class))
+        .<Class<?>>extracting(handler -> handler.getHandler().getClass())
+        .containsExactly(AnnotatedTwiceEventHandler.class, OverridingEventHandler.class);
   }
 
   @Test

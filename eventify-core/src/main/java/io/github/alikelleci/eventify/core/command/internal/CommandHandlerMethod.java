@@ -4,10 +4,8 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
-import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
-import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
@@ -30,8 +28,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_ID;
-
 @Slf4j
 @Getter
 public class CommandHandlerMethod {
@@ -49,12 +45,15 @@ public class CommandHandlerMethod {
     this.aggregateType = aggregateType;
   }
 
-  /** What the command changes about its aggregate: complete event envelopes, in the order returned. */
-  public List<Event> handle(Command command, AggregateState state) {
+  /**
+   * What the command changes about its aggregate: the payloads of its events, in the order returned. The command
+   * processor makes them events: it knows where they go in the aggregate's history.
+   */
+  public List<Object> handle(Command command, AggregateState state) {
     try {
       validate(command.getPayload());
       Object result = invokeHandler(command, state);
-      return events(state, command, eventPayloads(command, result));
+      return eventPayloads(command, result);
     } catch (Exception e) {
       throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
     }
@@ -103,22 +102,6 @@ public class CommandHandlerMethod {
     });
 
     return payloads;
-  }
-
-  private List<Event> events(AggregateState state, Command command, List<Object> payloads) {
-    long sequence = state.getVersion();
-    Metadata metadata = command.getMetadata().with(CAUSATION_ID, command.getId());
-    List<Event> events = new ArrayList<>(payloads.size());
-    for (Object payload : payloads) {
-      Event event = Event.builder()
-          .aggregateType(aggregateType)
-          .payload(payload)
-          .metadata(metadata)
-          .sequence(++sequence)
-          .build();
-      events.add(event);
-    }
-    return events;
   }
 
   private void validate(Object payload) {

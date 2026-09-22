@@ -159,7 +159,8 @@ class CommandRejectionTest {
     String id;
 
     public String getContent() {
-      if (WRITES.incrementAndGet() > 1) {
+      // Read twice before the command is accepted: for the copy that is stored, and for the copy that is applied.
+      if (WRITES.incrementAndGet() > 2) {
         throw new IllegalStateException("not writable anymore");
       }
       return "written";

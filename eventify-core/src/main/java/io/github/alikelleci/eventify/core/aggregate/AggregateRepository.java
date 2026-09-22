@@ -65,13 +65,17 @@ public final class AggregateRepository {
    */
   public AggregateState replay(String aggregateType, String aggregateId, long untilSequence, ReplayListener listener) {
     definitions.requireType(aggregateType);
-    AggregateState snapshot = usableSnapshotOrNull(aggregateType, aggregateId);
+    AggregateState storedSnapshot = snapshotStore.get(aggregateType, aggregateId);
+    AggregateState snapshot = usableSnapshotOrNull(aggregateType, aggregateId, storedSnapshot);
     AggregateState start;
-    if (snapshot != null && snapshot.getVersion() <= untilSequence
-        && !(listener != null && snapshot.getVersion() == untilSequence && allEventsStored(aggregateType, aggregateId))) {
-      start = snapshot;
+    if (snapshot != null && snapshot.getVersion() <= untilSequence) {
+      if (listener == null || snapshot.getVersion() != untilSequence || !allEventsStored(aggregateType, aggregateId, storedSnapshot)) {
+        start = snapshot;
+      } else {
+        start = AggregateState.empty(aggregateId);
+      }
     } else {
-      if (!allEventsStored(aggregateType, aggregateId)) {
+      if (!allEventsStored(aggregateType, aggregateId, storedSnapshot)) {
         return null;
       }
       start = AggregateState.empty(aggregateId);
@@ -79,14 +83,6 @@ public final class AggregateRepository {
     try (EventStore.EventIterator events = eventStore.events(aggregateType, aggregateId, start.getVersion() + 1, untilSequence)) {
       return applyEvents(aggregateType, aggregateId, start, events, listener);
     }
-  }
-
-  /** Applies newly produced events in memory, before command processing stores them. */
-  public AggregateState applyEvents(AggregateState state, List<Event> events) {
-    if (events.isEmpty()) {
-      return state;
-    }
-    return applyEvents(events.get(0).getAggregateType(), state.getAggregateId(), state, events.iterator(), null);
   }
 
   /** Applies newly produced events for this aggregate type in memory, before command processing stores them. */
@@ -116,19 +112,24 @@ public final class AggregateRepository {
   /** The usable snapshot, for history readers that need to show where its replay starts. */
   public AggregateState snapshot(String aggregateType, String aggregateId) {
     definitions.requireType(aggregateType);
-    return usableSnapshotOrNull(aggregateType, aggregateId);
+    AggregateState storedSnapshot = snapshotStore.get(aggregateType, aggregateId);
+    return usableSnapshotOrNull(aggregateType, aggregateId, storedSnapshot);
   }
 
   /** Whether history begins at event one, or no history has ever been recorded according to either store. */
   public boolean allEventsStored(String aggregateType, String aggregateId) {
     definitions.requireType(aggregateType);
+    return allEventsStored(aggregateType, aggregateId, snapshotStore.get(aggregateType, aggregateId));
+  }
+
+  /** Uses the already read snapshot to distinguish a new aggregate from pruned history without reading it again. */
+  private boolean allEventsStored(String aggregateType, String aggregateId, AggregateState storedSnapshot) {
     try (EventStore.EventIterator events = eventStore.events(aggregateType, aggregateId)) {
       if (events.hasNext()) {
         return events.next().getSequence() == 1;
       }
       // A snapshot at a positive version proves there were events. An empty store then means history is missing.
-      AggregateState snapshot = snapshotStore.get(aggregateType, aggregateId);
-      return snapshot == null || snapshot.getVersion() == 0;
+      return storedSnapshot == null || storedSnapshot.getVersion() == 0;
     }
   }
 
@@ -138,7 +139,7 @@ public final class AggregateRepository {
     if (whyOutdated == null) {
       return stored;
     }
-    if (!allEventsStored(aggregateType, aggregateId)) {
+    if (!allEventsStored(aggregateType, aggregateId, stored)) {
       throw new SnapshotOutdatedException("The snapshot of aggregate " + aggregateType + " " + aggregateId + " can't be used: " + whyOutdated
           + ". The aggregate can't be rebuilt without it: the events before it were deleted (@EnableSnapshotting(deleteEvents = true)).");
     }
@@ -147,8 +148,7 @@ public final class AggregateRepository {
   }
 
   /** A usable snapshot for optional readers; an unusable one simply means no known state there. */
-  private AggregateState usableSnapshotOrNull(String aggregateType, String aggregateId) {
-    AggregateState stored = snapshotStore.get(aggregateType, aggregateId);
+  private AggregateState usableSnapshotOrNull(String aggregateType, String aggregateId, AggregateState stored) {
     return whySnapshotIsOutdated(aggregateType, aggregateId, stored) == null ? stored : null;
   }
 
@@ -164,6 +164,10 @@ public final class AggregateRepository {
 
   private AggregateState applyEvents(String aggregateType, String aggregateId, AggregateState start, Iterator<Event> events,
                                      ReplayListener listener) {
+    String wrongStartPayload = definitions.whyPayloadDoesNotMatch(aggregateType, start.getPayload());
+    if (wrongStartPayload != null) {
+      throw new EventReplayException("The state before replay cannot be used: " + wrongStartPayload + ".");
+    }
     AggregateState state = start;
     while (events.hasNext()) {
       Event event = events.next();
@@ -187,11 +191,15 @@ public final class AggregateRepository {
       ApplyEventMethod handler = applyMethods.get(event.getPayload().getClass());
       log.trace("Replaying event {} ({}) at sequence {}: handler {}", event.getType(), event.getAggregateId(),
           event.getSequence(), handler != null ? "found" : "absent, payload unchanged");
-      state = handler != null ? handler.handle(event, state) : AggregateState.after(event, state.getPayload());
-      String wrongPayload = definitions.whyPayloadDoesNotMatch(aggregateType, state.getPayload());
-      if (wrongPayload != null) {
-        throw new EventReplayException("The state after stored event " + event.getId() + " (" + event.getType() + ") cannot be used: " + wrongPayload + ".");
+      Object payload = state.getPayload();
+      if (handler != null) {
+        payload = handler.apply(event, state);
+        String wrongPayload = definitions.whyPayloadDoesNotMatch(aggregateType, payload);
+        if (wrongPayload != null) {
+          throw new EventReplayException("The state after stored event " + event.getId() + " (" + event.getType() + ") cannot be used: " + wrongPayload + ".");
+        }
       }
+      state = AggregateState.after(event, payload, definitions.revisionOf(aggregateType));
     }
     return state;
   }
