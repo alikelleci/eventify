@@ -65,7 +65,12 @@ public class DefaultCommandGateway implements CommandGateway {
         new CommandSerde(objectMapper).serializer());
 
     this.replies = new ReplyConsumer(consumerConfig, replyTopic, objectMapper, this::onReplies);
-    replies.start();
+    try {
+      replies.start();
+    } catch (RuntimeException e) {
+      producer.close(CLOSE_TIMEOUT);
+      throw e;
+    }
   }
 
   @Override

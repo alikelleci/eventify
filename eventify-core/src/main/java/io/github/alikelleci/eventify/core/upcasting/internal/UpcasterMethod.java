@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core.upcasting.internal;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
 import io.github.alikelleci.eventify.core.upcasting.exception.UpcastingException;
+import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -32,7 +33,7 @@ public class UpcasterMethod  {
     try {
       return invokeHandler(jsonNode);
     } catch (Exception e) {
-      throw new UpcastingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
+      throw new UpcastingException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
     }
   }
 

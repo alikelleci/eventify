@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import lombok.Getter;
@@ -33,7 +34,7 @@ public class ApplyEventMethod {
       Object result = invokeHandler(event, state);
       return createState(event, result);
     } catch (Exception e) {
-      throw new EventSourcingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
+      throw new EventSourcingException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
     }
   }
 

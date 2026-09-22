@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.store.exception.EventStoreException;
 import io.github.alikelleci.eventify.core.store.EventStore;
@@ -104,7 +105,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     AggregateState checkpoint = checkpointBeforeCommand(aggregateType, state);
     try {
       List<Event> events = copyEvents(commandHandler.handle(command, state));
-      AggregateState newState = repository.applyEvents(state, events);
+      AggregateState newState = repository.applyEvents(aggregateType, state, events);
       save(events, aggregateType, newState);
       return events;
     } catch (EventStoreException e) {
@@ -181,7 +182,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   private void logFailure(Exception e) {
-    Throwable throwable = ExceptionUtils.getRootCause(e);
+    Throwable throwable = ExceptionCauses.rootCauseOrSelf(e);
     String message = ExceptionUtils.getRootCauseMessage(e);
 
     if (throwable instanceof ValidationException) {

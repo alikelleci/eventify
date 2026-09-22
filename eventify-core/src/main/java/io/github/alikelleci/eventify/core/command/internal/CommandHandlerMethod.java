@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
@@ -55,7 +56,7 @@ public class CommandHandlerMethod {
       Object result = invokeHandler(command, state);
       return events(state, command, eventPayloads(command, result));
     } catch (Exception e) {
-      throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
+      throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
     }
   }
 

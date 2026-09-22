@@ -17,7 +17,10 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Properties;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 /**
@@ -32,11 +35,16 @@ public class ReplyConsumer {
   /** How long {@link #stopListening()} waits for the listening thread to finish its poll and close the consumer. */
   private static final Duration STOP_TIMEOUT = Duration.ofSeconds(10);
 
+  /** How long gateway creation waits for its reply consumer to start at the end of the reply topic. */
+  private static final Duration START_TIMEOUT = Duration.ofSeconds(10);
+
   private final Consumer<String, CommandResult> consumer;
   private final String replyTopic;
   /** Handles a batch of replies. It must not throw: a record it can't handle is skipped by it. */
   private final java.util.function.Consumer<ConsumerRecords<String, CommandResult>> onReplies;
   private final AtomicBoolean closed = new AtomicBoolean(false);
+  private final CountDownLatch ready = new CountDownLatch(1);
+  private final AtomicReference<Throwable> startupFailure = new AtomicReference<>();
   private Thread thread;
   private Thread shutdownHook;
 
@@ -62,10 +70,18 @@ public class ReplyConsumer {
    * thread, which must not see the gateway's fields before they are set.
    */
   public void start() {
+    if (thread != null) {
+      throw new IllegalStateException("The reply consumer for " + replyTopic + " is already started.");
+    }
     thread = new Thread(() -> {
-      consumer.assign(Collections.singletonList(new TopicPartition(replyTopic, 0)));
-//      consumer.subscribe(Collections.singletonList(this.replyTopic));
+      TopicPartition partition = new TopicPartition(replyTopic, 0);
       try {
+        consumer.assign(Collections.singletonList(partition));
+        // latest only means "latest when the position is established". Establish it before a command can be sent,
+        // otherwise a fast reply between construction and the first poll could be skipped forever.
+        consumer.seekToEnd(Collections.singletonList(partition));
+        consumer.position(partition, START_TIMEOUT);
+        ready.countDown();
         while (!closed.get()) {
           ConsumerRecords<String, CommandResult> consumerRecords;
           try {
@@ -93,8 +109,21 @@ public class ReplyConsumer {
         }
       } catch (WakeupException e) {
         // Ignore exception if closing
-        if (!closed.get()) throw e;
+        if (!closed.get()) {
+          if (ready.getCount() != 0) {
+            startupFailure.compareAndSet(null, e);
+            return;
+          }
+          throw e;
+        }
+      } catch (Exception e) {
+        if (ready.getCount() != 0) {
+          startupFailure.compareAndSet(null, e);
+          return;
+        }
+        throw new IllegalStateException("Reply consumer stopped unexpectedly for " + replyTopic + ".", e);
       } finally {
+        ready.countDown();
         consumer.close();
       }
     }, "eventify-command-gateway-" + replyTopic);
@@ -105,6 +134,13 @@ public class ReplyConsumer {
     shutdownHook = new Thread(this::signalStop, "eventify-command-gateway-shutdown");
     Runtime.getRuntime().addShutdownHook(shutdownHook);
     thread.start();
+    try {
+      awaitReady();
+    } catch (RuntimeException e) {
+      signalStop();
+      removeShutdownHook();
+      throw e;
+    }
   }
 
   /**
@@ -113,13 +149,7 @@ public class ReplyConsumer {
    */
   public void stopListening() {
     signalStop();
-    if (shutdownHook != null) {
-      try {
-        Runtime.getRuntime().removeShutdownHook(shutdownHook);
-      } catch (IllegalStateException e) {
-        // The JVM is shutting down already: the hook runs anyway.
-      }
-    }
+    removeShutdownHook();
     if (thread != null && thread != Thread.currentThread()) {
       try {
         thread.join(STOP_TIMEOUT.toMillis());
@@ -132,6 +162,35 @@ public class ReplyConsumer {
   private void signalStop() {
     if (closed.compareAndSet(false, true)) {
       consumer.wakeup();
+    }
+  }
+
+  private void removeShutdownHook() {
+    if (shutdownHook == null) {
+      return;
+    }
+    try {
+      Runtime.getRuntime().removeShutdownHook(shutdownHook);
+    } catch (IllegalStateException e) {
+      // The JVM is shutting down already: the hook runs anyway.
+    }
+  }
+
+  private void awaitReady() {
+    try {
+      if (!ready.await(START_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)) {
+        signalStop();
+        throw new IllegalStateException("The reply consumer for " + replyTopic + " did not reach the end of its topic within "
+            + START_TIMEOUT.toSeconds() + " seconds.");
+      }
+    } catch (InterruptedException e) {
+      signalStop();
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted while starting the reply consumer for " + replyTopic + ".", e);
+    }
+    Throwable failure = startupFailure.get();
+    if (failure != null) {
+      throw new IllegalStateException("Could not start the reply consumer for " + replyTopic + ".", failure);
     }
   }
 

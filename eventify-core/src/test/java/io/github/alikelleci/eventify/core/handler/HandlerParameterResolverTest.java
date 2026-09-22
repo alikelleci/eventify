@@ -32,7 +32,8 @@ class HandlerParameterResolverTest {
                       @MetadataValue("userId") String userId,
                       @MetadataValue("missing") String missing,
                       @MetadataValue Metadata allMetadata,
-                      String unsupported) {
+                      String unsupported,
+                      Object alsoUnsupported) {
   }
 
   private static final int METADATA = 1;
@@ -42,6 +43,7 @@ class HandlerParameterResolverTest {
   private static final int MISSING = 5;
   private static final int ALL_METADATA = 6;
   private static final int UNSUPPORTED = 7;
+  private static final int OBJECT = 8;
 
   private final Event event = Event.builder().aggregateType("order")
       .payload(new OrderPlaced("order-1"))
@@ -84,6 +86,10 @@ class HandlerParameterResolverTest {
   @DisplayName("Should refuse a parameter that is not about the message")
   void unsupported() {
     assertThatThrownBy(() -> resolve(UNSUPPORTED))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("Unsupported parameter");
+    // Object used to satisfy Object.isAssignableFrom(Metadata.class), and therefore accidentally received metadata.
+    assertThatThrownBy(() -> resolve(OBJECT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported parameter");
   }

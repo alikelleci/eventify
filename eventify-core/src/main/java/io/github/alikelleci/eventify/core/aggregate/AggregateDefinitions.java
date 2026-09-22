@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.aggregate;
 
 import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
 import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotPolicy;
+import io.github.alikelleci.eventify.core.message.internal.Revisions;
 
 import java.util.Collection;
 import java.util.Map;
@@ -37,8 +38,44 @@ public final class AggregateDefinitions {
     return snapshotPolicyOf(aggregateType).deleteEvents();
   }
 
+  /** Why this snapshot cannot rebuild this aggregate type, or {@code null} when it can. */
+  public String whySnapshotIsOutdated(String aggregateType, AggregateState snapshot) {
+    if (snapshot.getPayload() == null) {
+      // A removed state deliberately has no payload type. A type without a payload instead came from a snapshot whose
+      // aggregate could not be deserialized and must not silently become a deletion.
+      return snapshot.getType() == null ? null : "its aggregate can't be read, e.g. its class was moved or a field no longer fits";
+    }
+    String wrongPayload = whyPayloadDoesNotMatch(aggregateType, snapshot.getPayload());
+    if (wrongPayload != null) {
+      return wrongPayload;
+    }
+    int stored = snapshot.getRevision() == 0 ? 1 : snapshot.getRevision();
+    Class<?> aggregateClass = aggregateClassOf(aggregateType);
+    int current = Revisions.of(aggregateClass);
+    if (stored != current) {
+      return "it was made with revision " + stored + " of " + aggregateClass.getSimpleName() + ", the code is revision " + current;
+    }
+    return null;
+  }
+
+  /** Why a payload cannot be the state of this aggregate type, or {@code null} when it can. */
+  public String whyPayloadDoesNotMatch(String aggregateType, Object payload) {
+    if (payload == null) {
+      return null;
+    }
+    Class<?> aggregateClass = aggregateClassOf(aggregateType);
+    if (payload.getClass() != aggregateClass) {
+      return "its aggregate is " + payload.getClass().getName() + ", but " + aggregateType + " requires " + aggregateClass.getName();
+    }
+    return null;
+  }
+
   private SnapshotPolicy snapshotPolicyOf(String aggregateType) {
+    return SnapshotPolicy.of(aggregateClassOf(aggregateType));
+  }
+
+  private Class<?> aggregateClassOf(String aggregateType) {
     requireType(aggregateType);
-    return SnapshotPolicy.of(aggregateClasses.get(aggregateType));
+    return aggregateClasses.get(aggregateType);
   }
 }

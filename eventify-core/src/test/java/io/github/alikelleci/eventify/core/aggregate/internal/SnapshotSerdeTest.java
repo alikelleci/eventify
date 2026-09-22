@@ -2,14 +2,16 @@ package io.github.alikelleci.eventify.core.aggregate.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.alikelleci.eventify.core.aggregate.AggregateDefinitions;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
-import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -23,6 +25,7 @@ class SnapshotSerdeTest {
 
   private final ObjectMapper objectMapper = EventifyObjectMapper.create();
   private final SnapshotSerde serde = new SnapshotSerde(objectMapper);
+  private final AggregateDefinitions definitions = new AggregateDefinitions(List.of(Cart.class));
 
   private final Cart cart = new Cart("cart-1", 3);
   private final AggregateState snapshot = AggregateState.after(Event.builder()
@@ -41,7 +44,7 @@ class SnapshotSerdeTest {
 
     assertThat(read.getPayload()).isNull();
     assertThat(read.getVersion()).isEqualTo(40);
-    assertThat(SnapshotStore.whyOutdated(read)).contains("can't be read");
+    assertThat(definitions.whySnapshotIsOutdated("cart", read)).contains("can't be read");
   }
 
   @Test
@@ -65,7 +68,7 @@ class SnapshotSerdeTest {
     AggregateState read = read(json);
 
     assertThat(read.getPayload()).isEqualTo(new Cart("cart-1", 3));
-    assertThat(SnapshotStore.whyOutdated(read)).isNull();
+    assertThat(definitions.whySnapshotIsOutdated("cart", read)).isNull();
   }
 
   private AggregateState read(ObjectNode json) throws Exception {

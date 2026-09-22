@@ -3,6 +3,8 @@ package io.github.alikelleci.eventify.core.aggregate;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.SnapshotOutdatedException;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -25,6 +27,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,6 +73,34 @@ class AggregateRepositoryTest {
     assertThatThrownBy(() -> repository.replay("order", "order-1"))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("expected #2, found #3");
+  }
+
+  @Test
+  @DisplayName("Should reject an event whose envelope belongs to another aggregate")
+  void rejectsAnEventForAnotherAggregate() {
+    Event copiedUnderTheWrongKey = event(placed("another-order"), 1);
+    storedEvents.put(StoreKeys.of("order", "order-1", 1), copiedUnderTheWrongKey);
+
+    assertThatThrownBy(() -> repository.replay("order", "order-1"))
+        .isInstanceOf(EventReplayException.class)
+        .hasMessageContaining("belongs to order another-order", "read as order order-1");
+  }
+
+  @Test
+  @DisplayName("Should reject an apply handler that returns another aggregate type")
+  void rejectsAnApplyHandlerThatReturnsAnotherAggregateType() {
+    ApplyEventMethod wrongHandler = new ApplyEventMethod(null, null) {
+      @Override
+      public AggregateState handle(Event event, AggregateState state) {
+        return AggregateState.after(event, new OtherAggregate(event.getAggregateId()));
+      }
+    };
+    AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents), new SnapshotStore(storedSnapshots),
+        Map.of(Viewed.class, wrongHandler), new AggregateDefinitions(List.of(Order.class)));
+
+    assertThatThrownBy(() -> repository.applyEvents("order", AggregateState.empty("order-1"), List.of(event(new Viewed("order-1"), 1))))
+        .isInstanceOf(EventReplayException.class)
+        .hasMessageContaining("requires " + Order.class.getName());
   }
 
   @Test
@@ -153,6 +184,9 @@ class AggregateRepositoryTest {
   }
 
   public record Viewed(@AggregateId String id) {}
+
+  @AggregateRoot("other")
+  public record OtherAggregate(@AggregateId String id) {}
 
   @Test
   void advancesVersionAndNotifiesListenerForEventsWithoutHandler() {

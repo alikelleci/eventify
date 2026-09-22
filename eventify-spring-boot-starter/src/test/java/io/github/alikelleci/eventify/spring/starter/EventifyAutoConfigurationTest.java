@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.spring.starter;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("Spring Boot auto-configuration")
 class EventifyAutoConfigurationTest {
 
-  /** Without a topic: Eventify has nothing to consume and doesn't connect to Kafka when the context starts. */
+  @Topic("events.ping")
   public static class Pinged {
   }
 

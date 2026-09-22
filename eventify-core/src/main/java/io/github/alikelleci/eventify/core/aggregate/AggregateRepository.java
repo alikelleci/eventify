@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.store.EventStore;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.Iterator;
 import java.util.List;
@@ -47,7 +48,7 @@ public final class AggregateRepository {
     AggregateState snapshot = usableSnapshot(aggregateType, aggregateId);
     AggregateState start = snapshot != null ? snapshot : AggregateState.empty(aggregateId);
     try (EventStore.EventIterator events = eventStore.events(aggregateType, aggregateId, start.getVersion() + 1, Long.MAX_VALUE)) {
-      AggregateState state = applyEvents(start, events, null);
+      AggregateState state = applyEvents(aggregateType, aggregateId, start, events, null);
       // Payloads are application data, possibly personal: log only type, id, versions and timings.
       log.debug("Replayed {} events for {} ({}) to version {} in {} ms", state.getVersion() - start.getVersion(),
           aggregateType, aggregateId, state.getVersion(), (System.nanoTime() - started) / 1_000_000);
@@ -64,7 +65,7 @@ public final class AggregateRepository {
    */
   public AggregateState replay(String aggregateType, String aggregateId, long untilSequence, ReplayListener listener) {
     definitions.requireType(aggregateType);
-    AggregateState snapshot = snapshotStore.getUsable(aggregateType, aggregateId);
+    AggregateState snapshot = usableSnapshotOrNull(aggregateType, aggregateId);
     AggregateState start;
     if (snapshot != null && snapshot.getVersion() <= untilSequence
         && !(listener != null && snapshot.getVersion() == untilSequence && allEventsStored(aggregateType, aggregateId))) {
@@ -76,13 +77,22 @@ public final class AggregateRepository {
       start = AggregateState.empty(aggregateId);
     }
     try (EventStore.EventIterator events = eventStore.events(aggregateType, aggregateId, start.getVersion() + 1, untilSequence)) {
-      return applyEvents(start, events, listener);
+      return applyEvents(aggregateType, aggregateId, start, events, listener);
     }
   }
 
   /** Applies newly produced events in memory, before command processing stores them. */
   public AggregateState applyEvents(AggregateState state, List<Event> events) {
-    return applyEvents(state, events.iterator(), null);
+    if (events.isEmpty()) {
+      return state;
+    }
+    return applyEvents(events.get(0).getAggregateType(), state.getAggregateId(), state, events.iterator(), null);
+  }
+
+  /** Applies newly produced events for this aggregate type in memory, before command processing stores them. */
+  public AggregateState applyEvents(String aggregateType, AggregateState state, List<Event> events) {
+    definitions.requireType(aggregateType);
+    return applyEvents(aggregateType, state.getAggregateId(), state, events.iterator(), null);
   }
 
   /** The stored event at a sequence. */
@@ -106,7 +116,7 @@ public final class AggregateRepository {
   /** The usable snapshot, for history readers that need to show where its replay starts. */
   public AggregateState snapshot(String aggregateType, String aggregateId) {
     definitions.requireType(aggregateType);
-    return snapshotStore.getUsable(aggregateType, aggregateId);
+    return usableSnapshotOrNull(aggregateType, aggregateId);
   }
 
   /** Whether history begins at event one, or no history has ever been recorded according to either store. */
@@ -124,7 +134,7 @@ public final class AggregateRepository {
 
   private AggregateState usableSnapshot(String aggregateType, String aggregateId) {
     AggregateState stored = snapshotStore.get(aggregateType, aggregateId);
-    String whyOutdated = stored != null ? SnapshotStore.whyOutdated(stored) : null;
+    String whyOutdated = whySnapshotIsOutdated(aggregateType, aggregateId, stored);
     if (whyOutdated == null) {
       return stored;
     }
@@ -136,13 +146,34 @@ public final class AggregateRepository {
     return null;
   }
 
-  private AggregateState applyEvents(AggregateState start, Iterator<Event> events, ReplayListener listener) {
+  /** A usable snapshot for optional readers; an unusable one simply means no known state there. */
+  private AggregateState usableSnapshotOrNull(String aggregateType, String aggregateId) {
+    AggregateState stored = snapshotStore.get(aggregateType, aggregateId);
+    return whySnapshotIsOutdated(aggregateType, aggregateId, stored) == null ? stored : null;
+  }
+
+  private String whySnapshotIsOutdated(String aggregateType, String aggregateId, AggregateState snapshot) {
+    if (snapshot == null) {
+      return null;
+    }
+    if (!StringUtils.equals(snapshot.getAggregateId(), aggregateId)) {
+      return "it belongs to aggregate " + snapshot.getAggregateId() + " instead of " + aggregateId;
+    }
+    return definitions.whySnapshotIsOutdated(aggregateType, snapshot);
+  }
+
+  private AggregateState applyEvents(String aggregateType, String aggregateId, AggregateState start, Iterator<Event> events,
+                                     ReplayListener listener) {
     AggregateState state = start;
     while (events.hasNext()) {
       Event event = events.next();
       if (event.getPayload() == null) {
         // A renamed/removed event class must not silently disappear from the reconstructed state: require upcasting.
         throw new EventReplayException("Stored event " + event.getId() + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it to its current class.");
+      }
+      if (!StringUtils.equals(event.getAggregateType(), aggregateType) || !StringUtils.equals(event.getAggregateId(), aggregateId)) {
+        throw new EventReplayException("Stored event " + event.getId() + " (" + event.getType() + ") belongs to "
+            + event.getAggregateType() + " " + event.getAggregateId() + ", but was read as " + aggregateType + " " + aggregateId + ".");
       }
       if (event.getSequence() != state.getVersion() + 1) {
         // Missing, repeated or out-of-order events would produce a different state than the history that was handled.
@@ -157,6 +188,10 @@ public final class AggregateRepository {
       log.trace("Replaying event {} ({}) at sequence {}: handler {}", event.getType(), event.getAggregateId(),
           event.getSequence(), handler != null ? "found" : "absent, payload unchanged");
       state = handler != null ? handler.handle(event, state) : AggregateState.after(event, state.getPayload());
+      String wrongPayload = definitions.whyPayloadDoesNotMatch(aggregateType, state.getPayload());
+      if (wrongPayload != null) {
+        throw new EventReplayException("The state after stored event " + event.getId() + " (" + event.getType() + ") cannot be used: " + wrongPayload + ".");
+      }
     }
     return state;
   }

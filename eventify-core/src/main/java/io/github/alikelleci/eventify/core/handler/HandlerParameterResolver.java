@@ -19,7 +19,7 @@ public final class HandlerParameterResolver {
 
   /** @throws IllegalArgumentException when the parameter is not one of these */
   public static Object resolve(Parameter parameter, Message message) {
-    if (parameter.getType().isAssignableFrom(Metadata.class)) {
+    if (parameter.getType() == Metadata.class) {
       return message.getMetadata();
     } else if (parameter.isAnnotationPresent(Timestamp.class)) {
       return message.getTimestamp();

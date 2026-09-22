@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import lombok.Value;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -34,12 +35,14 @@ class HandlerRegistrationTest {
   }
 
   @Value
+  @Topic("commands.light")
   public static class SwitchOn {
     @AggregateId
     String id;
   }
 
   @Value
+  @Topic("events.light")
   public static class SwitchedOn {
     @AggregateId
     String id;
@@ -101,12 +104,14 @@ class HandlerRegistrationTest {
   }
 
   @Value
+  @Topic("commands.fan")
   public static class SwitchOnFan {
     @AggregateId
     String id;
   }
 
   @Value
+  @Topic("events.fan")
   public static class FanSwitchedOn {
     @AggregateId
     String id;
@@ -169,6 +174,37 @@ class HandlerRegistrationTest {
   public static class SecondEventHandler {
     @HandleEvent
     public void on(SwitchedOn event) {
+    }
+  }
+
+  public static class HandlerWithoutMessage {
+    @HandleEvent
+    public void on() {
+    }
+  }
+
+  @Value
+  public static class UnroutedCommand {
+    @AggregateId
+    String id;
+  }
+
+  public static class HandlerWithoutCommandTopic {
+    @HandleCommand
+    public Object handle(UnroutedCommand command, Light state) {
+      return null;
+    }
+  }
+
+  @Value
+  public static class UnroutedEvent {
+    @AggregateId
+    String id;
+  }
+
+  public static class HandlerWithoutEventTopic {
+    @HandleEvent
+    public void on(UnroutedEvent event) {
     }
   }
 
@@ -242,6 +278,32 @@ class HandlerRegistrationTest {
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("@AggregateRoot");
+  }
+
+  @Test
+  @DisplayName("Should refuse an annotated handler without a message parameter")
+  void aHandlerWithoutAMessageParameterIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new HandlerWithoutMessage())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@HandleEvent", "first parameter");
+  }
+
+  @Test
+  @DisplayName("Should refuse command and event handlers whose message has no topic")
+  void aHandlerWithoutATopicIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new HandlerWithoutCommandTopic())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@HandleCommand", "@Topic");
+
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new HandlerWithoutEventTopic())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@HandleEvent", "@Topic");
   }
 
   @Test

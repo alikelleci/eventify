@@ -12,9 +12,11 @@ import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.message.internal.Topics;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import org.apache.commons.collections4.MultiValuedMap;
 import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
+import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -162,23 +164,22 @@ public class HandlerRegistry {
   }
 
   private void addCommandHandler(Object handler, Method method) {
-    if (method.getParameterCount() >= 1) {
-      Class<?> type = method.getParameters()[0].getType();
-      String aggregateType = AggregateTypes.of(aggregateOf(method));
-      CommandHandlerMethod previous = commandHandlers.put(type, new CommandHandlerMethod(handler, method, aggregateType));
-      if (previous != null) {
-        requireSameHandler("@HandleCommand", type, previous.getHandler(), previous.getMethod(), handler, method);
-      }
+    requireMessageParameter("@HandleCommand", method);
+    Class<?> type = method.getParameters()[0].getType();
+    requireTopic("@HandleCommand", type, method);
+    String aggregateType = AggregateTypes.of(aggregateOf(method));
+    CommandHandlerMethod previous = commandHandlers.put(type, new CommandHandlerMethod(handler, method, aggregateType));
+    if (previous != null) {
+      requireSameHandler("@HandleCommand", type, previous.getHandler(), previous.getMethod(), handler, method);
     }
   }
 
   private void addEventSourcingHandler(Object handler, Method method) {
-    if (method.getParameterCount() >= 1) {
-      Class<?> type = method.getParameters()[0].getType();
-      ApplyEventMethod previous = eventSourcingHandlers.put(type, new ApplyEventMethod(handler, method));
-      if (previous != null) {
-        requireSameHandler("@ApplyEvent", type, previous.getHandler(), previous.getMethod(), handler, method);
-      }
+    requireMessageParameter("@ApplyEvent", method);
+    Class<?> type = method.getParameters()[0].getType();
+    ApplyEventMethod previous = eventSourcingHandlers.put(type, new ApplyEventMethod(handler, method));
+    if (previous != null) {
+      requireSameHandler("@ApplyEvent", type, previous.getHandler(), previous.getMethod(), handler, method);
     }
   }
 
@@ -196,9 +197,23 @@ public class HandlerRegistry {
   }
 
   private void addEventHandler(Object handler, Method method) {
-    if (method.getParameterCount() >= 1) {
-      Class<?> type = method.getParameters()[0].getType();
-      eventHandlers.put(type, new EventHandlerMethod(handler, method));
+    requireMessageParameter("@HandleEvent", method);
+    Class<?> type = method.getParameters()[0].getType();
+    requireTopic("@HandleEvent", type, method);
+    eventHandlers.put(type, new EventHandlerMethod(handler, method));
+  }
+
+  private static void requireMessageParameter(String annotation, Method method) {
+    if (method.getParameterCount() == 0) {
+      throw new HandlerRegistrationException(annotation + " method must take its message as its first parameter: " + method);
+    }
+  }
+
+  private static void requireTopic(String annotation, Class<?> messageType, Method method) {
+    Topic topic = Topics.of(messageType);
+    if (topic == null || StringUtils.isBlank(topic.value())) {
+      throw new HandlerRegistrationException(annotation + " method has a message without a @Topic: " + method
+          + ". Annotate " + messageType.getName() + ", or an interface it implements, with @Topic.");
     }
   }
 }

@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
 import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotSerde;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
+import io.github.alikelleci.eventify.core.command.CommandResultSerde;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
 import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
@@ -15,7 +16,6 @@ import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.kafka.TopicNames;
-import io.github.alikelleci.eventify.core.serialization.JsonSerde;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
@@ -53,7 +53,7 @@ public final class EventifyTopology {
      */
 
     Serde<Command> commandSerde = new CommandSerde(objectMapper);
-    Serde<CommandResult> resultSerde = new JsonSerde<>(CommandResult.class, objectMapper);
+    Serde<CommandResult> resultSerde = new CommandResultSerde(objectMapper);
     Serde<Event> eventSerde = new EventSerde(objectMapper, handlers.upcasters());
     Serde<AggregateState> snapshotSerde = new SnapshotSerde(objectMapper);
 

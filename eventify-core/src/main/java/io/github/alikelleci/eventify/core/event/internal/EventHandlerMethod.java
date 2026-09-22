@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -29,7 +30,7 @@ public class EventHandlerMethod {
     try {
       invokeHandler(event);
     } catch (Exception e) {
-      throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
+      throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
     }
   }
 
