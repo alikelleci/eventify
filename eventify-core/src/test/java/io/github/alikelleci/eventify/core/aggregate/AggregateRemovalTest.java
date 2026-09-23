@@ -25,10 +25,7 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * An event sourcing handler that returns {@code null} removes the aggregate: the commands after it get no state. The
- * {@code Probe} command answers whether its handler got a state.
- */
+/** An event sourcing handler returning {@code null} removes the aggregate; {@code Probe} tells whether a state was given. */
 @DisplayName("Aggregate removal")
 class AggregateRemovalTest {
 

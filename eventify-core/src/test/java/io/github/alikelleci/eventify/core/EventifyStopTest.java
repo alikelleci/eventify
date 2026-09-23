@@ -51,10 +51,7 @@ class EventifyStopTest {
   @DisplayName("Should stop plugins once, also when Kafka Streams stopped by itself")
   void pluginsAreStoppedOnceAlsoWhenKafkaStreamsStoppedByItself() {
     AtomicInteger stops = new AtomicInteger();
-    Properties properties = new Properties();
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "stop-test");
-    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1");
-    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
+    Properties properties = properties("stop-test");
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
@@ -80,10 +77,7 @@ class EventifyStopTest {
   @DisplayName("Should still stop the other plugins when one fails to stop")
   void aPluginThatFailsToStopDoesNotKeepTheOthersRunning() {
     AtomicInteger stops = new AtomicInteger();
-    Properties properties = new Properties();
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "stop-failing-test");
-    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1");
-    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
+    Properties properties = properties("stop-failing-test");
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
@@ -113,10 +107,7 @@ class EventifyStopTest {
   void stopWaitsForAStopInProgress() throws Exception {
     CountDownLatch stopping = new CountDownLatch(1);
     AtomicBoolean firstStopDone = new AtomicBoolean();
-    Properties properties = new Properties();
-    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "stop-concurrent-test");
-    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1");
-    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
+    Properties properties = properties("stop-concurrent-test");
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)

@@ -430,7 +430,7 @@ class AggregateHistoryTest {
     assertThat(detail.state()).isNull();
     assertValue(detail.previousState(), 3, 3);
     assertThat(history.stateAt(repository, "counter-1", null)).isNull();
-    assertThat(repository.replay("counter-1").getVersion()).isEqualTo(4);
+    assertThat(repository.replay("counter-1").currentState().getVersion()).isEqualTo(4);
 
     snapshotAt(removed);
     storedEvents.delete(key(first));

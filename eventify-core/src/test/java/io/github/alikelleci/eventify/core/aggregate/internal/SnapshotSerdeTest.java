@@ -59,17 +59,6 @@ class SnapshotSerdeTest {
     assertThat(read.getVersion()).isEqualTo(40);
   }
 
-  @Test
-  @DisplayName("Should use a snapshot stored before revisions were: it counts as revision 1")
-  void aSnapshotWithoutARevisionCountsAsRevision1() throws Exception {
-    ObjectNode json = snapshot();
-    json.remove("revision");
-
-    AggregateState read = read(json);
-
-    assertThat(read.getPayload()).isEqualTo(new Cart("cart-1", 3));
-  }
-
   private AggregateState read(ObjectNode json) throws Exception {
     return serde.deserializer().deserialize("snapshot-store", objectMapper.writeValueAsBytes(json));
   }

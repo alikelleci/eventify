@@ -37,7 +37,6 @@ import java.util.concurrent.ExecutionException;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** The gateway keeps receiving replies after records on its reply topic it can't read. */
 @Testcontainers
 @DisplayName("Command gateway replies (real broker)")
 class CommandGatewayReplyIT {

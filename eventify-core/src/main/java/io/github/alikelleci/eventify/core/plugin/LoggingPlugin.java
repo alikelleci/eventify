@@ -13,11 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/**
- * Logs what happens underneath: the state Kafka Streams is in, and the state stores being restored, with how far
- * along they are every ten seconds. Registered by default, and a plugin like any other: to log differently, write
- * your own plugin.
- */
+/** Logs Kafka Streams state changes and store restoration progress; registered by default. */
 @Slf4j
 public class LoggingPlugin implements EventifyPlugin {
 
@@ -107,10 +103,7 @@ public class LoggingPlugin implements EventifyPlugin {
     private long endingOffset;
     private long currentOffset;
 
-    /**
-     * How much of this restoration is done, from 0 to 100. Restoration can start past offset 0 (e.g. from a checkpoint),
-     * so progress is measured from the starting offset, not from the start of the changelog.
-     */
+    /** Percentage done, measured from the starting offset: restoration can start from a checkpoint. */
     int progressPercentage() {
       long total = endingOffset - startingOffset;
       if (total <= 0) {

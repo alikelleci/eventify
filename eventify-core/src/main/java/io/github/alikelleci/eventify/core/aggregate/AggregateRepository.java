@@ -18,15 +18,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Rebuilds aggregates from their stored snapshots and events. Select an aggregate type once with
- * {@link #forType(String)}; the resulting repository only needs aggregate identifiers. It only reads stores and
- * applies event sourcing handlers; command processing owns all writes.
- *
- * <p>Every event advances the version, including events without a handler and events that remove the payload.
- * Events are applied in sequence order, independently of their timestamps.
+ * Rebuilds aggregates from their snapshots and events; read-only, command processing does all writes.
+ * Every event advances the version, also one without a handler; events are applied in sequence order.
  */
 @Slf4j
 public final class AggregateRepository {
+
+  /** The snapshot a replay started from ({@code null} when none was usable), the state after it, and how many events it applied. */
+  public record ReplayResult(AggregateState usedSnapshot, AggregateState currentState, long eventsReplayed) {
+  }
 
   /** Called before an event is applied, for readers that need the state at a particular event. */
   @FunctionalInterface
@@ -38,8 +38,7 @@ public final class AggregateRepository {
   private final SnapshotStore snapshotStore;
   private final Map<Class<?>, ApplyEventMethod> applyMethods;
   private final Map<String, AggregateDefinition> definitions;
-  /** The aggregate this repository is scoped to; absent only before {@link #forType(String)} is called. */
-  private final AggregateDefinition definition;
+  private final AggregateDefinition activeDefinition;
 
   public AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, ApplyEventMethod> applyMethods,
                              Collection<Class<?>> aggregateClasses) {
@@ -47,15 +46,15 @@ public final class AggregateRepository {
   }
 
   private AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, ApplyEventMethod> applyMethods,
-                              Map<String, AggregateDefinition> definitions, AggregateDefinition definition) {
+                              Map<String, AggregateDefinition> definitions, AggregateDefinition activeDefinition) {
     this.eventStore = eventStore;
     this.snapshotStore = snapshotStore;
     this.applyMethods = applyMethods;
     this.definitions = definitions;
-    this.definition = definition;
+    this.activeDefinition = activeDefinition;
   }
 
-  /** A repository for one aggregate type. All its operations address that type. */
+  /** A repository for one aggregate type. */
   public AggregateRepository forType(String aggregateType) {
     AggregateDefinition definition = definitions.get(aggregateType);
     if (definition == null) {
@@ -67,33 +66,31 @@ public final class AggregateRepository {
 
   /** The aggregate type selected with {@link #forType(String)}. */
   public String getAggregateType() {
-    return aggregateType();
+    return definition().type();
   }
 
   /** The current aggregate state: always present, with a null payload before creation or after removal. */
-  public AggregateState replay(String aggregateId) {
+  public ReplayResult replay(String aggregateId) {
     long started = System.nanoTime();
-    String aggregateType = aggregateType();
+    String aggregateType = getAggregateType();
     AggregateState snapshot = usableSnapshot(aggregateId);
     AggregateState start = snapshot != null ? snapshot : AggregateState.empty(aggregateId);
     try (EventStore.EventIterator events = eventStore.events(aggregateType, aggregateId, start.getVersion() + 1, Long.MAX_VALUE)) {
       AggregateState state = applyEvents(aggregateId, start, events, null);
-      // Payloads are application data, possibly personal: log only type, id, versions and timings.
-      log.debug("Replayed {} events for {} ({}) to version {} in {} ms", state.getVersion() - start.getVersion(),
+      long eventsReplayed = state.getVersion() - start.getVersion();
+      // No payloads in the log: they may hold personal data.
+      log.debug("Replayed {} events for {} ({}) to version {} in {} ms", eventsReplayed,
           aggregateType, aggregateId, state.getVersion(), (System.nanoTime() - started) / 1_000_000);
-      return state;
+      return new ReplayResult(snapshot, state, eventsReplayed);
     }
   }
 
   /**
-   * Rebuilds the state at a stored event for a reader. {@code null} means earlier events were deleted and no suitable
-   * snapshot exists to reconstruct that point.
-   * A listener sees each replayed event before its handler can mutate the state. When the requested event is also the
-   * snapshot event, replay from the beginning if possible so its previous state is observed too. Otherwise the
-   * snapshot supplies the resulting state without calling the listener for that event.
+   * The state at a stored event; {@code null} when earlier events were deleted and no snapshot covers it.
+   * The listener sees each event before it is applied, also the snapshot's own event when the history allows it.
    */
   public AggregateState replay(String aggregateId, long untilSequence, ReplayListener listener) {
-    String aggregateType = aggregateType();
+    String aggregateType = getAggregateType();
     AggregateState storedSnapshot = snapshotStore.get(aggregateType, aggregateId);
     AggregateState snapshot = usableSnapshotOrNull(aggregateId, storedSnapshot);
     AggregateState start;
@@ -121,48 +118,42 @@ public final class AggregateRepository {
 
   /** The stored event at a sequence. */
   public Event event(String aggregateId, long sequence) {
-    return eventStore.get(aggregateType(), aggregateId, sequence);
+    return eventStore.get(getAggregateType(), aggregateId, sequence);
   }
 
   /** Stored events, oldest first. The caller closes the iterator. */
   public EventStore.EventIterator events(String aggregateId) {
-    return eventStore.events(aggregateType(), aggregateId);
+    return eventStore.events(getAggregateType(), aggregateId);
   }
 
   /** Stored events, newest first. The caller closes the iterator. */
   public EventStore.EventIterator eventsNewestFirst(String aggregateId, long from, long to) {
-    return eventStore.eventsNewestFirst(aggregateType(), aggregateId, from, to);
-  }
-
-  /** The usable snapshot, for history readers that need to show where its replay starts. */
-  public AggregateState snapshot(String aggregateId) {
-    String aggregateType = aggregateType();
-    return usableSnapshotOrNull(aggregateId, snapshotStore.get(aggregateType, aggregateId));
+    return eventStore.eventsNewestFirst(getAggregateType(), aggregateId, from, to);
   }
 
   /** Whether this aggregate should be snapshotted at its current version. */
   public boolean isSnapshotDue(long snapshotVersion, AggregateState state) {
-    return definition().isSnapshotDue(snapshotVersion, state.getVersion());
+    return definition().snapshotPolicy().isSnapshotDue(snapshotVersion, state.getVersion());
   }
 
   /** Whether this aggregate deletes events before a snapshot. */
   public boolean deletesEventsAtSnapshot() {
-    return definition().deletesEventsAtSnapshot();
+    return definition().snapshotPolicy().deleteEvents();
   }
 
-  /** Uses the already read snapshot to distinguish a new aggregate from pruned history without reading it again. */
+  /** Whether the history still starts at event 1: tells a new aggregate from pruned history. */
   private boolean allEventsStored(String aggregateId, AggregateState storedSnapshot) {
-    try (EventStore.EventIterator events = eventStore.events(aggregateType(), aggregateId)) {
+    try (EventStore.EventIterator events = eventStore.events(getAggregateType(), aggregateId)) {
       if (events.hasNext()) {
         return events.next().getSequence() == 1;
       }
-      // A snapshot at a positive version proves there were events. An empty store then means history is missing.
+      // No events but a snapshot past version 0: the history was pruned.
       return storedSnapshot == null || storedSnapshot.getVersion() == 0;
     }
   }
 
   private AggregateState usableSnapshot(String aggregateId) {
-    String aggregateType = aggregateType();
+    String aggregateType = getAggregateType();
     AggregateState stored = snapshotStore.get(aggregateType, aggregateId);
     String whyOutdated = whySnapshotIsOutdated(aggregateId, stored);
     if (whyOutdated == null) {
@@ -176,7 +167,7 @@ public final class AggregateRepository {
     return null;
   }
 
-  /** A usable snapshot for optional readers; an unusable one simply means no known state there. */
+  /** The snapshot when usable, otherwise {@code null}. */
   private AggregateState usableSnapshotOrNull(String aggregateId, AggregateState stored) {
     return whySnapshotIsOutdated(aggregateId, stored) == null ? stored : null;
   }
@@ -192,7 +183,7 @@ public final class AggregateRepository {
   }
 
   private AggregateState applyEvents(String aggregateId, AggregateState start, Iterator<Event> events, ReplayListener listener) {
-    String aggregateType = aggregateType();
+    String aggregateType = getAggregateType();
     String wrongStartPayload = definition().whyPayloadDoesNotMatch(start.getPayload());
     if (wrongStartPayload != null) {
       throw new EventReplayException("The state before replay cannot be used: " + wrongStartPayload + ".");
@@ -201,7 +192,7 @@ public final class AggregateRepository {
     while (events.hasNext()) {
       Event event = events.next();
       if (event.getPayload() == null) {
-        // A renamed/removed event class must not silently disappear from the reconstructed state: require upcasting.
+        // A removed class must not silently drop out of the state: require an upcaster.
         throw new EventReplayException("Stored event " + event.getId() + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it to its current class.");
       }
       if (!StringUtils.equals(event.getAggregateType(), aggregateType) || !StringUtils.equals(event.getAggregateId(), aggregateId)) {
@@ -209,7 +200,7 @@ public final class AggregateRepository {
             + event.getAggregateType() + " " + event.getAggregateId() + ", but was read as " + aggregateType + " " + aggregateId + ".");
       }
       if (event.getSequence() != state.getVersion() + 1) {
-        // Missing, repeated or out-of-order events would produce a different state than the history that was handled.
+        // A gap, repeat or reorder would give another state than the one that was handled.
         throw new EventReplayException("The stored events of aggregate " + event.getAggregateType() + " " + event.getAggregateId()
             + " are incomplete or out of order: expected #" + (state.getVersion() + 1) + ", found #" + event.getSequence()
             + " (" + event.getType() + ", event " + event.getId() + ").");
@@ -233,57 +224,30 @@ public final class AggregateRepository {
     return state;
   }
 
-  private String aggregateType() {
-    return definition().type();
-  }
-
   private AggregateDefinition definition() {
-    if (definition == null) {
+    if (activeDefinition == null) {
       throw new IllegalStateException("Choose an aggregate type first: call AggregateRepository.forType(...).");
     }
-    return definition;
+    return activeDefinition;
   }
 
   private static Map<String, AggregateDefinition> definitionsOf(Collection<Class<?>> aggregateClasses) {
     return aggregateClasses.stream()
-        .map(AggregateDefinition::new)
+        .map(AggregateDefinition::of)
         .collect(Collectors.toUnmodifiableMap(AggregateDefinition::type, definition -> definition));
   }
 
-  /** The fixed configuration of one aggregate type in this Eventify instance. */
-  private static final class AggregateDefinition {
-    private final String type;
-    private final Class<?> aggregateClass;
-    private final int revision;
-    private final SnapshotPolicy snapshotPolicy;
+  /** The fixed configuration of one aggregate type. */
+  private record AggregateDefinition(String type, Class<?> aggregateClass, int revision, SnapshotPolicy snapshotPolicy) {
 
-    AggregateDefinition(Class<?> aggregateClass) {
-      this.type = AggregateTypes.of(aggregateClass);
-      this.aggregateClass = aggregateClass;
-      this.revision = Revisions.of(aggregateClass);
-      this.snapshotPolicy = SnapshotPolicy.of(aggregateClass);
-    }
-
-    String type() {
-      return type;
-    }
-
-    int revision() {
-      return revision;
-    }
-
-    boolean isSnapshotDue(long snapshotVersion, long aggregateVersion) {
-      return snapshotPolicy.isSnapshotDue(snapshotVersion, aggregateVersion);
-    }
-
-    boolean deletesEventsAtSnapshot() {
-      return snapshotPolicy.deleteEvents();
+    static AggregateDefinition of(Class<?> aggregateClass) {
+      return new AggregateDefinition(AggregateTypes.of(aggregateClass), aggregateClass, Revisions.of(aggregateClass),
+          SnapshotPolicy.of(aggregateClass));
     }
 
     /** Why this snapshot cannot rebuild this aggregate type, or {@code null} when it can. */
     String whySnapshotIsOutdated(AggregateState snapshot) {
-      // A removed state deliberately has no payload type. A type without a payload instead came from a snapshot whose
-      // aggregate could not be deserialized and must not silently become a deletion.
+      // A type without payload is an unreadable aggregate (see SnapshotSerde), not a removal.
       if (snapshot.getPayload() == null && snapshot.getType() != null) {
         return "its aggregate can't be read, e.g. its class was moved or a field no longer fits";
       }
@@ -291,10 +255,9 @@ public final class AggregateRepository {
       if (wrongPayload != null) {
         return wrongPayload;
       }
-      // Checked for a removed state too: a later revision of the event sourcing handlers may not remove it.
-      int stored = snapshot.getRevision() == 0 ? 1 : snapshot.getRevision();
-      if (stored != revision) {
-        return "it was made with revision " + stored + " of " + aggregateClass.getSimpleName()
+      // Also for a removed state: a later revision may not remove it.
+      if (snapshot.getRevision() != revision) {
+        return "it was made with revision " + snapshot.getRevision() + " of " + aggregateClass.getSimpleName()
             + ", the code is revision " + revision;
       }
       return null;

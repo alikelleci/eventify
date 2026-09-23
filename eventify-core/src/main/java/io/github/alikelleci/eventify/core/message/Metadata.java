@@ -13,15 +13,8 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
 
 /**
- * What a message carries besides its payload: where it came from, and whatever the application adds.
- *
- * <p>A Metadata never changes. {@link #with} gives a new one with the entries added, the way {@code Map.of()} and the
- * {@code with...} methods of a record do:
- *
- * <pre>{@code Metadata.of("tenant", "acme").with("user", "ada")}</pre>
- *
- * <p>So the metadata of a message stays the one it was made with, also when the same Metadata is given to more than
- * one message. The methods of {@link Map} that would change it throw, as they do on {@code Map.of()}.
+ * What a message carries besides its payload. Immutable: {@link #with} returns a new one and mutating Map methods
+ * throw, e.g. {@code Metadata.of("tenant", "acme").with("user", "ada")}.
  */
 @EqualsAndHashCode
 public class Metadata implements Map<String, String> {
@@ -54,7 +47,7 @@ public class Metadata implements Map<String, String> {
     return new Metadata(copy);
   }
 
-  /** This metadata with the entries; their values replace the ones that were there. Nothing to add gives this one. */
+  /** This metadata with the entries added, replacing existing values. */
   public Metadata with(Map<String, String> entries) {
     if (entries == null || entries.isEmpty()) {
       return this;

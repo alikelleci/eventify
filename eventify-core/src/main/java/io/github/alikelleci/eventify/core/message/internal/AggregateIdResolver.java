@@ -13,16 +13,13 @@ import java.util.function.Function;
 /** Reads the aggregate id of a payload: the field annotated with {@link AggregateId}. */
 public class AggregateIdResolver {
 
-  /** Which field holds the identifier, worked out once per payload class. */
+  /** The id field, per payload class. */
   private static final Function<Class<?>, Field> ID_FIELD = PerClass.of(AggregateIdResolver::findIdField);
 
   private AggregateIdResolver() {
   }
 
-  /**
-   * The value of the one field annotated with {@link AggregateId}, as text. The field may have any type (e.g. a
-   * {@code UUID} or a {@code long}): its {@code toString()} is the identifier.
-   */
+  /** The {@code toString()} of the one {@link AggregateId} field, e.g. a {@code UUID} or {@code long}. */
   public static String getAggregateId(Object payload) {
     return getFieldValue(ID_FIELD.apply(payload.getClass()), payload);
   }

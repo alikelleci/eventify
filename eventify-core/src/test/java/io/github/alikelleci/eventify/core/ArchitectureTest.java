@@ -19,10 +19,7 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
-/**
- * The package structure of eventify-core: a feature package holds its public API, its annotations in {@code annotation},
- * its exceptions in {@code exception} and its implementation in {@code internal}.
- */
+/** A feature package holds its public API, with {@code annotation}, {@code exception} and {@code internal} subpackages. */
 @DisplayName("Architecture")
 class ArchitectureTest {
 
@@ -46,10 +43,7 @@ class ArchitectureTest {
         .check(CORE);
   }
 
-  /**
-   * Checked on the loaded class, not on ArchUnit's view of the hierarchy: ArchUnit can't read the class files of every
-   * JDK, and then doesn't know what a JDK class extends.
-   */
+  /** Checked on the loaded class: ArchUnit can't read the class files of every JDK. */
   private static ArchCondition<JavaClass> beEventifyException() {
     return new ArchCondition<>("be an EventifyException") {
       @Override
@@ -69,10 +63,7 @@ class ArchitectureTest {
         .check(CORE);
   }
 
-  /**
-   * Except for the classes that, like {@link Eventify}, put the features together: {@link HandlerRegistry} knows each
-   * feature's handlers, {@link EventifyTopology} wires the features into Kafka Streams.
-   */
+  /** Except the classes that wire the features together: {@link Eventify}, {@link HandlerRegistry}, {@link EventifyTopology}. */
   @Test
   @DisplayName("Should have no cycles between the feature packages")
   void featuresHaveNoCycles() {

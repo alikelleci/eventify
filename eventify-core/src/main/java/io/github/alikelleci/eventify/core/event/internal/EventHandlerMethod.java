@@ -4,9 +4,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
-import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
@@ -14,23 +12,26 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.Optional;
 
-@Slf4j
 @Getter
 public class EventHandlerMethod {
 
   private final Object handler;
   private final Method method;
+  private final int priority;
 
   public EventHandlerMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
+    this.priority = Optional.ofNullable(method.getAnnotation(Priority.class))
+        .map(Priority::value)
+        .orElse(0);
   }
 
   public void handle(Event event) {
     try {
       invokeHandler(event);
     } catch (Exception e) {
-      throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
+      throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
@@ -47,13 +48,6 @@ public class EventHandlerMethod {
       }
     }
 
-    // Invoke the method
     return method.invoke(handler, args);
-  }
-
-  public int getPriority() {
-    return Optional.ofNullable(method.getAnnotation(Priority.class))
-        .map(Priority::value)
-        .orElse(0);
   }
 }

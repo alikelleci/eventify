@@ -10,11 +10,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
-/**
- * The serde of the snapshot store. A snapshot whose aggregate can't be read (its class was moved, or a field no longer
- * fits) is read without it: its payload is {@code null}, and the aggregate is rebuilt from its events instead of every
- * command of it failing. Its version is still read.
- */
+/** A snapshot whose aggregate can't be read is read without payload, so the aggregate is rebuilt from its events. */
 public class SnapshotSerde implements Serde<AggregateState> {
 
   private final ObjectMapper objectMapper;

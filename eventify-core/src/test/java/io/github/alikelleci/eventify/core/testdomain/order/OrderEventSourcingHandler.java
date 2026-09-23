@@ -7,7 +7,6 @@ import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
 import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderCancelled;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderConfirmed;
-import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderDelivered;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderPlaced;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderShipped;
 
@@ -45,13 +44,6 @@ public class OrderEventSourcingHandler {
     return state.toBuilder()
         .status("SHIPPED")
         .trackingNumber(event.getTrackingNumber())
-        .build();
-  }
-
-  @ApplyEvent
-  public Order apply(OrderDelivered event, Order state) {
-    return state.toBuilder()
-        .status("DELIVERED")
         .build();
   }
 

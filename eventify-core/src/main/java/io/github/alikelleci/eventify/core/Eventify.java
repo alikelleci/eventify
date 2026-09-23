@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 public class Eventify implements PluginContext {
@@ -44,13 +43,13 @@ public class Eventify implements PluginContext {
   private KafkaStreams kafkaStreams;
   /** The plugins of this run, as registered when it started. */
   private PluginListeners pluginListeners;
-  /** Whether this run is stopped already: {@link #stop()} is called by the application and by the shutdown hook. */
-  private final AtomicBoolean stopped = new AtomicBoolean();
+  /** Whether this run is stopped: both the application and the shutdown hook call {@link #stop()}. */
+  private boolean stopped;
   /** Completed after Kafka Streams and all plugins of this run have stopped. */
   private CompletableFuture<Void> stopCompletion = CompletableFuture.completedFuture(null);
-  /** Stops this run when the JVM exits without {@link #stop()}; one per run, removed again by {@link #stop()}. */
+  /** Stops this run when the JVM exits without {@link #stop()}. */
   private Thread shutdownHook;
-  /** How long a close attempt waits before reporting the handler that still runs and trying again. */
+  /** How long a close attempt waits before logging and trying again. */
   private static final Duration CLOSE_WAIT = Duration.ofSeconds(30);
 
   protected Eventify(Properties streamsConfig,
@@ -67,7 +66,7 @@ public class Eventify implements PluginContext {
     handlers.register(handler);
   }
 
-  /** Whether objects of this class are handlers: a method has {@code @HandleCommand}, {@code @ApplyEvent}, {@code @HandleEvent} or {@code @Upcast}. */
+  /** Whether a method has {@code @HandleCommand}, {@code @ApplyEvent}, {@code @HandleEvent} or {@code @Upcast}. */
   public static boolean isHandler(Class<?> type) {
     return HandlerRegistry.isHandler(type);
   }
@@ -76,7 +75,7 @@ public class Eventify implements PluginContext {
     return handlers;
   }
 
-  /** The upcasters of the registered handlers: Eventify reads its events with them, and so can a serde of the application. */
+  /** The upcasters of the registered handlers, also usable by an application's own serde. */
   public Upcasters getUpcasters() {
     return handlers.upcasters();
   }
@@ -97,7 +96,7 @@ public class Eventify implements PluginContext {
     return kafkaStreams;
   }
 
-  /** Whether any handler is registered: a command handler, an event sourcing handler, an event handler or an upcaster. */
+  /** Whether any handler or upcaster is registered. */
   public boolean hasHandlers() {
     return !handlers.isEmpty();
   }
@@ -114,19 +113,15 @@ public class Eventify implements PluginContext {
     return handlers.commandTopics(aggregateType);
   }
 
-  /** The names of the aggregates this instance handles, as their {@code @AggregateRoot} gives them. */
+  /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
   @Override
   public Set<String> getAggregateTypes() {
     return handlers.aggregateTypes();
   }
 
   /**
-   * The public read model of this instance's aggregates, replayed with its event sourcing handlers. Select its type
-   * once with {@link AggregateRepository#forType(String)} before reading it. Only locally owned aggregates can be
-   * read; use {@link #getAggregateMetadata} to locate their owner.
-   *
-   * @throws IllegalStateException when Eventify has not started
-   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the stores cannot be read, e.g. during rebalancing
+   * Read model of the locally owned aggregates; select a type with {@link AggregateRepository#forType(String)}.
+   * Throws IllegalStateException before start, InvalidStateStoreException while the stores can't be read.
    */
   @Override
   public AggregateRepository getAggregateRepository() {
@@ -163,7 +158,7 @@ public class Eventify implements PluginContext {
 
   public synchronized void start() {
     if (kafkaStreams != null) {
-      if (!stopped.get()) {
+      if (!stopped) {
         throw new IllegalStateException("Eventify is already started.");
       }
       if (!stopCompletion.isDone()) {
@@ -180,7 +175,7 @@ public class Eventify implements PluginContext {
     warnAboutHandlersThatStopEachOther();
 
     kafkaStreams = new KafkaStreams(topology, streamsConfig);
-    stopped.set(false);
+    stopped = false;
     stopCompletion = new CompletableFuture<>();
     pluginListeners = new PluginListeners(plugins);
     setUpListeners();
@@ -190,10 +185,6 @@ public class Eventify implements PluginContext {
     pluginListeners.notifyPlugins("onStart", plugin -> plugin.onStart(this));
   }
 
-  /**
-   * An exception from an event handler stops Kafka Streams, and command handling stops with it: they are
-   * best run in their own application, with their own application id.
-   */
   private void warnAboutHandlersThatStopEachOther() {
     if (handlers.commandHandlers().isEmpty() || !handlers.hasEventHandlers()) {
       return;
@@ -204,14 +195,8 @@ public class Eventify implements PluginContext {
   }
 
   /**
-   * Closes Kafka Streams and stops the plugins, once. Also after Kafka Streams stopped by itself (e.g. in ERROR): its
-   * resources and the plugins' still need to be released.
-   *
-   * <p>The application (e.g. Spring, when its context closes) and the shutdown hook can call this at the same time.
-   * The one that comes second waits until the first has closed Kafka Streams, so it never returns while handlers still
-   * run, e.g. before Spring closes the beans those handlers use. A stream thread itself cannot wait for that close: it
-   * is one of the threads Kafka Streams has to join. It starts the close on another thread and returns to finish its
-   * handler; that thread stops the plugins only after Kafka Streams has joined every stream thread.
+   * Closes Kafka Streams and the plugins, once; a second caller waits until Kafka Streams is closed.
+   * From a stream thread the close runs on another thread, since Kafka Streams has to join that thread.
    */
   public void stop() {
     Runnable stop = null;
@@ -221,11 +206,12 @@ public class Eventify implements PluginContext {
         return;
       }
       completion = stopCompletion;
-      if (!stopped.compareAndSet(false, true)) {
+      if (stopped) {
         if (isCallingStreamThread()) {
           return;
         }
       } else {
+        stopped = true;
         removeShutdownHook();
         log.info("Eventify is shutting down...");
         KafkaStreams streams = kafkaStreams;
@@ -259,7 +245,7 @@ public class Eventify implements PluginContext {
     }
   }
 
-  /** Waits until every Kafka Streams thread has stopped, so plugins can safely release their resources afterwards. */
+  /** Waits until every stream thread has stopped, so plugins can release their resources afterwards. */
   void closeKafkaStreams(KafkaStreams streams) {
     while (!streams.close(CLOSE_WAIT)) {
       log.warn("Eventify is still shutting down: Kafka Streams did not stop yet, a handler is still running.");
@@ -280,7 +266,7 @@ public class Eventify implements PluginContext {
     try {
       Runtime.getRuntime().removeShutdownHook(shutdownHook);
     } catch (IllegalStateException e) {
-      // The JVM is shutting down already: the hook runs anyway, and finds this run stopped.
+      // The JVM is already shutting down: the hook runs anyway.
     }
     shutdownHook = null;
   }
@@ -339,7 +325,6 @@ public class Eventify implements PluginContext {
         this.objectMapper = EventifyObjectMapper.create();
       }
 
-      // What happens underneath is logged by a plugin, so it can be seen, replaced or joined by others.
       this.plugins.add(0, new LoggingPlugin());
 
       Eventify eventify = new Eventify(

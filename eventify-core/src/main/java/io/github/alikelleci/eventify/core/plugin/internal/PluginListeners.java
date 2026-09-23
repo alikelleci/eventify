@@ -11,10 +11,7 @@ import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-/**
- * Tells the plugins what happens. Kafka Streams takes one listener of each kind, so one listener passes everything on
- * to the plugins that asked. Each is told on the calling thread; one that throws is logged and skipped.
- */
+/** Fans each Kafka Streams listener out to the plugins; one that throws is logged and skipped. */
 @Slf4j
 public class PluginListeners {
 

@@ -48,9 +48,8 @@ public class DefaultCommandGateway implements CommandGateway {
   private final ReplyConsumer replies;
 
   /**
-   * Completes the futures, so what the caller chains to one runs here: not on the reply thread, which a callback that
-   * waits for the reply of another command would block, nor on the producer's or the cache's threads. Unbounded: a
-   * callback that waits holds its thread, and a bounded pool full of them would block again.
+   * Completes the futures, so callbacks never block the reply, producer or cache threads.
+   * Unbounded: a callback may wait for another reply and hold its thread.
    */
   private final ExecutorService completions = Executors.newCachedThreadPool(runnable -> {
     Thread thread = new Thread(runnable, "eventify-command-gateway-completion");
@@ -65,7 +64,7 @@ public class DefaultCommandGateway implements CommandGateway {
   DefaultCommandGateway(Properties producerConfig, Properties consumerConfig, String replyTopic, ObjectMapper objectMapper, Duration timeout) {
     this.cache = Caffeine.newBuilder()
         .expireAfterWrite(timeout)
-        // Expires on time: without a scheduler, entries only expire when the cache is used, e.g. by the next command.
+        // Without a scheduler, entries only expire when the cache is used.
         .scheduler(Scheduler.systemScheduler())
         .removalListener((String key, CompletableFuture<CommandResult.Success> future, RemovalCause cause) -> {
           if (cause.wasEvicted()) {
@@ -93,14 +92,12 @@ public class DefaultCommandGateway implements CommandGateway {
       throw new IllegalStateException("The command gateway is closed.");
     }
 
-    // Built first: a command that can't be sent (e.g. without @Topic) fails here, without leaving a future behind.
-    // Where to reply to travels as a header: it says where this sender waits, and nothing about the command itself.
+    // Built first: a command without @Topic fails here, before a future is registered.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopic().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command,
         List.of(new RecordHeader(HeaderNames.REPLY_TO, replies.getReplyTopic().getBytes(StandardCharsets.UTF_8))));
 
     CompletableFuture<CommandResult.Success> future = new CompletableFuture<>();
-    // One future per command id. The same command sent again while it still waits for its reply would be handled twice,
-    // and would replace the first future, which then never completes: it is refused instead.
+    // Refused while the same command still waits: it would be handled twice and replace the first future.
     CompletableFuture<CommandResult.Success> waiting = cache.asMap().putIfAbsent(command.getId(), future);
     if (waiting != null) {
       return CompletableFuture.failedFuture(new IllegalStateException("Command " + command.getId() + " was already sent and still waits for its result."));
@@ -108,8 +105,7 @@ public class DefaultCommandGateway implements CommandGateway {
 
     log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
     try {
-      // A command that doesn't reach Kafka never gets a result: its future fails with the reason right away, instead of
-      // with a timeout later (e.g. no access to the topic, a command too large, or the broker unreachable too long).
+      // A failed send fails the future right away instead of by timeout.
       producer.send(producerRecord, (metadata, exception) -> {
         if (exception != null) {
           failSend(command, future, exception);
@@ -141,11 +137,7 @@ public class DefaultCommandGateway implements CommandGateway {
     }
   }
 
-  /**
-   * Sends the commands that are still buffered, stops listening for replies, and fails the commands that still wait
-   * for one with a {@link CancellationException}: once closed, their replies can't be received. The commands themselves
-   * are still handled. After closing, {@link #send} throws.
-   */
+  /** Flushes pending sends, stops listening, and fails waiting commands with {@link CancellationException}. */
   @Override
   public void close() {
     if (replies.isClosed()) {
@@ -153,15 +145,14 @@ public class DefaultCommandGateway implements CommandGateway {
     }
     replies.stopListening();
     producer.close(CLOSE_TIMEOUT);
-    // On this thread: when close() returns, every waiting command has failed. Their callbacks run here too, like
-    // callbacks chained after that.
+    // On this thread: every waiting command has failed when close() returns.
     cache.asMap().forEach((id, future) ->
         future.completeExceptionally(new CancellationException("The command gateway was closed before command " + id + " got its result.")));
     cache.invalidateAll();
-    completions.shutdown(); // still completes the replies and timeouts handed to it before
+    completions.shutdown(); // still runs the completions already handed to it
   }
 
-  /** Completes the futures of the commands the replies are for. Doesn't throw: a reply it can't handle is skipped. */
+  /** Completes the waiting futures; a reply that can't be handled is skipped. */
   private void onReplies(ConsumerRecords<String, CommandResult> consumerRecords) {
     consumerRecords.forEach(consumerRecord -> {
       try {

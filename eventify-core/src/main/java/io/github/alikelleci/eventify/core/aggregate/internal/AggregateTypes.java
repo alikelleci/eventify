@@ -15,11 +15,7 @@ public final class AggregateTypes {
   private AggregateTypes() {
   }
 
-  /**
-   * The name of this aggregate class.
-   *
-   * @throws HandlerRegistrationException when the class is no aggregate, or its name cannot be part of a store key
-   */
+  /** The {@link AggregateRoot} name; throws {@link HandlerRegistrationException} when missing, blank or with NUL. */
   public static String of(Class<?> aggregateType) {
     return NAME.apply(aggregateType);
   }

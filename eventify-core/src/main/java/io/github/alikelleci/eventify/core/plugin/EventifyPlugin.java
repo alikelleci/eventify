@@ -4,11 +4,8 @@ import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 
 /**
- * Something that runs along with Eventify. Everything a plugin can hook into is on this interface, and all of it is
- * optional: implement what you need.
- *
- * <p>The listeners are called on Kafka Streams' own threads, so keep them short: remember something, don't block.
- * An exception from a plugin is logged and reaches neither Kafka Streams nor the other plugins.
+ * Hooks into Eventify; every method is optional. Listeners run on Kafka Streams' threads, so don't block.
+ * A plugin's exception is logged and goes no further.
  */
 public interface EventifyPlugin {
 

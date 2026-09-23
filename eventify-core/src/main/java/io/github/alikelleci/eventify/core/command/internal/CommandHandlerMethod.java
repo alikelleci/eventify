@@ -5,7 +5,6 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
-import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
@@ -15,7 +14,6 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -28,13 +26,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-@Slf4j
 @Getter
 public class CommandHandlerMethod {
 
   private final Object handler;
   private final Method method;
-  /** The aggregate this handler's commands belong to, as its {@code @AggregateRoot} gives it. */
+  /** The {@code @AggregateRoot} name of the aggregate this handler works on. */
   private final String aggregateType;
 
   private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
@@ -45,17 +42,14 @@ public class CommandHandlerMethod {
     this.aggregateType = aggregateType;
   }
 
-  /**
-   * What the command changes about its aggregate: the payloads of its events, in the order returned. The command
-   * processor makes them events: it knows where they go in the aggregate's history.
-   */
+  /** The event payloads the command produces, in order; the processor turns them into events. */
   public List<Object> handle(Command command, AggregateState state) {
     try {
       validate(command.getPayload());
       Object result = invokeHandler(command, state);
       return eventPayloads(command, result);
     } catch (Exception e) {
-      throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionCauses.rootCauseOrSelf(e));
+      throw new CommandExecutionException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
   }
 
@@ -74,7 +68,6 @@ public class CommandHandlerMethod {
       }
     }
 
-    // Invoke the method
     return method.invoke(handler, args);
   }
 
@@ -88,14 +81,12 @@ public class CommandHandlerMethod {
 
     payloads.forEach(payload -> {
       String type = payload.getClass().getSimpleName();
-      // The events of a command belong to the aggregate the command was handled for: another id would be stored and
-      // replayed as another aggregate's event.
+      // Another id would be stored and replayed as another aggregate's event.
       String aggregateId = AggregateIdResolver.getAggregateId(payload);
       if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
         throw new AggregateIdMismatchException("Aggregate identifier does not match for event " + type + ". Expected " + command.getAggregateId() + ", but was " + aggregateId);
       }
-      // The topic an event is sent to is only looked up when it is sent, after it is stored: an event without one
-      // is rejected here, before anything of the command is stored.
+      // Checked now: the topic is only looked up when sending, after the events are stored.
       if (Topics.of(payload.getClass()) == null) {
         throw new TopicMissingException("Event " + type + " has no topic. Please annotate its class, or an interface it implements, with @Topic.");
       }

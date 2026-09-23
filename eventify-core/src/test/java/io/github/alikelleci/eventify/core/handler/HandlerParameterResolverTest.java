@@ -88,7 +88,7 @@ class HandlerParameterResolverTest {
     assertThatThrownBy(() -> resolve(UNSUPPORTED))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported parameter");
-    // Object used to satisfy Object.isAssignableFrom(Metadata.class), and therefore accidentally received metadata.
+    // Object could take Metadata by type, but is not a parameter about the message.
     assertThatThrownBy(() -> resolve(OBJECT))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("Unsupported parameter");

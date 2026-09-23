@@ -13,7 +13,7 @@ import java.util.NoSuchElementException;
 public final class EventStore {
 
   private final ReadOnlyKeyValueStore<String, Event> readable;
-  /** Present only on the command-processing thread. Query repositories are deliberately read-only. */
+  /** Only on the command-processing thread; queries are read-only. */
   private final KeyValueStore<String, Event> writable;
 
   public EventStore(ReadOnlyKeyValueStore<String, Event> store) {
@@ -31,11 +31,7 @@ public final class EventStore {
     return events(aggregateType, aggregateId, 1, Long.MAX_VALUE);
   }
 
-  /**
-   * Events in the inclusive sequence range, oldest first. Start at snapshot version + 1 to skip its event.
-   * The caller closes the iterator, also after a partial read or a failure. An inverted range is empty.
-   * @throws IllegalArgumentException when either sequence is below 1
-   */
+  /** Events in the inclusive range, oldest first; empty when inverted. The caller closes the iterator. */
   public EventIterator events(String aggregateType, String aggregateId, long from, long to) {
     requireSequences(aggregateType, aggregateId, from, to);
     if (to < from) {
@@ -44,10 +40,7 @@ public final class EventStore {
     return new EventIterator(readable.range(StoreKeys.of(aggregateType, aggregateId, from), StoreKeys.of(aggregateType, aggregateId, to)));
   }
 
-  /**
-   * Events in the inclusive sequence range, newest first; from is the higher sequence. The caller closes the iterator.
-   * @throws IllegalArgumentException when either sequence is below 1
-   */
+  /** Events in the inclusive range, newest first ({@code from} is the higher). The caller closes the iterator. */
   public EventIterator eventsNewestFirst(String aggregateType, String aggregateId, long from, long to) {
     requireSequences(aggregateType, aggregateId, from, to);
     if (from < to) {
@@ -56,11 +49,7 @@ public final class EventStore {
     return new EventIterator(readable.reverseRange(StoreKeys.of(aggregateType, aggregateId, to), StoreKeys.of(aggregateType, aggregateId, from)));
   }
 
-  /**
-   * Appends events under their aggregate type, id and sequence. Only command processing may call this, within its
-   * transaction: if an append fails after earlier appends, the processor must abort all of them.
-   * @throws IllegalStateException when a sequence is already taken or the store is read-only
-   */
+  /** Appends events; command processing only, within its transaction. Throws when a sequence is taken. */
   public void save(List<Event> events) {
     KeyValueStore<String, Event> store = writable();
     for (Event event : events) {

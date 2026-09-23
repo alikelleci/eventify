@@ -30,7 +30,6 @@ public class Command implements Message {
   private Command(Object payload, Metadata metadata) {
     this.timestamp = Instant.now();
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
-    // A copy with the flow this command belongs to: the metadata that was given stays as it is.
     this.metadata = Optional.ofNullable(metadata).orElse(Metadata.EMPTY)
         .withDefault(CORRELATION_ID, UUID.randomUUID().toString());
 

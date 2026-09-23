@@ -10,11 +10,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
-/**
- * Reads and writes events as JSON. An event is read upcast to the latest revision of its payload, with the upcasters
- * registered here: e.g. in a Kafka Streams service that reads an events topic,
- * {@code new EventSerde().registerUpcaster(new OrderEventUpcaster())}.
- */
+/** Events as JSON, upcast on read, e.g. {@code new EventSerde().registerUpcaster(new OrderEventUpcaster())}. */
 public class EventSerde implements Serde<Event> {
 
   private final ObjectMapper objectMapper;
@@ -29,7 +25,7 @@ public class EventSerde implements Serde<Event> {
     this(objectMapper, new Upcasters());
   }
 
-  /** With these upcasters, the upcasters themselves: ones registered with them later are used too. */
+  /** Uses these upcasters live: ones registered later are used too. */
   public EventSerde(ObjectMapper objectMapper, Upcasters upcasters) {
     this.objectMapper = objectMapper;
     this.upcasters = upcasters;

@@ -11,13 +11,7 @@ import java.util.Set;
 
 public class AnnotationScanner {
 
-  /**
-   * Find a specific annotation on a class or its hierarchy, including interfaces and meta-annotations.
-   *
-   * @param clazz           the class to search
-   * @param annotationClass the annotation type to look for
-   * @return the annotation if found, or null if not found
-   */
+  /** The annotation on the class, its superclasses or interfaces, also as meta-annotation; {@code null} when absent. */
   public static <A extends Annotation> A findAnnotation(Class<?> clazz, Class<A> annotationClass) {
     if (clazz == null || annotationClass == null) {
       return null;
@@ -55,52 +49,15 @@ public class AnnotationScanner {
   }
 
   /**
-   * Find a specific annotation on a method, including meta-annotations.
-   *
-   * @param method          the method to search
-   * @param annotationClass the annotation type to look for
-   * @return the annotation if found, or null if not found
-   */
-  public static <A extends Annotation> A findAnnotation(Method method, Class<A> annotationClass) {
-    if (method == null || annotationClass == null) {
-      return null;
-    }
-
-    // Check directly for the annotation
-    A annotation = method.getAnnotation(annotationClass);
-    if (annotation != null) {
-      return annotation;
-    }
-
-    // Check meta-annotations
-    for (Annotation declaredAnnotation : method.getDeclaredAnnotations()) {
-      annotation = declaredAnnotation.annotationType().getAnnotation(annotationClass);
-      if (annotation != null) {
-        return annotation;
-      }
-    }
-
-    return null;
-  }
-
-  /**
-   * Find all methods in a class hierarchy annotated with a specific annotation: one per signature. An annotated method
-   * and an annotated method it overrides are the same handler, and a reflective call of either runs the override, so
-   * returning both would run it twice. The most specific one is returned: of the class itself, then of its
-   * superclasses, then of the interfaces. Bridge methods, which the compiler adds for a generic override and which carry
-   * its annotations, are skipped for the same reason.
-   *
-   * @param clazz           the class to search
-   * @param annotationClass the annotation type to look for
-   * @return a list of methods annotated with the specified annotation
+   * The annotated methods, one per signature and the most specific one, so an override isn't run twice.
+   * Bridge methods are skipped for the same reason.
    */
   public static <A extends Annotation> List<Method> findAnnotatedMethods(Class<?> clazz, Class<A> annotationClass) {
     if (clazz == null || annotationClass == null) {
       return List.of();
     }
 
-    // The class and its superclasses first, then all their interfaces: a class's method is more specific than any
-    // interface method it implements.
+    // Classes first, then interfaces: a class's method is more specific.
     List<Class<?>> hierarchy = new ArrayList<>();
     for (Class<?> type = clazz; type != null; type = type.getSuperclass()) {
       hierarchy.add(type);
@@ -126,9 +83,7 @@ public class AnnotationScanner {
     return new ArrayList<>(methods.values());
   }
 
-  /**
-   * Helper to check if a method is annotated with a specific annotation, including meta-annotations.
-   */
+  /** Also true for a meta-annotation. */
   private static <A extends Annotation> boolean isAnnotatedWith(Method method, Class<A> annotationClass) {
     if (method.isAnnotationPresent(annotationClass)) {
       return true;

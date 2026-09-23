@@ -5,10 +5,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-/**
- * The field that says which aggregate a command or event is about. Every command and event class has exactly one, and
- * its value is the aggregate's identifier: a {@code String}, a {@code UUID} or a number.
- */
+/** The field holding the aggregate id: exactly one per command and event class; its {@code toString()} is the id. */
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface AggregateId {

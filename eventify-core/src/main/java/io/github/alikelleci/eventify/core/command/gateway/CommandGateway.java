@@ -20,10 +20,7 @@ import java.util.concurrent.TimeoutException;
 
 public interface CommandGateway extends AutoCloseable {
 
-  /**
-   * Sends the command. The future completes with its result: the events it produced. It fails with a
-   * {@link CommandExecutionException} when the command is rejected.
-   */
+  /** Sends the command; the future fails with {@link CommandExecutionException} when it is rejected. */
   CompletableFuture<CommandResult.Success> send(Command command);
 
   /** Releases the gateway's Kafka clients and thread. */
@@ -37,11 +34,8 @@ public interface CommandGateway extends AutoCloseable {
   }
 
   /**
-   * Sends the command and waits for its result: the events it produced.
-   *
-   * @throws CommandExecutionException when the command failed
-   * @throws CommandTimeoutException   when no result arrived in time; the command may still be handled
-   * @throws EventifyException         when the wait was interrupted; the thread's interrupt flag is set again
+   * Sends the command and waits for its result. Throws {@link CommandExecutionException} when rejected,
+   * {@link CommandTimeoutException} on timeout (it may still be handled), {@link EventifyException} when interrupted.
    */
   default CommandResult.Success sendAndWait(Command command, long timeout, TimeUnit unit) {
     CompletableFuture<CommandResult.Success> future = send(command);
@@ -71,10 +65,7 @@ public interface CommandGateway extends AutoCloseable {
     return sendAndWait(payload, 1, TimeUnit.MINUTES);
   }
 
-  /**
-   * What a failed result is thrown as: the failure itself when it is unchecked (e.g. a
-   * {@link CommandExecutionException}); a {@link CommandTimeoutException} when the gateway stopped waiting.
-   */
+  /** The failure as unchecked exception; a gateway timeout becomes a {@link CommandTimeoutException}. */
   private static RuntimeException resultFailure(Command command, Throwable failure) {
     if (failure instanceof TimeoutException) {
       return new CommandTimeoutException("No result for command " + command.getId() + ": " + failure.getMessage(), failure);
@@ -117,12 +108,7 @@ public interface CommandGateway extends AutoCloseable {
       return this;
     }
 
-    /**
-     * The consumer that receives the results needs no configuration of its own: it takes every producer setting that a
-     * consumer has too, so it connects the way the producer does. That includes the security settings
-     * ({@code security.protocol}, {@code sasl.*}, {@code ssl.*}): without them it couldn't log in on a secured cluster,
-     * and every command would wait for its result until it timed out.
-     */
+    /** The reply consumer takes the producer's connection and security settings. */
     public DefaultCommandGateway build() {
       Properties consumerConfig = KafkaClientConfigs.consumerConnectionOf(this.producerConfig);
 

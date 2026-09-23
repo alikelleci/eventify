@@ -11,11 +11,7 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
 import java.nio.charset.StandardCharsets;
 
-/**
- * Where the sender of a command waits for its result: the {@link HeaderNames#REPLY_TO} header of the command record.
- * Kafka Streams keeps the headers of a record on everything made from it, so the result still carries the header of
- * the command it answers.
- */
+/** The reply topic from the command's {@link HeaderNames#REPLY_TO} header; Kafka Streams keeps it on the result. */
 public final class ReplyTo {
 
   private ReplyTo() {

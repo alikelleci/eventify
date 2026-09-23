@@ -13,8 +13,8 @@ class EventStoreTest {
   private final EventStore store = new EventStore(new InMemoryStore<Event>());
 
   @Test
-  @DisplayName("Should preserve newest-first bounds in a validation error")
-  void preservesNewestFirstBoundsInValidationError() {
+  @DisplayName("Should refuse a sequence below 1, and name the requested range")
+  void aSequenceBelowOneIsRefusedWithTheRange() {
     assertThatThrownBy(() -> store.eventsNewestFirst("order", "order-1", 10, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("from sequence 10 to sequence 0");

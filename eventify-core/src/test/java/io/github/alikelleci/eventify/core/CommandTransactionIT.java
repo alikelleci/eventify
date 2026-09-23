@@ -47,11 +47,8 @@ import java.util.function.BooleanSupplier;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * What a failing command leaves behind under exactly-once, against a real broker: what is committed, as every
- * {@code read_committed} consumer and the restored state stores see it, and what was only sent.
- *
- * <p>A failure after something of the command was written must reach Kafka Streams, so the transaction is aborted. A
- * failure that is caught is committed, with everything written before it.
+ * What a failing command leaves committed under exactly-once, against a real broker. A failure after a write must reach
+ * Kafka Streams so the transaction aborts; a caught failure is committed with what was written before it.
  */
 @Testcontainers
 @DisplayName("Command transactions (exactly-once, real broker)")
@@ -109,21 +106,20 @@ class CommandTransactionIT {
     String id;
   }
 
-  /**
-   * An event that can be written as JSON, except the {@link #FAIL_ON_WRITE}th time. Set to the last write, which is
-   * when it is sent to its topic, it fails after the event is stored and the command's result is sent.
-   */
+  /** Fails on the {@link #FAIL_ON_WRITE}th JSON write; set to the last one, it fails when the event is sent. */
   @Value
   @Builder
   public static class EventThatFailsWhenSent implements OrderEvent {
     static final AtomicInteger TIMES_WRITTEN = new AtomicInteger();
     static volatile int FAIL_ON_WRITE = Integer.MAX_VALUE;
+    /** Only this aggregate's writes count: commands of earlier tests are replayed from the shared topic too. */
+    static volatile String COUNTED_ID;
 
     @AggregateId
     String id;
 
     public String getContent() {
-      if (TIMES_WRITTEN.incrementAndGet() == FAIL_ON_WRITE) {
+      if (id.equals(COUNTED_ID) && TIMES_WRITTEN.incrementAndGet() == FAIL_ON_WRITE) {
         throw new IllegalStateException("cannot be written this time");
       }
       return "content";
@@ -175,6 +171,7 @@ class CommandTransactionIT {
   @AfterEach
   void tearDown() {
     if (eventify != null) eventify.stop();
+    EventThatFailsWhenSent.COUNTED_ID = null;
   }
 
   /** Scenario 1: the first event is valid, the second has no topic. The command fails, and none of it is stored or sent. */
@@ -185,23 +182,20 @@ class CommandTransactionIT {
     send(EmitEventWithoutTopic.builder().id("order-1").build());
     await("the command's result", () -> !committed("orders.results", "order-1").isEmpty());
 
-    report("order-1", "orders-event-without-topic");
     assertThat(committed("orders.results", "order-1")).as("committed results").containsExactly("failure");
     assertThat(committed("orders.events", "order-1")).as("committed events").isEmpty();
     assertThat(committed("orders-event-without-topic-event-store-changelog", "order-1")).as("committed event store").isEmpty();
     assertThat(committed("orders-event-without-topic-snapshot-store-changelog", "order-1")).as("committed snapshot store").isEmpty();
   }
 
-  /**
-   * Scenario 2: the command is accepted, its event is stored and its result sent; then sending the event fails. Nothing
-   * of the command is committed: what was sent is aborted, mostly before it even reached the broker.
-   */
+  /** Scenario 2: sending the event fails after it was stored and the result sent; nothing of the command is committed. */
   @Test
   @DisplayName("Should abort the transaction and commit nothing when sending an event fails after the command was accepted")
   void aFailureAfterTheCommandIsAcceptedIsAborted() {
     eventify = start("orders-event-fails-when-sent");
 
     // First a command that succeeds, to count how often its event is written as JSON: the last time is when it is sent.
+    EventThatFailsWhenSent.COUNTED_ID = "order-counting-writes";
     EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
     send(EmitEventThatFailsWhenSent.builder().id("order-counting-writes").build());
     await("the counting command's result", () -> !committed("orders.results", "order-counting-writes").isEmpty());
@@ -212,6 +206,7 @@ class CommandTransactionIT {
         .containsExactly(StoreKeys.snapshot("order", "order-counting-writes"));
 
     // The same command again, now failing on that last write.
+    EventThatFailsWhenSent.COUNTED_ID = "order-2";
     EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
     EventThatFailsWhenSent.FAIL_ON_WRITE = writesPerCommand;
     try {
@@ -222,7 +217,6 @@ class CommandTransactionIT {
       EventThatFailsWhenSent.FAIL_ON_WRITE = Integer.MAX_VALUE;
     }
 
-    report("order-2", "orders-event-fails-when-sent");
     assertThat(committed("orders.results", "order-2")).as("committed results").isEmpty();
     assertThat(committed("orders.events", "order-2")).as("committed events").isEmpty();
     assertThat(committed("orders-event-fails-when-sent-event-store-changelog", "order-2")).as("committed event store").isEmpty();
@@ -235,6 +229,7 @@ class CommandTransactionIT {
     String applicationId = "orders-snapshot-rollback";
     String id = "order-retained";
     eventify = start(applicationId);
+    EventThatFailsWhenSent.COUNTED_ID = id;
     EventThatFailsWhenSent.TIMES_WRITTEN.set(0);
     send(EmitEventThatFailsWhenSent.builder().id(id).build());
     await("the initial command to commit", () -> committed("orders.results", id).size() == 1);
@@ -256,13 +251,6 @@ class CommandTransactionIT {
     // Only the first committed entries survive. No new event, replacement snapshot or pruning tombstone was committed.
     assertThat(committed(applicationId + "-event-store-changelog", id)).containsExactly(StoreKeys.of("order", id, 1));
     assertThat(committed(applicationId + "-snapshot-store-changelog", id)).containsExactly(StoreKeys.snapshot("order", id));
-  }
-
-  private void report(String aggregateId, String applicationId) {
-    System.out.println("TX " + aggregateId + " (" + eventify.getKafkaStreams().state() + ")");
-    for (String topic : List.of("orders.results", "orders.events", applicationId + "-event-store-changelog", applicationId + "-snapshot-store-changelog")) {
-      System.out.println("TX   " + topic + ": sent " + sent(topic, aggregateId) + ", committed " + committed(topic, aggregateId));
-    }
   }
 
   private Eventify start(String applicationId) {
@@ -287,19 +275,10 @@ class CommandTransactionIT {
 
   /** What a {@code read_committed} consumer sees: for results, "success" or "failure"; otherwise the record key. */
   private static List<String> committed(String topic, String aggregateId) {
-    return read(topic, aggregateId, "read_committed");
-  }
-
-  /** Everything that was sent, also in transactions that were aborted. */
-  private static List<String> sent(String topic, String aggregateId) {
-    return read(topic, aggregateId, "read_uncommitted");
-  }
-
-  private static List<String> read(String topic, String aggregateId, String isolation) {
     List<String> found = new ArrayList<>();
     try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(Map.of(
         ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
-        ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolation,
+        ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed",
         ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false), new StringDeserializer(), new StringDeserializer())) {
       if (consumer.partitionsFor(topic).isEmpty()) {
         return found;

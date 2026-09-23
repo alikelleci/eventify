@@ -32,7 +32,7 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** The processor checkpoints history on rejection and the resulting state on success, including deletion. */
+/** A snapshot is made only after an accepted command, of the state with its events applied. */
 @DisplayName("Command snapshots")
 class CommandSnapshotTest {
   @AggregateRoot("counter")
@@ -97,17 +97,16 @@ class CommandSnapshotTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"command-failure", "apply-failure", ""})
-  void rejectionSnapshotsOnlyTheReconstructedHistory(String mode) {
+  @DisplayName("Should not snapshot when a command is rejected")
+  void aRejectedCommandIsNotSnapshotted(String mode) {
     send(mode);
     assertThat(results.readValue()).isInstanceOf(CommandResult.Failure.class);
-    AggregateState snapshot = snapshot();
-    assertThat(snapshot.getVersion()).isEqualTo(2);
-    assertThat(((Counter) snapshot.getPayload()).value).isEqualTo(2);
-    assertThat(events.get(key(1))).isNull();
+    assertThat(snapshot()).isNull();
+    assertThat(events.get(key(1))).isNotNull();
     assertThat(events.get(key(2))).isNotNull();
     assertThat(events.get(key(3))).isNull();
 
-    send("success"); // Subsequent commands must not observe an uncommitted mutation.
+    send("success"); // the next commands see nothing of the rejected one
     assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
     send("success");
     assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
@@ -116,16 +115,7 @@ class CommandSnapshotTest {
   }
 
   @Test
-  void rejectionBeforeThresholdDoesNotWriteASnapshot() {
-    events.delete(key(2));
-    send("apply-failure");
-    assertThat(results.readValue()).isInstanceOf(CommandResult.Failure.class);
-    assertThat(snapshot()).isNull();
-    assertThat(events.get(key(1))).isNotNull();
-    assertThat(events.get(key(2))).isNull();
-  }
-
-  @Test
+  @DisplayName("Should snapshot the state after an accepted command right away")
   void successSnapshotsTheResultWithoutWaitingForAnotherCommand() {
     send("success");
     assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
@@ -136,6 +126,7 @@ class CommandSnapshotTest {
   }
 
   @Test
+  @DisplayName("Should snapshot the history also for an accepted command without events")
   void acceptedCommandWithoutEventsStillCheckpointsHistory() {
     send("no-events");
     assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
@@ -144,6 +135,7 @@ class CommandSnapshotTest {
   }
 
   @Test
+  @DisplayName("Should snapshot a removed aggregate as a version without payload")
   void deletionSnapshotsVersionWithoutPayload() {
     send("remove");
     assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
@@ -173,8 +165,8 @@ class CommandSnapshotTest {
     @ApplyEvent public Unwritable apply(Touched event, Unwritable state) { return new Unwritable(event.id()); }
   }
 
-  /** A state that can't be written as JSON gets no snapshot; it must not stop the application. */
   @Test
+  @DisplayName("Should skip the snapshot of a state that can't be written as JSON, and accept the command")
   void aStateThatCannotBeWrittenAsJsonIsNotSnapshotted() {
     Properties config = new Properties();
     config.put(StreamsConfig.APPLICATION_ID_CONFIG, "unwritable-snapshot-test");

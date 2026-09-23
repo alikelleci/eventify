@@ -6,10 +6,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 
 import java.util.List;
 
-/**
- * The outcome of handling a command. It is written to the command's result topic and, when its sender waits for it, to
- * the sender's reply topic, as JSON with a {@code "result"} of {@code "success"} or {@code "failure"}.
- */
+/** The outcome of a command, written to its result topic and, when awaited, to the sender's reply topic. */
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "result")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = CommandResult.Success.class, name = "success"),
@@ -19,22 +16,14 @@ public sealed interface CommandResult permits CommandResult.Success, CommandResu
 
   Command command();
 
-  /**
-   * The command was accepted.
-   *
-   * @param events the events it produced, in the order they were stored; empty when it produced none
-   */
+  /** The command was accepted; {@code events} in stored order, empty when none. */
   record Success(Command command, List<Event> events) implements CommandResult {
     public Success {
       events = events == null ? List.of() : List.copyOf(events);
     }
   }
 
-  /**
-   * The command was rejected: nothing of it was stored.
-   *
-   * @param cause why, as the root cause's message
-   */
+  /** The command was rejected and nothing of it was stored; {@code cause} is the root cause's message. */
   record Failure(Command command, String cause) implements CommandResult {
   }
 }

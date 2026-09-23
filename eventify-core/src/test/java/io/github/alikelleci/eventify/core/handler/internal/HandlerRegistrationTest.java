@@ -23,10 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/**
- * A command and an event have one command handler and one event sourcing handler: a second one would replace the
- * first, without a word. Event handlers can be several.
- */
+/** One command handler and one event sourcing handler per type, a second is refused; event handlers can be several. */
 @DisplayName("Handler registration")
 class HandlerRegistrationTest {
 
@@ -391,15 +388,17 @@ class HandlerRegistrationTest {
   @Test
   @DisplayName("Should refuse a handler registered after Eventify started")
   void aHandlerRegisteredAfterStartIsRefused() {
-    // Without @Topic nothing is subscribed: start() returns without connecting to Kafka.
     Eventify eventify = Eventify.builder().streamsConfig(config())
         .registerHandler(new LightHandler())
         .build();
     eventify.start();
-
-    assertThatThrownBy(() -> eventify.registerHandler(new FirstEventHandler()))
-        .isInstanceOf(IllegalStateException.class)
-        .hasMessageContaining("started");
+    try {
+      assertThatThrownBy(() -> eventify.registerHandler(new FirstEventHandler()))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessageContaining("started");
+    } finally {
+      eventify.stop();
+    }
   }
 
   public static class UnsupportedParameterHandler {

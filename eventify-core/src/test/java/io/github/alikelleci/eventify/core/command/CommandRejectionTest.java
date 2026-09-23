@@ -34,8 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * A command is rejected before any of its events is stored, also when the mistake is in an event: nothing of it is
- * stored or sent, and the aggregate goes on as it was. What fails after the command is accepted is not its failure.
+ * A command is rejected before anything of it is stored or sent, also for a mistake in an event.
+ * What fails after it is accepted is not the command's failure.
  */
 @DisplayName("Command rejection")
 class CommandRejectionTest {
@@ -159,7 +159,7 @@ class CommandRejectionTest {
     String id;
 
     public String getContent() {
-      // Read twice before the command is accepted: for the copy that is stored, and for the copy that is applied.
+      // Written twice before the command is accepted: its JSON copy and the event store.
       if (WRITES.incrementAndGet() > 2) {
         throw new IllegalStateException("not writable anymore");
       }
@@ -271,10 +271,7 @@ class CommandRejectionTest {
     assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created", "Created");
   }
 
-  /**
-   * The event as it is stored, not as the handler returned it, is what every load replays: one that can't be applied
-   * once written as JSON would make every next command of the aggregate fail.
-   */
+  /** Every load replays the stored JSON, not the returned object, so that is what must apply. */
   @Test
   @DisplayName("Should fail the command and store nothing when an event cannot be applied as it is stored")
   void anEventThatCannotBeAppliedAsStoredIsNotStored() {
@@ -289,7 +286,6 @@ class CommandRejectionTest {
     assertThat(storedTypes()).containsExactly("Created", "Created");
   }
 
-  /** Its topic was only looked up when sending it: the event was stored, and the command reported both as done and as failed. */
   @Test
   @DisplayName("Should fail the command and store nothing when an event has no @Topic")
   void anEventWithoutATopicIsNotStored() {

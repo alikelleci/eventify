@@ -11,7 +11,6 @@ public class RocksDbConfig implements RocksDBConfigSetter {
   @Override
   public void setConfig(String s, Options options, Map<String, Object> map) {
     options.setCompressionType(CompressionType.ZSTD_COMPRESSION);
-//    options.setCompactionStyle(CompactionStyle.LEVEL);
   }
 
   @Override

@@ -31,11 +31,8 @@ import java.util.Properties;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * An aggregate id that is another aggregate id followed by "@", like "ada" and "ada@example.com" or "ada@1". The keys
- * of the second start where the keys of the first start, and with "@" between the id and the sequence the keys of
- * "ada@1" even fell inside the key range of "ada". Each aggregate must only see, and delete, its own events.
- *
- * <p>The separator is what keeps them apart, so an identifier that contains it is the one an aggregate cannot have.
+ * Ids like "ada" and "ada@example.com": with "@" as separator their key ranges overlapped.
+ * Each aggregate must only see and delete its own events.
  */
 @DisplayName("Aggregate ids that start with another id and '@'")
 class AggregateIdWithAtTest {

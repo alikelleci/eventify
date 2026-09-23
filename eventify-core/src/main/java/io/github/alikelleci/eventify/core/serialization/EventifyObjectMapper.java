@@ -5,12 +5,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
-/**
- * The ObjectMapper Eventify uses when none is given: the one its messages are written and read with by default.
- *
- * <p>Every call gives a new copy. A shared one could be changed by any code that got it, and would then change how
- * Eventify writes and reads its events, without a word.
- */
+/** Eventify's default ObjectMapper; a new copy per call, so nobody can change the shared configuration. */
 public final class EventifyObjectMapper {
 
   private EventifyObjectMapper() {
@@ -21,7 +16,7 @@ public final class EventifyObjectMapper {
     return Configured.MAPPER.copy();
   }
 
-  /** Configured once, when first used: the JVM initializes a class once, safely for every thread. */
+  /** Lazy, thread-safe holder. */
   private static final class Configured {
     static final ObjectMapper MAPPER = new ObjectMapper()
         .findAndRegisterModules()

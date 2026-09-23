@@ -30,10 +30,7 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * One Eventify instance holding two aggregates, both given the SAME identifier. They share the stores, and their
- * events, sequences and snapshots have to stay apart: what keeps them apart is the aggregate's name in the key.
- */
+/** Two aggregates with the SAME id in one instance: the aggregate name in the key keeps their data apart. */
 @DisplayName("Multiple aggregates in one instance")
 class MultipleAggregatesTest {
 
@@ -87,7 +84,6 @@ class MultipleAggregatesTest {
     }
   }
 
-  private Eventify eventify;
   private TopologyTestDriver driver;
   private TestInputTopic<String, Command> orderCommands;
   private TestInputTopic<String, Command> invoiceCommands;
@@ -99,7 +95,7 @@ class MultipleAggregatesTest {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "several-aggregates-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    eventify = Eventify.builder().streamsConfig(properties)
+    Eventify eventify = Eventify.builder().streamsConfig(properties)
         .registerHandler(new OrderHandler())
         .registerHandler(new InvoiceHandler())
         .build();
@@ -168,7 +164,7 @@ class MultipleAggregatesTest {
     send(invoiceCommands, new SendInvoice(SHARED_ID, 100));
 
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
-    // Neither aggregate asks for snapshots, so there are none: the point is that nothing was written under a bare id.
+    // No snapshots configured: this checks that nothing was written under a bare id.
     assertThat(IteratorUtils.toList(snapshots.all())).extracting(entry -> entry.key).doesNotContain(SHARED_ID);
     assertThat(StoreKeys.snapshot("order", SHARED_ID)).isNotEqualTo(StoreKeys.snapshot("invoice", SHARED_ID));
   }

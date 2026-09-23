@@ -2,16 +2,15 @@ package io.github.alikelleci.eventify.core.command.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
+import io.github.alikelleci.eventify.core.aggregate.AggregateRepository.ReplayResult;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
-import io.github.alikelleci.eventify.core.internal.ExceptionCauses;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
-import io.github.alikelleci.eventify.core.store.exception.EventStoreException;
 import io.github.alikelleci.eventify.core.store.EventStore;
 import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import io.github.alikelleci.eventify.core.serialization.internal.JsonRoundTrip;
@@ -19,7 +18,6 @@ import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.kafka.streams.errors.TaskMigratedException;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
@@ -58,81 +56,53 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
 
   @Override
   public void process(FixedKeyRecord<String, Command> fixedKeyRecord) {
-    String key = fixedKeyRecord.key();
+    String aggregateId = fixedKeyRecord.key();
     Command command = fixedKeyRecord.value();
+    CommandHandlerMethod commandHandler = handlers.commandHandler(command.getPayload().getClass());
+    if (commandHandler == null) {
+      log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
+      return; // not a command of this application
+    }
 
+    // Decide: nothing is written yet, so any exception rejects the command.
+    AggregateRepository aggregateRepository = repository.forType(commandHandler.getAggregateType());
+    ReplayResult replayResult;
     List<Event> events;
+    AggregateState newState;
     try {
-      events = handleCommand(key, command);
-    } catch (EventStoreException | TaskMigratedException e) {
-      // Not the command's failure, and it must not be committed as one: it fails the task, and exactly-once aborts
-      // the transaction with all that was written for this command.
-      throw e;
+      // The state is loaded by record key: another key would load another aggregate.
+      if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
+        throw new AggregateIdMismatchException("Aggregate identifier does not match for command " + command.getType() + ". Expected " + command.getAggregateId() + ", but was " + aggregateId);
+      }
+      log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
+      replayResult = aggregateRepository.replay(aggregateId);
+      events = copyEvents(toEvents(commandHandler.getAggregateType(), command, replayResult.currentState(), commandHandler.handle(command, replayResult.currentState())));
+      newState = aggregateRepository.applyEvents(replayResult.currentState(), events);
     } catch (Exception e) {
-      // Everything that can reject the command, user code included: the aggregate is left as it was.
       logFailure(e);
-
       context.forward(fixedKeyRecord.withValue(new CommandResult.Failure(command, ExceptionUtils.getRootCauseMessage(e))));
       return;
     }
 
-    if (events == null) {
-      return; // no command handler: not a command of this application
+    // Write: not caught. A failed write or send fails the task, and exactly-once rolls back all of it, the result too.
+    eventStore.save(events);
+    // Save snapshot if threshold is reached
+    long snapshotVersion = replayResult.usedSnapshot() != null ? replayResult.usedSnapshot().getVersion() : 0;
+    if (aggregateRepository.isSnapshotDue(snapshotVersion, newState)) {
+      saveSnapshot(aggregateRepository, newState);
     }
-
-    // Runs the topology after it on this call: the sends to the result and event topics. Also without events: the
-    // command is accepted, and its caller waits for that answer.
+    // Also without events: the command is accepted, and its sender waits for that answer.
     context.forward(fixedKeyRecord.withValue(new CommandResult.Success(command, events)));
   }
 
-  /**
-   * Handles the command and records its events. Empty when the command is accepted without events; {@code null} when
-   * there is no handler for it.
-   */
-  private List<Event> handleCommand(String aggregateId, Command command) {
-    CommandHandlerMethod commandHandler = handlers.commandHandler(command.getPayload().getClass());
-    if (commandHandler == null) {
-      log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
-      return null;
-    }
-
-    // The aggregate is loaded by the record key: another key would hand the handler the state of another aggregate.
-    if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
-      throw new AggregateIdMismatchException("Aggregate identifier does not match for command " + command.getType() + ". Expected " + command.getAggregateId() + ", but was " + aggregateId);
-    }
-
-    log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
-    AggregateRepository aggregateRepository = repository.forType(commandHandler.getAggregateType());
-    AggregateState state = aggregateRepository.replay(aggregateId);
-    long snapshotVersion = snapshotVersion(aggregateRepository, aggregateId);
-    boolean snapshotDue = aggregateRepository.isSnapshotDue(snapshotVersion, state);
-    try {
-      List<Event> events = copyEvents(events(aggregateRepository, command, state, commandHandler.handle(command, state)));
-      AggregateState newState = aggregateRepository.applyEvents(state, events);
-      save(events, aggregateRepository, snapshotVersion, newState);
-      return events;
-    } catch (EventStoreException | TaskMigratedException e) {
-      throw e;
-    } catch (Exception e) {
-      // A rejected command still leaves a checkpoint of the history that was successfully rebuilt for it.
-      if (snapshotDue) {
-        saveSnapshot(aggregateRepository, state);
-      }
-      throw e;
-    }
-  }
-
-  /**
-   * The command's events: they follow the history the command was handled on, so the first gets the sequence after the
-   * version of that state. The state is immutable, so its version is still the one the handler was given.
-   */
-  private List<Event> events(AggregateRepository aggregateRepository, Command command, AggregateState state, List<Object> payloads) {
+  /** The command's events, numbered on from the version of the state the handler was given. */
+  private List<Event> toEvents(String aggregateType, Command command, AggregateState state, List<Object> payloads) {
     long sequence = state.getVersion();
     Metadata metadata = command.getMetadata().with(CAUSATION_ID, command.getId());
     List<Event> events = new ArrayList<>(payloads.size());
     for (Object payload : payloads) {
       Event event = Event.builder()
-          .aggregateType(aggregateRepository.getAggregateType())
+          .aggregateType(aggregateType)
           .payload(payload)
           .metadata(metadata)
           .sequence(++sequence)
@@ -142,31 +112,11 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     return events;
   }
 
-  /** JSON copies of the events: an event that can't be stored and read back rejects its command, before any writes. */
+  /** JSON copies: an event that can't round-trip rejects its command before any write. */
   private List<Event> copyEvents(List<Event> events) {
     return events.stream()
         .map(event -> JsonRoundTrip.copy(objectMapper, event, Event.class, "Event " + event.getType()))
         .toList();
-  }
-
-  /** Store writes belong to the processor's transaction; failures must escape command rejection and abort it. */
-  private void save(List<Event> events, AggregateRepository aggregateRepository, long snapshotVersion, AggregateState state) {
-    try {
-      eventStore.save(events);
-      saveSnapshotIfDue(aggregateRepository, snapshotVersion, state);
-    } catch (TaskMigratedException e) {
-      throw e; // fenced: Kafka Streams hands the task over, it must see this exception as is
-    } catch (Exception e) {
-      throw new EventStoreException("Could not save the command outcome for aggregate " + aggregateRepository.getAggregateType() + " "
-          + state.getAggregateId() + ". " + ExceptionUtils.getRootCauseMessage(e), e);
-    }
-  }
-
-  private void saveSnapshotIfDue(AggregateRepository aggregateRepository, long snapshotVersion, AggregateState state) {
-    if (!aggregateRepository.isSnapshotDue(snapshotVersion, state)) {
-      return;
-    }
-    saveSnapshot(aggregateRepository, state);
   }
 
   private void saveSnapshot(AggregateRepository aggregateRepository, AggregateState state) {
@@ -174,39 +124,26 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     if (snapshot == null) {
       return;
     }
-    try {
-      log.debug("Creating snapshot: {} ({}) at version {}", aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
-      snapshotStore.save(aggregateRepository.getAggregateType(), snapshot);
-      if (aggregateRepository.deletesEventsAtSnapshot()) {
-        long deleted = eventStore.deleteBefore(aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
-        log.debug("Deleted {} events before snapshot: {} ({}) at version {}", deleted, aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
-      }
-    } catch (TaskMigratedException e) {
-      throw e;
-    } catch (Exception e) {
-      throw new EventStoreException("Could not save the snapshot of aggregate " + aggregateRepository.getAggregateType() + " "
-          + snapshot.getAggregateId() + ". " + ExceptionUtils.getRootCauseMessage(e), e);
+    log.debug("Creating snapshot: {} ({}) at version {}", aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
+    snapshotStore.save(aggregateRepository.getAggregateType(), snapshot);
+    if (aggregateRepository.deletesEventsAtSnapshot()) {
+      long deleted = eventStore.deleteBefore(aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
+      log.debug("Deleted {} events before snapshot: {} ({}) at version {}", deleted, aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
     }
   }
 
-  /** A JSON copy of the state; {@code null} when it can't be written as JSON: then there is no snapshot. */
+  /** A JSON copy of the state; {@code null} (no snapshot) when copying fails in any way: a snapshot is optional. */
   private AggregateState copySnapshot(AggregateRepository aggregateRepository, AggregateState state) {
     try {
       return JsonRoundTrip.copy(objectMapper, state, AggregateState.class, "Snapshot " + aggregateRepository.getAggregateType());
-    } catch (IllegalArgumentException e) {
+    } catch (RuntimeException e) {
       log.warn("Snapshot of {} ({}) at version {} skipped: {}", aggregateRepository.getAggregateType(), state.getAggregateId(), state.getVersion(), e.getMessage());
       return null;
     }
   }
 
-  /** The version of the aggregate's usable snapshot; 0 when it has none. Read once per command: nothing writes it meanwhile. */
-  private long snapshotVersion(AggregateRepository aggregateRepository, String aggregateId) {
-    AggregateState snapshot = aggregateRepository.snapshot(aggregateId);
-    return snapshot != null ? snapshot.getVersion() : 0;
-  }
-
   private void logFailure(Exception e) {
-    Throwable throwable = ExceptionCauses.rootCauseOrSelf(e);
+    Throwable throwable = ExceptionUtils.getRootCause(e);
     String message = ExceptionUtils.getRootCauseMessage(e);
 
     if (throwable instanceof ValidationException) {

@@ -45,7 +45,7 @@ A snapshot remembers the revision it was made with. A snapshot of another revisi
 | A new event with a new `@ApplyEvent` method, not touching old events | No |
 | A command handler changes | No: it isn't part of the snapshot |
 
-The number itself doesn't matter: only whether it differs from the snapshot's. Without `@Revision` an aggregate is revision 1, and snapshots made before revisions were stored count as revision 1 too. When in doubt, raise it: it only costs rebuilding each aggregate once, at its next command.
+The number itself doesn't matter: only whether it differs from the snapshot's. Without `@Revision` an aggregate is revision 1. When in doubt, raise it: it only costs rebuilding each aggregate once, at its next command.
 
 The revision is not the aggregate's version: the version counts the events the aggregate went through, the revision is the version of your code.
 

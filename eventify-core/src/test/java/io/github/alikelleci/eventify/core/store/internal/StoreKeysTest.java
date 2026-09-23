@@ -23,7 +23,6 @@ class StoreKeysTest {
     assertThat(StoreKeys.of("order", "order-1", 9)).isLessThan(StoreKeys.of("order", "order-1", 10));
     assertThat(StoreKeys.first("order", "order-1")).isEqualTo(StoreKeys.of("order", "order-1", 1));
     assertThat(StoreKeys.last("order", "order-1")).isEqualTo("order" + NUL + "order-1" + NUL + Long.MAX_VALUE);
-    assertThat(StoreKeys.sequenceOf("order", "order-1", StoreKeys.of("order", "order-1", 42))).isEqualTo(42);
   }
 
   @Test
@@ -51,11 +50,7 @@ class StoreKeysTest {
     assertThatThrownBy(() -> StoreKeys.of("order", "order-1", 0)).isInstanceOf(IllegalArgumentException.class);
   }
 
-  /**
-   * The range of an aggregate holds its events and nothing else, whatever the aggregates and identifiers look like:
-   * an identifier that starts with this one and a digit ("PO-1-7" was in the range of "PO-1" when the separator was a
-   * dash), one that starts with it and letters, one that is a prefix of it, and one of another aggregate.
-   */
+  /** An aggregate's range holds only its events: not those of ids extending it ("PO-1-7"), prefixing it, or another aggregate. */
   @Test
   @DisplayName("Should keep every other aggregate out of an aggregate's key range")
   void noOtherAggregateFallsInsideTheRange() {
@@ -83,17 +78,6 @@ class StoreKeysTest {
     assertThatThrownBy(() -> StoreKeys.of("order", "order" + NUL + "1", 1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("NUL");
-  }
-
-  @Test
-  @DisplayName("Should refuse to read a sequence from a key of another aggregate")
-  void aKeyOfAnotherAggregateHasNoSequenceHere() {
-    assertThatThrownBy(() -> StoreKeys.sequenceOf("order", "PO-1", StoreKeys.of("order", "PO-10", 1)))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> StoreKeys.sequenceOf("order", "PO-1", StoreKeys.of("customer", "PO-1", 1)))
-        .isInstanceOf(IllegalArgumentException.class);
-    assertThatThrownBy(() -> StoreKeys.sequenceOf("order", "PO-1", null))
-        .isInstanceOf(IllegalArgumentException.class);
   }
 
   private static void assertOutside(String key, String from, String to, String what) {

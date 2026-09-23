@@ -35,11 +35,7 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * A snapshot is the aggregate's state as a revision of its code computed it. Made with another {@code @Revision}, it is
- * not used: the aggregate is rebuilt from its events. A snapshot with a count the events can't give (999) shows whether
- * it was used.
- */
+/** A snapshot of another {@code @Revision} is not used; a count the events can't give (999) shows whether it was. */
 @DisplayName("Snapshot revision")
 class SnapshotRevisionTest {
 
@@ -109,10 +105,10 @@ class SnapshotRevisionTest {
     TestInputTopic<String, Command> commands = counters();
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
     increment(commands, 3);
-    // As an older revision stored a removal: no payload, no type, and before this fix no revision either.
+    // A removal made with revision 1: no payload and no type.
     ObjectNode removed = objectMapper.valueToTree(snapshots.get(StoreKeys.snapshot("counter", "c-1")));
     removed.remove(List.of("payload", "type"));
-    removed.put("revision", 0);
+    removed.put("revision", 1);
     snapshots.put(StoreKeys.snapshot("counter", "c-1"), objectMapper.convertValue(removed, AggregateState.class));
 
     increment(commands, 1); // rebuilds version 3 and snapshots the successful version 4

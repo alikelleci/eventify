@@ -125,8 +125,7 @@ class CommandResultTest {
       assertThat(success.events()).extracting(Event::getId).containsExactly(sent.get(0).getId());
       assertThat(success.events().get(0).getPayload()).isEqualTo(sent.get(0).getPayload());
     });
-    // An event takes over its command's metadata, and names the command as its cause. Where to reply to is not in it:
-    // it travels as a header on the command record, and is only for the command's sender.
+    // Events carry the command's metadata and its id as cause; the reply topic is a header, not metadata.
     assertThat(sent.get(0).getMetadata())
         .containsOnlyKeys(MetadataKeys.CORRELATION_ID, MetadataKeys.CAUSATION_ID)
         .containsEntry(MetadataKeys.CORRELATION_ID, command.getMetadata().getCorrelationId());

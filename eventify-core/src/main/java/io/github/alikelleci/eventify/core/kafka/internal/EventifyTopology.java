@@ -32,10 +32,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-/**
- * The Kafka Streams topology of an Eventify application: the event and snapshot stores, command handling (results,
- * replies and events out) and event handling.
- */
+/** The Kafka Streams topology: stores, command handling and event handling. */
 public final class EventifyTopology {
 
   private EventifyTopology() {
@@ -46,22 +43,14 @@ public final class EventifyTopology {
 
     StreamsBuilder builder = new StreamsBuilder();
 
-    /*
-     * -------------------------------------------------------------
-     * SERDES
-     * -------------------------------------------------------------
-     */
+    // Serdes
 
     Serde<Command> commandSerde = new CommandSerde(objectMapper);
     Serde<CommandResult> resultSerde = new CommandResultSerde(objectMapper);
     Serde<Event> eventSerde = new EventSerde(objectMapper, handlers.upcasters());
     Serde<AggregateState> snapshotSerde = new SnapshotSerde(objectMapper);
 
-    /*
-     * -------------------------------------------------------------
-     * STORES
-     * -------------------------------------------------------------
-     */
+    // Stores
 
     // Event store
     builder.addStateStore(Stores
@@ -73,11 +62,7 @@ public final class EventifyTopology {
         .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SNAPSHOT_STORE), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
-    /*
-     * -------------------------------------------------------------
-     * COMMAND HANDLING
-     * -------------------------------------------------------------
-     */
+    // Command handling
 
     Set<String> commandTopics = handlers.commandTopics();
     if (!commandTopics.isEmpty()) {
@@ -113,11 +98,7 @@ public final class EventifyTopology {
               Produced.with(Serdes.String(), eventSerde));
     }
 
-    /*
-     * -------------------------------------------------------------
-     * EVENT HANDLING
-     * -------------------------------------------------------------
-     */
+    // Event handling
 
     Set<String> eventTopics = handlers.eventTopics();
     if (!eventTopics.isEmpty()) {
@@ -135,11 +116,7 @@ public final class EventifyTopology {
     return builder.build();
   }
 
-  /**
-   * Two aggregates of one instance cannot be called the same: their events and snapshots would share a key, so two of
-   * them with the same identifier would share one history. Their name is what keeps them apart, so it has to be theirs
-   * alone.
-   */
+  /** Aggregate names must be unique: the name is what keeps their keys apart. */
   private static void requireDistinctAggregateTypes(HandlerRegistry handlers) {
     Map<String, Class<?>> byType = new HashMap<>();
     for (Class<?> aggregate : handlers.aggregateClasses()) {

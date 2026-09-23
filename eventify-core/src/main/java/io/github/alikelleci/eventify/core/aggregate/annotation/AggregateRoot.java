@@ -17,9 +17,8 @@ import java.lang.annotation.Target;
 public @interface AggregateRoot {
 
   /**
-   * What this aggregate is called, e.g. "order". Eventify keeps its events and snapshots under this name, so it is a
-   * name of your own choosing and NOT the class name: renaming the class must not move the data. Two aggregates of
-   * one application cannot share a name.
+   * The aggregate's name in the stores, e.g. "order": your own name, not the class name, so a rename moves no data.
+   * Unique within an application.
    */
   String value();
 }

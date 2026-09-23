@@ -8,10 +8,7 @@ import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
 
 import java.lang.reflect.Parameter;
 
-/**
- * The value a handler method gets for a parameter about its message: {@link Metadata}, {@link Timestamp},
- * {@link MessageId} or {@link MetadataValue}. Also for handler methods outside Eventify, e.g. Spring Kafka listeners.
- */
+/** Resolves {@link Metadata}, {@link Timestamp}, {@link MessageId} and {@link MetadataValue} parameters, also outside Eventify. */
 public final class HandlerParameterResolver {
 
   private HandlerParameterResolver() {

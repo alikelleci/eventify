@@ -20,13 +20,9 @@ public class AggregateState {
   Object payload;
   Metadata metadata;
   String aggregateId;
-  /** The sequence of the last event applied to this state: how many events the aggregate had then. */
+  /** The sequence of the last applied event. */
   long version;
-  /**
-   * The {@link Revision} of the aggregate class this state was made with: of its fields and its event sourcing
-   * handlers. A snapshot made with another revision is not used. 0 in a snapshot made before revisions were stored: it
-   * counts as 1, the revision of a class without {@code @Revision}.
-   */
+  /** The {@link Revision} of the aggregate class that made this state. */
   int revision;
 
   /** A replay starts here when no usable snapshot exists. */
@@ -35,12 +31,8 @@ public class AggregateState {
   }
 
   /**
-   * The state after an event. Its envelope always comes from that event. A null payload represents a removed
-   * aggregate. The revision is the aggregate class's, also for a removed aggregate: the event sourcing handlers that
-   * removed it belong to that revision, so a later revision must rebuild it as well.
-   *
-   * <p>Package-private: only the aggregate repository makes states after an event, with the revision of the aggregate
-   * it rebuilds.
+   * The state after an event, with that event's envelope; a null payload means removed.
+   * Package-private: only the repository knows the aggregate's revision.
    */
   static AggregateState after(Event event, Object payload, int revision) {
     String type = payload != null ? payload.getClass().getSimpleName() : null;

@@ -64,10 +64,7 @@ class SnapshottingTest {
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(1); // the snapshot's event
   }
 
-  /**
-   * One history without gaps or repeats: a command with several events numbers them in a row, a rejected command
-   * takes no number, and a snapshot that deleted the events before it doesn't restart the count.
-   */
+  /** Sequences have no gaps or repeats, across multi-event commands, rejections and pruning snapshots. */
   @Test
   @DisplayName("Should number the events of an aggregate without gaps, across rejected commands and deleted events")
   void sequencesContinueAcrossRejectionsAndDeletedEvents() {
@@ -96,11 +93,7 @@ class SnapshottingTest {
         .containsExactly(StoreKeys.of("account", "ada", 6) + " " + sent.get(5).getId());
   }
 
-  /**
-   * A command handled after others, with an older timestamp (a producer's clock behind, a command sent late, or set
-   * explicitly): its event is stored after theirs. Stored by its timestamp, it would come before the snapshot's event,
-   * be skipped by every replay from the snapshot, and be deleted at the next one.
-   */
+  /** An event with an older timestamp is still stored after the earlier ones: order is by sequence, not time. */
   @Test
   @DisplayName("Should store events in the order they were handled, not by the command's timestamp")
   void anEventIsStoredInTheOrderItWasHandledNotByTheCommandsTimestamp() {
@@ -152,8 +145,7 @@ class SnapshottingTest {
   @Test
   @DisplayName("Should only store events from commands, not from the event topic")
   void anAggregateIsOnlyStoredFromItsCommandsNotFromItsEventTopic() {
-    // The events are stored when the command is handled. Stored again from the event topic, events deleted at a
-    // snapshot in the meantime would come back.
+    // Stored only when handled: storing them again from the event topic would bring back pruned events.
     assertThat(sourceTopics(accounts())).containsExactly("commands.account");
   }
 

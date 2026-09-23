@@ -7,10 +7,7 @@ import io.github.alikelleci.eventify.core.internal.reflection.PerClass;
 import java.util.Optional;
 import java.util.function.Function;
 
-/**
- * When an aggregate is snapshotted, from its {@link EnableSnapshotting}: every {@code threshold} events, and whether
- * the events before a snapshot are deleted. Without the annotation it is never snapshotted.
- */
+/** From {@link EnableSnapshotting}: snapshot every {@code threshold} events, optionally deleting the events before. */
 public record SnapshotPolicy(int threshold, boolean deleteEvents) {
 
   private static final Function<Class<?>, SnapshotPolicy> POLICY = PerClass.of(aggregateType ->
@@ -22,13 +19,7 @@ public record SnapshotPolicy(int threshold, boolean deleteEvents) {
     return POLICY.apply(aggregateType);
   }
 
-  /**
-   * Whether the aggregate is to be snapshotted now: when it passed a multiple of the threshold since its last snapshot.
-   * Not only when it is exactly one: a command with several events can step over it.
-   *
-   * @param lastSnapshotVersion the version of its last snapshot; 0 when it has none
-   * @param aggregateVersion    the version the aggregate is at now: the sequence of its last event
-   */
+  /** Whether a threshold multiple was passed since the last snapshot (0 when none); a command can step over one. */
   public boolean isSnapshotDue(long lastSnapshotVersion, long aggregateVersion) {
     return threshold > 0 && aggregateVersion / threshold > lastSnapshotVersion / threshold;
   }

@@ -11,10 +11,7 @@ public final class JsonRoundTrip {
   private JsonRoundTrip() {
   }
 
-  /**
-   * @param name what the object is, for the error, e.g. "Event OrderPlaced"
-   * @throws IllegalArgumentException when the object can't be written as JSON, or read back
-   */
+  /** Throws IllegalArgumentException when it can't be written as JSON or read back; {@code name} is for the message. */
   public static <T> T copy(ObjectMapper objectMapper, T value, Class<T> type, String name) {
     byte[] json;
     try {

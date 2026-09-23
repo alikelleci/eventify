@@ -8,10 +8,7 @@ import org.apache.kafka.streams.KeyQueryMetadata;
 import java.util.Properties;
 import java.util.Set;
 
-/**
- * What a plugin sees of the Eventify instance it runs with: its configuration, its Kafka Streams and what it stores.
- * Read only: a plugin doesn't start, stop or change Eventify.
- */
+/** The read-only view a plugin gets of its Eventify instance. */
 public interface PluginContext {
 
   Properties getStreamsConfig();
@@ -24,18 +21,15 @@ public interface PluginContext {
   /** The command classes this instance has a command handler for. */
   Set<Class<?>> getCommandTypes();
 
-  /** The topics of the commands of one aggregate: the commands another aggregate handles are not its own. */
+  /** The command topics of one aggregate. */
   Set<String> getCommandTopics(String aggregateType);
 
-  /** The names of the aggregates this instance handles, as their {@code @AggregateRoot} gives them. */
+  /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
   Set<String> getAggregateTypes();
 
   /**
-   * The public read model of locally owned aggregates; select an aggregate type once with
-   * {@link AggregateRepository#forType(String)}. See {@link #getAggregateMetadata} for ownership. Stores may be
-   * temporarily unavailable while rebalancing.
-   *
-   * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the stores cannot be read right now
+   * Read model of the locally owned aggregates; select a type with {@link AggregateRepository#forType(String)}.
+   * Throws InvalidStateStoreException while the stores can't be read, e.g. during rebalancing.
    */
   AggregateRepository getAggregateRepository();
 

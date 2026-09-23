@@ -3,24 +3,15 @@ package io.github.alikelleci.eventify.core.store.internal;
 import java.util.Locale;
 
 /**
- * The keys of the stores: the aggregate's name, its identifier, and for an event its sequence zero-padded to 19
- * digits, so the events of an aggregate sort the way their sequences do.
- *
- * <p>The parts are separated by a NUL, which is what makes a key range exact. The first NUL ends the name and the
- * second ends the identifier, and neither may contain one, so exactly one aggregate can be read from a key: all of an
- * aggregate's events are in the range from {@link #first} to {@link #last}, and nothing else is. A key range therefore
- * needs no filtering, whatever the names and identifiers look like.
- *
- * <p>A readable separator would not do that. With "@", the keys of the order "PO-1-7" would fall inside the range of
- * the order "PO-1", because "7" sorts between "0" and "9" — and an identifier is application data, so no character
- * that may appear in one can be used to mark where it ends.
+ * Keys: name, id and (for an event) the sequence as 19 digits, separated by NUL. Names and ids can't hold NUL, so a
+ * key range holds exactly one aggregate; with "@", "PO-1-7" would fall inside the range of "PO-1".
  */
 public final class StoreKeys {
 
-  /** Between the parts of a key: the one character a name and an identifier cannot contain. */
+  /** Can't occur in a name or id. */
   public static final char SEPARATOR = '\u0000';
 
-  /** Every long fits in 19 digits. ASCII digits in every locale: another JVM locale must not give other keys. */
+  /** Every long fits in 19 digits; Locale.ROOT keeps keys independent of the JVM locale. */
   private static final int SEQUENCE_LENGTH = 19;
 
   private StoreKeys() {
@@ -50,18 +41,5 @@ public final class StoreKeys {
   /** The end of the key range that holds an aggregate's events, and nothing else. */
   public static String last(String aggregateType, String aggregateId) {
     return of(aggregateType, aggregateId, Long.MAX_VALUE);
-  }
-
-  /** The sequence in a key of this aggregate, e.g. one that came out of a range over it. */
-  public static long sequenceOf(String aggregateType, String aggregateId, String key) {
-    String prefix = snapshot(aggregateType, aggregateId) + SEPARATOR;
-    if (key == null || key.length() != prefix.length() + SEQUENCE_LENGTH || !key.startsWith(prefix)) {
-      throw new IllegalArgumentException("Key '" + key + "' is not a key of aggregate '" + aggregateId + "'.");
-    }
-    try {
-      return Long.parseLong(key.substring(prefix.length()));
-    } catch (NumberFormatException e) {
-      throw new IllegalArgumentException("Key '" + key + "' is not a key of aggregate '" + aggregateId + "': its sequence is not a number.", e);
-    }
   }
 }

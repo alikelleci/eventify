@@ -16,15 +16,12 @@ import java.util.UUID;
 
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
 
-/**
- * Something that happened to an aggregate. An event is made complete: it knows its place in its aggregate from the
- * moment it exists, so there is no event that still has to be finished before it can be stored.
- */
+/** Something that happened to an aggregate; complete from creation, including its sequence. */
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Event implements Message {
   String id;
-  /** When Eventify recorded this event. Not when what it tells about happened: that belongs in the payload. */
+  /** When Eventify recorded it; business time belongs in the payload. */
   Instant timestamp;
   String type;
   Object payload;
@@ -33,14 +30,13 @@ public class Event implements Message {
   String aggregateType;
   String aggregateId;
   int revision;
-  /** The event's position in its aggregate: 1 for its first event, then one more for each next one. */
+  /** Position in its aggregate, starting at 1. */
   long sequence;
 
   @Builder
   private Event(String aggregateType, Object payload, Metadata metadata, long sequence) {
     this.timestamp = Instant.now();
     this.payload = Optional.ofNullable(payload).orElseThrow(() -> new PayloadMissingException("Message payload is missing."));
-    // A copy with the flow this event belongs to: the metadata that was given stays as it is.
     this.metadata = Optional.ofNullable(metadata).orElse(Metadata.EMPTY)
         .withDefault(CORRELATION_ID, UUID.randomUUID().toString());
 

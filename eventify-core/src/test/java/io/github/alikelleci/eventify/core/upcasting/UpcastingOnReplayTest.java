@@ -31,10 +31,7 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The upcasters registered on Eventify are used when an aggregate is rebuilt from the event store. How the upcasters
- * form a chain: see UpcastingChainTest.
- */
+/** Eventify's upcasters are used when an aggregate is rebuilt; the chain itself: see UpcastingChainTest. */
 @DisplayName("Upcasting on replay")
 class UpcastingOnReplayTest {
 
@@ -118,7 +115,6 @@ class UpcastingOnReplayTest {
     ObjectNode payload = (ObjectNode) stored.get("payload");
     payload.set("fullName", payload.remove("name"));
     stored.put("revision", 1);
-    stored.put("sequence", 1);
     // The event store's own serde writes it: the JSON as an older version of the application stored it.
     KeyValueStore<String, Object> eventStore = driver.getKeyValueStore("event-store");
     eventStore.put(StoreKeys.of("profile", "ada", 1), stored);
