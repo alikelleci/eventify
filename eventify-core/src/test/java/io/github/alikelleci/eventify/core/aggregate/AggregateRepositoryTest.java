@@ -40,7 +40,7 @@ class AggregateRepositoryTest {
   private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
   private final Eventify eventify = eventify();
   private final AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents), new SnapshotStore(storedSnapshots),
-      eventify.getHandlers().eventSourcingHandlers(), new AggregateDefinitions(List.of(Order.class)));
+      eventify.getHandlers().eventSourcingHandlers(), List.of(Order.class));
 
   @Test
   @DisplayName("Should replay stored events in sequence order")
@@ -49,7 +49,7 @@ class AggregateRepositoryTest {
     store(confirmed("order-1"), 2);
     store(shipped("order-1"), 3);
 
-    AggregateState state = repository.replay("order", "order-1");
+    AggregateState state = order().replay("order-1");
 
     assertThat(state.getPayload()).isInstanceOf(Order.class);
     assertThat(((Order) state.getPayload()).getStatus()).isEqualTo("SHIPPED");
@@ -59,7 +59,7 @@ class AggregateRepositoryTest {
   @Test
   @DisplayName("Should refuse an aggregate type this repository does not handle")
   void rejectsUnknownAggregateType() {
-    assertThatThrownBy(() -> repository.replay("odrer", "order-1"))
+    assertThatThrownBy(() -> repository.forType("odrer"))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("odrer");
   }
@@ -70,7 +70,7 @@ class AggregateRepositoryTest {
     store(placed("order-1"), 1);
     store(shipped("order-1"), 3);
 
-    assertThatThrownBy(() -> repository.replay("order", "order-1"))
+    assertThatThrownBy(() -> order().replay("order-1"))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("expected #2, found #3");
   }
@@ -81,7 +81,7 @@ class AggregateRepositoryTest {
     Event copiedUnderTheWrongKey = event(placed("another-order"), 1);
     storedEvents.put(StoreKeys.of("order", "order-1", 1), copiedUnderTheWrongKey);
 
-    assertThatThrownBy(() -> repository.replay("order", "order-1"))
+    assertThatThrownBy(() -> order().replay("order-1"))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("belongs to order another-order", "read as order order-1");
   }
@@ -96,9 +96,9 @@ class AggregateRepositoryTest {
       }
     };
     AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents), new SnapshotStore(storedSnapshots),
-        Map.of(Viewed.class, wrongHandler), new AggregateDefinitions(List.of(Order.class)));
+        Map.of(Viewed.class, wrongHandler), List.of(Order.class));
 
-    assertThatThrownBy(() -> repository.applyEvents("order", AggregateState.empty("order-1"), List.of(event(new Viewed("order-1"), 1))))
+    assertThatThrownBy(() -> repository.forType("order").applyEvents(AggregateState.empty("order-1"), List.of(event(new Viewed("order-1"), 1))))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("requires " + Order.class.getName());
   }
@@ -109,7 +109,7 @@ class AggregateRepositoryTest {
     store(placed("order-1"), 1);
     store(OrderCancelled.builder().id("order-1").build(), 2);
 
-    AggregateState state = repository.replay("order", "order-1");
+    AggregateState state = order().replay("order-1");
 
     assertThat(state.getPayload()).isNull();
     assertThat(state.getVersion()).isEqualTo(2);
@@ -122,7 +122,7 @@ class AggregateRepositoryTest {
     storedSnapshots.put(StoreKeys.snapshot("order", "order-1"), removed);
     store(placed("order-1"), 3);
 
-    AggregateState state = repository.replay("order", "order-1");
+    AggregateState state = order().replay("order-1");
 
     assertThat(((Order) state.getPayload()).getStatus()).isEqualTo("PLACED");
     assertThat(state.getVersion()).isEqualTo(3);
@@ -134,7 +134,7 @@ class AggregateRepositoryTest {
     AggregateState before = AggregateState.empty("order-1");
     Event placed = event(placed("order-1"), 1);
 
-    AggregateState after = repository.applyEvents("order", before, List.of(placed));
+    AggregateState after = order().applyEvents(before, List.of(placed));
 
     assertThat(((Order) after.getPayload()).getStatus()).isEqualTo("PLACED");
     assertThat(after.getVersion()).isOne();
@@ -145,14 +145,14 @@ class AggregateRepositoryTest {
     store(placed("order-1"), 1);
     store(confirmed("order-1"), 2);
     store(shipped("order-1"), 3);
-    AggregateState snapshot = repository.replay("order", "order-1", 2, null);
+    AggregateState snapshot = order().replay("order-1", 2, null);
     assertThat(((Order) snapshot.getPayload()).getStatus()).isEqualTo("CONFIRMED");
     assertThat(snapshot.getVersion()).isEqualTo(2);
     storedSnapshots.put(StoreKeys.snapshot("order", "order-1"), snapshot);
     storedEvents.delete(StoreKeys.of("order", "order-1", 1));
 
-    assertThat(repository.replay("order", "order-1", 2, null)).isSameAs(snapshot);
-    AggregateState current = repository.replay("order", "order-1");
+    assertThat(order().replay("order-1", 2, null)).isSameAs(snapshot);
+    AggregateState current = order().replay("order-1");
     assertThat(current.getVersion()).isEqualTo(3);
     assertThat(((Order) current.getPayload()).getStatus()).isEqualTo("SHIPPED");
   }
@@ -165,7 +165,7 @@ class AggregateRepositoryTest {
     json.put("sequence", sequence); // Persisted data can predate sequences, or have been copied to the wrong key.
     storedEvents.put(StoreKeys.of("order", "order-1", 2), eventify.getObjectMapper().treeToValue(json, Event.class));
 
-    assertThatThrownBy(() -> repository.replay("order", "order-1"))
+    assertThatThrownBy(() -> order().replay("order-1"))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("expected #2, found #" + sequence);
   }
@@ -178,7 +178,7 @@ class AggregateRepositoryTest {
     ((ObjectNode) json.get("payload")).put("@class", "com.acme.RemovedEvent");
     storedEvents.put(StoreKeys.of("order", "order-1", 2), eventify.getObjectMapper().treeToValue(json, Event.class));
 
-    assertThatThrownBy(() -> repository.replay("order", "order-1"))
+    assertThatThrownBy(() -> order().replay("order-1"))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("archived-event", "upcaster");
   }
@@ -195,7 +195,7 @@ class AggregateRepositoryTest {
     storedEvents.put(StoreKeys.of("order", "order-1", 2), viewed);
     List<Long> previousVersions = new ArrayList<>();
 
-    AggregateState state = repository.replay("order", "order-1", 2,
+    AggregateState state = order().replay("order-1", 2,
         (event, before) -> previousVersions.add(before.getVersion()));
 
     assertThat(previousVersions).containsExactly(0L, 1L);
@@ -206,7 +206,7 @@ class AggregateRepositoryTest {
 
   @Test
   void emptyAndRemovedAggregatesKeepTheirVersionWithoutPayload() {
-    AggregateState empty = repository.replay("order", "order-1");
+    AggregateState empty = order().replay("order-1");
     assertThat(empty.getVersion()).isZero();
     assertThat(empty.getAggregateId()).isEqualTo("order-1");
     assertThat(empty.getPayload()).isNull();
@@ -214,7 +214,7 @@ class AggregateRepositoryTest {
     store(placed("order-1"), 1);
     store(OrderCancelled.builder().id("order-1").build(), 2);
     store(new Viewed("order-1"), 3);
-    AggregateState removed = repository.replay("order", "order-1");
+    AggregateState removed = order().replay("order-1");
     assertThat(removed.getVersion()).isEqualTo(3);
     assertThat(removed.getPayload()).isNull();
   }
@@ -226,27 +226,25 @@ class AggregateRepositoryTest {
     store(placed("ada@example.com"), 1);
     store(confirmed("ada"), 2);
     List<String> ids = new ArrayList<>();
-    AggregateState state = repository.replay("order", "ada", 2, (event, before) -> ids.add(event.getAggregateId()));
+    AggregateState state = order().replay("ada", 2, (event, before) -> ids.add(event.getAggregateId()));
     assertThat(ids).containsExactly("ada", "ada");
     assertThat(state.getVersion()).isEqualTo(2);
-    assertThat(repository.replay("order", "ada@1").getVersion()).isOne();
+    assertThat(order().replay("ada@1").getVersion()).isOne();
   }
 
   @Test
   void outdatedSnapshotWithNoHistoryCannotRestartAtVersionZero() throws Exception {
     store(placed("order-1"), 1);
     store(confirmed("order-1"), 2);
-    ObjectNode json = eventify.getObjectMapper().valueToTree(repository.replay("order", "order-1"));
+    ObjectNode json = eventify.getObjectMapper().valueToTree(order().replay("order-1"));
     json.put("revision", 999);
     storedSnapshots.put(StoreKeys.snapshot("order", "order-1"), eventify.getObjectMapper().treeToValue(json, AggregateState.class));
     storedEvents.delete(StoreKeys.of("order", "order-1", 1));
     storedEvents.delete(StoreKeys.of("order", "order-1", 2));
 
-    assertThat(repository.allEventsStored("order", "order-1")).isFalse();
-    assertThatThrownBy(() -> repository.replay("order", "order-1"))
+    assertThatThrownBy(() -> order().replay("order-1"))
         .isInstanceOf(SnapshotOutdatedException.class);
-    assertThat(repository.replay("order", "order-1", 2, null)).isNull(); // A reader gets unknown, not an empty aggregate.
-    assertThat(repository.allEventsStored("order", "never-created")).isTrue();
+    assertThat(order().replay("order-1", 2, null)).isNull(); // A reader gets unknown, not an empty aggregate.
   }
 
   @ParameterizedTest
@@ -256,12 +254,12 @@ class AggregateRepositoryTest {
     events.put(StoreKeys.of("order", "one", 1), event(placed("one"), 1));
     events.put(StoreKeys.of("order", "one", 2), event(confirmed("one"), corrupt ? 1 : 2));
     AggregateRepository repository = new AggregateRepository(new EventStore(events), new SnapshotStore(storedSnapshots),
-        eventify.getHandlers().eventSourcingHandlers(), new AggregateDefinitions(List.of(Order.class)));
+        eventify.getHandlers().eventSourcingHandlers(), List.of(Order.class));
 
     if (corrupt) {
-      assertThatThrownBy(() -> repository.replay("order", "one", 2, null)).isInstanceOf(EventReplayException.class);
+      assertThatThrownBy(() -> repository.forType("order").replay("one", 2, null)).isInstanceOf(EventReplayException.class);
     } else {
-      assertThat(repository.replay("order", "one", 2, null).getVersion()).isEqualTo(2);
+      assertThat(repository.forType("order").replay("one", 2, null).getVersion()).isEqualTo(2);
     }
     assertThat(events.opened).isPositive();
     assertThat(events.closed).isEqualTo(events.opened);
@@ -291,6 +289,10 @@ class AggregateRepositoryTest {
 
   private static Event event(Object payload, long sequence) {
     return Event.builder().aggregateType("order").payload(payload).sequence(sequence).build();
+  }
+
+  private AggregateRepository order() {
+    return repository.forType("order");
   }
 
   private static OrderPlaced placed(String id) {

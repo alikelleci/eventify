@@ -74,7 +74,7 @@ class ConsoleService {
     if (routing != null) return routing;
 
     try {
-      return Result.ok(new CommandEventsPage(history.eventsOfCommand(repository(), request)));
+      return Result.ok(new CommandEventsPage(history.eventsOfCommand(repository(aggregateType), aggregateId, request.commandId())));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Event store not ready");
@@ -93,7 +93,7 @@ class ConsoleService {
     }
 
     try {
-      return Result.ok(history.events(repository(), aggregateType, aggregateId, request.cursor(), request.limit()));
+      return Result.ok(history.events(repository(aggregateType), aggregateId, request.cursor(), request.limit()));
     } catch (InvalidStateStoreException e) {
       log.warn("Event store not ready for aggregate {} {}", aggregateType, aggregateId, e);
       return Result.unavailable("Event store not ready");
@@ -112,7 +112,7 @@ class ConsoleService {
     }
 
     try {
-      EventDetail detail = history.eventDetail(repository(), aggregateType, aggregateId, request.sequence());
+      EventDetail detail = history.eventDetail(repository(aggregateType), aggregateId, request.sequence());
       if (detail == null) {
         return ownership.notFound(aggregateId);
       }
@@ -140,7 +140,7 @@ class ConsoleService {
     }
 
     try {
-      RawValue state = history.stateAt(repository(), aggregateType, aggregateId, request.sequence());
+      RawValue state = history.stateAt(repository(aggregateType), aggregateId, request.sequence());
       if (state == null) {
         return ownership.notFound(aggregateId);
       }
@@ -159,8 +159,8 @@ class ConsoleService {
   }
 
   /** The name is one this instance handles: {@link ConsoleRequestHandler} refuses the request otherwise. */
-  private AggregateRepository repository() {
-    return eventify.getAggregateRepository();
+  private AggregateRepository repository(String aggregateType) {
+    return eventify.getAggregateRepository().forType(aggregateType);
   }
 
 }

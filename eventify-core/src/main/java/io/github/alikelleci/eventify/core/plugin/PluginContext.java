@@ -31,8 +31,9 @@ public interface PluginContext {
   Set<String> getAggregateTypes();
 
   /**
-   * The public read model of locally owned aggregates; see {@link #getAggregateMetadata} for ownership. Repository
-   * operations reject unregistered aggregate types. Stores may be temporarily unavailable while rebalancing.
+   * The public read model of locally owned aggregates; select an aggregate type once with
+   * {@link AggregateRepository#forType(String)}. See {@link #getAggregateMetadata} for ownership. Stores may be
+   * temporarily unavailable while rebalancing.
    *
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the stores cannot be read right now
    */

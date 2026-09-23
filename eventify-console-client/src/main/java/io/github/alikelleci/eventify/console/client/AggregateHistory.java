@@ -3,7 +3,6 @@ package io.github.alikelleci.eventify.console.client;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.util.RawValue;
-import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.event.Event;
@@ -27,9 +26,9 @@ class AggregateHistory {
   }
 
   /** Newest first; cursor is inclusive. Read one extra event to determine the next page's cursor. */
-  ConsoleViews.EventsPage events(AggregateRepository repository, String aggregateType, String aggregateId, Long cursor, int limit) {
+  ConsoleViews.EventsPage events(AggregateRepository repository, String aggregateId, Long cursor, int limit) {
     List<Event> page = new ArrayList<>();
-    try (var newestFirst = repository.eventsNewestFirst(aggregateType, aggregateId, cursor != null ? cursor : Long.MAX_VALUE, 1)) {
+    try (var newestFirst = repository.eventsNewestFirst(aggregateId, cursor != null ? cursor : Long.MAX_VALUE, 1)) {
       while (newestFirst.hasNext() && page.size() <= limit) {
         page.add(newestFirst.next());
       }
@@ -39,12 +38,12 @@ class AggregateHistory {
   }
 
   /** Match causation, not correlation: commands in one saga can share a correlation id. */
-  List<Event> eventsOfCommand(AggregateRepository repository, Requests.EventsOfCommand request) {
+  List<Event> eventsOfCommand(AggregateRepository repository, String aggregateId, String commandId) {
     List<Event> produced = new ArrayList<>();
-    try (var events = repository.events(request.aggregateType(), request.aggregateId())) {
+    try (var events = repository.events(aggregateId)) {
       while (events.hasNext()) {
         Event event = events.next();
-        if (request.commandId().equals(event.getMetadata().getCausationId())) {
+        if (commandId.equals(event.getMetadata().getCausationId())) {
           produced.add(event);
         }
       }
@@ -52,21 +51,21 @@ class AggregateHistory {
     return produced;
   }
 
-  RawValue stateAt(AggregateRepository repository, String aggregateType, String aggregateId, Long sequence) {
-    if (sequence != null && repository.event(aggregateType, aggregateId, sequence) == null) {
+  RawValue stateAt(AggregateRepository repository, String aggregateId, Long sequence) {
+    if (sequence != null && repository.event(aggregateId, sequence) == null) {
       return null;
     }
-    return json(repository.replay(aggregateType, aggregateId, sequence != null ? sequence : Long.MAX_VALUE, null));
+    return json(repository.replay(aggregateId, sequence != null ? sequence : Long.MAX_VALUE, null));
   }
 
-  ConsoleViews.EventDetail eventDetail(AggregateRepository repository, String aggregateType, String aggregateId, long sequence) {
-    Event event = repository.event(aggregateType, aggregateId, sequence);
+  ConsoleViews.EventDetail eventDetail(AggregateRepository repository, String aggregateId, long sequence) {
+    Event event = repository.event(aggregateId, sequence);
     if (event == null) {
       return null;
     }
     RawValue[] previous = {null};
     boolean[] sawEvent = {false};
-    AggregateState state = repository.replay(aggregateType, aggregateId, sequence, (current, before) -> {
+    AggregateState state = repository.replay(aggregateId, sequence, (current, before) -> {
       if (current.getSequence() == sequence) {
         sawEvent[0] = true;
         previous[0] = json(before);

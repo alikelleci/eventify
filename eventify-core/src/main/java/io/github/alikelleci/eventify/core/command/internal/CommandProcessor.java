@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.core.command.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.aggregate.AggregateDefinitions;
 import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
@@ -40,7 +39,6 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   private EventStore eventStore;
   private SnapshotStore snapshotStore;
   private AggregateRepository repository;
-  private AggregateDefinitions aggregateDefinitions;
 
   public CommandProcessor(HandlerRegistry handlers, ObjectMapper objectMapper) {
     this.handlers = handlers;
@@ -55,8 +53,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     KeyValueStore<String, AggregateState> snapshots = context.getStateStore(StoreNames.SNAPSHOT_STORE);
     eventStore = new EventStore(events);
     snapshotStore = new SnapshotStore(snapshots);
-    aggregateDefinitions = new AggregateDefinitions(handlers.aggregateClasses());
-    repository = new AggregateRepository(eventStore, snapshotStore, handlers.eventSourcingHandlers(), aggregateDefinitions);
+    repository = new AggregateRepository(eventStore, snapshotStore, handlers.eventSourcingHandlers(), handlers.aggregateClasses());
   }
 
   @Override
@@ -105,21 +102,21 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
 
     log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
-    String aggregateType = commandHandler.getAggregateType();
-    AggregateState state = repository.replay(aggregateType, aggregateId);
-    long snapshotVersion = snapshotVersion(aggregateType, aggregateId);
-    boolean snapshotDue = isSnapshotDue(aggregateType, snapshotVersion, state);
+    AggregateRepository aggregateRepository = repository.forType(commandHandler.getAggregateType());
+    AggregateState state = aggregateRepository.replay(aggregateId);
+    long snapshotVersion = snapshotVersion(aggregateRepository, aggregateId);
+    boolean snapshotDue = aggregateRepository.isSnapshotDue(snapshotVersion, state);
     try {
-      List<Event> events = copyEvents(events(aggregateType, command, state, commandHandler.handle(command, state)));
-      AggregateState newState = repository.applyEvents(aggregateType, state, events);
-      save(events, aggregateType, snapshotVersion, newState);
+      List<Event> events = copyEvents(events(aggregateRepository, command, state, commandHandler.handle(command, state)));
+      AggregateState newState = aggregateRepository.applyEvents(state, events);
+      save(events, aggregateRepository, snapshotVersion, newState);
       return events;
     } catch (EventStoreException | TaskMigratedException e) {
       throw e;
     } catch (Exception e) {
       // A rejected command still leaves a checkpoint of the history that was successfully rebuilt for it.
       if (snapshotDue) {
-        saveSnapshot(aggregateType, state);
+        saveSnapshot(aggregateRepository, state);
       }
       throw e;
     }
@@ -129,13 +126,13 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
    * The command's events: they follow the history the command was handled on, so the first gets the sequence after the
    * version of that state. The state is immutable, so its version is still the one the handler was given.
    */
-  private List<Event> events(String aggregateType, Command command, AggregateState state, List<Object> payloads) {
+  private List<Event> events(AggregateRepository aggregateRepository, Command command, AggregateState state, List<Object> payloads) {
     long sequence = state.getVersion();
     Metadata metadata = command.getMetadata().with(CAUSATION_ID, command.getId());
     List<Event> events = new ArrayList<>(payloads.size());
     for (Object payload : payloads) {
       Event event = Event.builder()
-          .aggregateType(aggregateType)
+          .aggregateType(aggregateRepository.getAggregateType())
           .payload(payload)
           .metadata(metadata)
           .sequence(++sequence)
@@ -153,63 +150,59 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   /** Store writes belong to the processor's transaction; failures must escape command rejection and abort it. */
-  private void save(List<Event> events, String aggregateType, long snapshotVersion, AggregateState state) {
+  private void save(List<Event> events, AggregateRepository aggregateRepository, long snapshotVersion, AggregateState state) {
     try {
       eventStore.save(events);
-      saveSnapshotIfDue(aggregateType, snapshotVersion, state);
+      saveSnapshotIfDue(aggregateRepository, snapshotVersion, state);
     } catch (TaskMigratedException e) {
       throw e; // fenced: Kafka Streams hands the task over, it must see this exception as is
     } catch (Exception e) {
-      throw new EventStoreException("Could not save the command outcome for aggregate " + aggregateType + " "
+      throw new EventStoreException("Could not save the command outcome for aggregate " + aggregateRepository.getAggregateType() + " "
           + state.getAggregateId() + ". " + ExceptionUtils.getRootCauseMessage(e), e);
     }
   }
 
-  private void saveSnapshotIfDue(String aggregateType, long snapshotVersion, AggregateState state) {
-    if (!isSnapshotDue(aggregateType, snapshotVersion, state)) {
+  private void saveSnapshotIfDue(AggregateRepository aggregateRepository, long snapshotVersion, AggregateState state) {
+    if (!aggregateRepository.isSnapshotDue(snapshotVersion, state)) {
       return;
     }
-    saveSnapshot(aggregateType, state);
+    saveSnapshot(aggregateRepository, state);
   }
 
-  private void saveSnapshot(String aggregateType, AggregateState state) {
-    AggregateState snapshot = copySnapshot(aggregateType, state);
+  private void saveSnapshot(AggregateRepository aggregateRepository, AggregateState state) {
+    AggregateState snapshot = copySnapshot(aggregateRepository, state);
     if (snapshot == null) {
       return;
     }
     try {
-      log.debug("Creating snapshot: {} ({}) at version {}", aggregateType, snapshot.getAggregateId(), snapshot.getVersion());
-      snapshotStore.save(aggregateType, snapshot);
-      if (aggregateDefinitions.deletesEventsAtSnapshot(aggregateType)) {
-        long deleted = eventStore.deleteBefore(aggregateType, snapshot.getAggregateId(), snapshot.getVersion());
-        log.debug("Deleted {} events before snapshot: {} ({}) at version {}", deleted, aggregateType, snapshot.getAggregateId(), snapshot.getVersion());
+      log.debug("Creating snapshot: {} ({}) at version {}", aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
+      snapshotStore.save(aggregateRepository.getAggregateType(), snapshot);
+      if (aggregateRepository.deletesEventsAtSnapshot()) {
+        long deleted = eventStore.deleteBefore(aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
+        log.debug("Deleted {} events before snapshot: {} ({}) at version {}", deleted, aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
       }
     } catch (TaskMigratedException e) {
       throw e;
     } catch (Exception e) {
-      throw new EventStoreException("Could not save the snapshot of aggregate " + aggregateType + " "
+      throw new EventStoreException("Could not save the snapshot of aggregate " + aggregateRepository.getAggregateType() + " "
           + snapshot.getAggregateId() + ". " + ExceptionUtils.getRootCauseMessage(e), e);
     }
   }
 
   /** A JSON copy of the state; {@code null} when it can't be written as JSON: then there is no snapshot. */
-  private AggregateState copySnapshot(String aggregateType, AggregateState state) {
+  private AggregateState copySnapshot(AggregateRepository aggregateRepository, AggregateState state) {
     try {
-      return JsonRoundTrip.copy(objectMapper, state, AggregateState.class, "Snapshot " + aggregateType);
+      return JsonRoundTrip.copy(objectMapper, state, AggregateState.class, "Snapshot " + aggregateRepository.getAggregateType());
     } catch (IllegalArgumentException e) {
-      log.warn("Snapshot of {} ({}) at version {} skipped: {}", aggregateType, state.getAggregateId(), state.getVersion(), e.getMessage());
+      log.warn("Snapshot of {} ({}) at version {} skipped: {}", aggregateRepository.getAggregateType(), state.getAggregateId(), state.getVersion(), e.getMessage());
       return null;
     }
   }
 
   /** The version of the aggregate's usable snapshot; 0 when it has none. Read once per command: nothing writes it meanwhile. */
-  private long snapshotVersion(String aggregateType, String aggregateId) {
-    AggregateState snapshot = repository.snapshot(aggregateType, aggregateId);
+  private long snapshotVersion(AggregateRepository aggregateRepository, String aggregateId) {
+    AggregateState snapshot = aggregateRepository.snapshot(aggregateId);
     return snapshot != null ? snapshot.getVersion() : 0;
-  }
-
-  private boolean isSnapshotDue(String aggregateType, long snapshotVersion, AggregateState state) {
-    return aggregateDefinitions.isSnapshotDue(aggregateType, snapshotVersion, state.getVersion());
   }
 
   private void logFailure(Exception e) {

@@ -1,7 +1,6 @@
 package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.aggregate.AggregateDefinitions;
 import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
 import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
@@ -122,8 +121,9 @@ public class Eventify implements PluginContext {
   }
 
   /**
-   * The public read model of this instance's aggregates, replayed with its event sourcing handlers. Only locally owned
-   * aggregates can be read; use {@link #getAggregateMetadata} to locate their owner.
+   * The public read model of this instance's aggregates, replayed with its event sourcing handlers. Select its type
+   * once with {@link AggregateRepository#forType(String)} before reading it. Only locally owned aggregates can be
+   * read; use {@link #getAggregateMetadata} to locate their owner.
    *
    * @throws IllegalStateException when Eventify has not started
    * @throws org.apache.kafka.streams.errors.InvalidStateStoreException when the stores cannot be read, e.g. during rebalancing
@@ -133,7 +133,7 @@ public class Eventify implements PluginContext {
     return new AggregateRepository(
         new EventStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore()))),
         new SnapshotStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()))),
-        handlers.eventSourcingHandlers(), new AggregateDefinitions(handlers.aggregateClasses()));
+        handlers.eventSourcingHandlers(), handlers.aggregateClasses());
   }
 
   /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */

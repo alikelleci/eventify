@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.util.RawValue;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
-import io.github.alikelleci.eventify.core.aggregate.AggregateDefinitions;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
@@ -19,7 +18,6 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.store.EventStore;
 import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
-import io.github.alikelleci.eventify.console.protocol.Requests;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -101,7 +99,7 @@ class AggregateHistoryTest {
   private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
   private final AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents),
       new SnapshotStore(storedSnapshots), eventify.getHandlers().eventSourcingHandlers(),
-      new AggregateDefinitions(List.of(Counter.class)));
+      List.of(Counter.class)).forType("counter");
 
   private final Map<String, Long> lastSequences = new HashMap<>();
 
@@ -177,7 +175,7 @@ class AggregateHistoryTest {
     // Replayed from the first event there is, the state after the third event would be 2 instead of 3.
     assertThat(detail.stateKnown()).isFalse();
     assertThat(detail.previousStateKnown()).isFalse();
-    assertThat(history.stateAt(repository, "counter", "counter-1", null)).isNull();
+    assertThat(history.stateAt(repository, "counter-1", null)).isNull();
   }
 
   @Test
@@ -214,7 +212,7 @@ class AggregateHistoryTest {
     assertThat(detail.stateKnown()).isFalse();
     assertThat(detail.previousState()).isNull();
     assertThat(detail.previousStateKnown()).isFalse();
-    assertThat(history.stateAt(repository, "counter", "counter-1", second.getSequence())).isNull();
+    assertThat(history.stateAt(repository, "counter-1", second.getSequence())).isNull();
   }
 
   /** A gap after the second event: what comes before it can be shown, what comes after it can't be replayed. */
@@ -224,12 +222,12 @@ class AggregateHistoryTest {
     Event fifth = store(new Incremented("counter-1"), 5);      // 4 is missing
     storedEvents.delete(key(third));                           // and so is 3
 
-    assertThat(history.events(repository, "counter", "counter-1", null, 50).events()).containsExactly(fifth, second, first);
+    assertThat(history.events(repository, "counter-1", null, 50).events()).containsExactly(fifth, second, first);
     assertDetail(second, 1, 2);
     assertThatThrownBy(() -> detail(fifth))
         .isInstanceOf(EventReplayException.class)
         .hasMessageContaining("expected #3, found #5");
-    assertThatThrownBy(() -> history.stateAt(repository, "counter", "counter-1", null))
+    assertThatThrownBy(() -> history.stateAt(repository, "counter-1", null))
         .isInstanceOf(EventReplayException.class);
   }
 
@@ -252,7 +250,7 @@ class AggregateHistoryTest {
     assertDetail(first, 0, 1);
     assertDetail(second, 1, 2);
     assertDetail(fourth, 3, 4);
-    assertValue(history.stateAt(repository, "counter", "counter-1", first.getSequence()), 1, 1);
+    assertValue(history.stateAt(repository, "counter-1", first.getSequence()), 1, 1);
   }
 
   @Test
@@ -270,7 +268,7 @@ class AggregateHistoryTest {
     storedEvents.delete(key(first));
 
     assertThat(detail(first)).isNull();
-    assertThat(history.stateAt(repository, "counter", "counter-1", first.getSequence())).isNull();
+    assertThat(history.stateAt(repository, "counter-1", first.getSequence())).isNull();
   }
 
   @Test
@@ -279,9 +277,9 @@ class AggregateHistoryTest {
     snapshotAt(second);
     storedEvents.delete(key(first));
 
-    assertValue(history.stateAt(repository, "counter", "counter-1", null), 3, 3);
-    assertValue(history.stateAt(repository, "counter", "counter-1", second.getSequence()), 2, 2);
-    assertValue(history.stateAt(repository, "counter", "counter-1", third.getSequence()), 3, 3);
+    assertValue(history.stateAt(repository, "counter-1", null), 3, 3);
+    assertValue(history.stateAt(repository, "counter-1", second.getSequence()), 2, 2);
+    assertValue(history.stateAt(repository, "counter-1", third.getSequence()), 3, 3);
   }
 
   /** "counter-1@1" and "counter-1@x": their keys start where the keys of "counter-1" start, and must stay out of it. */
@@ -294,12 +292,12 @@ class AggregateHistoryTest {
     assertThat(key(foreign)).isGreaterThan(StoreKeys.last("counter", "counter-1"));
     assertThat(key(foreignAfter)).isGreaterThan(StoreKeys.last("counter", "counter-1"));
 
-    assertThat(history.events(repository, "counter", "counter-1", null, 50).events()).containsExactly(third, second, first);
-    assertThat(history.eventsOfCommand(repository, new Requests.EventsOfCommand("counter", "counter-1", String.valueOf(foreign.getMetadata().getCausationId())))).isEmpty();
-    assertValue(history.stateAt(repository, "counter", "counter-1", null), 3, 3);
+    assertThat(history.events(repository, "counter-1", null, 50).events()).containsExactly(third, second, first);
+    assertThat(history.eventsOfCommand(repository, "counter-1", String.valueOf(foreign.getMetadata().getCausationId()))).isEmpty();
+    assertValue(history.stateAt(repository, "counter-1", null), 3, 3);
     assertDetail(first, 0, 1);
-    assertThat(history.events(repository, "counter", "counter-1@1", null, 50).events()).containsExactly(foreign);
-    assertThat(history.events(repository, "counter", "counter-1@x", null, 50).events()).containsExactly(foreignAfter);
+    assertThat(history.events(repository, "counter-1@1", null, 50).events()).containsExactly(foreign);
+    assertThat(history.events(repository, "counter-1@x", null, 50).events()).containsExactly(foreignAfter);
   }
 
   @Test
@@ -307,11 +305,11 @@ class AggregateHistoryTest {
   void theEventsArePagedNewestFirst() {
     store(new Incremented("counter-1@1")); // next to the range, not on a page
 
-    ConsoleViews.EventsPage page = history.events(repository, "counter", "counter-1", null, 2);
+    ConsoleViews.EventsPage page = history.events(repository, "counter-1", null, 2);
     assertThat(page.events()).containsExactly(third, second);
     assertThat(page.nextCursor()).isEqualTo(first.getSequence());
 
-    ConsoleViews.EventsPage next = history.events(repository, "counter", "counter-1", page.nextCursor(), 2);
+    ConsoleViews.EventsPage next = history.events(repository, "counter-1", page.nextCursor(), 2);
     assertThat(next.events()).containsExactly(first);
     assertThat(next.nextCursor()).isNull();
   }
@@ -321,7 +319,7 @@ class AggregateHistoryTest {
   void theStateAtAnEventBeforeTheSnapshot() {
     snapshotAt(third);
 
-    assertValue(history.stateAt(repository, "counter", "counter-1", second.getSequence()), 2, 2);
+    assertValue(history.stateAt(repository, "counter-1", second.getSequence()), 2, 2);
   }
 
   /** The states are sent to the console as the JSON objects they are, as before: not as text. */
@@ -365,12 +363,12 @@ class AggregateHistoryTest {
   }
 
   private ConsoleViews.EventDetail detail(Event event) {
-    return history.eventDetail(repository, "counter", "counter-1", event.getSequence());
+    return history.eventDetail(repository, "counter-1", event.getSequence());
   }
 
   /** Stores the state after this event as the snapshot, as the application does. */
   private void snapshotAt(Event event) {
-    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), repository.replay("counter", "counter-1", event.getSequence(), null));
+    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), repository.replay("counter-1", event.getSequence(), null));
   }
 
   /** Two commands of one saga share the correlation id: each shows only the events that name it as their cause. */
@@ -382,8 +380,8 @@ class AggregateHistoryTest {
     Event two = store(new Incremented("counter-1"), Map.of(
         MetadataKeys.CORRELATION_ID, "saga", MetadataKeys.CAUSATION_ID, "command-b"));
 
-    assertThat(history.eventsOfCommand(repository, new Requests.EventsOfCommand("counter", "counter-1", "command-a"))).containsExactly(one);
-    assertThat(history.eventsOfCommand(repository, new Requests.EventsOfCommand("counter", "counter-1", "command-b"))).containsExactly(two);
+    assertThat(history.eventsOfCommand(repository, "counter-1", "command-a")).containsExactly(one);
+    assertThat(history.eventsOfCommand(repository, "counter-1", "command-b")).containsExactly(two);
   }
 
   /** E.g. an event stored before events named their command: which command produced it isn't known. */
@@ -392,7 +390,7 @@ class AggregateHistoryTest {
   void anEventWithoutACausationIdIsOfNoCommand() {
     store(new Incremented("counter-1"), Map.of(MetadataKeys.CORRELATION_ID, "old"));
 
-    assertThat(history.eventsOfCommand(repository, new Requests.EventsOfCommand("counter", "counter-1", "command-a"))).isEmpty();
+    assertThat(history.eventsOfCommand(repository, "counter-1", "command-a")).isEmpty();
   }
 
   /** Stores the payload as its aggregate's next event. */
@@ -421,7 +419,7 @@ class AggregateHistoryTest {
 
   @Test
   void anAggregateWithoutEventsHasNoConsoleState() {
-    assertThat(history.stateAt(repository, "counter", "never-created", null)).isNull();
+    assertThat(history.stateAt(repository, "never-created", null)).isNull();
   }
 
   @Test
@@ -431,8 +429,8 @@ class AggregateHistoryTest {
     assertThat(detail.stateKnown()).isTrue();
     assertThat(detail.state()).isNull();
     assertValue(detail.previousState(), 3, 3);
-    assertThat(history.stateAt(repository, "counter", "counter-1", null)).isNull();
-    assertThat(repository.replay("counter", "counter-1").getVersion()).isEqualTo(4);
+    assertThat(history.stateAt(repository, "counter-1", null)).isNull();
+    assertThat(repository.replay("counter-1").getVersion()).isEqualTo(4);
 
     snapshotAt(removed);
     storedEvents.delete(key(first));
@@ -442,7 +440,7 @@ class AggregateHistoryTest {
     assertThat(detail.stateKnown()).isTrue();
     assertThat(detail.state()).isNull();
     assertThat(detail.previousStateKnown()).isFalse();
-    assertThat(history.stateAt(repository, "counter", "counter-1", null)).isNull();
+    assertThat(history.stateAt(repository, "counter-1", null)).isNull();
   }
 
   private static Eventify eventify() {
