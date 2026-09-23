@@ -1,5 +1,7 @@
 package io.github.alikelleci.eventify.core.handler.internal;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
@@ -9,6 +11,7 @@ import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationE
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
 import lombok.Value;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -397,6 +400,39 @@ class HandlerRegistrationTest {
     assertThatThrownBy(() -> eventify.registerHandler(new FirstEventHandler()))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("started");
+  }
+
+  public static class UnsupportedParameterHandler {
+    @HandleEvent
+    public void on(SwitchedOn event, String unsupported) {
+    }
+  }
+
+  public static class TwoParameterUpcaster {
+    @Upcast(type = "com.example.SwitchedOn", revision = 1)
+    public JsonNode upcast(ObjectNode payload, String unsupported) {
+      return payload;
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse a handler with a parameter Eventify has no value for")
+  void aHandlerWithAnUnsupportedParameterIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new UnsupportedParameterHandler())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@HandleEvent", "java.lang.String");
+  }
+
+  @Test
+  @DisplayName("Should refuse an upcaster that does not take and return the payload as JSON")
+  void anUpcasterWithTheWrongSignatureIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new TwoParameterUpcaster())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@Upcast");
   }
 
   private static Properties config() {

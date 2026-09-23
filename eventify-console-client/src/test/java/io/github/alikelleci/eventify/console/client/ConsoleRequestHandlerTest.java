@@ -66,6 +66,15 @@ class ConsoleRequestHandlerTest {
         .isEqualTo(ReplyHeader.Status.BAD_REQUEST);
   }
 
+  @Test
+  @DisplayName("Should refuse an aggregate id with a NUL character")
+  void refusesAnAggregateIdWithANulCharacter() {
+    Reply reply = handle(Route.EVENTS, "{\"aggregateType\":\"order\",\"aggregateId\":\"order\\u00001\"}");
+
+    assertThat(reply.header().status()).isEqualTo(ReplyHeader.Status.BAD_REQUEST);
+    assertThat(reply.header().reason()).contains("aggregateId");
+  }
+
   private Reply handle(Route route, String json) {
     return handler.handle(route.name(), json.getBytes(StandardCharsets.UTF_8), new CancelSignal());
   }

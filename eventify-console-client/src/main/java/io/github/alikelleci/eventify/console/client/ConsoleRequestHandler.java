@@ -97,9 +97,13 @@ class ConsoleRequestHandler {
     return protocolMapper.readValue(data, type);
   }
 
-  /** Every query is about one aggregate; without its id there is nothing to look up. */
+  /** Every query is about one aggregate; without its id there is nothing to look up. An id never contains a NUL. */
   private static String requireAggregateId(String aggregateId) {
-    return require("aggregateId", aggregateId);
+    String id = require("aggregateId", aggregateId);
+    if (id.indexOf('\u0000') >= 0) {
+      throw new BadRequestException("aggregateId cannot contain a NUL character");
+    }
+    return id;
   }
 
   /**

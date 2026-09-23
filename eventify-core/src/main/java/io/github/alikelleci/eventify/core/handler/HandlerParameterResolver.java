@@ -17,6 +17,14 @@ public final class HandlerParameterResolver {
   private HandlerParameterResolver() {
   }
 
+  /** Whether {@link #resolve} has a value for this parameter. */
+  public static boolean supports(Parameter parameter) {
+    return parameter.getType() == Metadata.class
+        || parameter.isAnnotationPresent(Timestamp.class)
+        || parameter.isAnnotationPresent(MessageId.class)
+        || parameter.isAnnotationPresent(MetadataValue.class);
+  }
+
   /** @throws IllegalArgumentException when the parameter is not one of these */
   public static Object resolve(Parameter parameter, Message message) {
     if (parameter.getType() == Metadata.class) {

@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.command.internal.CommandHandlerMethod;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
+import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
@@ -19,6 +20,7 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -165,6 +167,7 @@ public class HandlerRegistry {
 
   private void addCommandHandler(Object handler, Method method) {
     requireMessageParameter("@HandleCommand", method);
+    requireSupportedParameters("@HandleCommand", method, true);
     Class<?> type = method.getParameters()[0].getType();
     requireTopic("@HandleCommand", type, method);
     String aggregateType = AggregateTypes.of(aggregateOf(method));
@@ -176,6 +179,7 @@ public class HandlerRegistry {
 
   private void addEventSourcingHandler(Object handler, Method method) {
     requireMessageParameter("@ApplyEvent", method);
+    requireSupportedParameters("@ApplyEvent", method, true);
     requireMatchingAggregateReturnType(method);
     Class<?> type = method.getParameters()[0].getType();
     ApplyEventMethod previous = eventSourcingHandlers.put(type, new ApplyEventMethod(handler, method));
@@ -199,6 +203,7 @@ public class HandlerRegistry {
 
   private void addEventHandler(Object handler, Method method) {
     requireMessageParameter("@HandleEvent", method);
+    requireSupportedParameters("@HandleEvent", method, false);
     Class<?> type = method.getParameters()[0].getType();
     requireTopic("@HandleEvent", type, method);
     // The same handler object registered again is still one handler: it must not handle each event twice. Other
@@ -207,6 +212,17 @@ public class HandlerRegistry {
         .anyMatch(previous -> previous.getHandler() == handler && previous.getMethod().equals(method));
     if (!registered) {
       eventHandlers.put(type, new EventHandlerMethod(handler, method));
+    }
+  }
+
+  /** Every parameter after the message must be one Eventify has a value for. */
+  private static void requireSupportedParameters(String annotation, Method method, boolean takesAggregate) {
+    Parameter[] parameters = method.getParameters();
+    for (int i = 1; i < parameters.length; i++) {
+      boolean aggregate = takesAggregate && parameters[i].getType().isAnnotationPresent(AggregateRoot.class);
+      if (!aggregate && !HandlerParameterResolver.supports(parameters[i])) {
+        throw new HandlerRegistrationException(annotation + " method has a parameter Eventify has no value for: " + parameters[i] + " in " + method);
+      }
     }
   }
 

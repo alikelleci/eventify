@@ -6,12 +6,16 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -19,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DisplayName("Stopping Eventify")
 class EventifyStopTest {
@@ -139,5 +144,89 @@ class EventifyStopTest {
 
     assertThat(firstStopDone).isTrue();
     first.join();
+  }
+
+  @Test
+  @DisplayName("Should stop plugins after the stream thread that called stop has returned")
+  void stoppingFromAStreamThreadDefersPluginsUntilStreamsHasStopped() throws Exception {
+    CountDownLatch closeStarted = new CountDownLatch(1);
+    CountDownLatch allowClose = new CountDownLatch(1);
+    CountDownLatch pluginsStopped = new CountDownLatch(1);
+    AtomicInteger stops = new AtomicInteger();
+    Properties properties = properties("stop-from-stream-thread-test");
+
+    StreamThreadStoppingEventify eventify = new StreamThreadStoppingEventify(properties, closeStarted, allowClose);
+    eventify.registerHandler(new PingHandler());
+    eventify.registerPlugin(new EventifyPlugin() {
+      @Override
+      public void onStop(PluginContext context) {
+        stops.incrementAndGet();
+        pluginsStopped.countDown();
+      }
+    });
+    eventify.start();
+
+    eventify.streamThread = Thread.currentThread();
+    eventify.stop();
+
+    assertThat(closeStarted.await(30, TimeUnit.SECONDS)).isTrue();
+    assertThat(stops).hasValue(0);
+    assertThatThrownBy(eventify::start).isInstanceOf(IllegalStateException.class).hasMessage("Eventify is still stopping.");
+
+    CountDownLatch externalStopReturned = new CountDownLatch(1);
+    Thread external = new Thread(() -> {
+      eventify.stop();
+      externalStopReturned.countDown();
+    });
+    external.start();
+    assertThat(externalStopReturned.await(200, TimeUnit.MILLISECONDS)).isFalse();
+
+    allowClose.countDown();
+
+    assertThat(pluginsStopped.await(30, TimeUnit.SECONDS)).isTrue();
+    assertThat(externalStopReturned.await(30, TimeUnit.SECONDS)).isTrue();
+    assertThat(stops).hasValue(1);
+    external.join();
+  }
+
+  private Properties properties(String applicationId) {
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:1");
+    properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
+    return properties;
+  }
+
+  /** Makes the current test thread act like the stream thread, while making the close ordering observable. */
+  private static class StreamThreadStoppingEventify extends Eventify {
+    private final CountDownLatch closeStarted;
+    private final CountDownLatch allowClose;
+    private Thread streamThread;
+
+    StreamThreadStoppingEventify(Properties properties, CountDownLatch closeStarted, CountDownLatch allowClose) {
+      super(properties, throwable -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT,
+          EventifyObjectMapper.create(), List.of());
+      this.closeStarted = closeStarted;
+      this.allowClose = allowClose;
+    }
+
+    @Override
+    boolean isCallingStreamThread() {
+      return Thread.currentThread() == streamThread;
+    }
+
+    @Override
+    void closeKafkaStreams(KafkaStreams streams) {
+      closeStarted.countDown();
+      try {
+        if (!allowClose.await(30, TimeUnit.SECONDS)) {
+          throw new AssertionError("The test never allowed Kafka Streams to close");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new AssertionError("Interrupted while waiting to close Kafka Streams", e);
+      }
+      super.closeKafkaStreams(streams);
+    }
   }
 }

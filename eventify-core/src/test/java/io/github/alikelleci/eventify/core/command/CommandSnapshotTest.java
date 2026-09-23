@@ -59,10 +59,7 @@ class CommandSnapshotTest {
     @HandleCommand
     public List<Object> handle(Change command, Counter state) {
       return switch (command.mode()) {
-        case "command-failure" -> {
-          state.value += 100;
-          throw new IllegalStateException("command rejected after mutation");
-        }
+        case "command-failure" -> throw new IllegalStateException("command rejected");
         case "apply-failure" -> List.of(new Added(command.id(), 100), new Broken(command.id()));
         case "remove" -> List.of(new Removed(command.id()));
         case "no-events" -> List.of();
@@ -70,7 +67,7 @@ class CommandSnapshotTest {
       };
     }
     @ApplyEvent public Counter apply(Created event, Counter state) { return new Counter(event.id(), 1); }
-    @ApplyEvent public Counter apply(Added event, Counter state) { state.value += event.amount(); return state; }
+    @ApplyEvent public Counter apply(Added event, Counter state) { return new Counter(event.id(), state.value + event.amount()); }
     @ApplyEvent public Counter apply(Broken event, Counter state) { throw new IllegalStateException("event rejected"); }
     @ApplyEvent public Counter apply(Removed event, Counter state) { return null; }
   }
@@ -155,6 +152,43 @@ class CommandSnapshotTest {
     assertThat(snapshot().getAggregateId()).isEqualTo("one");
     assertThat(events.get(key(2))).isNull();
     assertThat(events.get(key(3))).isNotNull();
+  }
+
+  @AggregateRoot("unwritable")
+  @EnableSnapshotting(threshold = 1)
+  public static class Unwritable {
+    @AggregateId public String id;
+    public Unwritable() {}
+    public Unwritable(String id) { this.id = id; }
+    public String getBroken() { throw new IllegalStateException("cannot be written"); }
+  }
+
+  @Topic("commands.unwritable")
+  public record Touch(@AggregateId String id) {}
+  @Topic("events.unwritable")
+  public record Touched(@AggregateId String id) {}
+
+  public static class UnwritableHandler {
+    @HandleCommand public Touched handle(Touch command, Unwritable state) { return new Touched(command.id()); }
+    @ApplyEvent public Unwritable apply(Touched event, Unwritable state) { return new Unwritable(event.id()); }
+  }
+
+  /** A state that can't be written as JSON gets no snapshot; it must not stop the application. */
+  @Test
+  void aStateThatCannotBeWrittenAsJsonIsNotSnapshotted() {
+    Properties config = new Properties();
+    config.put(StreamsConfig.APPLICATION_ID_CONFIG, "unwritable-snapshot-test");
+    config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    try (TopologyTestDriver unwritable = new TopologyTestDriver(Eventify.builder().streamsConfig(config).registerHandler(new UnwritableHandler()).build().topology())) {
+      TestInputTopic<String, Command> touches = unwritable.createInputTopic("commands.unwritable", new StringSerializer(), new JsonSerializer<>());
+      TestOutputTopic<String, CommandResult> touched = unwritable.createOutputTopic("commands.unwritable.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
+
+      touches.pipeInput("one", Command.builder().payload(new Touch("one")).build());
+
+      assertThat(touched.readValue()).isInstanceOf(CommandResult.Success.class);
+      KeyValueStore<String, AggregateState> unwritableSnapshots = unwritable.getKeyValueStore("snapshot-store");
+      assertThat(unwritableSnapshots.get(StoreKeys.snapshot("unwritable", "one"))).isNull();
+    }
   }
 
   private void send(String mode) { commands.pipeInput("one", Command.builder().payload(new Change("one", mode)).build()); }

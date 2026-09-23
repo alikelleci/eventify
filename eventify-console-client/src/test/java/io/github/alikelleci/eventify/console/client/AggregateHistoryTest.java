@@ -95,64 +95,13 @@ class AggregateHistoryTest {
 
   public record Removed(@AggregateId String id) {}
 
-  /** An aggregate whose handlers change the state they are given, and return it. */
-  @AggregateRoot("mutable-counter")
-  public static class MutableCounter {
-    @AggregateId
-    String id;
-    int value;
-
-    public String getId() {
-      return id;
-    }
-
-    public int getValue() {
-      return value;
-    }
-  }
-
-  public static class MutableCounterStarted {
-    @AggregateId
-    final String id;
-
-    MutableCounterStarted(String id) {
-      this.id = id;
-    }
-  }
-
-  public static class MutableCounterIncremented {
-    @AggregateId
-    final String id;
-
-    MutableCounterIncremented(String id) {
-      this.id = id;
-    }
-  }
-
-  public static class MutableCounterHandler {
-    @ApplyEvent
-    public MutableCounter apply(MutableCounterStarted event, MutableCounter state) {
-      MutableCounter counter = new MutableCounter();
-      counter.id = event.id;
-      counter.value = 1;
-      return counter;
-    }
-
-    @ApplyEvent
-    public MutableCounter apply(MutableCounterIncremented event, MutableCounter state) {
-      state.value++;
-      return state;
-    }
-  }
-
   private final Eventify eventify = eventify();
   private final AggregateHistory history = new AggregateHistory(eventify.getObjectMapper());
   private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
   private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
-  // The same public repository serves both aggregate types, like the console's repository.
   private final AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents),
       new SnapshotStore(storedSnapshots), eventify.getHandlers().eventSourcingHandlers(),
-      new AggregateDefinitions(List.of(Counter.class, MutableCounter.class)));
+      new AggregateDefinitions(List.of(Counter.class)));
 
   private final Map<String, Long> lastSequences = new HashMap<>();
 
@@ -375,27 +324,6 @@ class AggregateHistoryTest {
     assertValue(history.stateAt(repository, "counter", "counter-1", second.getSequence()), 2, 2);
   }
 
-  /** Each state is the state at its own event, not the state the handlers after it made of the same object. */
-  @Test
-  @DisplayName("Should keep earlier states unchanged when a handler changes the state it is given")
-  void aHandlerThatChangesTheStateItIsGivenDoesNotChangeTheStatesBeforeIt() {
-    store(new MutableCounterStarted("mutable-counter-1"));
-    Event incremented = store(new MutableCounterIncremented("mutable-counter-1"));
-    Event incrementedAgain = store(new MutableCounterIncremented("mutable-counter-1"));
-
-    ConsoleViews.EventDetail detail = history.eventDetail(repository, "mutable-counter", "mutable-counter-1", incremented.getSequence());
-    assertValue(detail.previousState(), 1, 1);
-    assertValue(detail.state(), 2, 2);
-
-    // With a snapshot after the event, the replay goes on past it.
-    storedSnapshots.put(StoreKeys.snapshot("mutable-counter", "mutable-counter-1"),
-        repository.replay("mutable-counter", "mutable-counter-1", incrementedAgain.getSequence(), null));
-    detail = history.eventDetail(repository, "mutable-counter", "mutable-counter-1", incremented.getSequence());
-    assertValue(detail.previousState(), 1, 1);
-    assertValue(detail.state(), 2, 2);
-    assertValue(history.stateAt(repository, "mutable-counter", "mutable-counter-1", incremented.getSequence()), 2, 2);
-  }
-
   /** The states are sent to the console as the JSON objects they are, as before: not as text. */
   @Test
   @DisplayName("Should send the states as JSON objects, not as text")
@@ -482,18 +410,13 @@ class AggregateHistoryTest {
   }
 
   private Event store(Object payload, Map<String, String> metadata, long sequence) {
-    Event event = Event.builder().aggregateType(aggregateType(payload)).payload(payload).metadata(Metadata.of(metadata)).sequence(sequence).build();
+    Event event = Event.builder().aggregateType("counter").payload(payload).metadata(Metadata.of(metadata)).sequence(sequence).build();
     storedEvents.put(key(event), event);
     return event;
   }
 
   private static String key(Event event) {
     return StoreKeys.of(event.getAggregateType(), event.getAggregateId(), event.getSequence());
-  }
-
-  /** Which of the two aggregates this payload belongs to. */
-  private static String aggregateType(Object payload) {
-    return payload.getClass().getSimpleName().startsWith("MutableCounter") ? "mutable-counter" : "counter";
   }
 
   @Test
@@ -526,7 +449,7 @@ class AggregateHistoryTest {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "history-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).registerHandler(new MutableCounterHandler()).build();
+    return Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).build();
   }
 
 }

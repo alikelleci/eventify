@@ -43,14 +43,20 @@ public class Upcasters {
   }
 
   private void add(Object handler, Method method) {
-    if (method.getParameterCount() != 1) {
-      return;
-    }
+    requireJsonSignature(method);
     UpcasterMethod upcaster = new UpcasterMethod(handler, method);
     UpcasterMethod existing = upcasters.computeIfAbsent(upcaster.type(), type -> new ConcurrentHashMap<>())
         .putIfAbsent(upcaster.revision(), upcaster);
     if (existing != null) {
       throw new HandlerRegistrationException("Two upcasters for " + upcaster.type() + " revision " + upcaster.revision() + ": " + existing.getMethod() + " and " + method);
+    }
+  }
+
+  private static void requireJsonSignature(Method method) {
+    boolean takesJson = method.getParameterCount() == 1 && method.getParameterTypes()[0].isAssignableFrom(ObjectNode.class);
+    boolean returnsJson = JsonNode.class.isAssignableFrom(method.getReturnType());
+    if (!takesJson || !returnsJson) {
+      throw new HandlerRegistrationException("An @Upcast method must take the payload as a JsonNode or ObjectNode and return a JsonNode: " + method);
     }
   }
 
