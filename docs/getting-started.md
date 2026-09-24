@@ -100,12 +100,12 @@ The Spring Boot starter auto-configures Eventify and automatically registers any
 public class EventifyConfig {
 
     @Bean
-    public Eventify eventify() {
+    public Eventify eventify(Eventify.EventifyBuilder builder) {
         Properties props = new Properties();
         props.put(StreamsConfig.APPLICATION_ID_CONFIG, "my-app");
         props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
-        return Eventify.builder()
+        return builder
             .streamsConfig(props)
             .build();
     }
@@ -134,9 +134,9 @@ public class OrderEventHandler {
 }
 ```
 
-The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application context is ready.
+The starter provides an `Eventify.EventifyBuilder` bean with every Spring bean that has handler or `@Upcast` methods already registered. Build your `Eventify` bean with it, as above. Eventify starts when the application context is ready.
 
-> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`).
+> **Important:** Only the injected builder holds the handler beans. An `Eventify` built with `Eventify.builder()` gets only the handlers you register on it yourself. Each injection point gets a builder of its own; with more than one `Eventify` bean, use `Eventify.builder()` and register each one's handlers yourself. A handler bean can't inject the `Eventify` bean it is registered on.
 
 ### Handling events with `@KafkaListener`
 

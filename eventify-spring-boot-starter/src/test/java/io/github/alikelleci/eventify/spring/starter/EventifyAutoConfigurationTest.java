@@ -1,8 +1,12 @@
 package io.github.alikelleci.eventify.spring.starter;
 
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
+import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
+import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,7 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Handler beans with advice (here {@code @Async}; {@code @Transactional} works the same) are registered as the proxy,
- * so the advice applies when a handler runs: registered automatically, and registered explicitly on an Eventify bean.
+ * so the advice applies when a handler runs: through the builder bean, and registered explicitly on an Eventify bean.
  */
 @ExtendWith(OutputCaptureExtension.class)
 @DisplayName("Spring Boot auto-configuration")
@@ -52,8 +56,8 @@ class EventifyAutoConfigurationTest {
     }
 
     @Bean
-    Eventify eventify() {
-      return Eventify.builder().streamsConfig(streamsConfig()).build();
+    Eventify eventify(Eventify.EventifyBuilder builder) {
+      return builder.streamsConfig(streamsConfig()).build();
     }
   }
 
@@ -75,7 +79,7 @@ class EventifyAutoConfigurationTest {
       .withConfiguration(AutoConfigurations.of(EventifyAutoConfiguration.class));
 
   @Test
-  @DisplayName("Should register a proxied handler bean automatically, as the proxy")
+  @DisplayName("Should register a proxied handler bean on the builder bean, as the proxy")
   void aProxiedHandlerIsRegisteredAutomatically() {
     runner.withUserConfiguration(AutomaticRegistration.class).run(context -> {
       Object handler = registeredHandler(context.getBean(Eventify.class));
@@ -97,30 +101,78 @@ class EventifyAutoConfigurationTest {
   }
 
   @Configuration
-  static class TwoEventifyBeansWithoutHandlers {
+  static class WithoutBuilderBean {
     @Bean
     PingHandler pingHandler() {
       return new PingHandler();
     }
 
     @Bean
-    Eventify first() {
-      return Eventify.builder().streamsConfig(streamsConfig()).build();
-    }
-
-    @Bean
-    Eventify second() {
+    Eventify eventify() {
       return Eventify.builder().streamsConfig(streamsConfig()).build();
     }
   }
 
-  /** Every handler would be registered on both, and every command handled twice. */
+  /** Only the builder bean holds the handler beans: an Eventify built with its own builder is left as it is. */
   @Test
-  @DisplayName("Should refuse to guess when more than one Eventify bean has no handlers")
-  void handlersAreNotSpreadOverSeveralEventifyBeans() {
-    runner.withUserConfiguration(TwoEventifyBeansWithoutHandlers.class).run(context ->
+  @DisplayName("Should not register handler beans on an Eventify bean built without the builder bean")
+  void anEventifyBuiltWithoutTheBuilderBeanGetsNoHandlerBeans() {
+    runner.withUserConfiguration(WithoutBuilderBean.class).run(context ->
+        assertThat(context.getBean(Eventify.class).getHandlers().eventHandlers(Pinged.class)).isEmpty());
+  }
+
+  @AggregateRoot("counter")
+  public static class Counter {
+    @AggregateId
+    String id;
+  }
+
+  @Topic("commands.counter")
+  public static class Increment {
+    @AggregateId
+    String id;
+  }
+
+  public static class CounterHandler {
+    @HandleCommand
+    public Object handle(Increment command, Counter state) {
+      return null;
+    }
+  }
+
+  @Configuration
+  static class TwoEventifyBeansFromTheBuilderBean {
+    @Bean
+    CounterHandler counterHandler() {
+      return new CounterHandler();
+    }
+
+    @Bean
+    Eventify first(Eventify.EventifyBuilder builder) {
+      return builder.streamsConfig(streamsConfig()).build();
+    }
+
+    @Bean
+    Eventify second(Eventify.EventifyBuilder builder) {
+      return builder.streamsConfig(streamsConfig()).build();
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse to start when two Eventify beans handle the same command")
+  void aCommandIsHandledByOneEventifyBean() {
+    runner.withUserConfiguration(TwoEventifyBeansFromTheBuilderBean.class).run(context ->
         assertThat(context).hasFailed()
-            .getFailure().hasMessageContaining("more than one Eventify bean without handlers"));
+            .getFailure().rootCause().hasMessageContaining(Increment.class.getName() + " is handled by more than one Eventify bean"));
+  }
+
+  @Test
+  @DisplayName("Should give every injection point a builder of its own")
+  void theBuildersAreNotShared() {
+    runner.run(context -> {
+      assertThat(context.getBean(Eventify.EventifyBuilder.class)).isNotSameAs(context.getBean(Eventify.EventifyBuilder.class));
+      assertThat(context.getBean(CommandGateway.CommandGatewayBuilder.class)).isNotSameAs(context.getBean(CommandGateway.CommandGatewayBuilder.class));
+    });
   }
 
   private static Object registeredHandler(Eventify eventify) {

@@ -33,25 +33,25 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/** The handlers and upcasters of one Eventify instance; frozen at start, since the stream threads read it. */
+/** The handlers and upcasters of one Eventify instance; complete when constructed, never changed afterwards. */
 public class HandlerRegistry {
 
   private final Map<Class<?>, CommandHandlerMethod> commandHandlers = new HashMap<>();
   private final Map<Class<?>, ApplyEventMethod> eventSourcingHandlers = new HashMap<>();
   private final MultiValuedMap<Class<?>, EventHandlerMethod> eventHandlers = new ArrayListValuedHashMap<>();
-  private final Upcasters upcasters = new Upcasters();
+  private final Upcasters upcasters;
 
-  private volatile boolean frozen;
+  public HandlerRegistry(List<Object> handlers) {
+    handlers.forEach(this::register);
+    upcasters = Upcasters.of(handlers);
+  }
 
   /** Whether the class has a method with an Eventify handler annotation, e.g. {@code @HandleCommand} or {@code @Upcast}. */
   public static boolean isHandler(Class<?> handlerClass) {
     return !AnnotationScanner.findAnnotatedMethods(handlerClass, HandleMessage.class).isEmpty();
   }
 
-  public void register(Object handler) {
-    if (frozen) {
-      throw new IllegalStateException("Eventify is started: handlers can only be registered before it starts.");
-    }
+  private void register(Object handler) {
     AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
         .forEach(method -> addCommandHandler(handler, method));
 
@@ -60,16 +60,6 @@ public class HandlerRegistry {
 
     AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
         .forEach(method -> addEventHandler(handler, method));
-
-    upcasters.register(handler);
-  }
-
-  public void freeze() {
-    frozen = true;
-  }
-
-  public boolean isEmpty() {
-    return commandHandlers.isEmpty() && eventSourcingHandlers.isEmpty() && eventHandlers.isEmpty() && upcasters.isEmpty();
   }
 
   /** The one {@code @AggregateRoot} parameter: Eventify must know which aggregate to load before the handler runs. */
@@ -132,7 +122,6 @@ public class HandlerRegistry {
     return Collections.unmodifiableCollection(eventHandlers.get(eventClass));
   }
 
-  /** Not a copy: a serde made with them also sees upcasters registered later. */
   public Upcasters upcasters() {
     return upcasters;
   }

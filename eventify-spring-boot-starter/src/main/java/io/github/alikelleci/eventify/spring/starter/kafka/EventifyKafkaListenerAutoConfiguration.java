@@ -7,11 +7,13 @@ import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.kafka.KafkaClientConfigs;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
+import io.github.alikelleci.eventify.spring.starter.EventifyHandlerBeans;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.IsolationLevel;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.AnyNestedCondition;
@@ -47,12 +49,6 @@ import java.util.Map;
 @ConditionalOnClass(KafkaListenerContainerFactory.class)
 public class EventifyKafkaListenerAutoConfiguration {
 
-  /** Static: a post-processor created from an instance method would first create this configuration, too early. */
-  @Bean
-  public static EventifyUpcasters eventifyUpcasters() {
-    return new EventifyUpcasters();
-  }
-
   @Bean
   public KafkaListenerConfigurer eventifyKafkaListenerConfigurer() {
     return registrar -> registrar.setCustomMethodArgumentResolvers(new EventifyArgumentResolver());
@@ -66,21 +62,20 @@ public class EventifyKafkaListenerAutoConfiguration {
       ObjectProvider<Eventify> apps,
       ObjectProvider<ConsumerFactory<?, ?>> consumerFactories,
       ObjectProvider<CommonErrorHandler> errorHandlers,
-      EventifyUpcasters upcasters) {
+      ListableBeanFactory beanFactory) {
     ObjectMapper objectMapper = objectMapper(apps);
     return containerFactory(consumerConfig(apps, consumerFactories), errorHandlers,
-        new EventSerde(objectMapper, upcasters(apps, upcasters)).deserializer());
+        new EventSerde(objectMapper, upcasters(apps, beanFactory)).deserializer());
   }
 
   /**
    * The Eventify bean's own upcasters, so listeners upcast as Kafka Streams does: also those registered with
-   * {@code Eventify.builder().registerHandler(...)} that are not beans. Its map is complete before the listener
-   * containers start: the upcaster beans are added to it once every singleton exists.
+   * {@code Eventify.builder().registerHandler(...)} that are not beans.
    *
    * <p>Without an Eventify bean, the {@code @Upcast} methods of the beans. With several, those too: which Eventify
    * bean's upcasters apply to a topic is not known here.
    */
-  private static Upcasters upcasters(ObjectProvider<Eventify> apps, EventifyUpcasters beans) {
+  private static Upcasters upcasters(ObjectProvider<Eventify> apps, ListableBeanFactory beanFactory) {
     Eventify eventify = apps.getIfUnique();
     if (eventify != null) {
       return eventify.getUpcasters();
@@ -89,7 +84,7 @@ public class EventifyKafkaListenerAutoConfiguration {
       log.warn("There is more than one Eventify bean: @KafkaListener methods only upcast with the @Upcast methods of "
           + "beans, not with upcasters registered on an Eventify bean with Eventify.builder().registerHandler(...).");
     }
-    return beans.getUpcasters();
+    return Upcasters.of(EventifyHandlerBeans.of(beanFactory));
   }
 
   private static <T> ConcurrentKafkaListenerContainerFactory<String, T> containerFactory(

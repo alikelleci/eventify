@@ -33,12 +33,12 @@ import java.util.concurrent.CompletableFuture;
 
 @Slf4j
 public class Eventify implements PluginContext {
-  private final HandlerRegistry handlers = new HandlerRegistry();
+  private final HandlerRegistry handlers;
 
   private final Properties streamsConfig;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
-  private final List<EventifyPlugin> plugins = new ArrayList<>();
+  private final List<EventifyPlugin> plugins;
 
   private KafkaStreams kafkaStreams;
   /** The plugins of this run, as registered when it started. */
@@ -52,18 +52,16 @@ public class Eventify implements PluginContext {
   /** How long a close attempt waits before logging and trying again. */
   private static final Duration CLOSE_WAIT = Duration.ofSeconds(30);
 
-  protected Eventify(Properties streamsConfig,
+  protected Eventify(HandlerRegistry handlers,
+                     Properties streamsConfig,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
                      ObjectMapper objectMapper,
                      List<EventifyPlugin> plugins) {
+    this.handlers = handlers;
     this.streamsConfig = streamsConfig;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
-    this.plugins.addAll(plugins);
-  }
-
-  public void registerHandler(Object handler) {
-    handlers.register(handler);
+    this.plugins = List.copyOf(plugins);
   }
 
   /** Whether a method has {@code @HandleCommand}, {@code @ApplyEvent}, {@code @HandleEvent} or {@code @Upcast}. */
@@ -94,11 +92,6 @@ public class Eventify implements PluginContext {
   @Override
   public KafkaStreams getKafkaStreams() {
     return kafkaStreams;
-  }
-
-  /** Whether any handler or upcaster is registered. */
-  public boolean hasHandlers() {
-    return !handlers.isEmpty();
   }
 
   /** The command classes this instance has a command handler for. */
@@ -144,10 +137,6 @@ public class Eventify implements PluginContext {
     return kafkaStreams;
   }
 
-  public void registerPlugin(EventifyPlugin plugin) {
-    this.plugins.add(plugin);
-  }
-
   public static EventifyBuilder builder() {
     return new EventifyBuilder();
   }
@@ -165,7 +154,6 @@ public class Eventify implements PluginContext {
         throw new IllegalStateException("Eventify is still stopping.");
       }
     }
-    handlers.freeze();
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
       log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
@@ -288,8 +276,11 @@ public class Eventify implements PluginContext {
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
 
+    /** The same object registered twice counts once. */
     public EventifyBuilder registerHandler(Object handler) {
-      handlers.add(handler);
+      if (handlers.stream().noneMatch(registered -> registered == handler)) {
+        handlers.add(handler);
+      }
       return this;
     }
 
@@ -316,26 +307,17 @@ public class Eventify implements PluginContext {
     }
 
     public Eventify build() {
-      if (this.uncaughtExceptionHandler == null) {
-        this.uncaughtExceptionHandler = throwable ->
-            StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
-      }
+      List<EventifyPlugin> allPlugins = new ArrayList<>();
+      allPlugins.add(new LoggingPlugin());
+      allPlugins.addAll(plugins);
 
-      if (this.objectMapper == null) {
-        this.objectMapper = EventifyObjectMapper.create();
-      }
-
-      this.plugins.add(0, new LoggingPlugin());
-
-      Eventify eventify = new Eventify(
-          this.streamsConfig,
-          this.uncaughtExceptionHandler,
-          this.objectMapper,
-          this.plugins);
-
-      this.handlers.forEach(eventify::registerHandler);
-
-      return eventify;
+      return new Eventify(
+          new HandlerRegistry(handlers),
+          streamsConfig,
+          uncaughtExceptionHandler != null ? uncaughtExceptionHandler
+              : throwable -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT,
+          objectMapper != null ? objectMapper : EventifyObjectMapper.create(),
+          allPlugins);
     }
 
   }

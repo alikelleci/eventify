@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
@@ -146,9 +147,7 @@ class EventifyStopTest {
     AtomicInteger stops = new AtomicInteger();
     Properties properties = properties("stop-from-stream-thread-test");
 
-    StreamThreadStoppingEventify eventify = new StreamThreadStoppingEventify(properties, closeStarted, allowClose);
-    eventify.registerHandler(new PingHandler());
-    eventify.registerPlugin(new EventifyPlugin() {
+    StreamThreadStoppingEventify eventify = new StreamThreadStoppingEventify(properties, closeStarted, allowClose, new EventifyPlugin() {
       @Override
       public void onStop(PluginContext context) {
         stops.incrementAndGet();
@@ -194,9 +193,10 @@ class EventifyStopTest {
     private final CountDownLatch allowClose;
     private Thread streamThread;
 
-    StreamThreadStoppingEventify(Properties properties, CountDownLatch closeStarted, CountDownLatch allowClose) {
-      super(properties, throwable -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT,
-          EventifyObjectMapper.create(), List.of());
+    StreamThreadStoppingEventify(Properties properties, CountDownLatch closeStarted, CountDownLatch allowClose, EventifyPlugin plugin) {
+      super(new HandlerRegistry(List.of(new PingHandler())), properties,
+          throwable -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT,
+          EventifyObjectMapper.create(), List.of(plugin));
       this.closeStarted = closeStarted;
       this.allowClose = allowClose;
     }

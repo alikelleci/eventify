@@ -20,7 +20,7 @@ class EventifyKafkaListenerAutoConfigurationTest {
   void nothingWithoutSpringKafka() {
     runner.withClassLoader(new FilteredClassLoader(KafkaListenerContainerFactory.class)).run(context -> {
       assertThat(context).hasNotFailed();
-      assertThat(context).doesNotHaveBean(EventifyUpcasters.class);
+      assertThat(context).doesNotHaveBean("eventifyListenerContainerFactory");
     });
   }
 

@@ -10,34 +10,54 @@ import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * The {@link Upcast} chain: a stored message goes through every upcaster from its revision on.
- * Upcasters may be added while a serde already uses them, e.g. by Spring.
- */
-public class Upcasters {
+/** The {@link Upcast} chain: a stored message goes through every upcaster from its revision on. Immutable. */
+public final class Upcasters {
 
+  /** No upcasters: messages are read as stored. */
+  public static final Upcasters NONE = new Upcasters(List.of(), Map.of());
+
+  /** The objects the upcasters come from, so {@link #with} can add to them. */
+  private final List<Object> handlers;
   /** By class name, then by the revision an upcaster upcasts from. */
-  private final Map<String, Map<Integer, UpcasterMethod>> upcasters = new ConcurrentHashMap<>();
+  private final Map<String, Map<Integer, UpcasterMethod>> upcasters;
 
-  /** Adds the {@link Upcast} methods; throws {@link HandlerRegistrationException} when a type and revision has one already. */
-  public Upcasters register(Object handler) {
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
-        .forEach(method -> add(handler, method));
-    return this;
+  private Upcasters(List<Object> handlers, Map<String, Map<Integer, UpcasterMethod>> upcasters) {
+    this.handlers = handlers;
+    this.upcasters = upcasters;
+  }
+
+  /** The {@link Upcast} methods of these objects; throws {@link HandlerRegistrationException} when a type and revision has two. */
+  public static Upcasters of(Collection<?> handlers) {
+    Map<String, Map<Integer, UpcasterMethod>> upcasters = new HashMap<>();
+    handlers.forEach(handler -> AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
+        .forEach(method -> add(upcasters, handler, method)));
+    Map<String, Map<Integer, UpcasterMethod>> copy = new HashMap<>();
+    upcasters.forEach((type, byRevision) -> copy.put(type, Map.copyOf(byRevision)));
+    return new Upcasters(List.copyOf(handlers), Map.copyOf(copy));
+  }
+
+  /** New upcasters: these, plus the {@link Upcast} methods of the given objects. */
+  public Upcasters with(Object... handlers) {
+    List<Object> all = new ArrayList<>(this.handlers);
+    all.addAll(List.of(handlers));
+    return of(all);
   }
 
   public boolean isEmpty() {
     return upcasters.isEmpty();
   }
 
-  private void add(Object handler, Method method) {
+  private static void add(Map<String, Map<Integer, UpcasterMethod>> upcasters, Object handler, Method method) {
     requireJsonSignature(method);
     UpcasterMethod upcaster = new UpcasterMethod(handler, method);
-    UpcasterMethod existing = upcasters.computeIfAbsent(upcaster.getType(), type -> new ConcurrentHashMap<>())
+    UpcasterMethod existing = upcasters.computeIfAbsent(upcaster.getType(), type -> new HashMap<>())
         .putIfAbsent(upcaster.getRevision(), upcaster);
     if (existing != null) {
       throw new HandlerRegistrationException("Two upcasters for " + upcaster.getType() + " revision " + upcaster.getRevision() + ": " + existing.getMethod() + " and " + method);

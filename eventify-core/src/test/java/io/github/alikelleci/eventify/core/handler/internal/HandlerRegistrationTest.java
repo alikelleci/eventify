@@ -385,22 +385,6 @@ class HandlerRegistrationTest {
         .containsExactly(AnnotatedTwiceEventHandler.class, OverridingEventHandler.class);
   }
 
-  @Test
-  @DisplayName("Should refuse a handler registered after Eventify started")
-  void aHandlerRegisteredAfterStartIsRefused() {
-    Eventify eventify = Eventify.builder().streamsConfig(config())
-        .registerHandler(new LightHandler())
-        .build();
-    eventify.start();
-    try {
-      assertThatThrownBy(() -> eventify.registerHandler(new FirstEventHandler()))
-          .isInstanceOf(IllegalStateException.class)
-          .hasMessageContaining("started");
-    } finally {
-      eventify.stop();
-    }
-  }
-
   public static class UnsupportedParameterHandler {
     @HandleEvent
     public void on(SwitchedOn event, String unsupported) {

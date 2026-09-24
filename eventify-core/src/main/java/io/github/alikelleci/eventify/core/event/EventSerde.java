@@ -10,7 +10,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
-/** Events as JSON, upcast on read, e.g. {@code new EventSerde().registerUpcaster(new OrderEventUpcaster())}. */
+/** Events as JSON, upcast on read, e.g. {@code new EventSerde().withUpcasters(new OrderEventUpcaster())}. */
 public class EventSerde implements Serde<Event> {
 
   private final ObjectMapper objectMapper;
@@ -22,20 +22,18 @@ public class EventSerde implements Serde<Event> {
   }
 
   public EventSerde(ObjectMapper objectMapper) {
-    this(objectMapper, new Upcasters());
+    this(objectMapper, Upcasters.NONE);
   }
 
-  /** Uses these upcasters live: ones registered later are used too. */
   public EventSerde(ObjectMapper objectMapper, Upcasters upcasters) {
     this.objectMapper = objectMapper;
     this.upcasters = upcasters;
     this.serializer = new JsonSerializer<>(objectMapper);
   }
 
-  /** Adds the {@code @Upcast} methods of the object to the upcasters events are read with. */
-  public EventSerde registerUpcaster(Object handler) {
-    upcasters.register(handler);
-    return this;
+  /** A new serde that also upcasts with the {@code @Upcast} methods of these objects; this one stays as it is. */
+  public EventSerde withUpcasters(Object... handlers) {
+    return new EventSerde(objectMapper, upcasters.with(handlers));
   }
 
   @Override

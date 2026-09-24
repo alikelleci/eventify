@@ -14,6 +14,18 @@ CommandGateway gateway = CommandGateway.builder()
     .build();
 ```
 
+With the Spring Boot starter, inject the `CommandGateway.CommandGatewayBuilder` bean instead, like the `Eventify` bean is built:
+
+```java
+@Bean
+public CommandGateway commandGateway(CommandGateway.CommandGatewayBuilder builder) {
+    return builder
+        .producerConfig(producerConfig)
+        .replyTopic("my-app.replies")
+        .build();
+}
+```
+
 ### Builder options
 
 | Method | Required | Description |

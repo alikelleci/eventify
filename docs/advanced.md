@@ -170,15 +170,15 @@ public JsonNode addChannel(ObjectNode payload) {
 
   ```java
   Serde<Event> eventSerde = new EventSerde()
-      .registerUpcaster(new OrderEventUpcaster());
+      .withUpcasters(new OrderEventUpcaster());
   ```
 
 ### Where upcasters are registered
 
 An upcaster runs only where it is registered, so every service that reads the events needs it:
 
-- **Eventify**: register the class with `@Upcast` methods like a handler, with `registerHandler(new OrderEventUpcaster())`. With the Spring Boot starter, a bean with `@Upcast` methods is registered by itself.
-- **A Kafka Streams service** that reads the events topic itself: `new EventSerde().registerUpcaster(new OrderEventUpcaster())`.
+- **Eventify**: register the class with `@Upcast` methods like a handler, with `registerHandler(new OrderEventUpcaster())`. With the Spring Boot starter, a bean with `@Upcast` methods is registered on the injected `Eventify.EventifyBuilder`.
+- **A Kafka Streams service** that reads the events topic itself: `new EventSerde().withUpcasters(new OrderEventUpcaster())`.
 - **`@KafkaListener` methods** with the Spring Boot starter use the upcasters of your `Eventify` bean, or the beans with `@Upcast` methods when there is no `Eventify` bean.
 
 With the Spring Boot starter, an upcaster from a shared library is only picked up when it is a bean: declare it with `@Bean`, or include its package in the component scan.

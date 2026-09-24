@@ -85,6 +85,17 @@ class UpcastingChainTest {
   }
 
   @Test
+  @DisplayName("Should leave the serde withUpcasters was called on unchanged")
+  void withUpcastersMakesANewSerde() {
+    EventSerde plain = new EventSerde();
+    plain.withUpcasters(new ReturningNewNodes());
+
+    Event event = plain.deserializer().deserialize("events", storedAtRevision1().getBytes());
+
+    assertThat(event.getRevision()).isEqualTo(1);
+  }
+
+  @Test
   @DisplayName("Should give the same result when upcasters change the node in place")
   void upcastersThatChangeTheNodeInPlaceGiveTheSameResult() {
     Event event = read(storedAtRevision1(), new ChangingInPlace());
@@ -159,7 +170,7 @@ class UpcastingChainTest {
   @Test
   @DisplayName("Should refuse two upcasters for the same type and revision in a serde")
   void twoUpcastersForTheSameTypeAndRevisionAreRefusedBySerde() {
-    assertThatThrownBy(() -> new EventSerde().registerUpcaster(new TwoForRevision1()))
+    assertThatThrownBy(() -> new EventSerde().withUpcasters(new TwoForRevision1()))
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
   }
@@ -252,7 +263,7 @@ class UpcastingChainTest {
 
   private static Event read(String stored, Object upcasters) {
     return new EventSerde()
-        .registerUpcaster(upcasters)
+        .withUpcasters(upcasters)
         .deserializer()
         .deserialize("events", stored.getBytes());
   }
