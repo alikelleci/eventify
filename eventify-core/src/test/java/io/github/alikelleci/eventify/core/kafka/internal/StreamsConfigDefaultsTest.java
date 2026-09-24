@@ -28,4 +28,18 @@ class StreamsConfigDefaultsTest {
     assertThat(config.get(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG)).isEqualTo(LogAndFailProcessingExceptionHandler.class.getName());
     assertThat(config.get(StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG)).isEqualTo(DefaultProductionExceptionHandler.class.getName());
   }
+
+  @Test
+  @DisplayName("Should give each instance a unique application.server, unless the application set its own")
+  void setsAUniqueApplicationServerUnlessConfigured() {
+    Properties config = new Properties();
+    config.put(StreamsConfig.APPLICATION_ID_CONFIG, "orders");
+    StreamsConfigDefaults.apply(config);
+    assertThat(config.getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG)).matches("orders\\.[0-9a-f-]{36}:0");
+
+    Properties own = new Properties();
+    own.put(StreamsConfig.APPLICATION_SERVER_CONFIG, "orders-1:8080");
+    StreamsConfigDefaults.apply(own);
+    assertThat(own.getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG)).isEqualTo("orders-1:8080");
+  }
 }

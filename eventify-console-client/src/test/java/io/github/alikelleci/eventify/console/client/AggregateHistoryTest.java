@@ -368,7 +368,7 @@ class AggregateHistoryTest {
 
   /** Stores the state after this event as the snapshot, as the application does. */
   private void snapshotAt(Event event) {
-    storedSnapshots.put(StoreKeys.aggregate("counter", "counter-1"), repository.replay("counter-1", event.getSequence(), null));
+    storedSnapshots.put(StoreKeys.aggregate("counter", "counter-1"), repository.stateAt("counter-1", event.getSequence()));
   }
 
   /** Two commands of one saga share the correlation id: each shows only the events that name it as their cause. */

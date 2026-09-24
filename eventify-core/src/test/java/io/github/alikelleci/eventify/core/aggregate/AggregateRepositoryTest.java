@@ -25,7 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -146,13 +145,13 @@ class AggregateRepositoryTest {
     store(placed("order-1"), 1);
     store(confirmed("order-1"), 2);
     store(shipped("order-1"), 3);
-    AggregateState snapshot = order().replay("order-1", 2, null);
+    AggregateState snapshot = order().stateAt("order-1", 2);
     assertThat(((Order) snapshot.getPayload()).getStatus()).isEqualTo("CONFIRMED");
     assertThat(snapshot.getVersion()).isEqualTo(2);
     storedSnapshots.put(StoreKeys.aggregate("order", "order-1"), snapshot);
     storedEvents.delete(StoreKeys.event("order", "order-1", 1));
 
-    assertThat(order().replay("order-1", 2, null)).isSameAs(snapshot);
+    assertThat(order().stateAt("order-1", 2)).isSameAs(snapshot);
     AggregateRepository.ReplayResult replayed = order().replay("order-1");
     assertThat(replayed.usedSnapshot()).isEqualTo(snapshot);
     assertThat(replayed.eventsReplayed()).isOne();
@@ -195,17 +194,16 @@ class AggregateRepositoryTest {
   public record OtherAggregate(@AggregateId String id) {}
 
   @Test
-  @DisplayName("Should advance the version and tell the listener also for an event without a handler")
-  void advancesVersionAndNotifiesListenerForEventsWithoutHandler() {
+  @DisplayName("Should advance the version also for an event without a handler")
+  void advancesVersionForEventsWithoutHandler() {
     store(placed("order-1"), 1);
     Event viewed = event(new Viewed("order-1"), 2);
     storedEvents.put(StoreKeys.event("order", "order-1", 2), viewed);
-    List<Long> previousVersions = new ArrayList<>();
 
-    AggregateState state = order().replay("order-1", 2,
-        (event, before) -> previousVersions.add(before.getVersion()));
-
-    assertThat(previousVersions).containsExactly(0L, 1L);
+    assertThat(order().stateAt("order-1", 0).getVersion()).isZero();
+    assertThatThrownBy(() -> order().stateAt("order-1", -1)).isInstanceOf(IllegalArgumentException.class);
+    assertThat(order().stateAt("order-1", 1).getVersion()).isOne();
+    AggregateState state = order().stateAt("order-1", 2);
     assertThat(state.getVersion()).isEqualTo(2);
     assertThat(state.getTimestamp()).isEqualTo(viewed.getTimestamp());
     assertThat(((Order) state.getPayload()).getStatus()).isEqualTo("PLACED");
@@ -234,9 +232,8 @@ class AggregateRepositoryTest {
     store(placed("ada@1"), 1);
     store(placed("ada@example.com"), 1);
     store(confirmed("ada"), 2);
-    List<String> ids = new ArrayList<>();
-    AggregateState state = order().replay("ada", 2, (event, before) -> ids.add(event.getAggregateId()));
-    assertThat(ids).containsExactly("ada", "ada");
+    AggregateState state = order().stateAt("ada", 2);
+    assertThat(state.getAggregateId()).isEqualTo("ada");
     assertThat(state.getVersion()).isEqualTo(2);
     assertThat(order().replay("ada@1").currentState().getVersion()).isOne();
   }
@@ -254,7 +251,7 @@ class AggregateRepositoryTest {
 
     assertThatThrownBy(() -> order().replay("order-1").currentState())
         .isInstanceOf(SnapshotOutdatedException.class);
-    assertThat(order().replay("order-1", 2, null)).isNull(); // A reader gets unknown, not an empty aggregate.
+    assertThat(order().stateAt("order-1", 2)).isNull(); // A reader gets unknown, not an empty aggregate.
   }
 
   @ParameterizedTest
@@ -268,9 +265,9 @@ class AggregateRepositoryTest {
         eventify.getHandlers().eventSourcingHandlers(), List.of(Order.class));
 
     if (corrupt) {
-      assertThatThrownBy(() -> repository.forType("order").replay("one", 2, null)).isInstanceOf(EventReplayException.class);
+      assertThatThrownBy(() -> repository.forType("order").stateAt("one", 2)).isInstanceOf(EventReplayException.class);
     } else {
-      assertThat(repository.forType("order").replay("one", 2, null).getVersion()).isEqualTo(2);
+      assertThat(repository.forType("order").stateAt("one", 2).getVersion()).isEqualTo(2);
     }
     assertThat(events.opened).isPositive();
     assertThat(events.closed).isEqualTo(events.opened);

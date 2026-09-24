@@ -55,7 +55,7 @@ class AggregateHistory {
     if (sequence != null && repository.event(aggregateId, sequence) == null) {
       return null;
     }
-    return json(repository.replay(aggregateId, sequence != null ? sequence : Long.MAX_VALUE, null));
+    return json(repository.stateAt(aggregateId, sequence != null ? sequence : Long.MAX_VALUE));
   }
 
   ConsoleViews.EventDetail eventDetail(AggregateRepository repository, String aggregateId, long sequence) {
@@ -63,21 +63,15 @@ class AggregateHistory {
     if (event == null) {
       return null;
     }
-    RawValue[] previous = {null};
-    boolean[] sawEvent = {false};
-    AggregateState state = repository.replay(aggregateId, sequence, (current, before) -> {
-      if (current.getSequence() == sequence) {
-        sawEvent[0] = true;
-        previous[0] = json(before);
-      }
-    });
-    if (state == null) {
-      return ConsoleViews.EventDetail.withUnknownStates(event);
+    // null is unknown; a state without payload is known, and has no aggregate.
+    AggregateState before = repository.stateAt(aggregateId, sequence - 1);
+    if (before == null) {
+      AggregateState after = repository.stateAt(aggregateId, sequence);
+      return after == null ? ConsoleViews.EventDetail.withUnknownStates(event) : ConsoleViews.EventDetail.withUnknownPreviousState(event, json(after));
     }
-    if (!sawEvent[0]) {
-      return ConsoleViews.EventDetail.withUnknownPreviousState(event, json(state));
-    }
-    return ConsoleViews.EventDetail.known(event, json(state), previous[0]);
+    // From the same read as before, so a snapshot made meanwhile can't pull them apart.
+    AggregateState after = repository.applyEvents(before, List.of(event));
+    return ConsoleViews.EventDetail.known(event, json(after), json(before));
   }
 
   private RawValue json(AggregateState state) {

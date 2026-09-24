@@ -12,7 +12,7 @@ final class NodeIdentity {
   private NodeIdentity() {
   }
 
-  /** This instance's {@code application.server}, which Eventify always sets. */
+  /** This instance's {@code application.server}: the application's own, or the one Eventify sets. */
   static HostInfo hostInfo(PluginContext eventify) {
     return HostInfo.buildFromEndpoint(eventify.getStreamsConfig().getProperty(StreamsConfig.APPLICATION_SERVER_CONFIG));
   }

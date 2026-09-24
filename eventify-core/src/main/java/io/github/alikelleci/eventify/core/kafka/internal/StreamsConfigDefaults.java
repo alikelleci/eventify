@@ -32,12 +32,9 @@ public final class StreamsConfigDefaults {
     alwaysSet(streamsConfig, StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndFailProcessingExceptionHandler.class.getName());
     alwaysSet(streamsConfig, StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG, DefaultProductionExceptionHandler.class.getName());
 
-    // A unique name per instance (nothing listens on it), so the console can find which instance owns a key.
+    // A unique name per instance (nothing listens on it), so the instance that owns an aggregate can be found.
     String applicationId = streamsConfig.getProperty(StreamsConfig.APPLICATION_ID_CONFIG, "eventify");
-    Object configured = streamsConfig.put(StreamsConfig.APPLICATION_SERVER_CONFIG, applicationId + "." + UUID.randomUUID() + ":0");
-    if (configured != null) {
-      log.warn("'{}' is set by Eventify; the configured value '{}' is not used.", StreamsConfig.APPLICATION_SERVER_CONFIG, configured);
-    }
+    streamsConfig.putIfAbsent(StreamsConfig.APPLICATION_SERVER_CONFIG, applicationId + "." + UUID.randomUUID() + ":0");
   }
 
   private static void alwaysSet(Properties streamsConfig, String name, String value) {
