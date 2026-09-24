@@ -27,7 +27,7 @@ public final class AggregateTypes {
     }
     String name = annotation.value();
     if (name.isBlank()) {
-      throw new HandlerRegistrationException(aggregateClass.getName() + " has no name: @AggregateRoot needs a name of your own choosing, e.g. \"order\", that stays the same when the class is renamed.");
+      throw new HandlerRegistrationException("@AggregateRoot on " + aggregateClass.getName() + " needs a name, e.g. @AggregateRoot(\"order\").");
     }
     if (name.indexOf(StoreKeys.SEPARATOR) >= 0) {
       throw new HandlerRegistrationException("The name of " + aggregateClass.getName() + " cannot contain a NUL character.");

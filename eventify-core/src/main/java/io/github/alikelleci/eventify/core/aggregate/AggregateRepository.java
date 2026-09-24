@@ -67,7 +67,7 @@ public final class AggregateRepository {
   public ReplayResult replay(String aggregateId) {
     long started = System.nanoTime();
     String aggregateType = getAggregateType();
-    AggregateState snapshot = usableSnapshot(aggregateId);
+    AggregateState snapshot = snapshotToStartFrom(aggregateId);
     AggregateState start = snapshot != null ? snapshot : AggregateState.empty(aggregateId);
     try (EventStore.EventIterator events = eventStore.events(aggregateType, aggregateId, start.getVersion() + 1, Long.MAX_VALUE)) {
       AggregateState state = applyEvents(aggregateId, start, events);
@@ -79,20 +79,17 @@ public final class AggregateRepository {
     }
   }
 
-  /**
-   * The state after the event at this sequence, 0 for before the first one; {@code null} when earlier events were
-   * deleted and no usable snapshot covers it.
-   */
+  /** The state after the event at this sequence (0: before the first); {@code null} when it can't be rebuilt. */
   public AggregateState stateAt(String aggregateId, long sequence) {
     if (sequence < 0) {
-      throw new IllegalArgumentException("Cannot give the state of aggregate " + aggregateId + " at sequence " + sequence + ": a sequence starts at 1.");
+      throw new IllegalArgumentException("Sequence can't be negative: " + sequence);
     }
     String aggregateType = getAggregateType();
     AggregateState storedSnapshot = snapshotStore.get(aggregateType, aggregateId);
     AggregateState start;
-    if (storedSnapshot != null && storedSnapshot.getVersion() <= sequence && whySnapshotIsOutdated(aggregateId, storedSnapshot) == null) {
+    if (storedSnapshot != null && storedSnapshot.getVersion() <= sequence && whySnapshotIsUnusable(aggregateId, storedSnapshot) == null) {
       start = storedSnapshot;
-    } else if (allEventsStored(aggregateId, storedSnapshot)) {
+    } else if (hasCompleteHistory(aggregateId, storedSnapshot)) {
       start = AggregateState.empty(aggregateId);
     } else {
       return null;
@@ -136,7 +133,7 @@ public final class AggregateRepository {
   }
 
   /** Whether the history still starts at event 1: tells a new aggregate from pruned history. */
-  private boolean allEventsStored(String aggregateId, AggregateState storedSnapshot) {
+  private boolean hasCompleteHistory(String aggregateId, AggregateState storedSnapshot) {
     try (EventStore.EventIterator events = eventStore.events(getAggregateType(), aggregateId)) {
       if (events.hasNext()) {
         return events.next().getSequence() == 1;
@@ -146,29 +143,29 @@ public final class AggregateRepository {
     }
   }
 
-  private AggregateState usableSnapshot(String aggregateId) {
+  private AggregateState snapshotToStartFrom(String aggregateId) {
     String aggregateType = getAggregateType();
     AggregateState stored = snapshotStore.get(aggregateType, aggregateId);
-    String whyOutdated = whySnapshotIsOutdated(aggregateId, stored);
-    if (whyOutdated == null) {
+    String whyUnusable = whySnapshotIsUnusable(aggregateId, stored);
+    if (whyUnusable == null) {
       return stored;
     }
-    if (!allEventsStored(aggregateId, stored)) {
-      throw new SnapshotOutdatedException("The snapshot of aggregate " + aggregateType + " " + aggregateId + " can't be used: " + whyOutdated
-          + ". The aggregate can't be rebuilt without it: the events before it were deleted (@EnableSnapshotting(deleteEvents = true)).");
+    if (!hasCompleteHistory(aggregateId, stored)) {
+      throw new SnapshotOutdatedException("Snapshot of " + aggregateType + " " + aggregateId + " can't be used (" + whyUnusable
+          + "), and the events before it were deleted, so the aggregate can't be rebuilt.");
     }
-    log.info("Snapshot of aggregate {} {} not used: {}. Rebuilding it from its events.", aggregateType, aggregateId, whyOutdated);
+    log.info("Snapshot of aggregate {} {} not used: {}. Rebuilding it from its events.", aggregateType, aggregateId, whyUnusable);
     return null;
   }
 
-  private String whySnapshotIsOutdated(String aggregateId, AggregateState snapshot) {
+  private String whySnapshotIsUnusable(String aggregateId, AggregateState snapshot) {
     if (snapshot == null) {
       return null;
     }
     if (!StringUtils.equals(snapshot.getAggregateId(), aggregateId)) {
       return "it belongs to aggregate " + snapshot.getAggregateId() + " instead of " + aggregateId;
     }
-    return definition().whySnapshotIsOutdated(snapshot);
+    return definition().whySnapshotIsUnusable(snapshot);
   }
 
   private AggregateState applyEvents(String aggregateId, AggregateState start, Iterator<Event> events) {
@@ -182,7 +179,7 @@ public final class AggregateRepository {
       Event event = events.next();
       if (event.getPayload() == null) {
         // A removed class must not silently drop out of the state: require an upcaster.
-        throw new EventReplayException("Stored event " + event.getId() + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it to its current class.");
+        throw new EventReplayException("Stored event " + event.getId() + " (" + event.getType() + ") cannot be replayed: its class no longer exists. Add an upcaster that renames it.");
       }
       if (!StringUtils.equals(event.getAggregateType(), aggregateType) || !StringUtils.equals(event.getAggregateId(), aggregateId)) {
         throw new EventReplayException("Stored event " + event.getId() + " (" + event.getType() + ") belongs to "
@@ -232,7 +229,7 @@ public final class AggregateRepository {
     }
 
     /** Why this snapshot cannot rebuild this aggregate type, or {@code null} when it can. */
-    String whySnapshotIsOutdated(AggregateState snapshot) {
+    String whySnapshotIsUnusable(AggregateState snapshot) {
       // A type without payload is an unreadable aggregate (see SnapshotSerde), not a removal.
       if (snapshot.getPayload() == null && snapshot.getType() != null) {
         return "its aggregate can't be read, e.g. its class was moved or a field no longer fits";

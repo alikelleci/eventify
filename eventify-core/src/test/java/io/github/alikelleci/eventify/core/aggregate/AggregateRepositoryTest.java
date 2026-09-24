@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.store.EventStore;
 import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
@@ -39,7 +40,7 @@ class AggregateRepositoryTest {
   private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
   private final Eventify eventify = eventify();
   private final AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents), new SnapshotStore(storedSnapshots),
-      eventify.getHandlers().eventSourcingHandlers(), List.of(Order.class));
+      new HandlerRegistry(List.of(new OrderEventSourcingHandler())).eventSourcingHandlers(), List.of(Order.class));
 
   @Test
   @DisplayName("Should replay stored events in sequence order")
@@ -262,7 +263,7 @@ class AggregateRepositoryTest {
     events.put(StoreKeys.event("order", "one", 1), event(placed("one"), 1));
     events.put(StoreKeys.event("order", "one", 2), event(confirmed("one"), corrupt ? 1 : 2));
     AggregateRepository repository = new AggregateRepository(new EventStore(events), new SnapshotStore(storedSnapshots),
-        eventify.getHandlers().eventSourcingHandlers(), List.of(Order.class));
+        new HandlerRegistry(List.of(new OrderEventSourcingHandler())).eventSourcingHandlers(), List.of(Order.class));
 
     if (corrupt) {
       assertThatThrownBy(() -> repository.forType("order").stateAt("one", 2)).isInstanceOf(EventReplayException.class);

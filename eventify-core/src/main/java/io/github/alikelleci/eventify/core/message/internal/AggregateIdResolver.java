@@ -27,10 +27,10 @@ public class AggregateIdResolver {
   private static Field findIdField(Class<?> payloadClass) {
     List<Field> fields = FieldUtils.getFieldsListWithAnnotation(payloadClass, AggregateId.class);
     if (fields.isEmpty()) {
-      throw new AggregateIdMissingException("Aggregate identifier missing in " + payloadClass.getName() + ". Please annotate your field containing the identifier with @AggregateId.");
+      throw new AggregateIdMissingException(payloadClass.getName() + " has no field annotated with @AggregateId.");
     }
     if (fields.size() > 1) {
-      throw new AggregateIdMissingException("More than one field of " + payloadClass.getName() + " is annotated with @AggregateId: " + fields.stream().map(Field::getName).toList() + ". Annotate exactly one.");
+      throw new AggregateIdMissingException(payloadClass.getName() + " has more than one @AggregateId field: " + fields.stream().map(Field::getName).toList());
     }
     Field field = fields.get(0);
     field.setAccessible(true);
@@ -41,7 +41,7 @@ public class AggregateIdResolver {
   private static String getFieldValue(Field field, Object target) {
     Object value = field.get(target);
     if (value == null) {
-      throw new AggregateIdMissingException("Aggregate identifier cannot be null.");
+      throw new AggregateIdMissingException("The @AggregateId field " + field.getName() + " of " + target.getClass().getName() + " is null.");
     }
     return value.toString();
   }

@@ -5,7 +5,6 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
-import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import org.junit.jupiter.api.DisplayName;
@@ -95,7 +94,7 @@ class EventifyAutoConfigurationTest {
       Object handler = registeredHandler(context.getBean(Eventify.class));
       assertThat(AopUtils.isAopProxy(handler)).isTrue();
       assertThat(handler).isSameAs(context.getBean(PingHandler.class));
-      assertThat(context.getBean(Eventify.class).getHandlers().eventHandlers(Pinged.class)).hasSize(1);
+      assertThat(context.getBean(Eventify.class).getEventHandlers()).hasSize(1);
     });
     assertThat(output).doesNotContain("is not eligible for getting processed by all BeanPostProcessors");
   }
@@ -118,7 +117,7 @@ class EventifyAutoConfigurationTest {
   @DisplayName("Should not register handler beans on an Eventify bean built without the builder bean")
   void anEventifyBuiltWithoutTheBuilderBeanGetsNoHandlerBeans() {
     runner.withUserConfiguration(WithoutBuilderBean.class).run(context ->
-        assertThat(context.getBean(Eventify.class).getHandlers().eventHandlers(Pinged.class)).isEmpty());
+        assertThat(context.getBean(Eventify.class).getEventHandlers()).isEmpty());
   }
 
   @AggregateRoot("counter")
@@ -166,6 +165,51 @@ class EventifyAutoConfigurationTest {
             .getFailure().rootCause().hasMessageContaining(Increment.class.getName() + " is handled by more than one Eventify bean"));
   }
 
+  @Configuration
+  static class OneEventHandlerOnTwoEventifyBeans {
+    @Bean
+    PingHandler pingHandler() {
+      return new PingHandler();
+    }
+
+    @Bean
+    Eventify first(PingHandler pingHandler) {
+      return Eventify.builder().streamsConfig(streamsConfig()).registerHandler(pingHandler).build();
+    }
+
+    @Bean
+    Eventify second(PingHandler pingHandler) {
+      return Eventify.builder().streamsConfig(streamsConfig()).registerHandler(pingHandler).build();
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse to start when one event handler is registered on two Eventify beans")
+  void anEventHandlerIsRegisteredOnOneEventifyBean() {
+    runner.withUserConfiguration(OneEventHandlerOnTwoEventifyBeans.class).run(context ->
+        assertThat(context).hasFailed()
+            .getFailure().rootCause().hasMessageContaining(PingHandler.class.getName() + " is registered on more than one Eventify bean"));
+  }
+
+  @Configuration
+  static class TwoEventHandlersForOneEvent {
+    @Bean
+    Eventify first() {
+      return Eventify.builder().streamsConfig(streamsConfig("first")).registerHandler(new PingHandler()).build();
+    }
+
+    @Bean
+    Eventify second() {
+      return Eventify.builder().streamsConfig(streamsConfig("second")).registerHandler(new PingHandler()).build();
+    }
+  }
+
+  @Test
+  @DisplayName("Should allow different handlers of one event on two Eventify beans")
+  void differentHandlersOfOneEventMayBeOnTwoEventifyBeans() {
+    runner.withUserConfiguration(TwoEventHandlersForOneEvent.class).run(context -> assertThat(context).hasNotFailed());
+  }
+
   @Test
   @DisplayName("Should give every injection point a builder of its own")
   void theBuildersAreNotShared() {
@@ -176,12 +220,16 @@ class EventifyAutoConfigurationTest {
   }
 
   private static Object registeredHandler(Eventify eventify) {
-    return eventify.getHandlers().eventHandlers(Pinged.class).stream().map(EventHandlerMethod::getHandler).findFirst().orElseThrow();
+    return eventify.getEventHandlers().iterator().next();
   }
 
   private static Properties streamsConfig() {
+    return streamsConfig("starter-test");
+  }
+
+  private static Properties streamsConfig(String applicationId) {
     Properties properties = new Properties();
-    properties.put("application.id", "starter-test");
+    properties.put("application.id", applicationId);
     properties.put("bootstrap.servers", "localhost:9092");
     return properties;
   }

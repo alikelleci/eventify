@@ -23,7 +23,7 @@ public final class Upcasters {
   /** No upcasters: messages are read as stored. */
   public static final Upcasters NONE = new Upcasters(List.of(), Map.of());
 
-  /** The objects the upcasters come from, so {@link #with} can add to them. */
+  /** Kept so {@link #with} can add to them. */
   private final List<Object> handlers;
   /** By class name, then by the revision an upcaster upcasts from. */
   private final Map<String, Map<Integer, UpcasterMethod>> upcasters;
@@ -33,7 +33,7 @@ public final class Upcasters {
     this.upcasters = upcasters;
   }
 
-  /** The {@link Upcast} methods of these objects; throws {@link HandlerRegistrationException} when a type and revision has two. */
+  /** The {@link Upcast} methods of these objects; two for one type and revision throw {@link HandlerRegistrationException}. */
   public static Upcasters of(Collection<?> handlers) {
     Map<String, Map<Integer, UpcasterMethod>> upcasters = new HashMap<>();
     handlers.forEach(handler -> AnnotationScanner.findAnnotatedMethods(handler.getClass(), Upcast.class)
@@ -43,7 +43,7 @@ public final class Upcasters {
     return new Upcasters(List.copyOf(handlers), Map.copyOf(copy));
   }
 
-  /** New upcasters: these, plus the {@link Upcast} methods of the given objects. */
+  /** New upcasters with these objects added. */
   public Upcasters with(Object... handlers) {
     List<Object> all = new ArrayList<>(this.handlers);
     all.addAll(List.of(handlers));

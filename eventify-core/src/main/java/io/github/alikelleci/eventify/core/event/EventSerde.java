@@ -31,7 +31,7 @@ public class EventSerde implements Serde<Event> {
     this.serializer = new JsonSerializer<>(objectMapper);
   }
 
-  /** A new serde that also upcasts with the {@code @Upcast} methods of these objects; this one stays as it is. */
+  /** A new serde with these upcasters added; this one is unchanged. */
   public EventSerde withUpcasters(Object... handlers) {
     return new EventSerde(objectMapper, upcasters.with(handlers));
   }

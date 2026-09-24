@@ -42,13 +42,13 @@ public class Event implements Message {
 
     this.type = getPayload().getClass().getSimpleName();
     this.aggregateType = Optional.ofNullable(aggregateType).filter(name -> !name.isBlank())
-        .orElseThrow(() -> new IllegalArgumentException("Event " + this.type + " has no aggregate: an event is made for the aggregate it belongs to."));
+        .orElseThrow(() -> new IllegalArgumentException("Event " + this.type + " needs an aggregate type."));
     this.aggregateId = AggregateIdResolver.getAggregateId(getPayload());
     this.id = UUID.randomUUID().toString();
 
     this.revision = Revisions.of(getPayload().getClass());
     if (sequence < 1) {
-      throw new IllegalArgumentException("Event " + this.type + " of aggregate " + this.aggregateId + " has no sequence: an event is made with the place it has in its aggregate.");
+      throw new IllegalArgumentException("Event " + this.type + " needs a sequence of 1 or higher, not " + sequence + ".");
     }
     this.sequence = sequence;
   }

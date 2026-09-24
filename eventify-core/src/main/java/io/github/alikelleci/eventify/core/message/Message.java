@@ -26,7 +26,7 @@ public interface Message {
   default Topic getTopic() {
     return Optional.ofNullable(getPayload())
         .map(p -> Topics.of(p.getClass()))
-        .orElseThrow(() -> new TopicMissingException("Topic information not found. Please annotate your payload class with @Topic."));
+        .orElseThrow(() -> new TopicMissingException(getType() + " has no @Topic."));
   }
 
 }

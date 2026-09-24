@@ -26,6 +26,8 @@ import org.apache.kafka.streams.state.QueryableStoreTypes;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Properties;
 import java.util.Set;
@@ -64,18 +66,13 @@ public class Eventify implements PluginContext {
     this.plugins = List.copyOf(plugins);
   }
 
+  public static EventifyBuilder builder() {
+    return new EventifyBuilder();
+  }
+
   /** Whether a method has {@code @HandleCommand}, {@code @ApplyEvent}, {@code @HandleEvent} or {@code @Upcast}. */
   public static boolean isHandler(Class<?> handlerClass) {
     return HandlerRegistry.isHandler(handlerClass);
-  }
-
-  public HandlerRegistry getHandlers() {
-    return handlers;
-  }
-
-  /** The upcasters of the registered handlers, also usable by an application's own serde. */
-  public Upcasters getUpcasters() {
-    return handlers.upcasters();
   }
 
   @Override
@@ -94,6 +91,12 @@ public class Eventify implements PluginContext {
     return kafkaStreams;
   }
 
+  /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
+  @Override
+  public Set<String> getAggregateTypes() {
+    return handlers.aggregateTypes();
+  }
+
   /** The command classes this instance has a command handler for. */
   @Override
   public Set<Class<?>> getCommandClasses() {
@@ -106,10 +109,16 @@ public class Eventify implements PluginContext {
     return handlers.commandTopics(aggregateType);
   }
 
-  /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
-  @Override
-  public Set<String> getAggregateTypes() {
-    return handlers.aggregateTypes();
+  /** The objects with {@code @HandleEvent} methods, as registered. */
+  public Set<Object> getEventHandlers() {
+    Set<Object> eventHandlers = Collections.newSetFromMap(new IdentityHashMap<>());
+    handlers.eventHandlers().forEach(method -> eventHandlers.add(method.getHandler()));
+    return Collections.unmodifiableSet(eventHandlers);
+  }
+
+  /** The upcasters of the registered handlers, also usable by an application's own serde. */
+  public Upcasters getUpcasters() {
+    return handlers.upcasters();
   }
 
   /**
@@ -137,10 +146,6 @@ public class Eventify implements PluginContext {
     return kafkaStreams;
   }
 
-  public static EventifyBuilder builder() {
-    return new EventifyBuilder();
-  }
-
   public Topology topology() {
     return EventifyTopology.build(handlers, objectMapper);
   }
@@ -156,7 +161,7 @@ public class Eventify implements PluginContext {
     }
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
-      log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
+      log.info("Eventify is not started: it has no command or event handlers.");
       return;
     }
 
@@ -177,9 +182,8 @@ public class Eventify implements PluginContext {
     if (handlers.commandHandlers().isEmpty() || !handlers.hasEventHandlers()) {
       return;
     }
-    log.warn("This Eventify instance handles commands and events in one application: an exception from an event "
-        + "handler stops command handling too. Consider running the event handlers in their own application, "
-        + "with its own '{}'.", StreamsConfig.APPLICATION_ID_CONFIG);
+    log.warn("Command and event handlers share one Kafka Streams app: a failing event handler stops command handling too. "
+        + "Consider running the event handlers with their own '{}'.", StreamsConfig.APPLICATION_ID_CONFIG);
   }
 
   /**
@@ -290,8 +294,9 @@ public class Eventify implements PluginContext {
     }
 
     public EventifyBuilder streamsConfig(Properties streamsConfig) {
-      this.streamsConfig = streamsConfig;
-      StreamsConfigDefaults.apply(streamsConfig);
+      this.streamsConfig = new Properties();
+      this.streamsConfig.putAll(streamsConfig);
+      StreamsConfigDefaults.apply(this.streamsConfig);
 
       return this;
     }

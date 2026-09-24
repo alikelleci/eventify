@@ -147,7 +147,7 @@ class SnapshotRevisionTest {
     send(commands, Deposit.builder().id("ada").amount(1).build());
 
     assertThat(results.readValue()).isInstanceOfSatisfying(CommandResult.Failure.class, failure ->
-        assertThat(failure.cause()).contains("snapshot of aggregate account ada can't be used", "revision 5", "the events before it were deleted"));
+        assertThat(failure.cause()).contains("Snapshot of account ada can't be used", "revision 5", "the events before it were deleted"));
   }
 
   private TestInputTopic<String, Command> counters() {

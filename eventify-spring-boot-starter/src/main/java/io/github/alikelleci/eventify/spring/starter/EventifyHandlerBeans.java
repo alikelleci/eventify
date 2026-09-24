@@ -13,10 +13,7 @@ public final class EventifyHandlerBeans {
   private EventifyHandlerBeans() {
   }
 
-  /**
-   * Picked by bean type, so only handlers are created. A bean with advice (e.g. {@code @Transactional}) is returned
-   * as its proxy, so the advice applies when a handler runs.
-   */
+  /** Picked by bean type; a bean with advice (e.g. {@code @Transactional}) is returned as its proxy. */
   public static List<Object> of(ListableBeanFactory beanFactory) {
     return Arrays.stream(beanFactory.getBeanNamesForType(Object.class, false, false))
         .filter(name -> isHandler(beanFactory.getType(name, false)))

@@ -11,8 +11,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
+import org.springframework.util.ClassUtils;
 
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +49,7 @@ public class EventifyAutoConfiguration {
       @Override
       public void start() {
         requireOneEventifyPerCommand(apps);
+        requireOneEventifyPerEventHandler(apps);
         apps.forEach(Eventify::start);
         running = true;
       }
@@ -69,14 +72,25 @@ public class EventifyAutoConfiguration {
     };
   }
 
-  /** Two Eventify beans handling one command would both handle it, and store its events twice. */
+  /** Otherwise the handler would handle each event once per Eventify bean. */
+  private static void requireOneEventifyPerEventHandler(List<Eventify> apps) {
+    Map<Object, Eventify> owners = new IdentityHashMap<>();
+    for (Eventify app : apps) {
+      for (Object handler : app.getEventHandlers()) {
+        if (owners.putIfAbsent(handler, app) != null) {
+          throw new IllegalStateException(ClassUtils.getUserClass(handler).getName() + " is registered on more than one Eventify bean; register it on one.");
+        }
+      }
+    }
+  }
+
+  /** Otherwise each Eventify bean would handle the command. */
   private static void requireOneEventifyPerCommand(List<Eventify> apps) {
     Map<Class<?>, Eventify> owners = new HashMap<>();
     for (Eventify app : apps) {
       for (Class<?> command : app.getCommandClasses()) {
         if (owners.putIfAbsent(command, app) != null) {
-          throw new IllegalStateException(command.getName() + " is handled by more than one Eventify bean, so each "
-              + "would handle it. Register its handler on one of them, with Eventify.builder().registerHandler(...).");
+          throw new IllegalStateException(command.getName() + " is handled by more than one Eventify bean; register its handler on one.");
         }
       }
     }

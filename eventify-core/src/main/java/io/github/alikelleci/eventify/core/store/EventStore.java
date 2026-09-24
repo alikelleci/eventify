@@ -87,8 +87,7 @@ public final class EventStore {
 
   private static void requireSequences(String aggregateType, String aggregateId, long from, long to) {
     if (from < 1 || to < 1) {
-      throw new IllegalArgumentException("Cannot read the events of aggregate " + aggregateType + " " + aggregateId + " from sequence " + from
-          + " to sequence " + to + ": a sequence starts at 1.");
+      throw new IllegalArgumentException("Invalid range " + from + ".." + to + " for " + aggregateType + " " + aggregateId + ": sequences start at 1.");
     }
   }
 

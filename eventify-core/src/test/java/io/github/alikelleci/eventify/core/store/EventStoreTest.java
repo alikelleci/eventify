@@ -17,6 +17,6 @@ class EventStoreTest {
   void aSequenceBelowOneIsRefusedWithTheRange() {
     assertThatThrownBy(() -> store.eventsNewestFirst("order", "order-1", 10, 0))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessageContaining("from sequence 10 to sequence 0");
+        .hasMessageContaining("Invalid range 10..0");
   }
 }

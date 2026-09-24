@@ -142,7 +142,7 @@ class AggregateIdMismatchTest {
         .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result) + " " + Matchers.causeOf(result))
         .containsExactly(
             "ada success null",
-            "bob failure AggregateIdMismatchException: Aggregate identifier does not match for command Increment. Expected bob, but was ada");
+            "bob failure AggregateIdMismatchException: Command Increment has aggregate id bob, but its record key is ada");
     assertThat(handler.handled).containsExactly("ada");
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(1);
   }

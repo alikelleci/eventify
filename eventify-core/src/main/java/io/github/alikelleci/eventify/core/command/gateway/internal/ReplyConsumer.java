@@ -40,8 +40,10 @@ public class ReplyConsumer {
   private Thread thread;
   private Thread shutdownHook;
 
-  public ReplyConsumer(Properties consumerConfig, String replyTopic, ObjectMapper objectMapper,
+  public ReplyConsumer(Properties config, String replyTopic, ObjectMapper objectMapper,
                        java.util.function.Consumer<ConsumerRecords<String, CommandResult>> onReplies) {
+    Properties consumerConfig = new Properties();
+    consumerConfig.putAll(config);
     consumerConfig.putIfAbsent(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
     consumerConfig.putIfAbsent(ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed");

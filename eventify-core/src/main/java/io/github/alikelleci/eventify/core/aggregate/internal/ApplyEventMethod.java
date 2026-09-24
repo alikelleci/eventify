@@ -60,7 +60,7 @@ public class ApplyEventMethod {
       String stateAggregateId = AggregateIdResolver.getAggregateId(result);
       // Otherwise it would be snapshotted under this event's aggregate id.
       if (!StringUtils.equals(stateAggregateId, event.getAggregateId())) {
-        throw new AggregateIdMismatchException("Aggregate identifier does not match for state " + result.getClass().getSimpleName() + " after event " + event.getType() + ". Expected " + event.getAggregateId() + ", but was " + stateAggregateId);
+        throw new AggregateIdMismatchException("State " + result.getClass().getSimpleName() + " after event " + event.getType() + " has aggregate id " + stateAggregateId + ", expected " + event.getAggregateId());
       }
     }
   }

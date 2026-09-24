@@ -39,9 +39,9 @@ class AggregateIdResolverTest {
   void exactlyOneAggregateIdIsRequired() {
     assertThatThrownBy(() -> AggregateIdResolver.getAggregateId(new NoId("a")))
         .isInstanceOf(AggregateIdMissingException.class)
-        .hasMessageContaining("missing");
+        .hasMessageContaining("has no field annotated with @AggregateId");
     assertThatThrownBy(() -> AggregateIdResolver.getAggregateId(new TwoIds("a", "b")))
         .isInstanceOf(AggregateIdMissingException.class)
-        .hasMessageContaining("More than one");
+        .hasMessageContaining("more than one @AggregateId field");
   }
 }

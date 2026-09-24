@@ -18,14 +18,14 @@ public interface PluginContext {
   /** The running Kafka Streams; {@code null} before Eventify is started. */
   KafkaStreams getKafkaStreams();
 
+  /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
+  Set<String> getAggregateTypes();
+
   /** The command classes this instance has a command handler for. */
   Set<Class<?>> getCommandClasses();
 
   /** The command topics of one aggregate. */
   Set<String> getCommandTopics(String aggregateType);
-
-  /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
-  Set<String> getAggregateTypes();
 
   /**
    * Read model of the locally owned aggregates; select a type with {@link AggregateRepository#forType(String)}.

@@ -33,7 +33,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-/** The handlers and upcasters of one Eventify instance; complete when constructed, never changed afterwards. */
+/** The handlers and upcasters of one Eventify instance; never changed after construction. */
 public class HandlerRegistry {
 
   private final Map<Class<?>, CommandHandlerMethod> commandHandlers = new HashMap<>();
@@ -44,45 +44,12 @@ public class HandlerRegistry {
   public HandlerRegistry(List<Object> handlers) {
     handlers.forEach(this::register);
     upcasters = Upcasters.of(handlers);
+    requireDistinctAggregateTypes();
   }
 
   /** Whether the class has a method with an Eventify handler annotation, e.g. {@code @HandleCommand} or {@code @Upcast}. */
   public static boolean isHandler(Class<?> handlerClass) {
     return !AnnotationScanner.findAnnotatedMethods(handlerClass, HandleMessage.class).isEmpty();
-  }
-
-  private void register(Object handler) {
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
-        .forEach(method -> addCommandHandler(handler, method));
-
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
-        .forEach(method -> addEventSourcingHandler(handler, method));
-
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
-        .forEach(method -> addEventHandler(handler, method));
-  }
-
-  /** The one {@code @AggregateRoot} parameter: Eventify must know which aggregate to load before the handler runs. */
-  private static Class<?> aggregateOf(Method method) {
-    List<Class<?>> aggregates = aggregateParameterClasses(method);
-    if (aggregates.size() != 1) {
-      throw new HandlerRegistrationException("A @HandleCommand method takes exactly one aggregate, a parameter whose type is annotated with @AggregateRoot; "
-          + method + " takes " + aggregates.size() + ". Eventify needs it to know which aggregate the command belongs to, also when the handler itself does not use it.");
-    }
-    return aggregates.get(0);
-  }
-
-  /** The command topics of one aggregate. */
-  public Set<String> commandTopics(String aggregateType) {
-    return commandHandlers.entrySet().stream()
-        .filter(entry -> entry.getValue().getAggregateType().equals(aggregateType))
-        .map(Map.Entry::getKey)
-        .collect(Collectors.collectingAndThen(Collectors.toSet(), HandlerRegistry::topicsOf));
-  }
-
-  /** The topics of the commands that have a command handler. */
-  public Set<String> commandTopics() {
-    return topicsOf(commandHandlers.keySet());
   }
 
   /** The names of the aggregates this instance handles. */
@@ -109,12 +76,25 @@ public class HandlerRegistry {
     return Collections.unmodifiableMap(commandHandlers);
   }
 
+  /** The command topics of one aggregate. */
+  public Set<String> commandTopics(String aggregateType) {
+    return commandHandlers.entrySet().stream()
+        .filter(entry -> entry.getValue().getAggregateType().equals(aggregateType))
+        .map(Map.Entry::getKey)
+        .collect(Collectors.collectingAndThen(Collectors.toSet(), HandlerRegistry::topicsOf));
+  }
+
+  /** The topics of the commands that have a command handler. */
+  public Set<String> commandTopics() {
+    return topicsOf(commandHandlers.keySet());
+  }
+
   public Map<Class<?>, ApplyEventMethod> eventSourcingHandlers() {
     return Collections.unmodifiableMap(eventSourcingHandlers);
   }
 
-  public boolean hasEventHandlers() {
-    return !eventHandlers.isEmpty();
+  public Collection<EventHandlerMethod> eventHandlers() {
+    return Collections.unmodifiableCollection(eventHandlers.values());
   }
 
   /** The event handlers for this event class, in the order they were registered; empty when there are none. */
@@ -122,13 +102,37 @@ public class HandlerRegistry {
     return Collections.unmodifiableCollection(eventHandlers.get(eventClass));
   }
 
-  public Upcasters upcasters() {
-    return upcasters;
+  public boolean hasEventHandlers() {
+    return !eventHandlers.isEmpty();
   }
 
   /** The topics of the events that have an event handler. */
   public Set<String> eventTopics() {
     return topicsOf(eventHandlers.keySet());
+  }
+
+  public Upcasters upcasters() {
+    return upcasters;
+  }
+
+  private void register(Object handler) {
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
+        .forEach(method -> addCommandHandler(handler, method));
+
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
+        .forEach(method -> addEventSourcingHandler(handler, method));
+
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
+        .forEach(method -> addEventHandler(handler, method));
+  }
+
+  /** The one {@code @AggregateRoot} parameter: Eventify must know which aggregate to load before the handler runs. */
+  private static Class<?> aggregateOf(Method method) {
+    List<Class<?>> aggregates = aggregateParameterClasses(method);
+    if (aggregates.size() != 1) {
+      throw new HandlerRegistrationException("@HandleCommand method " + method + " must take exactly one @AggregateRoot parameter, not " + aggregates.size() + ".");
+    }
+    return aggregates.get(0);
   }
 
   private static Set<String> topicsOf(Set<Class<?>> messageClasses) {
@@ -175,6 +179,19 @@ public class HandlerRegistry {
     }
   }
 
+  /** Aggregate names must be unique: the name is what keeps their keys apart. Also checks each name is valid. */
+  private void requireDistinctAggregateTypes() {
+    Map<String, Class<?>> byType = new HashMap<>();
+    for (Class<?> aggregate : aggregateClasses()) {
+      String type = AggregateTypes.of(aggregate);
+      Class<?> previous = byType.put(type, aggregate);
+      if (previous != null) {
+        throw new HandlerRegistrationException("Aggregates " + previous.getName() + " and " + aggregate.getName()
+            + " are both named '" + type + "'. Give each aggregate its own @AggregateRoot name.");
+      }
+    }
+  }
+
   private static void requireMessageParameter(String annotation, Method method) {
     if (method.getParameterCount() == 0) {
       throw new HandlerRegistrationException(annotation + " method must take its message as its first parameter: " + method);
@@ -187,7 +204,7 @@ public class HandlerRegistry {
     for (int i = 1; i < parameters.length; i++) {
       boolean aggregate = takesAggregate && parameters[i].getType().isAnnotationPresent(AggregateRoot.class);
       if (!aggregate && !HandlerParameterResolver.supports(parameters[i])) {
-        throw new HandlerRegistrationException(annotation + " method has a parameter Eventify has no value for: " + parameters[i] + " in " + method);
+        throw new HandlerRegistrationException(annotation + " method " + method + " has an unsupported parameter: " + parameters[i]);
       }
     }
   }
@@ -209,16 +226,14 @@ public class HandlerRegistry {
         .findFirst()
         .orElse(null);
     if (mismatchingAggregate != null) {
-      throw new HandlerRegistrationException("An @ApplyEvent method must return the same aggregate class as its @AggregateRoot parameter: "
-          + method + " returns " + method.getReturnType().getName() + ", but its aggregate parameter is " + mismatchingAggregate.getName() + ".");
+      throw new HandlerRegistrationException("@ApplyEvent method " + method + " must return " + mismatchingAggregate.getName() + ", its @AggregateRoot parameter.");
     }
   }
 
   private static void requireTopicOnHandledMessage(String annotation, Class<?> messageClass, Method method) {
     Topic topic = Topics.of(messageClass);
     if (topic == null || StringUtils.isBlank(topic.value())) {
-      throw new HandlerRegistrationException(annotation + " method has a message without a @Topic: " + method
-          + ". Annotate " + messageClass.getName() + ", or an interface it implements, with @Topic.");
+      throw new HandlerRegistrationException(annotation + " method " + method + " handles " + messageClass.getName() + ", which has no @Topic.");
     }
   }
 

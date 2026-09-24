@@ -81,8 +81,8 @@ public class EventifyKafkaListenerAutoConfiguration {
       return eventify.getUpcasters();
     }
     if (apps.stream().findAny().isPresent()) {
-      log.warn("There is more than one Eventify bean: @KafkaListener methods only upcast with the @Upcast methods of "
-          + "beans, not with upcasters registered on an Eventify bean with Eventify.builder().registerHandler(...).");
+      log.warn("More than one Eventify bean: @KafkaListener methods upcast only with @Upcast beans, "
+          + "not with upcasters registered via registerHandler(...).");
     }
     return Upcasters.of(EventifyHandlerBeans.of(beanFactory));
   }

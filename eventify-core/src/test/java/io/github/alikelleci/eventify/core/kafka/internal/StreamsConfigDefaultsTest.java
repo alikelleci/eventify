@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.kafka.internal;
 
+import io.github.alikelleci.eventify.core.Eventify;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.DefaultProductionExceptionHandler;
 import org.apache.kafka.streams.errors.LogAndContinueProcessingExceptionHandler;
@@ -27,6 +28,17 @@ class StreamsConfigDefaultsTest {
     assertThat(config.get(StreamsConfig.PROCESSING_GUARANTEE_CONFIG)).isEqualTo(StreamsConfig.EXACTLY_ONCE_V2);
     assertThat(config.get(StreamsConfig.PROCESSING_EXCEPTION_HANDLER_CLASS_CONFIG)).isEqualTo(LogAndFailProcessingExceptionHandler.class.getName());
     assertThat(config.get(StreamsConfig.PRODUCTION_EXCEPTION_HANDLER_CLASS_CONFIG)).isEqualTo(DefaultProductionExceptionHandler.class.getName());
+  }
+
+  @Test
+  @DisplayName("Should leave the application's own properties as they are")
+  void theApplicationsPropertiesAreNotChanged() {
+    Properties config = new Properties();
+    config.put(StreamsConfig.APPLICATION_ID_CONFIG, "orders");
+
+    Eventify.builder().streamsConfig(config).build();
+
+    assertThat(config).containsOnlyKeys(StreamsConfig.APPLICATION_ID_CONFIG);
   }
 
   @Test

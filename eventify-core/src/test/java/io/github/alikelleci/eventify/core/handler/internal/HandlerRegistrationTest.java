@@ -17,6 +17,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -266,7 +267,7 @@ class HandlerRegistrationTest {
         .registerHandler(new FanHandler())
         .build();
 
-    assertThat(eventify.getHandlers().aggregateTypes()).containsExactlyInAnyOrder("light", "fan");
+    assertThat(eventify.getAggregateTypes()).containsExactlyInAnyOrder("light", "fan");
     assertThatCode(eventify::topology).doesNotThrowAnyException();
   }
 
@@ -274,12 +275,10 @@ class HandlerRegistrationTest {
   @Test
   @DisplayName("Should refuse two aggregates that are called the same")
   void twoAggregatesWithTheSameNameAreRefused() {
-    Eventify eventify = Eventify.builder().streamsConfig(config())
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new LightHandler())
         .registerHandler(new LampHandler())
-        .build();
-
-    assertThatThrownBy(eventify::topology)
+        .build())
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("Light")
         .hasMessageContaining("Lamp")
@@ -350,37 +349,27 @@ class HandlerRegistrationTest {
   void anOverridingHandlerAndTheSameHandlerTwiceAreAccepted() {
     OverridingHandler handler = new OverridingHandler();
 
-    Eventify eventify = Eventify.builder().streamsConfig(config())
-        .registerHandler(handler)
-        .registerHandler(handler)
-        .build();
+    HandlerRegistry handlers = new HandlerRegistry(List.of(handler, handler));
 
-    assertThat(eventify.getHandlers().commandHandlers()).containsOnlyKeys(SwitchOn.class);
-    assertThat(eventify.getHandlers().eventSourcingHandlers()).containsOnlyKeys(SwitchedOn.class);
+    assertThat(handlers.commandHandlers()).containsOnlyKeys(SwitchOn.class);
+    assertThat(handlers.eventSourcingHandlers()).containsOnlyKeys(SwitchedOn.class);
   }
 
   @Test
   @DisplayName("Should accept several event handlers for the same event")
   void severalEventHandlersForTheSameEventAreAccepted() {
-    Eventify eventify = Eventify.builder().streamsConfig(config())
-        .registerHandler(new FirstEventHandler())
-        .registerHandler(new SecondEventHandler())
-        .build();
+    HandlerRegistry handlers = new HandlerRegistry(List.of(new FirstEventHandler(), new SecondEventHandler()));
 
-    assertThat(eventify.getHandlers().eventHandlers(SwitchedOn.class)).hasSize(2);
+    assertThat(handlers.eventHandlers(SwitchedOn.class)).hasSize(2);
   }
 
   @Test
   @DisplayName("Should register an event handler once when it is annotated in its interface or superclass too, or registered twice")
   void anEventHandlerIsRegisteredOnce() {
     OverridingEventHandler registeredTwice = new OverridingEventHandler();
-    Eventify eventify = Eventify.builder().streamsConfig(config())
-        .registerHandler(new AnnotatedTwiceEventHandler())
-        .registerHandler(registeredTwice)
-        .registerHandler(registeredTwice)
-        .build();
+    HandlerRegistry handlers = new HandlerRegistry(List.of(new AnnotatedTwiceEventHandler(), registeredTwice, registeredTwice));
 
-    assertThat(eventify.getHandlers().eventHandlers(SwitchedOn.class))
+    assertThat(handlers.eventHandlers(SwitchedOn.class))
         .<Class<?>>extracting(handler -> handler.getHandler().getClass())
         .containsExactly(AnnotatedTwiceEventHandler.class, OverridingEventHandler.class);
   }

@@ -11,6 +11,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
@@ -98,7 +99,7 @@ class AggregateHistoryTest {
   private final InMemoryStore<Event> storedEvents = new InMemoryStore<>();
   private final InMemoryStore<AggregateState> storedSnapshots = new InMemoryStore<>();
   private final AggregateRepository repository = new AggregateRepository(new EventStore(storedEvents),
-      new SnapshotStore(storedSnapshots), eventify.getHandlers().eventSourcingHandlers(),
+      new SnapshotStore(storedSnapshots), new HandlerRegistry(List.of(new CounterHandler())).eventSourcingHandlers(),
       List.of(Counter.class)).forType("counter");
 
   private final Map<String, Long> lastSequences = new HashMap<>();

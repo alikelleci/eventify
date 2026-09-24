@@ -294,7 +294,7 @@ class CommandRejectionTest {
 
     assertThat(results()).containsExactly(
         "Create success null",
-        "Misplace failure TopicMissingException: Event Misplaced has no topic. Please annotate its class, or an interface it implements, with @Topic.");
+        "Misplace failure TopicMissingException: Event Misplaced has no @Topic.");
     assertThat(storedTypes()).containsExactly("Created");
     assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created");
   }

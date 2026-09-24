@@ -87,7 +87,8 @@ public interface CommandGateway extends AutoCloseable {
     private ObjectMapper objectMapper;
 
     public CommandGatewayBuilder producerConfig(Properties producerConfig) {
-      this.producerConfig = producerConfig;
+      this.producerConfig = new Properties();
+      this.producerConfig.putAll(producerConfig);
       this.producerConfig.putIfAbsent(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
       this.producerConfig.putIfAbsent(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
       this.producerConfig.putIfAbsent(ProducerConfig.ACKS_CONFIG, "all");
