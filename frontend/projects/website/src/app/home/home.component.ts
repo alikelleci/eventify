@@ -1,4 +1,4 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { DOCS_HOME_URL, GITHUB_URL } from '@eventify/ui/links';
@@ -6,74 +6,35 @@ import { ConsoleScreenComponent } from '../console/showcase/console-screen.compo
 import { FeatureStoryComponent } from './feature-story.component';
 import { highlightJava } from '../shared/java-highlight';
 import { GetStartedComponent, SetupStep } from '../shared/get-started.component';
-
-interface CodeSample {
-  label: string;
-  code: string;
-}
+import { SiteFooterComponent } from '../shared/site-footer.component';
 
 /** The Eventify framework's home page. */
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [RouterLink, ButtonModule, FeatureStoryComponent, ConsoleScreenComponent, GetStartedComponent],
+  imports: [RouterLink, ButtonModule, FeatureStoryComponent, ConsoleScreenComponent, GetStartedComponent, SiteFooterComponent],
   host: { class: 'block h-full' },
 })
 export class HomeComponent {
   readonly docsUrl = DOCS_HOME_URL;
   readonly githubUrl = GITHUB_URL;
 
-  /** The hero's code window: one tab per kind of handler, as described in the docs. */
-  readonly samples: CodeSample[] = [
-    {
-      label: 'Command handler',
-      code: `public class OrderCommandHandler {
+  /** The complete aggregate flow shown in the hero. */
+  readonly highlightedHeroCode = highlightJava(`public class OrderHandler {
 
     @HandleCommand
-    public OrderEvent handle(PlaceOrder command, Order state) {
-        return OrderPlaced.builder()
-            .id(command.getId())
-            .customer(command.getCustomer())
-            .build();
+    OrderPlaced handle(PlaceOrder command, Order state) {
+        return new OrderPlaced(command.id(), command.customer());
     }
-}`,
-    },
-    {
-      label: 'Event sourcing handler',
-      code: `public class OrderEventSourcingHandler {
 
     @ApplyEvent
-    public Order apply(OrderPlaced event, Order state) {
-        return Order.builder()
-            .id(event.getId())
-            .customer(event.getCustomer())
-            .build();
+    Order apply(OrderPlaced event, Order state) {
+        return new Order(event.id(), event.customer());
     }
-}`,
-    },
-    {
-      label: 'Event handler',
-      code: `public class OrderEventHandler {
+}`);
 
-    @HandleEvent
-    public void on(OrderPlaced event) {
-        // e.g. insert into a read model
-    }
-
-    @HandleEvent
-    public void on(OrderShipped event) {
-        // e.g. notify the customer
-    }
-}`,
-    },
-  ];
-  readonly activeSample = signal(0);
-  // Highlighted once. All samples are rendered on top of each other, so the window is as tall as the longest one
-  // and doesn't change height when switching tabs.
-  readonly highlightedSamples = this.samples.map(sample => highlightJava(sample.code));
-
-  /** The same steps as the Getting Started page of the documentation. */
+  /** Quick-start steps. */
   readonly steps: SetupStep[] = [
     {
       title: 'Add the dependency',
@@ -87,25 +48,28 @@ export class HomeComponent {
     },
     {
       title: 'Write your business logic',
-      text: 'Plain Java classes with annotated methods. No base classes to extend, no interfaces to implement.',
+      text: 'Plain Java classes with annotated methods. Keep decisions and state transitions close together.',
       label: 'Java', language: 'java',
-      code: `public class OrderCommandHandler {
+      code: `public class OrderHandler {
 
     @HandleCommand
-    public OrderEvent handle(PlaceOrder command, Order state) {
-        return OrderPlaced.builder()
-            .id(command.getId())
-            .build();
+    OrderPlaced handle(PlaceOrder command, Order state) {
+        return new OrderPlaced(command.id(), command.customer());
+    }
+
+    @ApplyEvent
+    Order apply(OrderPlaced event, Order state) {
+        return new Order(event.id(), event.customer());
     }
 }`,
     },
     {
       title: 'Register and start',
-      text: 'Point Eventify at your Kafka broker, register your handlers, and start.',
+      text: 'Configure Eventify, register your handlers, and start.',
       label: 'Java', language: 'java',
       code: `Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerHandler(new OrderCommandHandler())
+    .registerHandler(new OrderHandler())
     .build();
 
 eventify.start();`,

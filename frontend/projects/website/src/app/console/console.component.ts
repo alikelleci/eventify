@@ -5,20 +5,21 @@ import { AggregateReplayComponent } from './showcase/aggregate-replay.component'
 import { CommandTraceComponent } from './showcase/command-trace.component';
 import { ConsoleScreenComponent } from './showcase/console-screen.component';
 import { GetStartedComponent, SetupStep } from '../shared/get-started.component';
+import { SiteFooterComponent } from '../shared/site-footer.component';
 
-/** The Eventify Console page: a real screen of the console, the event timeline and the commands of one order, and how to run it. */
+/** The Eventify Console landing page. */
 @Component({
   selector: 'app-console',
   templateUrl: './console.component.html',
   standalone: true,
-  imports: [ButtonModule, ConsoleScreenComponent, AggregateReplayComponent, CommandTraceComponent, GetStartedComponent],
+  imports: [ButtonModule, ConsoleScreenComponent, AggregateReplayComponent, CommandTraceComponent, GetStartedComponent, SiteFooterComponent],
   host: { class: 'block h-full' },
 })
 export class ConsoleComponent {
   readonly docsUrl = DOCS_URL;
   readonly githubUrl = GITHUB_URL;
 
-  /** The same steps as "Running the console" and "Connecting an application" in the console's documentation. */
+  /** Console setup steps. */
   readonly steps: SetupStep[] = [
     {
       title: 'Run the console',

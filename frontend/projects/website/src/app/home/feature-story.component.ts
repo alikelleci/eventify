@@ -5,8 +5,7 @@ const STEPS = 40;
 const STEP_MS = 300;
 
 /**
- * The event sourcing features, as four wide blocks, two by two, that play in turn: events build the state, a snapshot shortens
- * the replay, an old event is upcast, and the partitions spread over the instances. One 12-second cycle, a quarter per block.
+ * Four event-sourcing concepts, shown as an animated story.
  * Before it scrolls into view, or with reduced motion, every block shows its end state.
  */
 @Component({
@@ -38,7 +37,7 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Event replay</h3>
-          <p class="s-text">Replay the events to see your data exactly as it was at any moment. Nothing is ever lost.</p>
+          <p class="s-text">Replay retained events to rebuild state and understand how an aggregate reached it.</p>
         </div>
       </article>
 
@@ -94,28 +93,30 @@ const STEP_MS = 300;
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
           <h3 class="s-title">Upcasting</h3>
-          <p class="s-text">Change the structure of your events at any time. Older events are upgraded to the new structure when they're read.</p>
+          <p class="s-text">Evolve event data deliberately. Older revisions can be upgraded while they are read.</p>
         </div>
       </article>
 
-      <!-- 4. Distributed: the partitions go to the running instances, one instance at a time -->
+      <!-- 4. Plain Java: commands become events, then events update state -->
       <article class="s-card" [class.s-lit]="block() === 3">
         <div class="s-stage" aria-hidden="true">
-          <div class="flex gap-2">
-            @for (partitions of instances; track $index; let i = $index) {
-              <div class="s-box flex w-14 flex-col items-center gap-1.5 px-1.5 py-2">
-                <i class="pi pi-server text-[10px] text-surface-400"></i>
-                @for (partition of partitions; track partition) {
-                  <span class="s-in w-full rounded bg-primary-100 py-1 text-center font-mono font-semibold text-primary-700 dark:bg-primary-900/60 dark:text-primary-300"
-                        [class.s-out]="before(31 + i * 2)">{{ partition }}</span>
-                }
-              </div>
-            }
+          <div class="flex w-full max-w-44 flex-col items-center gap-2 font-mono text-[10px]">
+            <div class="s-in s-box w-full px-3 py-2 text-surface-600 dark:text-surface-300" [class.s-out]="before(31)">
+              <span class="text-primary-600 dark:text-primary-400">@HandleCommand</span> PlaceOrder
+            </div>
+            <i class="s-in pi pi-arrow-down text-[9px] text-surface-400" [class.s-out]="before(33)"></i>
+            <div class="s-in w-full rounded bg-primary-100 px-3 py-2 font-semibold text-primary-700 dark:bg-primary-900/60 dark:text-primary-300" [class.s-out]="before(34)">
+              OrderPlaced
+            </div>
+            <i class="s-in pi pi-arrow-down text-[9px] text-surface-400" [class.s-out]="before(36)"></i>
+            <div class="s-in s-box w-full px-3 py-2 text-surface-600 dark:text-surface-300" [class.s-out]="before(37)">
+              <span class="text-primary-600 dark:text-primary-400">@ApplyEvent</span> Order
+            </div>
           </div>
         </div>
         <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
-          <h3 class="s-title">Distributed</h3>
-          <p class="s-text">Run more instances as your system grows. The work is spread over them automatically.</p>
+          <h3 class="s-title">Plain Java</h3>
+          <p class="s-text">Commands decide, events describe what happened, and event handlers rebuild state.</p>
         </div>
       </article>
     </div>
@@ -167,8 +168,6 @@ const STEP_MS = 300;
 })
 export class FeatureStoryComponent {
   readonly events = ['OrderPlaced', 'ItemAdded', 'OrderPaid'];
-  readonly instances = [['P0', 'P3'], ['P1', 'P4'], ['P2', 'P5']];
-
   /** The step in the cycle, or null while not playing: then everything shows its end state. */
   private readonly step = signal<number | null>(null);
   /** The block whose quarter it is. */

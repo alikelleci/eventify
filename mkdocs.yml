@@ -1,4 +1,4 @@
-site_name: Eventify
+site_name: Eventify | Docs
 site_url: https://alikelleci.github.io/eventify/docs/
 site_description: Event sourcing for Java, built on Kafka
 site_author: Ali Kelleci
@@ -7,8 +7,7 @@ repo_url: https://github.com/alikelleci/eventify
 
 theme:
   name: material
-  icon:
-    logo: material/lightning-bolt
+  custom_dir: docs/overrides
   font:
     text: Inter
     code: JetBrains Mono

@@ -8,14 +8,13 @@
     <div class="relative mx-auto max-w-6xl px-6 pt-[8vh] pb-20 lg:pt-[10vh]">
       <div class="mx-auto max-w-3xl text-center">
         <h1 class="text-4xl font-semibold leading-[1.1] tracking-tight text-surface-900 sm:text-5xl dark:text-surface-0">
-          See everything, debug anything
+          Inspect aggregate history with confidence
         </h1>
         <p class="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-surface-500 dark:text-surface-400">
-          Inspect every event and state transition, understand exactly why commands failed. No more hunting through Kafka topics—everything is right there.
+          Give support a clear view of events, state transitions and command outcomes—without asking engineers to reconstruct the story.
         </p>
         <div class="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
-          <!-- The website has no console to search, so the call to action leads to the setup steps -->
-          <p-button label="Get started" icon="pi pi-arrow-down" iconPos="right" size="large" (onClick)="getStarted.scrollIntoView({ behavior: 'smooth' })" />
+          <p-button label="Run the Console" icon="pi pi-arrow-down" iconPos="right" size="large" (onClick)="getStarted.scrollIntoView({ behavior: 'smooth' })" />
           <a [href]="docsUrl" target="_blank" rel="noopener"
              class="inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
             Read the docs <i class="pi pi-arrow-up-right text-xs"></i>
@@ -32,9 +31,9 @@
   <section class="border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Replay your data, step by step</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Replay an aggregate, one event at a time</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          Walk through everything that happened, in order. See the data before and after each change, and exactly what each change did.
+          Walk through the retained history in order. Compare state before and after each event.
         </p>
       </div>
       <app-aggregate-replay class="mt-12 block" />
@@ -45,9 +44,9 @@
   <section class="border-t border-surface-100 dark:border-surface-800">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Trace commands and understand failures</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Follow a decision from command to events</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          See the events every command produced, and the exact reason a command failed.
+          See which events a command produced and the reason a command failed.
         </p>
       </div>
       <app-command-trace class="mt-12 block" />
@@ -58,9 +57,9 @@
   <section #getStarted class="scroll-mt-4 border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
     <div class="mx-auto max-w-6xl px-6 py-20 lg:py-24">
       <div class="max-w-2xl">
-        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Up and running in seconds</h2>
+        <h2 class="text-3xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">Run the Console in three steps</h2>
         <p class="mt-4 text-base leading-relaxed text-surface-500 dark:text-surface-400">
-          Add the dependency, write your business logic, and start. A Kafka broker is the only infrastructure you need.
+          Start the Console, add the small client dependency, then connect your application.
         </p>
         <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
           <p-button label="Read the docs" icon="pi pi-book" (onClick)="openDocs()" />
@@ -74,4 +73,6 @@
       <app-get-started [steps]="steps" class="mt-12 block" />
     </div>
   </section>
+
+  <app-site-footer />
 </div>

@@ -4,7 +4,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alikelleci/eventify-core.svg)](https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Eventify is event sourcing for Java. Define commands, events and aggregates with plain annotated methods; Eventify records events, rebuilds state and publishes resulting events.
+Eventify is a Java event-sourcing library backed by Apache Kafka. Define commands, events and aggregates with plain annotated methods; Eventify records events, rebuilds state and publishes resulting events.
 
 **[Website](https://alikelleci.github.io/eventify/)** · **[Documentation](https://alikelleci.github.io/eventify/docs/)** · **[Eventify Console](https://alikelleci.github.io/eventify/console)**
 
@@ -25,28 +25,17 @@ Add the core dependency (or `eventify-spring-boot-starter` for Spring Boot):
 Define the decision and state transition:
 
 ```java
-public class OrderCommandHandler {
+public class OrderHandler {
 
     @HandleCommand
-    public OrderEvent handle(PlaceOrder command, Order state) {
-        if (state != null) {
-            throw new ValidationException("Order already exists.");
-        }
-        return OrderPlaced.builder()
-            .id(command.getId())
-            .customer(command.getCustomer())
-            .build();
+    public OrderPlaced handle(PlaceOrder command, Order state) {
+        if (state != null) throw new ValidationException("Order already exists.");
+        return new OrderPlaced(command.id(), command.customer());
     }
-}
-
-public class OrderEventSourcingHandler {
 
     @ApplyEvent
     public Order apply(OrderPlaced event, Order state) {
-        return Order.builder()
-            .id(event.getId())
-            .customer(event.getCustomer())
-            .build();
+        return new Order(event.id(), event.customer());
     }
 }
 ```
@@ -60,8 +49,7 @@ props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerHandler(new OrderCommandHandler())
-    .registerHandler(new OrderEventSourcingHandler())
+    .registerHandler(new OrderHandler())
     .build();
 
 eventify.start();

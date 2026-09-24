@@ -1,6 +1,6 @@
 # Eventify
 
-Eventify is event sourcing for Java. You define commands, events and an aggregate; Eventify records events and rebuilds aggregate state when a command arrives.
+Eventify is a Java event-sourcing library backed by Apache Kafka. You define commands, events and an aggregate; Eventify records events and rebuilds aggregate state when a command arrives.
 
 ## The model
 
