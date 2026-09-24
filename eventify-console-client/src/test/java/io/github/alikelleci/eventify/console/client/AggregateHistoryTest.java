@@ -167,7 +167,7 @@ class AggregateHistoryTest {
   @DisplayName("Should report every state as unknown when the snapshot is outdated and the events before it were deleted")
   void anOutdatedSnapshotWithTheEventsBeforeItDeleted() {
     snapshotAt(second);
-    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), outdated(storedSnapshots.get(StoreKeys.snapshot("counter", "counter-1"))));
+    storedSnapshots.put(StoreKeys.aggregate("counter", "counter-1"), outdated(storedSnapshots.get(StoreKeys.aggregate("counter", "counter-1"))));
     storedEvents.delete(key(first)); // @EnableSnapshotting(deleteEvents = true)
 
     ConsoleViews.EventDetail detail = detail(third);
@@ -182,7 +182,7 @@ class AggregateHistoryTest {
   @DisplayName("Should rebuild the states from the events when the snapshot is outdated and all events are kept")
   void anOutdatedSnapshotWithAllEventsKept() {
     snapshotAt(second);
-    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), outdated(storedSnapshots.get(StoreKeys.snapshot("counter", "counter-1"))));
+    storedSnapshots.put(StoreKeys.aggregate("counter", "counter-1"), outdated(storedSnapshots.get(StoreKeys.aggregate("counter", "counter-1"))));
 
     assertDetail(third, 2, 3);
   }
@@ -368,7 +368,7 @@ class AggregateHistoryTest {
 
   /** Stores the state after this event as the snapshot, as the application does. */
   private void snapshotAt(Event event) {
-    storedSnapshots.put(StoreKeys.snapshot("counter", "counter-1"), repository.replay("counter-1", event.getSequence(), null));
+    storedSnapshots.put(StoreKeys.aggregate("counter", "counter-1"), repository.replay("counter-1", event.getSequence(), null));
   }
 
   /** Two commands of one saga share the correlation id: each shows only the events that name it as their cause. */
@@ -414,7 +414,7 @@ class AggregateHistoryTest {
   }
 
   private static String key(Event event) {
-    return StoreKeys.of(event.getAggregateType(), event.getAggregateId(), event.getSequence());
+    return StoreKeys.event(event.getAggregateType(), event.getAggregateId(), event.getSequence());
   }
 
   @Test

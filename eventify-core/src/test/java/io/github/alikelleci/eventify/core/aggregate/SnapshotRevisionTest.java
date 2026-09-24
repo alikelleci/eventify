@@ -81,7 +81,7 @@ class SnapshotRevisionTest {
 
     increment(commands, 3); // the second command snapshots version 2
 
-    assertThat(snapshots.get(StoreKeys.snapshot("counter", "c-1")).getRevision()).isEqualTo(2);
+    assertThat(snapshots.get(StoreKeys.aggregate("counter", "c-1")).getRevision()).isEqualTo(2);
   }
 
   @Test
@@ -90,11 +90,11 @@ class SnapshotRevisionTest {
     TestInputTopic<String, Command> commands = counters();
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
     increment(commands, 3);
-    snapshots.put(StoreKeys.snapshot("counter", "c-1"), changed(snapshots.get(StoreKeys.snapshot("counter", "c-1")), 1, 999));
+    snapshots.put(StoreKeys.aggregate("counter", "c-1"), changed(snapshots.get(StoreKeys.aggregate("counter", "c-1")), 1, 999));
 
     increment(commands, 1); // rebuilds version 3 and snapshots the successful version 4
 
-    AggregateState snapshot = snapshots.get(StoreKeys.snapshot("counter", "c-1"));
+    AggregateState snapshot = snapshots.get(StoreKeys.aggregate("counter", "c-1"));
     assertThat(((Counter) snapshot.getPayload()).count()).isEqualTo(4); // from the events, not 999
     assertThat(snapshot.getRevision()).isEqualTo(2);
   }
@@ -106,14 +106,14 @@ class SnapshotRevisionTest {
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
     increment(commands, 3);
     // A removal made with revision 1: no payload and no type.
-    ObjectNode removed = objectMapper.valueToTree(snapshots.get(StoreKeys.snapshot("counter", "c-1")));
+    ObjectNode removed = objectMapper.valueToTree(snapshots.get(StoreKeys.aggregate("counter", "c-1")));
     removed.remove(List.of("payload", "type"));
     removed.put("revision", 1);
-    snapshots.put(StoreKeys.snapshot("counter", "c-1"), objectMapper.convertValue(removed, AggregateState.class));
+    snapshots.put(StoreKeys.aggregate("counter", "c-1"), objectMapper.convertValue(removed, AggregateState.class));
 
     increment(commands, 1); // rebuilds version 3 and snapshots the successful version 4
 
-    AggregateState snapshot = snapshots.get(StoreKeys.snapshot("counter", "c-1"));
+    AggregateState snapshot = snapshots.get(StoreKeys.aggregate("counter", "c-1"));
     assertThat(((Counter) snapshot.getPayload()).count()).isEqualTo(4); // from the events, not a new counter at 1
     assertThat(snapshot.getRevision()).isEqualTo(2);
   }
@@ -124,11 +124,11 @@ class SnapshotRevisionTest {
     TestInputTopic<String, Command> commands = counters();
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
     increment(commands, 3);
-    snapshots.put(StoreKeys.snapshot("counter", "c-1"), changed(snapshots.get(StoreKeys.snapshot("counter", "c-1")), 2, 999));
+    snapshots.put(StoreKeys.aggregate("counter", "c-1"), changed(snapshots.get(StoreKeys.aggregate("counter", "c-1")), 2, 999));
 
     increment(commands, 2); // the first command snapshots version 4
 
-    assertThat(((Counter) snapshots.get(StoreKeys.snapshot("counter", "c-1")).getPayload()).count()).isEqualTo(1001);
+    assertThat(((Counter) snapshots.get(StoreKeys.aggregate("counter", "c-1")).getPayload()).count()).isEqualTo(1001);
   }
 
   @Test
@@ -141,7 +141,7 @@ class SnapshotRevisionTest {
     send(commands, OpenAccount.builder().id("ada").build());
     send(commands, Deposit.builder().id("ada").amount(5).build());
     send(commands, Deposit.builder().id("ada").amount(7).build()); // loads the version 2 snapshot; earlier events were already deleted
-    snapshots.put(StoreKeys.snapshot("account", "ada"), changed(snapshots.get(StoreKeys.snapshot("account", "ada")), 5, null));
+    snapshots.put(StoreKeys.aggregate("account", "ada"), changed(snapshots.get(StoreKeys.aggregate("account", "ada")), 5, null));
     results.readValuesToList();
 
     send(commands, Deposit.builder().id("ada").amount(1).build());

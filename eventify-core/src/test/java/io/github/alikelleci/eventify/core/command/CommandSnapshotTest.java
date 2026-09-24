@@ -179,13 +179,13 @@ class CommandSnapshotTest {
 
       assertThat(touched.readValue()).isInstanceOf(CommandResult.Success.class);
       KeyValueStore<String, AggregateState> unwritableSnapshots = unwritable.getKeyValueStore("snapshot-store");
-      assertThat(unwritableSnapshots.get(StoreKeys.snapshot("unwritable", "one"))).isNull();
+      assertThat(unwritableSnapshots.get(StoreKeys.aggregate("unwritable", "one"))).isNull();
     }
   }
 
   private void send(String mode) { commands.pipeInput("one", Command.builder().payload(new Change("one", mode)).build()); }
-  private AggregateState snapshot() { return snapshots.get(StoreKeys.snapshot("counter", "one")); }
-  private String key(long sequence) { return StoreKeys.of("counter", "one", sequence); }
+  private AggregateState snapshot() { return snapshots.get(StoreKeys.aggregate("counter", "one")); }
+  private String key(long sequence) { return StoreKeys.event("counter", "one", sequence); }
   private void store(Object payload, long sequence) {
     events.put(key(sequence), Event.builder().aggregateType("counter").payload(payload).sequence(sequence).build());
   }

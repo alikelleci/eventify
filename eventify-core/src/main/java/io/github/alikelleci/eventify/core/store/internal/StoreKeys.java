@@ -18,15 +18,15 @@ public final class StoreKeys {
   }
 
   /** The key of the aggregate's event with this sequence. */
-  public static String of(String aggregateType, String aggregateId, long sequence) {
+  public static String event(String aggregateType, String aggregateId, long sequence) {
     if (sequence < 1) {
       throw new IllegalArgumentException("A sequence starts at 1, not " + sequence + ".");
     }
-    return snapshot(aggregateType, aggregateId) + SEPARATOR + String.format(Locale.ROOT, "%0" + SEQUENCE_LENGTH + "d", sequence);
+    return aggregate(aggregateType, aggregateId) + SEPARATOR + String.format(Locale.ROOT, "%0" + SEQUENCE_LENGTH + "d", sequence);
   }
 
   /** The key of the aggregate's snapshot, which is also what the keys of its events start with. */
-  public static String snapshot(String aggregateType, String aggregateId) {
+  public static String aggregate(String aggregateType, String aggregateId) {
     if (aggregateId.indexOf(SEPARATOR) >= 0) {
       throw new IllegalArgumentException("An aggregate identifier cannot contain a NUL character.");
     }
@@ -35,11 +35,11 @@ public final class StoreKeys {
 
   /** The start of the key range that holds an aggregate's events, and nothing else. */
   public static String first(String aggregateType, String aggregateId) {
-    return of(aggregateType, aggregateId, 1);
+    return event(aggregateType, aggregateId, 1);
   }
 
   /** The end of the key range that holds an aggregate's events, and nothing else. */
   public static String last(String aggregateType, String aggregateId) {
-    return of(aggregateType, aggregateId, Long.MAX_VALUE);
+    return event(aggregateType, aggregateId, Long.MAX_VALUE);
   }
 }

@@ -170,8 +170,8 @@ class CommandResultTest {
   @DisplayName("Should reject the commands of an aggregate whose stored events have a gap, and say why")
   void anAggregateWithAGapIsRejected() {
     KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
-    eventStore.put(StoreKeys.of("cart", "cart-1", 1), Event.builder().aggregateType("cart").payload(new ItemAdded("cart-1", "apple")).sequence(1).build());
-    eventStore.put(StoreKeys.of("cart", "cart-1", 3), Event.builder().aggregateType("cart").payload(new ItemAdded("cart-1", "pear")).sequence(3).build());
+    eventStore.put(StoreKeys.event("cart", "cart-1", 1), Event.builder().aggregateType("cart").payload(new ItemAdded("cart-1", "apple")).sequence(1).build());
+    eventStore.put(StoreKeys.event("cart", "cart-1", 3), Event.builder().aggregateType("cart").payload(new ItemAdded("cart-1", "pear")).sequence(3).build());
 
     send(Command.builder().payload(new AddItem("cart-1", "bread")).build());
     send(Command.builder().payload(new AddItem("cart-2", "bread")).build());

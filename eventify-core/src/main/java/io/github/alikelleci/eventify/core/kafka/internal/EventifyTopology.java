@@ -84,7 +84,7 @@ public final class EventifyTopology {
 
       // Results --> Push to reply topic
       commandResults
-          .processValues(ReplyTo.Awaited::new)
+          .processValues(ReplyTo.OnlyAwaited::new)
           .to((key, result, recordContext) -> ReplyTo.topic(recordContext.headers()),
               Produced.with(Serdes.String(), resultSerde)
                   .withStreamPartitioner((topic, key, value, numPartitions) -> Optional.of(Set.of(0))));

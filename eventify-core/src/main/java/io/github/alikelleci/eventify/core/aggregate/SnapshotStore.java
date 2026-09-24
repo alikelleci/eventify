@@ -18,7 +18,7 @@ public final class SnapshotStore {
 
   /** The stored snapshot, including an outdated one; {@code null} when none exists. */
   public AggregateState get(String aggregateType, String aggregateId) {
-    return readable.get(StoreKeys.snapshot(aggregateType, aggregateId));
+    return readable.get(StoreKeys.aggregate(aggregateType, aggregateId));
   }
 
   /** Replaces the snapshot. Only command processing may call this. */
@@ -26,6 +26,6 @@ public final class SnapshotStore {
     if (writable == null) {
       throw new IllegalStateException("This SnapshotStore is read-only.");
     }
-    writable.put(StoreKeys.snapshot(aggregateType, state.getAggregateId()), state);
+    writable.put(StoreKeys.aggregate(aggregateType, state.getAggregateId()), state);
   }
 }

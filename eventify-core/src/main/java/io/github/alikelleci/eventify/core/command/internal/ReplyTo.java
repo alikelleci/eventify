@@ -28,7 +28,7 @@ public final class ReplyTo {
   }
 
   /** Passes on only the results their sender waits for: the ones with a reply topic. */
-  public static class Awaited implements FixedKeyProcessor<String, CommandResult, CommandResult> {
+  public static class OnlyAwaited implements FixedKeyProcessor<String, CommandResult, CommandResult> {
 
     private FixedKeyProcessorContext<String, CommandResult> context;
 

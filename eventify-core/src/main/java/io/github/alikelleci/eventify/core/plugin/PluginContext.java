@@ -19,7 +19,7 @@ public interface PluginContext {
   KafkaStreams getKafkaStreams();
 
   /** The command classes this instance has a command handler for. */
-  Set<Class<?>> getCommandTypes();
+  Set<Class<?>> getCommandClasses();
 
   /** The command topics of one aggregate. */
   Set<String> getCommandTopics(String aggregateType);

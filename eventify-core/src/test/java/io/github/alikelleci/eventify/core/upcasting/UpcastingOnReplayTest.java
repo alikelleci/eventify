@@ -117,7 +117,7 @@ class UpcastingOnReplayTest {
     stored.put("revision", 1);
     // The event store's own serde writes it: the JSON as an older version of the application stored it.
     KeyValueStore<String, Object> eventStore = driver.getKeyValueStore("event-store");
-    eventStore.put(StoreKeys.of("profile", "ada", 1), stored);
+    eventStore.put(StoreKeys.event("profile", "ada", 1), stored);
 
     Command greet = Command.builder().payload(new Greet("ada")).build();
     commands.pipeInput(greet.getAggregateId(), greet);

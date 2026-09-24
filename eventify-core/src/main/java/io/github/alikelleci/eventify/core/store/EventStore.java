@@ -23,7 +23,7 @@ public final class EventStore {
 
   /** The event with this sequence, or {@code null} when the aggregate has none there. */
   public Event get(String aggregateType, String aggregateId, long sequence) {
-    return sequence < 1 ? null : readable.get(StoreKeys.of(aggregateType, aggregateId, sequence));
+    return sequence < 1 ? null : readable.get(StoreKeys.event(aggregateType, aggregateId, sequence));
   }
 
   /** All events of one aggregate, oldest first. The caller closes the iterator. */
@@ -37,7 +37,7 @@ public final class EventStore {
     if (to < from) {
       return new EventIterator(null);
     }
-    return new EventIterator(readable.range(StoreKeys.of(aggregateType, aggregateId, from), StoreKeys.of(aggregateType, aggregateId, to)));
+    return new EventIterator(readable.range(StoreKeys.event(aggregateType, aggregateId, from), StoreKeys.event(aggregateType, aggregateId, to)));
   }
 
   /** Events in the inclusive range, newest first ({@code from} is the higher). The caller closes the iterator. */
@@ -46,14 +46,14 @@ public final class EventStore {
     if (from < to) {
       return new EventIterator(null);
     }
-    return new EventIterator(readable.reverseRange(StoreKeys.of(aggregateType, aggregateId, to), StoreKeys.of(aggregateType, aggregateId, from)));
+    return new EventIterator(readable.reverseRange(StoreKeys.event(aggregateType, aggregateId, to), StoreKeys.event(aggregateType, aggregateId, from)));
   }
 
   /** Appends events; command processing only, within its transaction. Throws when a sequence is taken. */
   public void save(List<Event> events) {
     KeyValueStore<String, Event> store = writable();
     for (Event event : events) {
-      Event taken = store.putIfAbsent(StoreKeys.of(event.getAggregateType(), event.getAggregateId(), event.getSequence()), event);
+      Event taken = store.putIfAbsent(StoreKeys.event(event.getAggregateType(), event.getAggregateId(), event.getSequence()), event);
       if (taken != null) {
         throw new IllegalStateException("Aggregate " + event.getAggregateType() + " " + event.getAggregateId() + " already has an event with sequence "
             + event.getSequence() + ": event " + taken.getId() + ".");
@@ -69,7 +69,7 @@ public final class EventStore {
     long deleted = 0;
     KeyValueStore<String, Event> store = writable();
     try (KeyValueIterator<String, Event> iterator = store.range(StoreKeys.first(aggregateType, aggregateId),
-        StoreKeys.of(aggregateType, aggregateId, version - 1))) {
+        StoreKeys.event(aggregateType, aggregateId, version - 1))) {
       while (iterator.hasNext()) {
         store.delete(iterator.next().key);
         deleted++;

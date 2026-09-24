@@ -10,8 +10,8 @@ import java.util.function.Function;
 /** The {@link Revision} of a class: of an event's payload, or of an aggregate. */
 public final class Revisions {
 
-  private static final Function<Class<?>, Integer> REVISION = PerClass.of(type ->
-      Optional.ofNullable(AnnotationScanner.findAnnotation(type, Revision.class))
+  private static final Function<Class<?>, Integer> REVISION = PerClass.of(annotatedClass ->
+      Optional.ofNullable(AnnotationScanner.findAnnotation(annotatedClass, Revision.class))
           .map(Revision::value)
           .orElse(1));
 
@@ -19,7 +19,7 @@ public final class Revisions {
   }
 
   /** The class's {@link Revision}; 1 without the annotation. */
-  public static int of(Class<?> type) {
-    return REVISION.apply(type);
+  public static int of(Class<?> annotatedClass) {
+    return REVISION.apply(annotatedClass);
   }
 }

@@ -67,7 +67,7 @@ class CommandRetry {
     try {
       JsonNode tree = objectMapper.readTree(json);
       String type = tree.path("payload").path("@class").asText(null);
-      boolean handled = type != null && eventify.getCommandTypes().stream()
+      boolean handled = type != null && eventify.getCommandClasses().stream()
           .anyMatch(commandClass -> commandClass.getName().equals(type));
       if (!handled) {
         return Result.badRequest("Not a command of this application: " + type);

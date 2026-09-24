@@ -67,8 +67,8 @@ public class Eventify implements PluginContext {
   }
 
   /** Whether a method has {@code @HandleCommand}, {@code @ApplyEvent}, {@code @HandleEvent} or {@code @Upcast}. */
-  public static boolean isHandler(Class<?> type) {
-    return HandlerRegistry.isHandler(type);
+  public static boolean isHandler(Class<?> handlerClass) {
+    return HandlerRegistry.isHandler(handlerClass);
   }
 
   public HandlerRegistry getHandlers() {
@@ -103,7 +103,7 @@ public class Eventify implements PluginContext {
 
   /** The command classes this instance has a command handler for. */
   @Override
-  public Set<Class<?>> getCommandTypes() {
+  public Set<Class<?>> getCommandClasses() {
     return handlers.commandHandlers().keySet();
   }
 

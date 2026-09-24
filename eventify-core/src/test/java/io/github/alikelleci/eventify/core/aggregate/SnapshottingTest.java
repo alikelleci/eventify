@@ -56,11 +56,11 @@ class SnapshottingTest {
     send(commands, DepositEach.builder().id("ada").amounts(List.of(5, 7)).build());       // version 3: snapshot
     send(commands, Deposit.builder().id("ada").amount(1).build());                        // version 4: next snapshot
 
-    AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
+    AggregateState snapshot = snapshotStore.get(StoreKeys.aggregate("account", "ada"));
     assertThat(snapshot).isNotNull();
     assertThat(snapshot.getVersion()).isEqualTo(4);
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(13);
-    assertThat(eventStore.get(StoreKeys.of("account", "ada", snapshot.getVersion()))).isNotNull();
+    assertThat(eventStore.get(StoreKeys.event("account", "ada", snapshot.getVersion()))).isNotNull();
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(1); // the snapshot's event
   }
 
@@ -90,7 +90,7 @@ class SnapshottingTest {
     // Stored under the same number, as the same event: the last one, at the snapshot of version 6.
     assertThat(IteratorUtils.toList(eventStore.all()))
         .extracting(entry -> entry.key + " " + entry.value.getId())
-        .containsExactly(StoreKeys.of("account", "ada", 6) + " " + sent.get(5).getId());
+        .containsExactly(StoreKeys.event("account", "ada", 6) + " " + sent.get(5).getId());
   }
 
   /** An event with an older timestamp is still stored after the earlier ones: order is by sequence, not time. */
@@ -111,7 +111,7 @@ class SnapshottingTest {
     send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(4));      // version 6
     send(commands, Deposit.builder().id("ada").amount(1).build(), now.plusMillis(5));      // version 7, snapshot remains at 6
 
-    AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
+    AggregateState snapshot = snapshotStore.get(StoreKeys.aggregate("account", "ada"));
     assertThat(snapshot.getVersion()).isEqualTo(6);
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(114);
     assertThat(IteratorUtils.toList(eventStore.all()))

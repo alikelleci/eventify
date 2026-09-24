@@ -24,13 +24,13 @@ public class AggregateIdResolver {
     return getFieldValue(ID_FIELD.apply(payload.getClass()), payload);
   }
 
-  private static Field findIdField(Class<?> type) {
-    List<Field> fields = FieldUtils.getFieldsListWithAnnotation(type, AggregateId.class);
+  private static Field findIdField(Class<?> payloadClass) {
+    List<Field> fields = FieldUtils.getFieldsListWithAnnotation(payloadClass, AggregateId.class);
     if (fields.isEmpty()) {
-      throw new AggregateIdMissingException("Aggregate identifier missing in " + type.getName() + ". Please annotate your field containing the identifier with @AggregateId.");
+      throw new AggregateIdMissingException("Aggregate identifier missing in " + payloadClass.getName() + ". Please annotate your field containing the identifier with @AggregateId.");
     }
     if (fields.size() > 1) {
-      throw new AggregateIdMissingException("More than one field of " + type.getName() + " is annotated with @AggregateId: " + fields.stream().map(Field::getName).toList() + ". Annotate exactly one.");
+      throw new AggregateIdMissingException("More than one field of " + payloadClass.getName() + " is annotated with @AggregateId: " + fields.stream().map(Field::getName).toList() + ". Annotate exactly one.");
     }
     Field field = fields.get(0);
     field.setAccessible(true);

@@ -44,8 +44,8 @@ public class HandlerRegistry {
   private volatile boolean frozen;
 
   /** Whether the class has a method with an Eventify handler annotation, e.g. {@code @HandleCommand} or {@code @Upcast}. */
-  public static boolean isHandler(Class<?> type) {
-    return !AnnotationScanner.findAnnotatedMethods(type, HandleMessage.class).isEmpty();
+  public static boolean isHandler(Class<?> handlerClass) {
+    return !AnnotationScanner.findAnnotatedMethods(handlerClass, HandleMessage.class).isEmpty();
   }
 
   public void register(Object handler) {
@@ -74,7 +74,7 @@ public class HandlerRegistry {
 
   /** The one {@code @AggregateRoot} parameter: Eventify must know which aggregate to load before the handler runs. */
   private static Class<?> aggregateOf(Method method) {
-    List<Class<?>> aggregates = aggregateParameterTypes(method);
+    List<Class<?>> aggregates = aggregateParameterClasses(method);
     if (aggregates.size() != 1) {
       throw new HandlerRegistrationException("A @HandleCommand method takes exactly one aggregate, a parameter whose type is annotated with @AggregateRoot; "
           + method + " takes " + aggregates.size() + ". Eventify needs it to know which aggregate the command belongs to, also when the handler itself does not use it.");
@@ -106,13 +106,13 @@ public class HandlerRegistry {
             commandHandlers.values().stream().map(CommandHandlerMethod::getMethod),
             eventSourcingHandlers.values().stream().map(ApplyEventMethod::getMethod))
         .flatMap(method -> Stream.concat(Stream.of(method.getReturnType()), Arrays.stream(method.getParameterTypes())))
-        .filter(type -> type.isAnnotationPresent(AggregateRoot.class))
+        .filter(parameterClass -> parameterClass.isAnnotationPresent(AggregateRoot.class))
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   /** The command handler for this command class; {@code null} when there is none. */
-  public CommandHandlerMethod commandHandler(Class<?> commandType) {
-    return commandHandlers.get(commandType);
+  public CommandHandlerMethod commandHandler(Class<?> commandClass) {
+    return commandHandlers.get(commandClass);
   }
 
   public Map<Class<?>, CommandHandlerMethod> commandHandlers() {
@@ -128,8 +128,8 @@ public class HandlerRegistry {
   }
 
   /** The event handlers for this event class, in the order they were registered; empty when there are none. */
-  public Collection<EventHandlerMethod> eventHandlers(Class<?> eventType) {
-    return Collections.unmodifiableCollection(eventHandlers.get(eventType));
+  public Collection<EventHandlerMethod> eventHandlers(Class<?> eventClass) {
+    return Collections.unmodifiableCollection(eventHandlers.get(eventClass));
   }
 
   /** Not a copy: a serde made with them also sees upcasters registered later. */
@@ -142,8 +142,8 @@ public class HandlerRegistry {
     return topicsOf(eventHandlers.keySet());
   }
 
-  private static Set<String> topicsOf(Set<Class<?>> types) {
-    return types.stream()
+  private static Set<String> topicsOf(Set<Class<?>> messageClasses) {
+    return messageClasses.stream()
         .map(Topics::of)
         .filter(Objects::nonNull)
         .map(Topic::value)
@@ -153,12 +153,12 @@ public class HandlerRegistry {
   private void addCommandHandler(Object handler, Method method) {
     requireMessageParameter("@HandleCommand", method);
     requireSupportedParameters("@HandleCommand", method, true);
-    Class<?> type = method.getParameters()[0].getType();
-    requireTopicOnHandledMessage("@HandleCommand", type, method);
+    Class<?> messageClass = method.getParameters()[0].getType();
+    requireTopicOnHandledMessage("@HandleCommand", messageClass, method);
     String aggregateType = AggregateTypes.of(aggregateOf(method));
-    CommandHandlerMethod previous = commandHandlers.put(type, new CommandHandlerMethod(handler, method, aggregateType));
+    CommandHandlerMethod previous = commandHandlers.put(messageClass, new CommandHandlerMethod(handler, method, aggregateType));
     if (previous != null) {
-      requireSingleHandler("@HandleCommand", type, previous.getHandler(), previous.getMethod(), handler, method);
+      requireSingleHandler("@HandleCommand", messageClass, previous.getHandler(), previous.getMethod(), handler, method);
     }
   }
 
@@ -166,23 +166,23 @@ public class HandlerRegistry {
     requireMessageParameter("@ApplyEvent", method);
     requireSupportedParameters("@ApplyEvent", method, true);
     requireMatchingAggregateReturnType(method);
-    Class<?> type = method.getParameters()[0].getType();
-    ApplyEventMethod previous = eventSourcingHandlers.put(type, new ApplyEventMethod(handler, method));
+    Class<?> messageClass = method.getParameters()[0].getType();
+    ApplyEventMethod previous = eventSourcingHandlers.put(messageClass, new ApplyEventMethod(handler, method));
     if (previous != null) {
-      requireSingleHandler("@ApplyEvent", type, previous.getHandler(), previous.getMethod(), handler, method);
+      requireSingleHandler("@ApplyEvent", messageClass, previous.getHandler(), previous.getMethod(), handler, method);
     }
   }
 
   private void addEventHandler(Object handler, Method method) {
     requireMessageParameter("@HandleEvent", method);
     requireSupportedParameters("@HandleEvent", method, false);
-    Class<?> type = method.getParameters()[0].getType();
-    requireTopicOnHandledMessage("@HandleEvent", type, method);
+    Class<?> messageClass = method.getParameters()[0].getType();
+    requireTopicOnHandledMessage("@HandleEvent", messageClass, method);
     // The same object registered twice is still one handler.
-    boolean registered = eventHandlers.get(type).stream()
+    boolean registered = eventHandlers.get(messageClass).stream()
         .anyMatch(previous -> previous.getHandler() == handler && previous.getMethod().equals(method));
     if (!registered) {
-      eventHandlers.put(type, new EventHandlerMethod(handler, method));
+      eventHandlers.put(messageClass, new EventHandlerMethod(handler, method));
     }
   }
 
@@ -204,38 +204,38 @@ public class HandlerRegistry {
   }
 
   /** Throws on a second handler; the same object twice, or an override of the annotated method, is allowed. */
-  private static void requireSingleHandler(String annotation, Class<?> type, Object previousHandler, Method previousMethod, Object handler, Method method) {
+  private static void requireSingleHandler(String annotation, Class<?> messageClass, Object previousHandler, Method previousMethod, Object handler, Method method) {
     boolean sameHandler = previousHandler == handler
         && previousMethod.getName().equals(method.getName())
         && Arrays.equals(previousMethod.getParameterTypes(), method.getParameterTypes());
     if (!sameHandler) {
-      throw new HandlerRegistrationException("Two " + annotation + " handlers for " + type.getName() + ": " + previousMethod + " and " + method);
+      throw new HandlerRegistrationException("Two " + annotation + " handlers for " + messageClass.getName() + ": " + previousMethod + " and " + method);
     }
   }
 
   /** An apply method must return the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
   private static void requireMatchingAggregateReturnType(Method method) {
-    Class<?> mismatchingAggregate = aggregateParameterTypes(method).stream()
+    Class<?> mismatchingAggregate = aggregateParameterClasses(method).stream()
         .filter(aggregate -> method.getReturnType() != aggregate)
         .findFirst()
         .orElse(null);
     if (mismatchingAggregate != null) {
-      throw new HandlerRegistrationException("An @ApplyEvent method must return the same aggregate type as its @AggregateRoot parameter: "
+      throw new HandlerRegistrationException("An @ApplyEvent method must return the same aggregate class as its @AggregateRoot parameter: "
           + method + " returns " + method.getReturnType().getName() + ", but its aggregate parameter is " + mismatchingAggregate.getName() + ".");
     }
   }
 
-  private static void requireTopicOnHandledMessage(String annotation, Class<?> messageType, Method method) {
-    Topic topic = Topics.of(messageType);
+  private static void requireTopicOnHandledMessage(String annotation, Class<?> messageClass, Method method) {
+    Topic topic = Topics.of(messageClass);
     if (topic == null || StringUtils.isBlank(topic.value())) {
       throw new HandlerRegistrationException(annotation + " method has a message without a @Topic: " + method
-          + ". Annotate " + messageType.getName() + ", or an interface it implements, with @Topic.");
+          + ". Annotate " + messageClass.getName() + ", or an interface it implements, with @Topic.");
     }
   }
 
-  private static List<Class<?>> aggregateParameterTypes(Method method) {
+  private static List<Class<?>> aggregateParameterClasses(Method method) {
     return Arrays.stream(method.getParameterTypes())
-        .filter(type -> type.isAnnotationPresent(AggregateRoot.class))
+        .filter(parameterClass -> parameterClass.isAnnotationPresent(AggregateRoot.class))
         .distinct()
         .toList();
   }

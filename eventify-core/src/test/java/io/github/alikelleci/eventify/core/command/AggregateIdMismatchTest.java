@@ -124,8 +124,8 @@ class AggregateIdMismatchTest {
         .extracting(result -> result.command().getAggregateId() + " " + Matchers.outcome(result))
         .containsExactly("ad success", "ada success", "ada failure", "ada success");
     assertThat(IteratorUtils.toList(eventStore.all())).hasSize(3);
-    assertThat(snapshotStore.get(StoreKeys.snapshot("counter", "ad"))).isNull();
-    assertThat(((Counter) snapshotStore.get(StoreKeys.snapshot("counter", "ada")).getPayload()).getValue()).isEqualTo(2);
+    assertThat(snapshotStore.get(StoreKeys.aggregate("counter", "ad"))).isNull();
+    assertThat(((Counter) snapshotStore.get(StoreKeys.aggregate("counter", "ada")).getPayload()).getValue()).isEqualTo(2);
 
     // "ad" is untouched: its next command loads its own state.
     send("ad", Increment.builder().id("ad").stateId("ad").build());

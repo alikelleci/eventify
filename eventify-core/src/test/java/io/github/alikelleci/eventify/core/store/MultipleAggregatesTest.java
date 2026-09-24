@@ -133,9 +133,9 @@ class MultipleAggregatesTest {
 
     KeyValueStore<String, Event> events = driver.getKeyValueStore("event-store");
     assertThat(IteratorUtils.toList(events.all())).extracting(entry -> entry.key)
-        .containsExactlyInAnyOrder(StoreKeys.of("order", SHARED_ID, 1), StoreKeys.of("invoice", SHARED_ID, 1));
-    assertThat(events.get(StoreKeys.of("order", SHARED_ID, 1)).getAggregateType()).isEqualTo("order");
-    assertThat(events.get(StoreKeys.of("invoice", SHARED_ID, 1)).getAggregateType()).isEqualTo("invoice");
+        .containsExactlyInAnyOrder(StoreKeys.event("order", SHARED_ID, 1), StoreKeys.event("invoice", SHARED_ID, 1));
+    assertThat(events.get(StoreKeys.event("order", SHARED_ID, 1)).getAggregateType()).isEqualTo("order");
+    assertThat(events.get(StoreKeys.event("invoice", SHARED_ID, 1)).getAggregateType()).isEqualTo("invoice");
   }
 
   /** Replaying one aggregate must not apply the other's events: its state would be wrong, or fail to apply at all. */
@@ -166,7 +166,7 @@ class MultipleAggregatesTest {
     KeyValueStore<String, AggregateState> snapshots = driver.getKeyValueStore("snapshot-store");
     // No snapshots configured: this checks that nothing was written under a bare id.
     assertThat(IteratorUtils.toList(snapshots.all())).extracting(entry -> entry.key).doesNotContain(SHARED_ID);
-    assertThat(StoreKeys.snapshot("order", SHARED_ID)).isNotEqualTo(StoreKeys.snapshot("invoice", SHARED_ID));
+    assertThat(StoreKeys.aggregate("order", SHARED_ID)).isNotEqualTo(StoreKeys.aggregate("invoice", SHARED_ID));
   }
 
   private static void send(TestInputTopic<String, Command> commands, Object payload) {

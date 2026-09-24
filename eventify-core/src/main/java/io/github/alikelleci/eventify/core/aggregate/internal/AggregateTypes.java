@@ -16,21 +16,21 @@ public final class AggregateTypes {
   }
 
   /** The {@link AggregateRoot} name; throws {@link HandlerRegistrationException} when missing, blank or with NUL. */
-  public static String of(Class<?> aggregateType) {
-    return NAME.apply(aggregateType);
+  public static String of(Class<?> aggregateClass) {
+    return NAME.apply(aggregateClass);
   }
 
-  private static String read(Class<?> aggregateType) {
-    AggregateRoot annotation = aggregateType.getAnnotation(AggregateRoot.class);
+  private static String read(Class<?> aggregateClass) {
+    AggregateRoot annotation = aggregateClass.getAnnotation(AggregateRoot.class);
     if (annotation == null) {
-      throw new HandlerRegistrationException(aggregateType.getName() + " is no aggregate: annotate it with @AggregateRoot.");
+      throw new HandlerRegistrationException(aggregateClass.getName() + " is no aggregate: annotate it with @AggregateRoot.");
     }
     String name = annotation.value();
     if (name.isBlank()) {
-      throw new HandlerRegistrationException(aggregateType.getName() + " has no name: @AggregateRoot needs a name of your own choosing, e.g. \"order\", that stays the same when the class is renamed.");
+      throw new HandlerRegistrationException(aggregateClass.getName() + " has no name: @AggregateRoot needs a name of your own choosing, e.g. \"order\", that stays the same when the class is renamed.");
     }
     if (name.indexOf(StoreKeys.SEPARATOR) >= 0) {
-      throw new HandlerRegistrationException("The name of " + aggregateType.getName() + " cannot contain a NUL character.");
+      throw new HandlerRegistrationException("The name of " + aggregateClass.getName() + " cannot contain a NUL character.");
     }
     return name;
   }

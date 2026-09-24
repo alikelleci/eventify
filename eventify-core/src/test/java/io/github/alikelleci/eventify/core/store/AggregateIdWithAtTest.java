@@ -86,13 +86,13 @@ class AggregateIdWithAtTest {
             neighbour + " success null", neighbour + " success null",
             "ada success null", "ada success null", "ada success null");
 
-    AggregateState snapshot = snapshotStore.get(StoreKeys.snapshot("account", "ada"));
+    AggregateState snapshot = snapshotStore.get(StoreKeys.aggregate("account", "ada"));
     assertThat(snapshot).isNotNull();
     assertThat(((Account) snapshot.getPayload()).getBalance()).isEqualTo(5);
     assertThat(snapshot.getVersion()).isEqualTo(2);
 
     // The other aggregate keeps all its events.
-    assertThat(StoreKeys.of("account", neighbour, 1)).isGreaterThan(StoreKeys.last("account", "ada"));
+    assertThat(StoreKeys.event("account", neighbour, 1)).isGreaterThan(StoreKeys.last("account", "ada"));
     assertThat(eventsOf(eventStore, neighbour)).hasSize(1); // its second event was snapshotted immediately
     assertThat(eventsOf(eventStore, "ada")).hasSize(2); // its first event was deleted at the snapshot
   }

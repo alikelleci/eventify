@@ -201,9 +201,9 @@ class CommandTransactionIT {
     await("the counting command's result", () -> !committed("orders.results", "order-counting-writes").isEmpty());
     int writesPerCommand = EventThatFailsWhenSent.TIMES_WRITTEN.get();
     assertThat(committed("orders-event-fails-when-sent-event-store-changelog", "order-counting-writes"))
-        .containsExactly(StoreKeys.of("order", "order-counting-writes", 1));
+        .containsExactly(StoreKeys.event("order", "order-counting-writes", 1));
     assertThat(committed("orders-event-fails-when-sent-snapshot-store-changelog", "order-counting-writes"))
-        .containsExactly(StoreKeys.snapshot("order", "order-counting-writes"));
+        .containsExactly(StoreKeys.aggregate("order", "order-counting-writes"));
 
     // The same command again, now failing on that last write.
     EventThatFailsWhenSent.COUNTED_ID = "order-2";
@@ -249,8 +249,8 @@ class CommandTransactionIT {
     assertThat(committed("orders.results", id)).containsExactly("success");
     assertThat(committed("orders.events", id)).containsExactly(id);
     // Only the first committed entries survive. No new event, replacement snapshot or pruning tombstone was committed.
-    assertThat(committed(applicationId + "-event-store-changelog", id)).containsExactly(StoreKeys.of("order", id, 1));
-    assertThat(committed(applicationId + "-snapshot-store-changelog", id)).containsExactly(StoreKeys.snapshot("order", id));
+    assertThat(committed(applicationId + "-event-store-changelog", id)).containsExactly(StoreKeys.event("order", id, 1));
+    assertThat(committed(applicationId + "-snapshot-store-changelog", id)).containsExactly(StoreKeys.aggregate("order", id));
   }
 
   private Eventify start(String applicationId) {
@@ -299,7 +299,7 @@ class CommandTransactionIT {
   }
 
   private static boolean belongsTo(String key, String aggregateId) {
-    String snapshotKey = StoreKeys.snapshot("order", aggregateId);
+    String snapshotKey = StoreKeys.aggregate("order", aggregateId);
     return key != null && (key.equals(aggregateId) || key.equals(snapshotKey)
         || key.startsWith(snapshotKey + StoreKeys.SEPARATOR));
   }

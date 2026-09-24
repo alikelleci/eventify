@@ -79,7 +79,7 @@ class AggregateRepositoryTest {
   @DisplayName("Should reject an event whose envelope belongs to another aggregate")
   void rejectsAnEventForAnotherAggregate() {
     Event copiedUnderTheWrongKey = event(placed("another-order"), 1);
-    storedEvents.put(StoreKeys.of("order", "order-1", 1), copiedUnderTheWrongKey);
+    storedEvents.put(StoreKeys.event("order", "order-1", 1), copiedUnderTheWrongKey);
 
     assertThatThrownBy(() -> order().replay("order-1").currentState())
         .isInstanceOf(EventReplayException.class)
@@ -119,7 +119,7 @@ class AggregateRepositoryTest {
   @DisplayName("Should use a null-payload snapshot of a removed aggregate as the next replay start")
   void usesDeletedSnapshot() {
     AggregateState removed = AggregateState.after(event(OrderCancelled.builder().id("order-1").build(), 2), null, 1);
-    storedSnapshots.put(StoreKeys.snapshot("order", "order-1"), removed);
+    storedSnapshots.put(StoreKeys.aggregate("order", "order-1"), removed);
     store(placed("order-1"), 3);
 
     AggregateState state = order().replay("order-1").currentState();
@@ -149,8 +149,8 @@ class AggregateRepositoryTest {
     AggregateState snapshot = order().replay("order-1", 2, null);
     assertThat(((Order) snapshot.getPayload()).getStatus()).isEqualTo("CONFIRMED");
     assertThat(snapshot.getVersion()).isEqualTo(2);
-    storedSnapshots.put(StoreKeys.snapshot("order", "order-1"), snapshot);
-    storedEvents.delete(StoreKeys.of("order", "order-1", 1));
+    storedSnapshots.put(StoreKeys.aggregate("order", "order-1"), snapshot);
+    storedEvents.delete(StoreKeys.event("order", "order-1", 1));
 
     assertThat(order().replay("order-1", 2, null)).isSameAs(snapshot);
     AggregateRepository.ReplayResult replayed = order().replay("order-1");
@@ -168,7 +168,7 @@ class AggregateRepositoryTest {
     store(placed("order-1"), 1);
     ObjectNode json = eventify.getObjectMapper().valueToTree(event(confirmed("order-1"), 2));
     json.put("sequence", sequence); // not the sequence its key says
-    storedEvents.put(StoreKeys.of("order", "order-1", 2), eventify.getObjectMapper().treeToValue(json, Event.class));
+    storedEvents.put(StoreKeys.event("order", "order-1", 2), eventify.getObjectMapper().treeToValue(json, Event.class));
 
     assertThatThrownBy(() -> order().replay("order-1").currentState())
         .isInstanceOf(EventReplayException.class)
@@ -182,7 +182,7 @@ class AggregateRepositoryTest {
     ObjectNode json = eventify.getObjectMapper().valueToTree(event(confirmed("order-1"), 2));
     json.put("id", "archived-event");
     ((ObjectNode) json.get("payload")).put("@class", "com.acme.RemovedEvent");
-    storedEvents.put(StoreKeys.of("order", "order-1", 2), eventify.getObjectMapper().treeToValue(json, Event.class));
+    storedEvents.put(StoreKeys.event("order", "order-1", 2), eventify.getObjectMapper().treeToValue(json, Event.class));
 
     assertThatThrownBy(() -> order().replay("order-1").currentState())
         .isInstanceOf(EventReplayException.class)
@@ -199,7 +199,7 @@ class AggregateRepositoryTest {
   void advancesVersionAndNotifiesListenerForEventsWithoutHandler() {
     store(placed("order-1"), 1);
     Event viewed = event(new Viewed("order-1"), 2);
-    storedEvents.put(StoreKeys.of("order", "order-1", 2), viewed);
+    storedEvents.put(StoreKeys.event("order", "order-1", 2), viewed);
     List<Long> previousVersions = new ArrayList<>();
 
     AggregateState state = order().replay("order-1", 2,
@@ -248,9 +248,9 @@ class AggregateRepositoryTest {
     store(confirmed("order-1"), 2);
     ObjectNode json = eventify.getObjectMapper().valueToTree(order().replay("order-1").currentState());
     json.put("revision", 999);
-    storedSnapshots.put(StoreKeys.snapshot("order", "order-1"), eventify.getObjectMapper().treeToValue(json, AggregateState.class));
-    storedEvents.delete(StoreKeys.of("order", "order-1", 1));
-    storedEvents.delete(StoreKeys.of("order", "order-1", 2));
+    storedSnapshots.put(StoreKeys.aggregate("order", "order-1"), eventify.getObjectMapper().treeToValue(json, AggregateState.class));
+    storedEvents.delete(StoreKeys.event("order", "order-1", 1));
+    storedEvents.delete(StoreKeys.event("order", "order-1", 2));
 
     assertThatThrownBy(() -> order().replay("order-1").currentState())
         .isInstanceOf(SnapshotOutdatedException.class);
@@ -262,8 +262,8 @@ class AggregateRepositoryTest {
   @DisplayName("Should close its store iterators, also when the replay fails")
   void closesStoreIteratorsAlsoWhenReplayFails(boolean corrupt) {
     ClosingStore events = new ClosingStore();
-    events.put(StoreKeys.of("order", "one", 1), event(placed("one"), 1));
-    events.put(StoreKeys.of("order", "one", 2), event(confirmed("one"), corrupt ? 1 : 2));
+    events.put(StoreKeys.event("order", "one", 1), event(placed("one"), 1));
+    events.put(StoreKeys.event("order", "one", 2), event(confirmed("one"), corrupt ? 1 : 2));
     AggregateRepository repository = new AggregateRepository(new EventStore(events), new SnapshotStore(storedSnapshots),
         eventify.getHandlers().eventSourcingHandlers(), List.of(Order.class));
 
@@ -295,7 +295,7 @@ class AggregateRepositoryTest {
 
   private void store(Object payload, long sequence) {
     Event event = event(payload, sequence);
-    storedEvents.put(StoreKeys.of("order", event.getAggregateId(), sequence), event);
+    storedEvents.put(StoreKeys.event("order", event.getAggregateId(), sequence), event);
   }
 
   private static Event event(Object payload, long sequence) {

@@ -31,14 +31,14 @@ public final class AggregateRepository {
   /** Called before an event is applied, for readers that need the state at a particular event. */
   @FunctionalInterface
   public interface ReplayListener {
-    void beforeHandle(Event eventBefore, AggregateState stateBefore);
+    void beforeApply(Event eventBefore, AggregateState stateBefore);
   }
 
   private final EventStore eventStore;
   private final SnapshotStore snapshotStore;
   private final Map<Class<?>, ApplyEventMethod> applyMethods;
   private final Map<String, AggregateDefinition> definitions;
-  private final AggregateDefinition activeDefinition;
+  private final AggregateDefinition definition;
 
   public AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, ApplyEventMethod> applyMethods,
                              Collection<Class<?>> aggregateClasses) {
@@ -46,12 +46,12 @@ public final class AggregateRepository {
   }
 
   private AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, ApplyEventMethod> applyMethods,
-                              Map<String, AggregateDefinition> definitions, AggregateDefinition activeDefinition) {
+                              Map<String, AggregateDefinition> definitions, AggregateDefinition definition) {
     this.eventStore = eventStore;
     this.snapshotStore = snapshotStore;
     this.applyMethods = applyMethods;
     this.definitions = definitions;
-    this.activeDefinition = activeDefinition;
+    this.definition = definition;
   }
 
   /** A repository for one aggregate type. */
@@ -206,7 +206,7 @@ public final class AggregateRepository {
             + " (" + event.getType() + ", event " + event.getId() + ").");
       }
       if (listener != null) {
-        listener.beforeHandle(event, state);
+        listener.beforeApply(event, state);
       }
       ApplyEventMethod handler = applyMethods.get(event.getPayload().getClass());
       log.trace("Replaying event {} ({}) at sequence {}: handler {}", event.getType(), event.getAggregateId(),
@@ -225,10 +225,10 @@ public final class AggregateRepository {
   }
 
   private AggregateDefinition definition() {
-    if (activeDefinition == null) {
+    if (definition == null) {
       throw new IllegalStateException("Choose an aggregate type first: call AggregateRepository.forType(...).");
     }
-    return activeDefinition;
+    return definition;
   }
 
   private static Map<String, AggregateDefinition> definitionsOf(Collection<Class<?>> aggregateClasses) {
