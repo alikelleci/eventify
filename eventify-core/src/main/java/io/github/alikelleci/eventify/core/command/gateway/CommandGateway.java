@@ -20,10 +20,10 @@ import java.util.concurrent.TimeoutException;
 
 public interface CommandGateway extends AutoCloseable {
 
-  /** Sends the command; the future fails with {@link CommandExecutionException} when it is rejected. */
+  /** Sends a command. The future fails when it is rejected. */
   CompletableFuture<CommandResult.Success> send(Command command);
 
-  /** Releases the gateway's Kafka clients and thread. */
+  /** Releases gateway resources. */
   @Override
   void close();
 
@@ -33,10 +33,7 @@ public interface CommandGateway extends AutoCloseable {
         .build());
   }
 
-  /**
-   * Sends the command and waits for its result. Throws {@link CommandExecutionException} when rejected,
-   * {@link CommandTimeoutException} on timeout (it may still be handled), {@link EventifyException} when interrupted.
-   */
+  /** Sends a command and waits for its result. A timeout does not mean the command was not handled. */
   default CommandResult.Success sendAndWait(Command command, long timeout, TimeUnit unit) {
     CompletableFuture<CommandResult.Success> future = send(command);
     try {
@@ -65,7 +62,7 @@ public interface CommandGateway extends AutoCloseable {
     return sendAndWait(payload, 1, TimeUnit.MINUTES);
   }
 
-  /** The failure as unchecked exception; a gateway timeout becomes a {@link CommandTimeoutException}. */
+  /** Converts an asynchronous failure to the public exception type. */
   private static RuntimeException resultFailure(Command command, Throwable failure) {
     if (failure instanceof TimeoutException) {
       return new CommandTimeoutException("No result for command " + command.getId() + ": " + failure.getMessage(), failure);
@@ -109,7 +106,7 @@ public interface CommandGateway extends AutoCloseable {
       return this;
     }
 
-    /** The reply consumer takes the producer's connection and security settings. */
+    /** Builds a gateway using the producer's connection settings. */
     public DefaultCommandGateway build() {
       Properties consumerConfig = KafkaClientConfigs.consumerConnectionOf(this.producerConfig);
 

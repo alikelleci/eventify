@@ -16,21 +16,21 @@ import java.util.UUID;
 
 import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATION_ID;
 
-/** Something that happened to an aggregate; complete from creation, including its sequence. */
+/** An immutable fact recorded for an aggregate. */
 @Value
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Event implements Message {
   String id;
-  /** When Eventify recorded it; business time belongs in the payload. */
+  /** Time at which Eventify recorded the event. */
   Instant timestamp;
   String type;
   Object payload;
   Metadata metadata;
-  /** The aggregate this event belongs to, as its {@code @AggregateRoot} names it, e.g. "order". */
+  /** Aggregate type, for example {@code order}. */
   String aggregateType;
   String aggregateId;
   int revision;
-  /** Position in its aggregate, starting at 1. */
+  /** Aggregate sequence, starting at 1. */
   long sequence;
 
   @Builder

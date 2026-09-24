@@ -70,7 +70,7 @@ public class Eventify implements PluginContext {
     return new EventifyBuilder();
   }
 
-  /** Whether a method has {@code @HandleCommand}, {@code @ApplyEvent}, {@code @HandleEvent} or {@code @Upcast}. */
+  /** Returns whether a class contains an Eventify handler method. */
   public static boolean isHandler(Class<?> handlerClass) {
     return HandlerRegistry.isHandler(handlerClass);
   }
@@ -85,46 +85,43 @@ public class Eventify implements PluginContext {
     return objectMapper;
   }
 
-  /** The running Kafka Streams; {@code null} before the first {@link #start()}. */
+  /** Returns the running client, or {@code null} before start. */
   @Override
   public KafkaStreams getKafkaStreams() {
     return kafkaStreams;
   }
 
-  /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
+  /** Returns registered aggregate types. */
   @Override
   public Set<String> getAggregateTypes() {
     return handlers.aggregateTypes();
   }
 
-  /** The command classes this instance has a command handler for. */
+  /** Returns command types with a handler. */
   @Override
   public Set<Class<?>> getCommandClasses() {
     return handlers.commandHandlers().keySet();
   }
 
-  /** The topics of the commands of one aggregate. */
+  /** Returns command topics for an aggregate type. */
   @Override
   public Set<String> getCommandTopics(String aggregateType) {
     return handlers.commandTopics(aggregateType);
   }
 
-  /** The objects with {@code @HandleEvent} methods, as registered. */
+  /** Returns registered event-handler objects. */
   public Set<Object> getEventHandlers() {
     Set<Object> eventHandlers = Collections.newSetFromMap(new IdentityHashMap<>());
     handlers.eventHandlers().forEach(method -> eventHandlers.add(method.getHandler()));
     return Collections.unmodifiableSet(eventHandlers);
   }
 
-  /** The upcasters of the registered handlers, also usable by an application's own serde. */
+  /** Returns registered event upcasters. */
   public Upcasters getUpcasters() {
     return handlers.upcasters();
   }
 
-  /**
-   * Read model of the locally owned aggregates; select a type with {@link AggregateRepository#forType(String)}.
-   * Throws IllegalStateException before start, InvalidStateStoreException while the stores can't be read.
-   */
+  /** Returns read-only aggregate history. Select a type with {@link AggregateRepository#forType(String)}. */
   @Override
   public AggregateRepository getAggregateRepository() {
     return new AggregateRepository(
@@ -133,7 +130,7 @@ public class Eventify implements PluginContext {
         handlers.eventSourcingHandlers(), handlers.aggregateClasses());
   }
 
-  /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */
+  /** Returns metadata for the instance that owns an aggregate. */
   @Override
   public KeyQueryMetadata getAggregateMetadata(String aggregateId) {
     return runningKafkaStreams().queryMetadataForKey(StoreNames.EVENT_STORE, aggregateId, Serdes.String().serializer());

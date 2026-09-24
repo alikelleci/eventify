@@ -9,11 +9,11 @@ import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 import java.util.List;
 import java.util.NoSuchElementException;
 
-/** The events Eventify stores for all its aggregate types. */
+/** Stores events by aggregate and sequence. */
 public final class EventStore {
 
   private final ReadOnlyKeyValueStore<String, Event> readable;
-  /** Only on the command-processing thread; queries are read-only. */
+  /** Available only while processing commands. */
   private final KeyValueStore<String, Event> writable;
 
   public EventStore(ReadOnlyKeyValueStore<String, Event> store) {
@@ -21,17 +21,17 @@ public final class EventStore {
     this.writable = store instanceof KeyValueStore<String, Event> keyValueStore ? keyValueStore : null;
   }
 
-  /** The event with this sequence, or {@code null} when the aggregate has none there. */
+  /** Returns the event at a sequence, or {@code null}. */
   public Event get(String aggregateType, String aggregateId, long sequence) {
     return sequence < 1 ? null : readable.get(StoreKeys.event(aggregateType, aggregateId, sequence));
   }
 
-  /** All events of one aggregate, oldest first. The caller closes the iterator. */
+  /** Returns all events oldest first. Close the iterator. */
   public EventIterator events(String aggregateType, String aggregateId) {
     return events(aggregateType, aggregateId, 1, Long.MAX_VALUE);
   }
 
-  /** Events in the inclusive range, oldest first; empty when inverted. The caller closes the iterator. */
+  /** Returns an inclusive range oldest first. Close the iterator. */
   public EventIterator events(String aggregateType, String aggregateId, long from, long to) {
     requireSequences(aggregateType, aggregateId, from, to);
     if (to < from) {
@@ -40,7 +40,7 @@ public final class EventStore {
     return new EventIterator(readable.range(StoreKeys.event(aggregateType, aggregateId, from), StoreKeys.event(aggregateType, aggregateId, to)));
   }
 
-  /** Events in the inclusive range, newest first ({@code from} is the higher). The caller closes the iterator. */
+  /** Returns an inclusive range newest first. Close the iterator. */
   public EventIterator eventsNewestFirst(String aggregateType, String aggregateId, long from, long to) {
     requireSequences(aggregateType, aggregateId, from, to);
     if (from < to) {
@@ -49,7 +49,7 @@ public final class EventStore {
     return new EventIterator(readable.reverseRange(StoreKeys.event(aggregateType, aggregateId, to), StoreKeys.event(aggregateType, aggregateId, from)));
   }
 
-  /** Appends events; command processing only, within its transaction. Throws when a sequence is taken. */
+  /** Appends events and rejects an occupied sequence. */
   public void save(List<Event> events) {
     KeyValueStore<String, Event> store = writable();
     for (Event event : events) {
@@ -61,7 +61,7 @@ public final class EventStore {
     }
   }
 
-  /** Deletes events before a snapshot. The snapshot event itself remains available for history queries. */
+  /** Deletes events before a snapshot and retains the snapshot event. */
   public long deleteBefore(String aggregateType, String aggregateId, long version) {
     if (version <= 1) {
       return 0;
@@ -91,7 +91,7 @@ public final class EventStore {
     }
   }
 
-  /** A closeable iterator over stored events. Closing releases the underlying Kafka Streams iterator. */
+  /** Closeable iterator over stored events. */
   public static final class EventIterator implements java.util.Iterator<Event>, AutoCloseable {
     private final KeyValueIterator<String, Event> iterator;
 

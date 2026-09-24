@@ -4,11 +4,11 @@ import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;
 
-/** The latest aggregate state saved for every aggregate type and id. */
+/** Stores the latest snapshot for each aggregate. */
 public final class SnapshotStore {
 
   private final ReadOnlyKeyValueStore<String, AggregateState> readable;
-  /** Present only on the command-processing thread. */
+  /** Available only while processing commands. */
   private final KeyValueStore<String, AggregateState> writable;
 
   public SnapshotStore(ReadOnlyKeyValueStore<String, AggregateState> store) {
@@ -16,12 +16,12 @@ public final class SnapshotStore {
     this.writable = store instanceof KeyValueStore<String, AggregateState> keyValueStore ? keyValueStore : null;
   }
 
-  /** The stored snapshot, including an outdated one; {@code null} when none exists. */
+  /** Returns the snapshot, or {@code null}. */
   public AggregateState get(String aggregateType, String aggregateId) {
     return readable.get(StoreKeys.aggregate(aggregateType, aggregateId));
   }
 
-  /** Replaces the snapshot. Only command processing may call this. */
+  /** Saves a snapshot. */
   public void save(String aggregateType, AggregateState state) {
     if (writable == null) {
       throw new IllegalStateException("This SnapshotStore is read-only.");

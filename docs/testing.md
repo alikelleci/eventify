@@ -1,91 +1,24 @@
 # Testing
 
-Eventify works with the Kafka Streams `TopologyTestDriver`, which runs the complete processing topology in memory without requiring a running Kafka broker. This makes tests fast and deterministic.
+Use Kafka Streams' `TopologyTestDriver` to test commands, events and results without a broker.
 
 ```java
-class OrderTest {
+Eventify eventify = Eventify.builder()
+    .streamsConfig(testConfig)
+    .registerHandler(new OrderHandler())
+    .build();
 
-    TopologyTestDriver driver;
-    TestInputTopic<String, Command> commands;
-    TestOutputTopic<String, CommandResult> results;
-    TestOutputTopic<String, Event> events;
+try (TopologyTestDriver driver = new TopologyTestDriver(eventify.topology())) {
+    var commands = driver.createInputTopic(
+        "commands.order", new StringSerializer(), new CommandSerde().serializer());
+    var results = driver.createOutputTopic(
+        "commands.order.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
 
-    @BeforeEach
-    void setup() {
-        Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "test");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    Command command = Command.builder().payload(new PlaceOrder("order-1", "Ada")).build();
+    commands.pipeInput(command.getAggregateId(), command);
 
-        Eventify eventify = Eventify.builder()
-            .streamsConfig(props)
-            .registerHandler(new OrderCommandHandler())
-            .registerHandler(new OrderEventSourcingHandler())
-            .build();
-
-        driver = new TopologyTestDriver(eventify.topology());
-
-        commands = driver.createInputTopic(
-            "commands.order",
-            new StringSerializer(), new CommandSerde().serializer());
-
-        results = driver.createOutputTopic(
-            "commands.order.results",
-            new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
-
-        events = driver.createOutputTopic(
-            "events.order",
-            new StringDeserializer(), new EventSerde().deserializer());
-    }
-
-    @AfterEach
-    void tearDown() {
-        driver.close();
-    }
-
-    @Test
-    void shouldPlaceOrder() {
-        Command command = Command.builder()
-            .payload(PlaceOrder.builder()
-                .id("order-1")
-                .customer("John Doe")
-                .build())
-            .build();
-
-        commands.pipeInput(command.getAggregateId(), command);
-
-        List<CommandResult> resultList = results.readValuesToList();
-        assertThat(resultList).hasSize(1);
-        assertThat(resultList.get(0)).isInstanceOf(CommandResult.Success.class);
-
-        List<Event> eventList = events.readValuesToList();
-        assertThat(eventList).hasSize(1);
-        assertThat(eventList.get(0).getPayload()).isInstanceOf(OrderPlaced.class);
-    }
-
-    @Test
-    void shouldFailWhenOrderAlreadyExists() {
-        Command place1 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").build())
-            .build();
-        Command place2 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").build())
-            .build();
-
-        commands.pipeInput(place1.getAggregateId(), place1);
-        commands.pipeInput(place2.getAggregateId(), place2);
-
-        List<CommandResult> resultList = results.readValuesToList();
-        assertThat(resultList.get(0)).isInstanceOf(CommandResult.Success.class);
-        assertThat(resultList.get(1)).isInstanceOf(CommandResult.Failure.class);
-    }
+    assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
 }
 ```
 
-## Inspecting the stores directly
-
-You can query the event store and snapshot store directly in your tests:
-
-```java
-KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
-KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
-```
+Test both successful decisions and rejected business rules. When helpful, inspect the emitted event topic or the `event-store` and `snapshot-store` test stores directly.

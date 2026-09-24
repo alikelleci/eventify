@@ -4,9 +4,7 @@
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alikelleci/eventify-core.svg)](https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Eventify is a lightweight Java library for event sourcing built on Kafka. Add it to your Java app and get complete event sourcing out of the box—all you need is Kafka and your business logic.
-
-Define your domain logic using plain, annotated Java methods. No base classes to extend, no framework interfaces to implement. Eventify handles event storage, state reconstruction, and event publishing for you.
+Eventify is event sourcing for Java. Define commands, events and aggregates with plain annotated methods; Eventify records events, rebuilds state and publishes resulting events.
 
 **[Website](https://alikelleci.github.io/eventify/)** · **[Documentation](https://alikelleci.github.io/eventify/docs/)** · **[Eventify Console](https://alikelleci.github.io/eventify/console)**
 
@@ -24,7 +22,7 @@ Add the core dependency (or `eventify-spring-boot-starter` for Spring Boot):
 </dependency>
 ```
 
-Write your domain logic as plain, annotated methods:
+Define the decision and state transition:
 
 ```java
 public class OrderCommandHandler {
@@ -53,7 +51,7 @@ public class OrderEventSourcingHandler {
 }
 ```
 
-Register your handlers and start:
+Register the handler and start:
 
 ```java
 Properties props = new Properties();
@@ -69,7 +67,7 @@ Eventify eventify = Eventify.builder()
 eventify.start();
 ```
 
-See the [Getting Started guide](https://alikelleci.github.io/eventify/docs/getting-started/) for aggregates, commands and events, and the Spring Boot integration.
+See [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started/) for a complete first aggregate.
 
 ---
 
@@ -77,12 +75,12 @@ See the [Getting Started guide](https://alikelleci.github.io/eventify/docs/getti
 
 | Topic | |
 |---|---|
-| [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started/) | Installation, configuration and Spring Boot integration |
+| [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started/) | Build a first aggregate |
 | [Domain Modeling](https://alikelleci.github.io/eventify/docs/domain-modeling/) | Aggregates, commands and events |
-| [Handlers](https://alikelleci.github.io/eventify/docs/handlers/) | Command, event sourcing and event handlers |
+| [Handlers](https://alikelleci.github.io/eventify/docs/handlers/) | Decisions, state transitions and reactions |
 | [Command Gateway](https://alikelleci.github.io/eventify/docs/command-gateway/) | Sending commands and receiving their results |
-| [Advanced Features](https://alikelleci.github.io/eventify/docs/advanced/) | Snapshotting and event upcasting |
-| [Testing](https://alikelleci.github.io/eventify/docs/testing/) | Testing without a Kafka broker |
+| [Advanced Features](https://alikelleci.github.io/eventify/docs/advanced/) | Snapshots and event upcasting |
+| [Testing](https://alikelleci.github.io/eventify/docs/testing/) | Test the complete flow in memory |
 | [Annotation Reference](https://alikelleci.github.io/eventify/docs/annotation-reference/) | All annotations at a glance |
 | [Eventify Console](https://alikelleci.github.io/eventify/docs/console/) | Running the console, connecting applications and security |
 

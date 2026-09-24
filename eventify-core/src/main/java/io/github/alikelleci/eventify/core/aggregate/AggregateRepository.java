@@ -17,14 +17,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Rebuilds aggregates from their snapshots and events; read-only, command processing does all writes.
- * Every event advances the version, also one without a handler; events are applied in sequence order.
- */
+/** Read-only access to aggregate history and reconstructed state. */
 @Slf4j
 public final class AggregateRepository {
 
-  /** The snapshot a replay started from ({@code null} when none was usable), the state after it, and how many events it applied. */
+  /** Replay start, resulting state and number of applied events. */
   public record ReplayResult(AggregateState usedSnapshot, AggregateState currentState, long eventsReplayed) {
   }
 
@@ -48,7 +45,7 @@ public final class AggregateRepository {
     this.definition = definition;
   }
 
-  /** A repository for one aggregate type. */
+  /** Selects an aggregate type. */
   public AggregateRepository forType(String aggregateType) {
     AggregateDefinition definition = definitions.get(aggregateType);
     if (definition == null) {
@@ -58,12 +55,12 @@ public final class AggregateRepository {
     return new AggregateRepository(eventStore, snapshotStore, applyMethods, definitions, definition);
   }
 
-  /** The aggregate type selected with {@link #forType(String)}. */
+  /** Returns the selected aggregate type. */
   public String getAggregateType() {
     return definition().type();
   }
 
-  /** The current aggregate state: always present, with a null payload before creation or after removal. */
+  /** Rebuilds the current state; its payload is null before creation or after removal. */
   public ReplayResult replay(String aggregateId) {
     long started = System.nanoTime();
     String aggregateType = getAggregateType();
@@ -79,7 +76,7 @@ public final class AggregateRepository {
     }
   }
 
-  /** The state after the event at this sequence (0: before the first); {@code null} when it can't be rebuilt. */
+  /** Rebuilds state up to a sequence; {@code null} when pruned history prevents it. */
   public AggregateState stateAt(String aggregateId, long sequence) {
     if (sequence < 0) {
       throw new IllegalArgumentException("Sequence can't be negative: " + sequence);
@@ -102,37 +99,37 @@ public final class AggregateRepository {
     }
   }
 
-  /** Applies newly produced events for this aggregate type in memory, before command processing stores them. */
+  /** Applies events in memory. */
   public AggregateState applyEvents(AggregateState state, List<Event> events) {
     return applyEvents(state.getAggregateId(), state, events.iterator());
   }
 
-  /** The stored event at a sequence. */
+  /** Returns the event at a sequence, or {@code null}. */
   public Event event(String aggregateId, long sequence) {
     return eventStore.get(getAggregateType(), aggregateId, sequence);
   }
 
-  /** Stored events, oldest first. The caller closes the iterator. */
+  /** Returns stored events oldest first. Close the iterator. */
   public EventStore.EventIterator events(String aggregateId) {
     return eventStore.events(getAggregateType(), aggregateId);
   }
 
-  /** Stored events, newest first. The caller closes the iterator. */
+  /** Returns stored events newest first. Close the iterator. */
   public EventStore.EventIterator eventsNewestFirst(String aggregateId, long from, long to) {
     return eventStore.eventsNewestFirst(getAggregateType(), aggregateId, from, to);
   }
 
-  /** Whether this aggregate should be snapshotted at its current version. */
+  /** Returns whether a snapshot is due. */
   public boolean isSnapshotDue(long snapshotVersion, AggregateState state) {
     return definition().snapshotPolicy().isSnapshotDue(snapshotVersion, state.getVersion());
   }
 
-  /** Whether this aggregate deletes events before a snapshot. */
+  /** Returns whether snapshots prune earlier events. */
   public boolean deletesEventsAtSnapshot() {
     return definition().snapshotPolicy().deleteEvents();
   }
 
-  /** Whether the history still starts at event 1: tells a new aggregate from pruned history. */
+  /** Distinguishes complete history from history pruned at a snapshot. */
   private boolean hasCompleteHistory(String aggregateId, AggregateState storedSnapshot) {
     try (EventStore.EventIterator events = eventStore.events(getAggregateType(), aggregateId)) {
       if (events.hasNext()) {
@@ -220,7 +217,7 @@ public final class AggregateRepository {
         .collect(Collectors.toUnmodifiableMap(AggregateDefinition::type, definition -> definition));
   }
 
-  /** The fixed configuration of one aggregate type. */
+  /** Configuration for one aggregate type. */
   private record AggregateDefinition(String type, Class<?> aggregateClass, int revision, SnapshotPolicy snapshotPolicy) {
 
     static AggregateDefinition of(Class<?> aggregateClass) {
@@ -228,7 +225,7 @@ public final class AggregateRepository {
           SnapshotPolicy.of(aggregateClass));
     }
 
-    /** Why this snapshot cannot rebuild this aggregate type, or {@code null} when it can. */
+    /** Returns why this snapshot cannot be used, or {@code null}. */
     String whySnapshotIsUnusable(AggregateState snapshot) {
       // A type without payload is an unreadable aggregate (see SnapshotSerde), not a removal.
       if (snapshot.getPayload() == null && snapshot.getType() != null) {
@@ -246,7 +243,7 @@ public final class AggregateRepository {
       return null;
     }
 
-    /** Why a payload cannot be the state of this aggregate type, or {@code null} when it can. */
+    /** Returns why a payload cannot be this aggregate state, or {@code null}. */
     String whyPayloadDoesNotMatch(Object payload) {
       if (payload == null) {
         return null;

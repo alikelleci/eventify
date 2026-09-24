@@ -19,7 +19,7 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATIO
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Command implements Message {
   String id;
-  /** When this command was made, by the clock of the application that made it. */
+  /** Time at which the command was created. */
   Instant timestamp;
   String type;
   Object payload;
