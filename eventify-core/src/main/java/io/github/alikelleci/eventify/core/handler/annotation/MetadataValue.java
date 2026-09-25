@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.message.annotation;
+package io.github.alikelleci.eventify.core.handler.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -7,5 +7,6 @@ import java.lang.annotation.Target;
 
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Timestamp {
+public @interface MetadataValue {
+  String value() default ""; // Optional key for specific metadata
 }

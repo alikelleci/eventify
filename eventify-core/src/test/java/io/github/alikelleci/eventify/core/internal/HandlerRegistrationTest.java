@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.handler.internal;
+package io.github.alikelleci.eventify.core.internal;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;

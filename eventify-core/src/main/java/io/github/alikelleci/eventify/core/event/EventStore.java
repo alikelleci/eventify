@@ -1,7 +1,6 @@
-package io.github.alikelleci.eventify.core.store;
+package io.github.alikelleci.eventify.core.event;
 
-import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
+import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.ReadOnlyKeyValueStore;

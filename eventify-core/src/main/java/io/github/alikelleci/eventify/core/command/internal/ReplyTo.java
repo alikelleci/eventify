@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.command.internal;
 
 import io.github.alikelleci.eventify.core.command.CommandResult;
-import io.github.alikelleci.eventify.core.kafka.HeaderNames;
+import io.github.alikelleci.eventify.core.command.HeaderNames;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;

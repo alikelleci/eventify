@@ -1,9 +1,9 @@
 package io.github.alikelleci.eventify.core.aggregate.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.internal.reflection.PerClass;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
+import io.github.alikelleci.eventify.core.internal.StoreKeys;
+import io.github.alikelleci.eventify.core.internal.reflection.PerClass;
 
 import java.util.function.Function;
 

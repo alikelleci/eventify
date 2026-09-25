@@ -8,8 +8,6 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.lang.ArchCondition;
 import com.tngtech.archunit.lang.ConditionEvents;
 import com.tngtech.archunit.lang.SimpleConditionEvent;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
-import io.github.alikelleci.eventify.core.kafka.internal.EventifyTopology;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -63,14 +61,13 @@ class ArchitectureTest {
         .check(CORE);
   }
 
-  /** Except the classes that wire the features together: {@link Eventify}, {@link HandlerRegistry}, {@link EventifyTopology}. */
+  /** Except {@code core.internal}, which wires the features together. */
   @Test
   @DisplayName("Should have no cycles between the feature packages")
   void featuresHaveNoCycles() {
     slices().matching("io.github.alikelleci.eventify.core.(*)..")
         .should().beFreeOfCycles()
-        .ignoreDependency(JavaClass.Predicates.equivalentTo(HandlerRegistry.class), DescribedPredicate.alwaysTrue())
-        .ignoreDependency(JavaClass.Predicates.equivalentTo(EventifyTopology.class), DescribedPredicate.alwaysTrue())
+        .ignoreDependency(JavaClass.Predicates.resideInAPackage("io.github.alikelleci.eventify.core.internal.."), DescribedPredicate.alwaysTrue())
         .check(CORE);
   }
 }

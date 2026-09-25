@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.kafka.internal;
+package io.github.alikelleci.eventify.core.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
@@ -7,14 +7,12 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.CommandResultSerde;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
+import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
 import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
-import io.github.alikelleci.eventify.core.kafka.TopicNames;
-import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;

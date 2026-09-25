@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.kafka.internal;
+package io.github.alikelleci.eventify.core.internal;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.producer.ProducerConfig;

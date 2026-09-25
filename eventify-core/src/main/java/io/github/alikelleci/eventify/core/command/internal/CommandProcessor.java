@@ -1,18 +1,18 @@
 package io.github.alikelleci.eventify.core.command.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
 import io.github.alikelleci.eventify.core.aggregate.AggregateRepository.ReplayResult;
+import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.event.EventStore;
+import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.internal.StoreNames;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
-import io.github.alikelleci.eventify.core.store.EventStore;
-import io.github.alikelleci.eventify.core.store.internal.StoreNames;
 import io.github.alikelleci.eventify.core.serialization.internal.JsonRoundTrip;
 import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;

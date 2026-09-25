@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.kafka.internal;
+package io.github.alikelleci.eventify.core.internal;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import org.apache.kafka.streams.StreamsConfig;

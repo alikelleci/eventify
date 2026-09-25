@@ -1,11 +1,11 @@
 package io.github.alikelleci.eventify.core.handler;
 
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.handler.annotation.MessageId;
+import io.github.alikelleci.eventify.core.handler.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
-import io.github.alikelleci.eventify.core.message.annotation.MessageId;
-import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
-import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 

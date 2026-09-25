@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.store.internal;
+package io.github.alikelleci.eventify.core.internal;
 
 import java.util.Locale;
 

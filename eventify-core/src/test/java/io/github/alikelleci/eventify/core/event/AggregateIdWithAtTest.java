@@ -1,11 +1,10 @@
-package io.github.alikelleci.eventify.core.store;
+package io.github.alikelleci.eventify.core.event;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
-import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
+import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.support.Matchers;

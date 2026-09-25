@@ -6,8 +6,8 @@ import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotPolicy;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.event.EventStore;
 import io.github.alikelleci.eventify.core.message.internal.Revisions;
-import io.github.alikelleci.eventify.core.store.EventStore;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 

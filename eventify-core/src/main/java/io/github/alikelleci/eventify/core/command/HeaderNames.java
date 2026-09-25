@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.kafka;
+package io.github.alikelleci.eventify.core.command;
 
 /** The Kafka record headers Eventify sets and reads. */
 public final class HeaderNames {

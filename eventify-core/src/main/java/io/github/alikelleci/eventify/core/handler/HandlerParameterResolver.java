@@ -1,10 +1,10 @@
 package io.github.alikelleci.eventify.core.handler;
 
+import io.github.alikelleci.eventify.core.handler.annotation.MessageId;
+import io.github.alikelleci.eventify.core.handler.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Message;
 import io.github.alikelleci.eventify.core.message.Metadata;
-import io.github.alikelleci.eventify.core.message.annotation.MessageId;
-import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
-import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
 
 import java.lang.reflect.Parameter;
 

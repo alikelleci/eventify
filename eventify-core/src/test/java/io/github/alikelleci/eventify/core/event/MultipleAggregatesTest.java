@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.store;
+package io.github.alikelleci.eventify.core.event;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
@@ -7,11 +7,9 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
-import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.event.EventSerde;
+import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import org.apache.commons.collections4.IteratorUtils;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;

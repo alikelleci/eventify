@@ -2,10 +2,10 @@ package io.github.alikelleci.eventify.spring.starter.kafka;
 
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.handler.annotation.MessageId;
+import io.github.alikelleci.eventify.core.handler.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
-import io.github.alikelleci.eventify.core.message.annotation.MessageId;
-import io.github.alikelleci.eventify.core.message.annotation.MetadataValue;
-import io.github.alikelleci.eventify.core.message.annotation.Timestamp;
 import org.springframework.core.MethodParameter;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;

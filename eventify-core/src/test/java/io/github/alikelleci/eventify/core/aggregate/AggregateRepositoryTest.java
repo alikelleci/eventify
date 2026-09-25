@@ -1,16 +1,16 @@
 package io.github.alikelleci.eventify.core.aggregate;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.SnapshotOutdatedException;
-import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.event.EventStore;
+import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
-import io.github.alikelleci.eventify.core.store.EventStore;
-import io.github.alikelleci.eventify.core.store.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.support.InMemoryStore;
 import io.github.alikelleci.eventify.core.testdomain.order.Order;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderCancelled;
@@ -18,8 +18,8 @@ import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderConfi
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderPlaced;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEvent.OrderShipped;
 import io.github.alikelleci.eventify.core.testdomain.order.OrderEventSourcingHandler;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

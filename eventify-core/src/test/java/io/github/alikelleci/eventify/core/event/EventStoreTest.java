@@ -1,6 +1,5 @@
-package io.github.alikelleci.eventify.core.store;
+package io.github.alikelleci.eventify.core.event;
 
-import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.support.InMemoryStore;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

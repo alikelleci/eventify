@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.event.internal;
 
 import io.github.alikelleci.eventify.core.event.Event;
-import io.github.alikelleci.eventify.core.handler.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;

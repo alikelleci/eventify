@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.kafka;
+package io.github.alikelleci.eventify.core.command;
 
 /** The topics Eventify writes to besides the ones named with {@code @Topic}. */
 public final class TopicNames {

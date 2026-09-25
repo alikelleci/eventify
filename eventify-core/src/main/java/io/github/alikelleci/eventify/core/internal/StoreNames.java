@@ -1,4 +1,4 @@
-package io.github.alikelleci.eventify.core.store.internal;
+package io.github.alikelleci.eventify.core.internal;
 
 /** The names of Eventify's state stores. Their changelog topics are named after them too. */
 public final class StoreNames {
