@@ -1,0 +1,91 @@
+.md-header,
+.md-tabs {
+  background-color: #020617;
+}
+
+.md-header {
+  box-shadow: 0 1px 0 rgb(255 255 255 / 0.1);
+}
+
+.md-header__button.md-logo {
+  display: none;
+}
+
+.md-nav--primary > .md-nav__title {
+  display: none;
+}
+
+.md-header__title {
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.md-header__title > .md-header__ellipsis > .md-header__topic:first-child > .md-ellipsis {
+  font-size: 0;
+}
+
+.md-header__title > .md-header__ellipsis > .md-header__topic:first-child > .md-ellipsis::before {
+  color: #fff;
+  content: "Eventify";
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.md-header__title > .md-header__ellipsis > .md-header__topic:first-child > .md-ellipsis::after {
+  color: #94a3b8;
+  margin-left: 0.45rem;
+  content: "| Docs";
+  font-size: 0.7rem;
+  font-weight: 500;
+  word-spacing: 0.15em;
+}
+
+.md-tabs {
+  border-top: 1px solid rgb(255 255 255 / 0.08);
+}
+
+.md-tabs__link--active,
+.md-tabs__link:hover {
+  color: #5eead4;
+}
+
+.md-typeset h1 {
+  letter-spacing: -0.025em;
+}
+
+.md-typeset .highlight {
+  overflow: hidden;
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 0.5rem;
+}
+
+.md-footer {
+  background-color: var(--md-default-fg-color--lightest);
+}
+
+.md-footer-meta {
+  background-color: var(--md-footer-bg-color);
+}
+
+.md-footer__link {
+  color: var(--md-default-fg-color);
+}
+
+.md-footer__link:hover {
+  color: var(--md-accent-fg-color);
+}
+
+.md-footer__title {
+  color: var(--md-default-fg-color);
+}
+
+.md-footer__direction {
+  color: var(--md-default-fg-color--light);
+}
