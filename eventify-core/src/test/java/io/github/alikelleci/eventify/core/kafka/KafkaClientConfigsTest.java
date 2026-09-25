@@ -64,4 +64,21 @@ class KafkaClientConfigsTest {
         .doesNotContainKey(ConsumerConfig.CLIENT_ID_CONFIG)
         .doesNotContainKey("application.id");
   }
+
+  @Test
+  @DisplayName("Should give a consumer the config providers, so it can resolve the placeholders it gets")
+  void configProvidersAreCopied() {
+    Properties clientConfig = new Properties();
+    clientConfig.put("config.providers", "file");
+    clientConfig.put("config.providers.file.class", "org.apache.kafka.common.config.provider.FileConfigProvider");
+    clientConfig.put("config.providers.file.param.allowed.paths", "/secrets");
+    clientConfig.put(SaslConfigs.SASL_JAAS_CONFIG, "password=\"${file:/secrets/kafka.properties:password}\";");
+
+    assertThat(KafkaClientConfigs.consumerConnectionOf(clientConfig))
+        .containsEntry("config.providers.file.class", "org.apache.kafka.common.config.provider.FileConfigProvider")
+        .containsEntry("config.providers.file.param.allowed.paths", "/secrets");
+    assertThat(KafkaClientConfigs.consumerSettingsOf(clientConfig))
+        .containsEntry("config.providers.file.class", "org.apache.kafka.common.config.provider.FileConfigProvider")
+        .containsEntry("config.providers.file.param.allowed.paths", "/secrets");
+  }
 }

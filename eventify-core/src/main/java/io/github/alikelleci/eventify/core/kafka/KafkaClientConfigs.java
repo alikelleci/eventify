@@ -22,6 +22,9 @@ public final class KafkaClientConfigs {
 
   private static final String CONSUMER_PREFIX = "consumer.";
 
+  /** E.g. "config.providers.file.class": the provider's name is free, so these aren't in Kafka's list of settings. */
+  private static final String CONFIG_PROVIDER_PREFIX = "config.providers.";
+
   private KafkaClientConfigs() {
   }
 
@@ -31,7 +34,7 @@ public final class KafkaClientConfigs {
     Set<String> consumerSettings = ConsumerConfig.configNames();
     clientConfig.forEach((key, value) -> {
       String name = String.valueOf(key);
-      if (consumerSettings.contains(name) && isConnectionSetting(name)) {
+      if (name.startsWith(CONFIG_PROVIDER_PREFIX) || (consumerSettings.contains(name) && isConnectionSetting(name))) {
         consumerConfig.put(name, value);
       }
     });
@@ -44,7 +47,7 @@ public final class KafkaClientConfigs {
     Map<String, Object> config = new HashMap<>();
     streamsConfig.forEach((key, value) -> {
       String name = key.toString();
-      if (consumerSettings.contains(name) && !name.equals(ConsumerConfig.CLIENT_ID_CONFIG)) {
+      if ((consumerSettings.contains(name) || name.startsWith(CONFIG_PROVIDER_PREFIX)) && !name.equals(ConsumerConfig.CLIENT_ID_CONFIG)) {
         config.put(name, value);
       }
     });
