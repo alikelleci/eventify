@@ -191,10 +191,10 @@ class UpcastingChainTest {
   private static final String CUSTOMER = "io.github.alikelleci.eventify.core.upcasting.UpcastingChainTest$Customer";
   private static final String CLIENT = "io.github.alikelleci.eventify.core.upcasting.UpcastingChainTest$Client";
 
-  /** Revision 1: named {@code Customer}, with {@code name}. Revision 2: {@code Client}, with {@code fullName}. Revision 3: {@code country}. */
+  /** Was {@code Customer}, with {@code name}. Revision 1: {@code fullName}. Revision 2: {@code country}. */
   @Value
   @Builder
-  @Revision(3)
+  @Revision(2)
   public static class Client {
     @AggregateId
     String id;
@@ -203,7 +203,7 @@ class UpcastingChainTest {
   }
 
   public static class RenamingTheClass {
-    /** Revision 1 → 2: {@code Customer} becomes {@code Client}, and {@code name} becomes {@code fullName}. */
+    /** {@code Customer} becomes {@code Client} revision 1, and {@code name} becomes {@code fullName}. */
     @Upcaster(type = CUSTOMER, revision = 1)
     public JsonNode renameToClient(ObjectNode payload) {
       payload.put("@class", CLIENT);
@@ -211,8 +211,8 @@ class UpcastingChainTest {
       return payload;
     }
 
-    /** Revision 2 → 3, registered for the new class. */
-    @Upcaster(type = CLIENT, revision = 2)
+    /** Revision 1 → 2 of the new class: also for new {@code Client} events stored at revision 1. */
+    @Upcaster(type = CLIENT, revision = 1)
     public JsonNode addCountry(ObjectNode payload) {
       payload.put("country", "NL");
       return payload;
@@ -220,7 +220,7 @@ class UpcastingChainTest {
   }
 
   @Test
-  @DisplayName("Should read an event under its new class when an upcaster renames the class, and go on with that class's upcasters")
+  @DisplayName("Should read an event under its new class when an upcaster renames the class, and go on from that class's revision 1")
   void anUpcasterRenamesTheEventClass() {
     String stored = storedAtRevision1()
         .replace(TYPE, CUSTOMER)
@@ -228,9 +228,34 @@ class UpcastingChainTest {
 
     Event event = read(stored, new RenamingTheClass());
 
-    assertThat(event.getRevision()).isEqualTo(3);
+    assertThat(event.getRevision()).isEqualTo(2);
     assertThat(event.getType()).isEqualTo("Client");
     assertThat(event.getPayload()).isEqualTo(Client.builder().id("ada").fullName("Ada Lovelace").country("NL").build());
+  }
+
+  public static class RenamingInACycle {
+    @Upcaster(type = CUSTOMER, revision = 1)
+    public JsonNode toClient(ObjectNode payload) {
+      return payload.put("@class", CLIENT);
+    }
+
+    @Upcaster(type = CLIENT, revision = 1)
+    public JsonNode toCustomer(ObjectNode payload) {
+      return payload.put("@class", CUSTOMER);
+    }
+  }
+
+  @Test
+  @DisplayName("Should fail when upcasters rename a class back and forth")
+  void upcastersRenamingInACycleFail() {
+    String stored = storedAtRevision1()
+        .replace(TYPE, CUSTOMER)
+        .replace("\"type\":\"Renamed\"", "\"type\":\"Customer\"");
+
+    assertThatThrownBy(() -> read(stored, new RenamingInACycle()))
+        .isInstanceOf(SerializationException.class)
+        .rootCause()
+        .hasMessageContaining("in a cycle");
   }
 
   /** Builds its node from scratch, without "@class". */

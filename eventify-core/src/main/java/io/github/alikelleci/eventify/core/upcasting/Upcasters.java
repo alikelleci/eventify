@@ -13,9 +13,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /** The {@link Upcaster} chain: a stored message goes through every upcaster from its revision on. Immutable. */
 public final class Upcasters {
@@ -84,9 +86,13 @@ public final class Upcasters {
     String className = storedClassName;
     JsonNode payload = jsonNode.get("payload");
 
-    // Each step takes the previous result and raises the revision, so the chain ends; a new "@class" renames the type.
+    // Each step raises the revision; a new "@class" renames the type and starts at its revision 1.
+    Set<String> visited = new HashSet<>();
     UpcasterMethod upcaster;
     while ((upcaster = upcasterOf(className, revision)) != null) {
+      if (!visited.add(className + "#" + revision)) {
+        throw new UpcastingException("Upcasters rename " + className + " revision " + revision + " in a cycle.");
+      }
       JsonNode upcasted = upcaster.handle(payload);
       if (upcasted == null) {
         break; // no upcasting from here: the payload stays at this revision
@@ -97,14 +103,17 @@ public final class Upcasters {
       String upcastedClassName = classNameOf(upcastedObject);
       if (StringUtils.isBlank(upcastedClassName)) {
         upcastedObject.put("@class", className); // a new node built without it: still the same class
+        revision++;
+      } else if (upcastedClassName.equals(className)) {
+        revision++;
       } else {
         className = upcastedClassName;
+        revision = 1;
       }
       payload = upcastedObject;
-      revision++;
     }
 
-    if (revision != storedRevision) {
+    if (revision != storedRevision || !className.equals(storedClassName)) {
       ((ObjectNode) jsonNode).set("payload", payload);
       ((ObjectNode) jsonNode).put("revision", revision);
       if (!className.equals(storedClassName) && jsonNode.has("type")) {
