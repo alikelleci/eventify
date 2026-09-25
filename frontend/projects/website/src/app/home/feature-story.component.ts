@@ -102,7 +102,7 @@ const STEP_MS = 300;
         <div class="s-stage" aria-hidden="true">
           <div class="flex w-full max-w-44 flex-col items-center gap-2 font-mono text-[10px]">
             <div class="s-in s-box w-full px-3 py-2 text-surface-600 dark:text-surface-300" [class.s-out]="before(31)">
-              <span class="text-primary-600 dark:text-primary-400">@HandleCommand</span> PlaceOrder
+              <span class="text-primary-600 dark:text-primary-400">@CommandHandler</span> PlaceOrder
             </div>
             <i class="s-in pi pi-arrow-down text-[9px] text-surface-400" [class.s-out]="before(33)"></i>
             <div class="s-in w-full rounded bg-primary-100 px-3 py-2 font-semibold text-primary-700 dark:bg-primary-900/60 dark:text-primary-300" [class.s-out]="before(34)">
@@ -110,7 +110,7 @@ const STEP_MS = 300;
             </div>
             <i class="s-in pi pi-arrow-down text-[9px] text-surface-400" [class.s-out]="before(36)"></i>
             <div class="s-in s-box w-full px-3 py-2 text-surface-600 dark:text-surface-300" [class.s-out]="before(37)">
-              <span class="text-primary-600 dark:text-primary-400">@ApplyEvent</span> Order
+              <span class="text-primary-600 dark:text-primary-400">@EventSourcingHandler</span> Order
             </div>
           </div>
         </div>

@@ -40,4 +40,4 @@ Use Bean Validation annotations on command fields when input validation belongs 
 - Choose event names in past tense: `OrderPlaced`, not `PlaceOrder`.
 - Put business time in the event payload; Eventify's timestamp is recording time.
 - Never change an existing event's meaning. Add an upcaster when its shape changes.
-- A removed aggregate is represented by an event whose `@ApplyEvent` method returns `null`.
+- A removed aggregate is represented by an event whose `@EventSourcingHandler` method returns `null`.

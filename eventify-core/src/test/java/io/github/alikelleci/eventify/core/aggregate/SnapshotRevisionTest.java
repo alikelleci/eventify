@@ -4,11 +4,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Revision;
@@ -54,12 +54,12 @@ class SnapshotRevisionTest {
   }
 
   public static class CounterHandler {
-    @HandleCommand
+    @CommandHandler
     public Incremented handle(Increment command, Counter state) {
       return new Incremented(command.id());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Incremented event, Counter state) {
       return new Counter(event.id(), state == null ? 1 : state.count() + 1);
     }

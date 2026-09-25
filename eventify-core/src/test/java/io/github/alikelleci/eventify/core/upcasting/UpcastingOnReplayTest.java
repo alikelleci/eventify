@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
@@ -15,7 +15,7 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
-import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcaster;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -58,19 +58,19 @@ class UpcastingOnReplayTest {
   }
 
   public static class ProfileHandler {
-    @HandleCommand
+    @CommandHandler
     public Greeted handle(Greet command, Profile state) {
       return new Greeted(command.id(), "Hello " + state.name());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Profile apply(Registered event, Profile state) {
       return new Profile(event.id(), event.name());
     }
   }
 
   public static class ProfileUpcaster {
-    @Upcast(type = REGISTERED, revision = 1)
+    @Upcaster(type = REGISTERED, revision = 1)
     public JsonNode renameFullName(ObjectNode payload) {
       payload.set("name", payload.remove("fullName"));
       return payload;

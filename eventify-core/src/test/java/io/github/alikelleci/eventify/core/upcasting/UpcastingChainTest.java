@@ -12,7 +12,7 @@ import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
-import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcaster;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.common.errors.SerializationException;
@@ -45,14 +45,14 @@ class UpcastingChainTest {
 
   /** Each upcaster returns a new node, and leaves the node it was given as it was. */
   public static class ReturningNewNodes {
-    @Upcast(type = TYPE, revision = 1)
+    @Upcaster(type = TYPE, revision = 1)
     public JsonNode nameToFullName(JsonNode payload) {
       ObjectNode upcasted = payload.deepCopy();
       upcasted.set("fullName", upcasted.remove("name"));
       return upcasted;
     }
 
-    @Upcast(type = TYPE, revision = 2)
+    @Upcaster(type = TYPE, revision = 2)
     public JsonNode addCountry(JsonNode payload) {
       ObjectNode upcasted = payload.deepCopy();
       upcasted.put("country", "NL");
@@ -62,13 +62,13 @@ class UpcastingChainTest {
 
   /** Each upcaster changes the node it was given, and returns it. */
   public static class ChangingInPlace {
-    @Upcast(type = TYPE, revision = 1)
+    @Upcaster(type = TYPE, revision = 1)
     public JsonNode nameToFullName(ObjectNode payload) {
       payload.set("fullName", payload.remove("name"));
       return payload;
     }
 
-    @Upcast(type = TYPE, revision = 2)
+    @Upcaster(type = TYPE, revision = 2)
     public JsonNode addCountry(ObjectNode payload) {
       payload.put("country", "NL");
       return payload;
@@ -118,13 +118,13 @@ class UpcastingChainTest {
   }
 
   public static class StoppingAtRevision2 {
-    @Upcast(type = TYPE, revision = 1)
+    @Upcaster(type = TYPE, revision = 1)
     public JsonNode nameToFullName(ObjectNode payload) {
       payload.set("fullName", payload.remove("name"));
       return payload;
     }
 
-    @Upcast(type = TYPE, revision = 2)
+    @Upcaster(type = TYPE, revision = 2)
     public JsonNode nothing(ObjectNode payload) {
       return null;
     }
@@ -140,7 +140,7 @@ class UpcastingChainTest {
   }
 
   public static class ReturningText {
-    @Upcast(type = TYPE, revision = 1)
+    @Upcaster(type = TYPE, revision = 1)
     public JsonNode text(ObjectNode payload) {
       return TextNode.valueOf("Ada Lovelace");
     }
@@ -156,12 +156,12 @@ class UpcastingChainTest {
   }
 
   public static class TwoForRevision1 {
-    @Upcast(type = TYPE, revision = 1)
+    @Upcaster(type = TYPE, revision = 1)
     public JsonNode one(ObjectNode payload) {
       return payload;
     }
 
-    @Upcast(type = TYPE, revision = 1)
+    @Upcaster(type = TYPE, revision = 1)
     public JsonNode other(ObjectNode payload) {
       return payload;
     }
@@ -204,7 +204,7 @@ class UpcastingChainTest {
 
   public static class RenamingTheClass {
     /** Revision 1 → 2: {@code Customer} becomes {@code Client}, and {@code name} becomes {@code fullName}. */
-    @Upcast(type = CUSTOMER, revision = 1)
+    @Upcaster(type = CUSTOMER, revision = 1)
     public JsonNode renameToClient(ObjectNode payload) {
       payload.put("@class", CLIENT);
       payload.set("fullName", payload.remove("name"));
@@ -212,7 +212,7 @@ class UpcastingChainTest {
     }
 
     /** Revision 2 → 3, registered for the new class. */
-    @Upcast(type = CLIENT, revision = 2)
+    @Upcaster(type = CLIENT, revision = 2)
     public JsonNode addCountry(ObjectNode payload) {
       payload.put("country", "NL");
       return payload;
@@ -235,7 +235,7 @@ class UpcastingChainTest {
 
   /** Builds its node from scratch, without "@class". */
   public static class BuildingANodeWithoutClass {
-    @Upcast(type = TYPE, revision = 1)
+    @Upcaster(type = TYPE, revision = 1)
     public JsonNode fromScratch(ObjectNode payload) {
       ObjectNode upcasted = JsonNodeFactory.instance.objectNode();
       upcasted.put("id", payload.path("id").asText());

@@ -27,7 +27,7 @@ import java.util.Objects;
 import java.util.Set;
 
 @Getter
-public class HandleCommandMethod {
+public class CommandHandlerMethod {
 
   private final Object handler;
   private final Method method;
@@ -36,7 +36,7 @@ public class HandleCommandMethod {
 
   private static final Validator VALIDATOR = Validation.buildDefaultValidatorFactory().getValidator();
 
-  public HandleCommandMethod(Object handler, Method method, String aggregateType) {
+  public CommandHandlerMethod(Object handler, Method method, String aggregateType) {
     this.handler = handler;
     this.method = method;
     this.aggregateType = aggregateType;

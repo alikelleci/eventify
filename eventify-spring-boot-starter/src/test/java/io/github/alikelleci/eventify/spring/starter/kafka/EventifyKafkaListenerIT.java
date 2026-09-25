@@ -14,7 +14,7 @@ import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
-import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcaster;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -93,7 +93,7 @@ class EventifyKafkaListenerIT {
   }
 
   public static class OrderPlacedUpcaster {
-    @Upcast(type = "io.github.alikelleci.eventify.spring.starter.kafka.EventifyKafkaListenerIT$OrderPlaced", revision = 1)
+    @Upcaster(type = "io.github.alikelleci.eventify.spring.starter.kafka.EventifyKafkaListenerIT$OrderPlaced", revision = 1)
     public JsonNode amountToTotal(ObjectNode payload) {
       payload.set("total", payload.remove("amount"));
       return payload;

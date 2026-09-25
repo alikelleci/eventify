@@ -1,7 +1,7 @@
 package io.github.alikelleci.eventify.core.testdomain.account;
 
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import jakarta.validation.ValidationException;
@@ -61,19 +61,19 @@ public class AccountMessages {
 
   public static class AccountHandler {
 
-    @HandleCommand
+    @CommandHandler
     public AccountEvent handle(OpenAccount command, Account state) {
       if (state != null) throw new ValidationException("Account already exists.");
       return AccountOpened.builder().id(command.getId()).build();
     }
 
-    @HandleCommand
+    @CommandHandler
     public AccountEvent handle(Deposit command, Account state) {
       if (state == null) throw new ValidationException("Account does not exist.");
       return Deposited.builder().id(command.getId()).amount(command.getAmount()).build();
     }
 
-    @HandleCommand
+    @CommandHandler
     public List<AccountEvent> handle(DepositEach command, Account state) {
       if (state == null) throw new ValidationException("Account does not exist.");
       return command.getAmounts().stream()
@@ -81,12 +81,12 @@ public class AccountMessages {
           .toList();
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Account apply(AccountOpened event, Account state) {
       return Account.builder().id(event.getId()).balance(0).build();
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Account apply(Deposited event, Account state) {
       return state.toBuilder().balance(state.getBalance() + event.getAmount()).build();
     }

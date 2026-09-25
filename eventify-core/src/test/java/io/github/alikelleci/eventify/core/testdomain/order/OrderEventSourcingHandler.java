@@ -1,6 +1,6 @@
 package io.github.alikelleci.eventify.core.testdomain.order;
 
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.handler.annotation.MessageId;
 import io.github.alikelleci.eventify.core.handler.annotation.MetadataValue;
 import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
@@ -16,7 +16,7 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATIO
 
 public class OrderEventSourcingHandler {
 
-  @ApplyEvent
+  @EventSourcingHandler
   public Order apply(OrderPlaced event, Order state,
                      Metadata metadata,
                      @Timestamp Instant timestamp,
@@ -32,14 +32,14 @@ public class OrderEventSourcingHandler {
         .build();
   }
 
-  @ApplyEvent
+  @EventSourcingHandler
   public Order apply(OrderConfirmed event, Order state) {
     return state.toBuilder()
         .status("CONFIRMED")
         .build();
   }
 
-  @ApplyEvent
+  @EventSourcingHandler
   public Order apply(OrderShipped event, Order state) {
     return state.toBuilder()
         .status("SHIPPED")
@@ -47,7 +47,7 @@ public class OrderEventSourcingHandler {
         .build();
   }
 
-  @ApplyEvent
+  @EventSourcingHandler
   public Order apply(OrderCancelled event, Order state) {
     return null; // aggregate removed on cancellation
   }

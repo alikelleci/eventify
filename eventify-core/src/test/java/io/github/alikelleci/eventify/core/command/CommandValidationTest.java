@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.core.command;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -43,12 +43,12 @@ class CommandValidationTest {
   }
 
   public static class CustomerHandler {
-    @HandleCommand
+    @CommandHandler
     public Registered handle(Register command, Customer state) {
       return new Registered(command.id(), command.name());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Customer apply(Registered event, Customer state) {
       return new Customer(event.id(), event.name());
     }

@@ -35,7 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Lets {@code @KafkaListener} methods read Eventify's event topics, next to or instead of {@code @HandleEvent}: each
+ * Lets {@code @KafkaListener} methods read Eventify's event topics, next to or instead of {@code @EventHandler}: each
  * listener with its own consumer group, concurrency and Spring Kafka error handling. An exception in a listener then
  * doesn't stop Kafka Streams, and command handling with it.
  *
@@ -72,7 +72,7 @@ public class EventifyKafkaListenerAutoConfiguration {
    * The Eventify bean's own upcasters, so listeners upcast as Kafka Streams does: also those registered with
    * {@code Eventify.builder().registerHandler(...)} that are not beans.
    *
-   * <p>Without an Eventify bean, the {@code @Upcast} methods of the beans. With several, those too: which Eventify
+   * <p>Without an Eventify bean, the {@code @Upcaster} methods of the beans. With several, those too: which Eventify
    * bean's upcasters apply to a topic is not known here.
    */
   private static Upcasters upcasters(ObjectProvider<Eventify> apps, ListableBeanFactory beanFactory) {
@@ -81,7 +81,7 @@ public class EventifyKafkaListenerAutoConfiguration {
       return eventify.getUpcasters();
     }
     if (apps.stream().findAny().isPresent()) {
-      log.warn("More than one Eventify bean: @KafkaListener methods upcast only with @Upcast beans, "
+      log.warn("More than one Eventify bean: @KafkaListener methods upcast only with @Upcaster beans, "
           + "not with upcasters registered via registerHandler(...).");
     }
     return Upcasters.of(EventifyHandlerBeans.of(beanFactory));

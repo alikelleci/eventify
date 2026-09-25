@@ -7,7 +7,7 @@ Handlers are plain Java methods. Register the object that contains them with `Ev
 A command handler receives a command and the current aggregate state. Return one event, a list of events, or no event.
 
 ```java
-@HandleCommand
+@CommandHandler
 public OrderEvent handle(ShipOrder command, Order state) {
     if (state == null) throw new ValidationException("Order does not exist");
     if (state.trackingNumber() != null) return null;
@@ -22,22 +22,22 @@ Throw an exception to reject the command. A successful command with no events is
 An event-sourcing handler returns the next aggregate state.
 
 ```java
-@ApplyEvent
+@EventSourcingHandler
 public Order apply(OrderShipped event, Order state) {
     return state.toBuilder().trackingNumber(event.trackingNumber()).build();
 }
 ```
 
-Keep `@ApplyEvent` methods deterministic and side-effect free. They run whenever Eventify rebuilds state. Return `null` to remove an aggregate.
+Keep `@EventSourcingHandler` methods deterministic and side-effect free. They run whenever Eventify rebuilds state. Return `null` to remove an aggregate.
 
-An event without an `@ApplyEvent` method still becomes part of the history and advances the aggregate version; it simply leaves state unchanged.
+An event without an `@EventSourcingHandler` method still becomes part of the history and advances the aggregate version; it simply leaves state unchanged.
 
 ## React to an event
 
-Use `@HandleEvent` for work outside the aggregate, such as projections or notifications.
+Use `@EventHandler` for work outside the aggregate, such as projections or notifications.
 
 ```java
-@HandleEvent
+@EventHandler
 public void on(OrderPlaced event) {
     ordersView.insert(event.id(), event.customer());
 }
@@ -51,7 +51,7 @@ Besides the payload and aggregate state, handlers can receive:
 
 | Parameter | Value |
 |---|---|
-| `@AggregateRoot` type | Current state; required for `@HandleCommand` |
+| `@AggregateRoot` type | Current state; required for `@CommandHandler` |
 | `Metadata` | All message metadata |
 | `@Timestamp Instant` | Message timestamp |
 | `@MessageId String` | Message id |
@@ -59,8 +59,8 @@ Besides the payload and aggregate state, handlers can receive:
 
 ## Ordering
 
-Use `@Priority` only when multiple `@HandleEvent` methods handle the same event. Higher values run first.
+Use `@Priority` only when multiple `@EventHandler` methods handle the same event. Higher values run first.
 
 ## Spring listeners
 
-The Spring Boot starter can also deserialize Eventify events for `@KafkaListener` methods. Use that when a projection should have its own lifecycle and error handling; command handling always uses `@HandleCommand`.
+The Spring Boot starter can also deserialize Eventify events for `@KafkaListener` methods. Use that when a projection should have its own lifecycle and error handling; command handling always uses `@CommandHandler`.

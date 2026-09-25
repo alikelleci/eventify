@@ -23,12 +23,12 @@ export class HomeComponent {
   /** The complete aggregate flow shown in the hero. */
   readonly highlightedHeroCode = highlightJava(`public class OrderHandler {
 
-    @HandleCommand
+    @CommandHandler
     OrderPlaced handle(PlaceOrder command, Order state) {
         return new OrderPlaced(command.id(), command.customer());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     Order apply(OrderPlaced event, Order state) {
         return new Order(event.id(), event.customer());
     }
@@ -52,12 +52,12 @@ export class HomeComponent {
       label: 'Java', language: 'java',
       code: `public class OrderHandler {
 
-    @HandleCommand
+    @CommandHandler
     OrderPlaced handle(PlaceOrder command, Order state) {
         return new OrderPlaced(command.id(), command.customer());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     Order apply(OrderPlaced event, Order state) {
         return new Order(event.id(), event.customer());
     }

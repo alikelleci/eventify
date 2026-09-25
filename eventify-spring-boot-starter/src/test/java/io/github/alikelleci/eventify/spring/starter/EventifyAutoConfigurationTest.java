@@ -2,9 +2,9 @@ package io.github.alikelleci.eventify.spring.starter;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
-import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
+import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import org.junit.jupiter.api.DisplayName;
@@ -37,7 +37,7 @@ class EventifyAutoConfigurationTest {
   }
 
   public static class PingHandler {
-    @HandleEvent
+    @EventHandler
     public void on(Pinged event) {
     }
 
@@ -133,7 +133,7 @@ class EventifyAutoConfigurationTest {
   }
 
   public static class CounterHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(Increment command, Counter state) {
       return null;
     }

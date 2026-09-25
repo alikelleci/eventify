@@ -4,14 +4,14 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
-import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
+import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
-import io.github.alikelleci.eventify.core.upcasting.annotation.Upcast;
+import io.github.alikelleci.eventify.core.upcasting.annotation.Upcaster;
 import lombok.Value;
 import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
@@ -50,12 +50,12 @@ class HandlerRegistrationTest {
   }
 
   public static class LightHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(SwitchOn command, Light state) {
       return new SwitchedOn(command.getId());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Light apply(SwitchedOn event, Light state) {
       return new Light(event.getId());
     }
@@ -63,7 +63,7 @@ class HandlerRegistrationTest {
 
   /** Handles the same command as LightHandler. */
   public static class OtherCommandHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(SwitchOn command, Light state) {
       return null;
     }
@@ -71,12 +71,12 @@ class HandlerRegistrationTest {
 
   /** Two event sourcing handlers for the same event in one class. */
   public static class TwiceApplyingHandler {
-    @ApplyEvent
+    @EventSourcingHandler
     public Light apply(SwitchedOn event, Light state) {
       return new Light(event.getId());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Light apply(SwitchedOn event, Light state, Metadata metadata) {
       return new Light(event.getId());
     }
@@ -85,13 +85,13 @@ class HandlerRegistrationTest {
   /** Overrides its superclass's handlers: still one handler each. */
   public static class OverridingHandler extends LightHandler {
     @Override
-    @HandleCommand
+    @CommandHandler
     public Object handle(SwitchOn command, Light state) {
       return new SwitchedOn(command.getId());
     }
 
     @Override
-    @ApplyEvent
+    @EventSourcingHandler
     public Light apply(SwitchedOn event, Light state) {
       return new Light(event.getId());
     }
@@ -119,12 +119,12 @@ class HandlerRegistrationTest {
   }
 
   public static class FanHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(SwitchOnFan command, Fan state) {
       return new FanSwitchedOn(command.getId());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Fan apply(FanSwitchedOn event, Fan state) {
       return new Fan(event.getId());
     }
@@ -132,7 +132,7 @@ class HandlerRegistrationTest {
 
   /** An apply method whose declared result does not match the aggregate state it receives. */
   public static class WrongApplyResultHandler {
-    @ApplyEvent
+    @EventSourcingHandler
     public Fan apply(SwitchedOn event, Light state) {
       return new Fan(event.getId());
     }
@@ -147,7 +147,7 @@ class HandlerRegistrationTest {
   }
 
   public static class LampHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(SwitchOnFan command, Lamp state) {
       return null;
     }
@@ -161,39 +161,39 @@ class HandlerRegistrationTest {
   }
 
   public static class NamelessHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(SwitchOnFan command, Nameless state) {
       return null;
     }
   }
 
   public static class HandlerWithoutAggregate {
-    @HandleCommand
+    @CommandHandler
     public Object handle(SwitchOn command) {
       return null;
     }
   }
 
   public static class FirstEventHandler {
-    @HandleEvent
+    @EventHandler
     public void on(SwitchedOn event) {
     }
   }
 
   public static class SecondEventHandler {
-    @HandleEvent
+    @EventHandler
     public void on(SwitchedOn event) {
     }
   }
 
   /** Annotated on the interface and on its implementation: still one handler. */
   public interface SwitchListener {
-    @HandleEvent
+    @EventHandler
     void on(SwitchedOn event);
   }
 
   public static class AnnotatedTwiceEventHandler implements SwitchListener {
-    @HandleEvent
+    @EventHandler
     @Override
     public void on(SwitchedOn event) {
     }
@@ -201,14 +201,14 @@ class HandlerRegistrationTest {
 
   /** Annotated in the superclass and in the override: still one handler. */
   public static class OverridingEventHandler extends FirstEventHandler {
-    @HandleEvent
+    @EventHandler
     @Override
     public void on(SwitchedOn event) {
     }
   }
 
   public static class HandlerWithoutMessage {
-    @HandleEvent
+    @EventHandler
     public void on() {
     }
   }
@@ -220,7 +220,7 @@ class HandlerRegistrationTest {
   }
 
   public static class HandlerWithoutCommandTopic {
-    @HandleCommand
+    @CommandHandler
     public Object handle(UnroutedCommand command, Light state) {
       return null;
     }
@@ -233,7 +233,7 @@ class HandlerRegistrationTest {
   }
 
   public static class HandlerWithoutEventTopic {
-    @HandleEvent
+    @EventHandler
     public void on(UnroutedEvent event) {
     }
   }
@@ -315,7 +315,7 @@ class HandlerRegistrationTest {
         .registerHandler(new WrongApplyResultHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@ApplyEvent", "Fan", "Light");
+        .hasMessageContaining("@EventSourcingHandler", "Fan", "Light");
   }
 
   @Test
@@ -325,7 +325,7 @@ class HandlerRegistrationTest {
         .registerHandler(new HandlerWithoutMessage())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@HandleEvent", "first parameter");
+        .hasMessageContaining("@EventHandler", "first parameter");
   }
 
   @Test
@@ -335,13 +335,13 @@ class HandlerRegistrationTest {
         .registerHandler(new HandlerWithoutCommandTopic())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@HandleCommand", "@Topic");
+        .hasMessageContaining("@CommandHandler", "@Topic");
 
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new HandlerWithoutEventTopic())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@HandleEvent", "@Topic");
+        .hasMessageContaining("@EventHandler", "@Topic");
   }
 
   @Test
@@ -375,13 +375,13 @@ class HandlerRegistrationTest {
   }
 
   public static class UnsupportedParameterHandler {
-    @HandleEvent
+    @EventHandler
     public void on(SwitchedOn event, String unsupported) {
     }
   }
 
   public static class TwoParameterUpcaster {
-    @Upcast(type = "com.example.SwitchedOn", revision = 1)
+    @Upcaster(type = "com.example.SwitchedOn", revision = 1)
     public JsonNode upcast(ObjectNode payload, String unsupported) {
       return payload;
     }
@@ -394,7 +394,7 @@ class HandlerRegistrationTest {
         .registerHandler(new UnsupportedParameterHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@HandleEvent", "java.lang.String");
+        .hasMessageContaining("@EventHandler", "java.lang.String");
   }
 
   @Test
@@ -404,7 +404,7 @@ class HandlerRegistrationTest {
         .registerHandler(new TwoParameterUpcaster())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@Upcast");
+        .hasMessageContaining("@Upcaster");
   }
 
   private static Properties config() {

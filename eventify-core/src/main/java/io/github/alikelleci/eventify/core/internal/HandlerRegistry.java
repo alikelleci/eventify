@@ -1,15 +1,15 @@
 package io.github.alikelleci.eventify.core.internal;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
-import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
-import io.github.alikelleci.eventify.core.command.internal.HandleCommandMethod;
-import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
-import io.github.alikelleci.eventify.core.event.internal.HandleEventMethod;
+import io.github.alikelleci.eventify.core.aggregate.internal.EventSourcingHandlerMethod;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
+import io.github.alikelleci.eventify.core.command.internal.CommandHandlerMethod;
+import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
+import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
-import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
+import io.github.alikelleci.eventify.core.handler.annotation.MessageHandler;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -36,9 +36,9 @@ import java.util.stream.Stream;
 /** The handlers and upcasters of one Eventify instance; never changed after construction. */
 public class HandlerRegistry {
 
-  private final Map<Class<?>, HandleCommandMethod> commandHandlers = new HashMap<>();
-  private final Map<Class<?>, ApplyEventMethod> eventSourcingHandlers = new HashMap<>();
-  private final MultiValuedMap<Class<?>, HandleEventMethod> eventHandlers = new ArrayListValuedHashMap<>();
+  private final Map<Class<?>, CommandHandlerMethod> commandHandlers = new HashMap<>();
+  private final Map<Class<?>, EventSourcingHandlerMethod> eventSourcingHandlers = new HashMap<>();
+  private final MultiValuedMap<Class<?>, EventHandlerMethod> eventHandlers = new ArrayListValuedHashMap<>();
   private final Upcasters upcasters;
 
   public HandlerRegistry(List<Object> handlers) {
@@ -47,9 +47,9 @@ public class HandlerRegistry {
     requireDistinctAggregateTypes();
   }
 
-  /** Whether the class has a method with an Eventify handler annotation, e.g. {@code @HandleCommand} or {@code @Upcast}. */
+  /** Whether the class has a method with an Eventify handler annotation, e.g. {@code @CommandHandler} or {@code @Upcaster}. */
   public static boolean isHandler(Class<?> handlerClass) {
-    return !AnnotationScanner.findAnnotatedMethods(handlerClass, HandleMessage.class).isEmpty();
+    return !AnnotationScanner.findAnnotatedMethods(handlerClass, MessageHandler.class).isEmpty();
   }
 
   /** The names of the aggregates this instance handles. */
@@ -60,19 +60,19 @@ public class HandlerRegistry {
   /** The {@link AggregateRoot} classes the handlers take or return. */
   public Set<Class<?>> aggregateClasses() {
     return Stream.concat(
-            commandHandlers.values().stream().map(HandleCommandMethod::getMethod),
-            eventSourcingHandlers.values().stream().map(ApplyEventMethod::getMethod))
+            commandHandlers.values().stream().map(CommandHandlerMethod::getMethod),
+            eventSourcingHandlers.values().stream().map(EventSourcingHandlerMethod::getMethod))
         .flatMap(method -> Stream.concat(Stream.of(method.getReturnType()), Arrays.stream(method.getParameterTypes())))
         .filter(parameterClass -> parameterClass.isAnnotationPresent(AggregateRoot.class))
         .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   /** The command handler for this command class; {@code null} when there is none. */
-  public HandleCommandMethod commandHandler(Class<?> commandClass) {
+  public CommandHandlerMethod commandHandler(Class<?> commandClass) {
     return commandHandlers.get(commandClass);
   }
 
-  public Map<Class<?>, HandleCommandMethod> commandHandlers() {
+  public Map<Class<?>, CommandHandlerMethod> commandHandlers() {
     return Collections.unmodifiableMap(commandHandlers);
   }
 
@@ -89,16 +89,16 @@ public class HandlerRegistry {
     return topicsOf(commandHandlers.keySet());
   }
 
-  public Map<Class<?>, ApplyEventMethod> eventSourcingHandlers() {
+  public Map<Class<?>, EventSourcingHandlerMethod> eventSourcingHandlers() {
     return Collections.unmodifiableMap(eventSourcingHandlers);
   }
 
-  public Collection<HandleEventMethod> eventHandlers() {
+  public Collection<EventHandlerMethod> eventHandlers() {
     return Collections.unmodifiableCollection(eventHandlers.values());
   }
 
   /** The event handlers for this event class, in the order they were registered; empty when there are none. */
-  public Collection<HandleEventMethod> eventHandlers(Class<?> eventClass) {
+  public Collection<EventHandlerMethod> eventHandlers(Class<?> eventClass) {
     return Collections.unmodifiableCollection(eventHandlers.get(eventClass));
   }
 
@@ -116,13 +116,13 @@ public class HandlerRegistry {
   }
 
   private void register(Object handler) {
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleCommand.class)
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), CommandHandler.class)
         .forEach(method -> addCommandHandler(handler, method));
 
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), ApplyEvent.class)
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), EventSourcingHandler.class)
         .forEach(method -> addEventSourcingHandler(handler, method));
 
-    AnnotationScanner.findAnnotatedMethods(handler.getClass(), HandleEvent.class)
+    AnnotationScanner.findAnnotatedMethods(handler.getClass(), EventHandler.class)
         .forEach(method -> addEventHandler(handler, method));
   }
 
@@ -130,7 +130,7 @@ public class HandlerRegistry {
   private static Class<?> aggregateOf(Method method) {
     List<Class<?>> aggregates = aggregateParameterClasses(method);
     if (aggregates.size() != 1) {
-      throw new HandlerRegistrationException("@HandleCommand method " + method + " must take exactly one @AggregateRoot parameter, not " + aggregates.size() + ".");
+      throw new HandlerRegistrationException("@CommandHandler method " + method + " must take exactly one @AggregateRoot parameter, not " + aggregates.size() + ".");
     }
     return aggregates.get(0);
   }
@@ -144,38 +144,38 @@ public class HandlerRegistry {
   }
 
   private void addCommandHandler(Object handler, Method method) {
-    requireMessageParameter("@HandleCommand", method);
-    requireSupportedParameters("@HandleCommand", method, true);
+    requireMessageParameter("@CommandHandler", method);
+    requireSupportedParameters("@CommandHandler", method, true);
     Class<?> messageClass = method.getParameters()[0].getType();
-    requireTopicOnHandledMessage("@HandleCommand", messageClass, method);
+    requireTopicOnHandledMessage("@CommandHandler", messageClass, method);
     String aggregateType = AggregateTypes.of(aggregateOf(method));
-    HandleCommandMethod previous = commandHandlers.put(messageClass, new HandleCommandMethod(handler, method, aggregateType));
+    CommandHandlerMethod previous = commandHandlers.put(messageClass, new CommandHandlerMethod(handler, method, aggregateType));
     if (previous != null) {
-      requireSingleHandler("@HandleCommand", messageClass, previous.getHandler(), previous.getMethod(), handler, method);
+      requireSingleHandler("@CommandHandler", messageClass, previous.getHandler(), previous.getMethod(), handler, method);
     }
   }
 
   private void addEventSourcingHandler(Object handler, Method method) {
-    requireMessageParameter("@ApplyEvent", method);
-    requireSupportedParameters("@ApplyEvent", method, true);
+    requireMessageParameter("@EventSourcingHandler", method);
+    requireSupportedParameters("@EventSourcingHandler", method, true);
     requireMatchingAggregateReturnType(method);
     Class<?> messageClass = method.getParameters()[0].getType();
-    ApplyEventMethod previous = eventSourcingHandlers.put(messageClass, new ApplyEventMethod(handler, method));
+    EventSourcingHandlerMethod previous = eventSourcingHandlers.put(messageClass, new EventSourcingHandlerMethod(handler, method));
     if (previous != null) {
-      requireSingleHandler("@ApplyEvent", messageClass, previous.getHandler(), previous.getMethod(), handler, method);
+      requireSingleHandler("@EventSourcingHandler", messageClass, previous.getHandler(), previous.getMethod(), handler, method);
     }
   }
 
   private void addEventHandler(Object handler, Method method) {
-    requireMessageParameter("@HandleEvent", method);
-    requireSupportedParameters("@HandleEvent", method, false);
+    requireMessageParameter("@EventHandler", method);
+    requireSupportedParameters("@EventHandler", method, false);
     Class<?> messageClass = method.getParameters()[0].getType();
-    requireTopicOnHandledMessage("@HandleEvent", messageClass, method);
+    requireTopicOnHandledMessage("@EventHandler", messageClass, method);
     // The same object registered twice is still one handler.
     boolean registered = eventHandlers.get(messageClass).stream()
         .anyMatch(previous -> previous.getHandler() == handler && previous.getMethod().equals(method));
     if (!registered) {
-      eventHandlers.put(messageClass, new HandleEventMethod(handler, method));
+      eventHandlers.put(messageClass, new EventHandlerMethod(handler, method));
     }
   }
 
@@ -226,7 +226,7 @@ public class HandlerRegistry {
         .findFirst()
         .orElse(null);
     if (mismatchingAggregate != null) {
-      throw new HandlerRegistrationException("@ApplyEvent method " + method + " must return " + mismatchingAggregate.getName() + ", its @AggregateRoot parameter.");
+      throw new HandlerRegistrationException("@EventSourcingHandler method " + method + " must return " + mismatchingAggregate.getName() + ", its @AggregateRoot parameter.");
     }
   }
 

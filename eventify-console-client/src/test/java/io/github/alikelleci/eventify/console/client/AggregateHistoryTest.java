@@ -8,7 +8,7 @@ import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
@@ -76,17 +76,17 @@ class AggregateHistoryTest {
 
   /** Like most handlers, it needs the state before an event that changes the aggregate: it fails without one. */
   public static class CounterHandler {
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Started event, Counter state) {
       return new Counter(event.id, 1);
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Incremented event, Counter state) {
       return new Counter(event.id, state.value + 1);
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Removed event, Counter state) {
       return null;
     }

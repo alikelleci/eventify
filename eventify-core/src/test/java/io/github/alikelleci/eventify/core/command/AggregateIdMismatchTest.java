@@ -3,9 +3,9 @@ package io.github.alikelleci.eventify.core.command;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -75,13 +75,13 @@ class AggregateIdMismatchTest {
   public static class CounterHandler {
     final List<String> handled = new java.util.ArrayList<>();
 
-    @HandleCommand
+    @CommandHandler
     public CounterEvent handle(Increment command, Counter state) {
       handled.add(command.getId());
       return Incremented.builder().id(command.getId()).stateId(command.getStateId()).build();
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Incremented event, Counter state) {
       return Counter.builder().id(event.getStateId()).value(state != null ? state.getValue() + 1 : 1).build();
     }

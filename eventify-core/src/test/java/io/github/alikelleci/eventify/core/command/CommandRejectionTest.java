@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.core.command;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -168,47 +168,47 @@ class CommandRejectionTest {
   }
 
   public static class CounterHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(Create command, Counter state) {
       return Created.builder().id(command.getId()).build();
     }
 
-    @HandleCommand
+    @CommandHandler
     public Object handle(Break command, Counter state) {
       return Broken.builder().id(command.getId()).build();
     }
 
-    @HandleCommand
+    @CommandHandler
     public Object handle(Lose command, Counter state) {
       return Lost.builder().id(command.getId()).reason("gone").build();
     }
 
-    @HandleCommand
+    @CommandHandler
     public Object handle(Misplace command, Counter state) {
       return Misplaced.builder().id(command.getId()).build();
     }
 
-    @HandleCommand
+    @CommandHandler
     public Object handle(Corrupt command, Counter state) {
       return Corrupted.builder().id(command.getId()).build();
     }
 
-    @HandleCommand
+    @CommandHandler
     public Object handle(Flake command, Counter state) {
       return Flaked.builder().id(command.getId()).build();
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Created event, Counter state) {
       return Counter.builder().id(event.getId()).value(state != null ? state.getValue() + 1 : 1).build();
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Broken event, Counter state) {
       throw new IllegalStateException("cannot apply");
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Lost event, Counter state) {
       if (event.reason() == null) {
         throw new IllegalStateException("no reason");
@@ -216,17 +216,17 @@ class CommandRejectionTest {
       return state;
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Misplaced event, Counter state) {
       return state;
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Corrupted event, Counter state) {
       return state;
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Counter apply(Flaked event, Counter state) {
       return state;
     }

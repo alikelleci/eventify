@@ -1,10 +1,10 @@
 package io.github.alikelleci.eventify.core;
 
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -127,27 +127,27 @@ class CommandTransactionIT {
   }
 
   public static class OrderHandler {
-    @HandleCommand
+    @CommandHandler
     public Object handle(EmitEventWithoutTopic command, Order state) {
       return List.of(OrderPlaced.builder().id(command.getId()).build(), EventWithoutTopic.builder().id(command.getId()).build());
     }
 
-    @HandleCommand
+    @CommandHandler
     public Object handle(EmitEventThatFailsWhenSent command, Order state) {
       return EventThatFailsWhenSent.builder().id(command.getId()).build();
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Order apply(OrderPlaced event, Order state) {
       return Order.builder().id(event.getId()).build();
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Order apply(EventWithoutTopic event, Order state) {
       return state;
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Order apply(EventThatFailsWhenSent event, Order state) {
       return Order.builder().id(event.getId()).build();
     }

@@ -2,8 +2,8 @@ package io.github.alikelleci.eventify.core.command;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
@@ -63,24 +63,24 @@ class CommandResultTest {
   }
 
   public static class CartHandler {
-    @HandleCommand
+    @CommandHandler
     public ItemAdded handle(AddItem command, Cart state) {
       return new ItemAdded(command.id(), command.item());
     }
 
-    @HandleCommand
+    @CommandHandler
     public Object handle(Touch command, Cart state) {
       return null;
     }
 
     /** Works out metadata of its own; what it makes is its own copy, and the command keeps the metadata it came with. */
-    @HandleCommand
+    @CommandHandler
     public ItemAdded handle(AddItemForUser command, Cart state, Metadata metadata) {
       Metadata mine = metadata.with("user", command.user());
       return new ItemAdded(command.id(), command.item() + " for " + mine.get("user"));
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Cart apply(ItemAdded event, Cart state) {
       return new Cart(event.id(), state == null ? 1 : state.items() + 1);
     }

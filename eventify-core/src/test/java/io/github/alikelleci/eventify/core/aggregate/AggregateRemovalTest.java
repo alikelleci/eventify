@@ -2,10 +2,10 @@ package io.github.alikelleci.eventify.core.aggregate;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -60,27 +60,27 @@ class AggregateRemovalTest {
   }
 
   public static class TabHandler {
-    @HandleCommand
+    @CommandHandler
     public TabEvent handle(Open command, Tab state) {
       return new Opened(command.id());
     }
 
-    @HandleCommand
+    @CommandHandler
     public TabEvent handle(Close command, Tab state) {
       return new Closed(command.id());
     }
 
-    @HandleCommand
+    @CommandHandler
     public TabEvent handle(Probe command, Tab state) {
       return new Probed(command.id(), state != null);
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Tab apply(Opened event, Tab state) {
       return new Tab(event.id());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Tab apply(Closed event, Tab state) {
       return null;
     }

@@ -3,9 +3,9 @@ package io.github.alikelleci.eventify.core.command;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -56,7 +56,7 @@ class CommandSnapshotTest {
   public record Removed(@AggregateId String id) {}
 
   public static class Handler {
-    @HandleCommand
+    @CommandHandler
     public List<Object> handle(Change command, Counter state) {
       return switch (command.mode()) {
         case "command-failure" -> throw new IllegalStateException("command rejected");
@@ -66,10 +66,10 @@ class CommandSnapshotTest {
         default -> List.of(new Added(command.id(), 5));
       };
     }
-    @ApplyEvent public Counter apply(Created event, Counter state) { return new Counter(event.id(), 1); }
-    @ApplyEvent public Counter apply(Added event, Counter state) { return new Counter(event.id(), state.value + event.amount()); }
-    @ApplyEvent public Counter apply(Broken event, Counter state) { throw new IllegalStateException("event rejected"); }
-    @ApplyEvent public Counter apply(Removed event, Counter state) { return null; }
+    @EventSourcingHandler public Counter apply(Created event, Counter state) { return new Counter(event.id(), 1); }
+    @EventSourcingHandler public Counter apply(Added event, Counter state) { return new Counter(event.id(), state.value + event.amount()); }
+    @EventSourcingHandler public Counter apply(Broken event, Counter state) { throw new IllegalStateException("event rejected"); }
+    @EventSourcingHandler public Counter apply(Removed event, Counter state) { return null; }
   }
 
   private TopologyTestDriver driver;
@@ -161,8 +161,8 @@ class CommandSnapshotTest {
   public record Touched(@AggregateId String id) {}
 
   public static class UnwritableHandler {
-    @HandleCommand public Touched handle(Touch command, Unwritable state) { return new Touched(command.id()); }
-    @ApplyEvent public Unwritable apply(Touched event, Unwritable state) { return new Unwritable(event.id()); }
+    @CommandHandler public Touched handle(Touch command, Unwritable state) { return new Touched(command.id()); }
+    @EventSourcingHandler public Unwritable apply(Touched event, Unwritable state) { return new Unwritable(event.id()); }
   }
 
   @Test

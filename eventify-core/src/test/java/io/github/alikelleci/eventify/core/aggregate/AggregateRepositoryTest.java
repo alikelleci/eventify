@@ -5,7 +5,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.SnapshotOutdatedException;
-import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
+import io.github.alikelleci.eventify.core.aggregate.internal.EventSourcingHandlerMethod;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventStore;
 import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
@@ -89,7 +89,7 @@ class AggregateRepositoryTest {
   @Test
   @DisplayName("Should reject an apply handler that returns another aggregate type")
   void rejectsAnApplyHandlerThatReturnsAnotherAggregateType() {
-    ApplyEventMethod wrongHandler = new ApplyEventMethod(null, null) {
+    EventSourcingHandlerMethod wrongHandler = new EventSourcingHandlerMethod(null, null) {
       @Override
       public Object apply(Event event, AggregateState state) {
         return new OtherAggregate(event.getAggregateId());

@@ -21,7 +21,7 @@ Keep `deleteEvents` disabled when you need full audit history or time travel bef
 
 ### Aggregate changes
 
-Raise the aggregate's `@Revision` when a changed field or `@ApplyEvent` method would produce a different state from the same events.
+Raise the aggregate's `@Revision` when a changed field or `@EventSourcingHandler` method would produce a different state from the same events.
 
 ```java
 @AggregateRoot("order")
@@ -34,14 +34,14 @@ Old snapshots are then ignored and rebuilt from events when possible.
 
 ## Event upcasting
 
-Upcasters transform old event JSON into the current event shape while reading history. Increase an event's `@Revision` and add one `@Upcast` method per step.
+Upcasters transform old event JSON into the current event shape while reading history. Increase an event's `@Revision` and add one `@Upcaster` method per step.
 
 ```java
 @Revision(2)
 public record OrderPlaced(@AggregateId String id, String customer, String channel) {}
 
 public class OrderUpcaster {
-    @Upcast(type = "com.example.OrderPlaced", revision = 1)
+    @Upcaster(type = "com.example.OrderPlaced", revision = 1)
     public JsonNode addChannel(ObjectNode json) {
         json.put("channel", "web");
         return json;

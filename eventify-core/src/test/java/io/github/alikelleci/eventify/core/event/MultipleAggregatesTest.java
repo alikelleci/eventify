@@ -3,10 +3,10 @@ package io.github.alikelleci.eventify.core.event;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
-import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
+import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
-import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
+import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -59,24 +59,24 @@ class MultipleAggregatesTest {
   }
 
   public static class OrderHandler {
-    @HandleCommand
+    @CommandHandler
     public OrderPlaced handle(PlaceOrder command, Order state) {
       return new OrderPlaced(command.id(), command.customer());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Order apply(OrderPlaced event, Order state) {
       return new Order(event.id(), event.customer(), state == null ? 1 : state.events() + 1);
     }
   }
 
   public static class InvoiceHandler {
-    @HandleCommand
+    @CommandHandler
     public InvoiceSent handle(SendInvoice command, Invoice state) {
       return new InvoiceSent(command.id(), command.amount());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Invoice apply(InvoiceSent event, Invoice state) {
       return new Invoice(event.id(), event.amount(), state == null ? 1 : state.events() + 1);
     }

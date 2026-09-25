@@ -16,12 +16,12 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 
 @Getter
-public class ApplyEventMethod {
+public class EventSourcingHandlerMethod {
 
   private final Object handler;
   private final Method method;
 
-  public ApplyEventMethod(Object handler, Method method) {
+  public EventSourcingHandlerMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
   }

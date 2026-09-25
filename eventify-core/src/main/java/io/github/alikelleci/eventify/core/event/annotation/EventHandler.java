@@ -1,15 +1,15 @@
-package io.github.alikelleci.eventify.core.aggregate.annotation;
+package io.github.alikelleci.eventify.core.event.annotation;
 
-import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
+import io.github.alikelleci.eventify.core.handler.annotation.MessageHandler;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
-@HandleMessage
+@MessageHandler
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface ApplyEvent {
+public @interface EventHandler {
 
 }

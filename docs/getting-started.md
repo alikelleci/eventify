@@ -35,20 +35,20 @@ public record Order(@AggregateId String id, String customer) {}
 
 ```java
 public class OrderHandler {
-    @HandleCommand
+    @CommandHandler
     public OrderPlaced handle(PlaceOrder command, Order state) {
         if (state != null) throw new ValidationException("Order already exists");
         return new OrderPlaced(command.id(), command.customer());
     }
 
-    @ApplyEvent
+    @EventSourcingHandler
     public Order apply(OrderPlaced event, Order state) {
         return new Order(event.id(), event.customer());
     }
 }
 ```
 
-The command handler decides which event to record. The `@ApplyEvent` method is the only place that changes aggregate state.
+The command handler decides which event to record. The `@EventSourcingHandler` method is the only place that changes aggregate state.
 
 ## Start Eventify
 

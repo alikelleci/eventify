@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.core.aggregate;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayException;
 import io.github.alikelleci.eventify.core.aggregate.exception.SnapshotOutdatedException;
 import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
-import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
+import io.github.alikelleci.eventify.core.aggregate.internal.EventSourcingHandlerMethod;
 import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotPolicy;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventStore;
@@ -27,16 +27,16 @@ public final class AggregateRepository {
 
   private final EventStore eventStore;
   private final SnapshotStore snapshotStore;
-  private final Map<Class<?>, ApplyEventMethod> applyMethods;
+  private final Map<Class<?>, EventSourcingHandlerMethod> applyMethods;
   private final Map<String, AggregateDefinition> definitions;
   private final AggregateDefinition definition;
 
-  public AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, ApplyEventMethod> applyMethods,
+  public AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, EventSourcingHandlerMethod> applyMethods,
                              Collection<Class<?>> aggregateClasses) {
     this(eventStore, snapshotStore, applyMethods, definitionsOf(aggregateClasses), null);
   }
 
-  private AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, ApplyEventMethod> applyMethods,
+  private AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, EventSourcingHandlerMethod> applyMethods,
                               Map<String, AggregateDefinition> definitions, AggregateDefinition definition) {
     this.eventStore = eventStore;
     this.snapshotStore = snapshotStore;
@@ -188,7 +188,7 @@ public final class AggregateRepository {
             + " are incomplete or out of order: expected #" + (state.getVersion() + 1) + ", found #" + event.getSequence()
             + " (" + event.getType() + ", event " + event.getId() + ").");
       }
-      ApplyEventMethod handler = applyMethods.get(event.getPayload().getClass());
+      EventSourcingHandlerMethod handler = applyMethods.get(event.getPayload().getClass());
       log.trace("Replaying event {} ({}) at sequence {}: handler {}", event.getType(), event.getAggregateId(),
           event.getSequence(), handler != null ? "found" : "absent, payload unchanged");
       Object payload = state.getPayload();

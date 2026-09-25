@@ -29,7 +29,7 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
     Event event = fixedKeyRecord.value();
 
     handlers.eventHandlers(event.getPayload().getClass()).stream()
-        .sorted(Comparator.comparingInt(HandleEventMethod::getPriority).reversed())
+        .sorted(Comparator.comparingInt(EventHandlerMethod::getPriority).reversed())
         .peek(handler -> log.debug("Handling event: {} ({})", event.getType(), event.getAggregateId()))
         .forEach(handler -> handler.handle(event));
 
