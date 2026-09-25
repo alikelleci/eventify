@@ -10,7 +10,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 @Getter
-public class UpcasterMethod  {
+public class UpcastMethod  {
 
   private final Object handler;
   private final Method method;
@@ -18,7 +18,7 @@ public class UpcasterMethod  {
   private final String type;
   private final int revision;
 
-  public UpcasterMethod(Object handler, Method method) {
+  public UpcastMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
     Upcast upcast = method.getAnnotation(Upcast.class);

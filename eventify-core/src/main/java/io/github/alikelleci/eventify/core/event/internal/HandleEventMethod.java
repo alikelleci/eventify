@@ -13,13 +13,13 @@ import java.lang.reflect.Parameter;
 import java.util.Optional;
 
 @Getter
-public class EventHandlerMethod {
+public class HandleEventMethod {
 
   private final Object handler;
   private final Method method;
   private final int priority;
 
-  public EventHandlerMethod(Object handler, Method method) {
+  public HandleEventMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
     this.priority = Optional.ofNullable(method.getAnnotation(Priority.class))

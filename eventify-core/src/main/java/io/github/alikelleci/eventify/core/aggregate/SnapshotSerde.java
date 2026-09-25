@@ -1,8 +1,7 @@
-package io.github.alikelleci.eventify.core.aggregate.internal;
+package io.github.alikelleci.eventify.core.aggregate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.common.errors.SerializationException;

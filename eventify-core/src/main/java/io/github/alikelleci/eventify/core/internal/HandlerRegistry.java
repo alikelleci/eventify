@@ -5,9 +5,9 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.ApplyEvent;
 import io.github.alikelleci.eventify.core.aggregate.internal.AggregateTypes;
 import io.github.alikelleci.eventify.core.aggregate.internal.ApplyEventMethod;
 import io.github.alikelleci.eventify.core.command.annotation.HandleCommand;
-import io.github.alikelleci.eventify.core.command.internal.CommandHandlerMethod;
+import io.github.alikelleci.eventify.core.command.internal.HandleCommandMethod;
 import io.github.alikelleci.eventify.core.event.annotation.HandleEvent;
-import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
+import io.github.alikelleci.eventify.core.event.internal.HandleEventMethod;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.handler.annotation.HandleMessage;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
@@ -36,9 +36,9 @@ import java.util.stream.Stream;
 /** The handlers and upcasters of one Eventify instance; never changed after construction. */
 public class HandlerRegistry {
 
-  private final Map<Class<?>, CommandHandlerMethod> commandHandlers = new HashMap<>();
+  private final Map<Class<?>, HandleCommandMethod> commandHandlers = new HashMap<>();
   private final Map<Class<?>, ApplyEventMethod> eventSourcingHandlers = new HashMap<>();
-  private final MultiValuedMap<Class<?>, EventHandlerMethod> eventHandlers = new ArrayListValuedHashMap<>();
+  private final MultiValuedMap<Class<?>, HandleEventMethod> eventHandlers = new ArrayListValuedHashMap<>();
   private final Upcasters upcasters;
 
   public HandlerRegistry(List<Object> handlers) {
@@ -60,7 +60,7 @@ public class HandlerRegistry {
   /** The {@link AggregateRoot} classes the handlers take or return. */
   public Set<Class<?>> aggregateClasses() {
     return Stream.concat(
-            commandHandlers.values().stream().map(CommandHandlerMethod::getMethod),
+            commandHandlers.values().stream().map(HandleCommandMethod::getMethod),
             eventSourcingHandlers.values().stream().map(ApplyEventMethod::getMethod))
         .flatMap(method -> Stream.concat(Stream.of(method.getReturnType()), Arrays.stream(method.getParameterTypes())))
         .filter(parameterClass -> parameterClass.isAnnotationPresent(AggregateRoot.class))
@@ -68,11 +68,11 @@ public class HandlerRegistry {
   }
 
   /** The command handler for this command class; {@code null} when there is none. */
-  public CommandHandlerMethod commandHandler(Class<?> commandClass) {
+  public HandleCommandMethod commandHandler(Class<?> commandClass) {
     return commandHandlers.get(commandClass);
   }
 
-  public Map<Class<?>, CommandHandlerMethod> commandHandlers() {
+  public Map<Class<?>, HandleCommandMethod> commandHandlers() {
     return Collections.unmodifiableMap(commandHandlers);
   }
 
@@ -93,12 +93,12 @@ public class HandlerRegistry {
     return Collections.unmodifiableMap(eventSourcingHandlers);
   }
 
-  public Collection<EventHandlerMethod> eventHandlers() {
+  public Collection<HandleEventMethod> eventHandlers() {
     return Collections.unmodifiableCollection(eventHandlers.values());
   }
 
   /** The event handlers for this event class, in the order they were registered; empty when there are none. */
-  public Collection<EventHandlerMethod> eventHandlers(Class<?> eventClass) {
+  public Collection<HandleEventMethod> eventHandlers(Class<?> eventClass) {
     return Collections.unmodifiableCollection(eventHandlers.get(eventClass));
   }
 
@@ -149,7 +149,7 @@ public class HandlerRegistry {
     Class<?> messageClass = method.getParameters()[0].getType();
     requireTopicOnHandledMessage("@HandleCommand", messageClass, method);
     String aggregateType = AggregateTypes.of(aggregateOf(method));
-    CommandHandlerMethod previous = commandHandlers.put(messageClass, new CommandHandlerMethod(handler, method, aggregateType));
+    HandleCommandMethod previous = commandHandlers.put(messageClass, new HandleCommandMethod(handler, method, aggregateType));
     if (previous != null) {
       requireSingleHandler("@HandleCommand", messageClass, previous.getHandler(), previous.getMethod(), handler, method);
     }
@@ -175,7 +175,7 @@ public class HandlerRegistry {
     boolean registered = eventHandlers.get(messageClass).stream()
         .anyMatch(previous -> previous.getHandler() == handler && previous.getMethod().equals(method));
     if (!registered) {
-      eventHandlers.put(messageClass, new EventHandlerMethod(handler, method));
+      eventHandlers.put(messageClass, new HandleEventMethod(handler, method));
     }
   }
 

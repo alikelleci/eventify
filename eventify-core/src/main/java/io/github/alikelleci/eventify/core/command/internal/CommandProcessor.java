@@ -58,7 +58,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   public void process(FixedKeyRecord<String, Command> fixedKeyRecord) {
     String aggregateId = fixedKeyRecord.key();
     Command command = fixedKeyRecord.value();
-    CommandHandlerMethod commandHandler = handlers.commandHandler(command.getPayload().getClass());
+    HandleCommandMethod commandHandler = handlers.commandHandler(command.getPayload().getClass());
     if (commandHandler == null) {
       log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
       return; // not a command of this application

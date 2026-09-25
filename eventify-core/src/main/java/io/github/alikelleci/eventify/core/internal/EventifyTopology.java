@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.core.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
-import io.github.alikelleci.eventify.core.aggregate.internal.SnapshotSerde;
+import io.github.alikelleci.eventify.core.aggregate.SnapshotSerde;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.CommandResultSerde;
