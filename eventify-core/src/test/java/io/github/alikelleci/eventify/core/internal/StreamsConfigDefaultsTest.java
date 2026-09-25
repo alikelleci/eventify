@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.internal;
 
 import io.github.alikelleci.eventify.core.Eventify;
+import io.github.alikelleci.eventify.core.kafka.StreamsConfigDefaults;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.DefaultProductionExceptionHandler;
 import org.apache.kafka.streams.errors.LogAndContinueProcessingExceptionHandler;

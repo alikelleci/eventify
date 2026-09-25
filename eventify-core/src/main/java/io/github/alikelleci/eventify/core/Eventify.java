@@ -7,7 +7,7 @@ import io.github.alikelleci.eventify.core.event.EventStore;
 import io.github.alikelleci.eventify.core.internal.EventifyTopology;
 import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.internal.StoreNames;
-import io.github.alikelleci.eventify.core.internal.StreamsConfigDefaults;
+import io.github.alikelleci.eventify.core.kafka.StreamsConfigDefaults;
 import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
 import io.github.alikelleci.eventify.core.plugin.LoggingPlugin;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
