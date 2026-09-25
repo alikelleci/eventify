@@ -85,7 +85,7 @@ public class Eventify implements PluginContext {
     return objectMapper;
   }
 
-  /** Returns the running client, or {@code null} before start. */
+  /** Returns Kafka Streams, or {@code null} before the first start. */
   @Override
   public KafkaStreams getKafkaStreams() {
     return kafkaStreams;
@@ -184,8 +184,7 @@ public class Eventify implements PluginContext {
   }
 
   /**
-   * Closes Kafka Streams and the plugins, once; a second caller waits until Kafka Streams is closed.
-   * From a stream thread the close runs on another thread, since Kafka Streams has to join that thread.
+   * Closes Kafka Streams and the plugins once. A stream thread returns before they are closed.
    */
   public void stop() {
     Runnable stop = null;

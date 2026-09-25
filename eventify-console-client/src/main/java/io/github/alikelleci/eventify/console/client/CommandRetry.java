@@ -56,8 +56,7 @@ class CommandRetry {
   }
 
   /**
-   * Sends the command again, as a new command: with its own id and correlation id, so the events it produces are its
-   * own, and {@link #RETRY_OF} pointing to the command it retries.
+   * Sends the command again: with its own id, the same correlation id and {@link #RETRY_OF} pointing to the command.
    *
    * @param json the command as the console received it. Only a command this application handles is accepted, checked
    *             before it is read: the JSON names the class to create.

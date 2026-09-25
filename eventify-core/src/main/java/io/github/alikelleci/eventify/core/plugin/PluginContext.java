@@ -15,7 +15,7 @@ public interface PluginContext {
 
   ObjectMapper getObjectMapper();
 
-  /** The running Kafka Streams; {@code null} before Eventify is started. */
+  /** Kafka Streams; {@code null} before Eventify starts for the first time. */
   KafkaStreams getKafkaStreams();
 
   /** The {@code @AggregateRoot} names of the aggregates this instance handles. */
