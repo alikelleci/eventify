@@ -23,7 +23,7 @@ An event-sourcing handler returns the next aggregate state.
 
 ```java
 @EventSourcingHandler
-public Order apply(OrderShipped event, Order state) {
+public Order handle(OrderShipped event, Order state) {
     return state.toBuilder().trackingNumber(event.trackingNumber()).build();
 }
 ```
@@ -38,7 +38,7 @@ Use `@EventHandler` for work outside the aggregate, such as projections or notif
 
 ```java
 @EventHandler
-public void on(OrderPlaced event) {
+public void handle(OrderPlaced event) {
     ordersView.insert(event.id(), event.customer());
 }
 ```

@@ -77,17 +77,17 @@ class AggregateHistoryTest {
   /** Like most handlers, it needs the state before an event that changes the aggregate: it fails without one. */
   public static class CounterHandler {
     @EventSourcingHandler
-    public Counter apply(Started event, Counter state) {
+    public Counter handle(Started event, Counter state) {
       return new Counter(event.id, 1);
     }
 
     @EventSourcingHandler
-    public Counter apply(Incremented event, Counter state) {
+    public Counter handle(Incremented event, Counter state) {
       return new Counter(event.id, state.value + 1);
     }
 
     @EventSourcingHandler
-    public Counter apply(Removed event, Counter state) {
+    public Counter handle(Removed event, Counter state) {
       return null;
     }
   }

@@ -82,12 +82,12 @@ public class AccountMessages {
     }
 
     @EventSourcingHandler
-    public Account apply(AccountOpened event, Account state) {
+    public Account handle(AccountOpened event, Account state) {
       return Account.builder().id(event.getId()).balance(0).build();
     }
 
     @EventSourcingHandler
-    public Account apply(Deposited event, Account state) {
+    public Account handle(Deposited event, Account state) {
       return state.toBuilder().balance(state.getBalance() + event.getAmount()).build();
     }
   }

@@ -64,7 +64,7 @@ class UpcastingOnReplayTest {
     }
 
     @EventSourcingHandler
-    public Profile apply(Registered event, Profile state) {
+    public Profile handle(Registered event, Profile state) {
       return new Profile(event.id(), event.name());
     }
   }

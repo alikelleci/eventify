@@ -17,7 +17,7 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CORRELATIO
 public class OrderEventSourcingHandler {
 
   @EventSourcingHandler
-  public Order apply(OrderPlaced event, Order state,
+  public Order handle(OrderPlaced event, Order state,
                      Metadata metadata,
                      @Timestamp Instant timestamp,
                      @MessageId String messageId,
@@ -33,14 +33,14 @@ public class OrderEventSourcingHandler {
   }
 
   @EventSourcingHandler
-  public Order apply(OrderConfirmed event, Order state) {
+  public Order handle(OrderConfirmed event, Order state) {
     return state.toBuilder()
         .status("CONFIRMED")
         .build();
   }
 
   @EventSourcingHandler
-  public Order apply(OrderShipped event, Order state) {
+  public Order handle(OrderShipped event, Order state) {
     return state.toBuilder()
         .status("SHIPPED")
         .trackingNumber(event.getTrackingNumber())
@@ -48,7 +48,7 @@ public class OrderEventSourcingHandler {
   }
 
   @EventSourcingHandler
-  public Order apply(OrderCancelled event, Order state) {
+  public Order handle(OrderCancelled event, Order state) {
     return null; // aggregate removed on cancellation
   }
 }

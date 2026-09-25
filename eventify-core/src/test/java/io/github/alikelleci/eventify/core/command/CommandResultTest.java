@@ -81,7 +81,7 @@ class CommandResultTest {
     }
 
     @EventSourcingHandler
-    public Cart apply(ItemAdded event, Cart state) {
+    public Cart handle(ItemAdded event, Cart state) {
       return new Cart(event.id(), state == null ? 1 : state.items() + 1);
     }
   }

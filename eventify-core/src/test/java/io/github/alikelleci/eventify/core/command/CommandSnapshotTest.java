@@ -66,10 +66,10 @@ class CommandSnapshotTest {
         default -> List.of(new Added(command.id(), 5));
       };
     }
-    @EventSourcingHandler public Counter apply(Created event, Counter state) { return new Counter(event.id(), 1); }
-    @EventSourcingHandler public Counter apply(Added event, Counter state) { return new Counter(event.id(), state.value + event.amount()); }
-    @EventSourcingHandler public Counter apply(Broken event, Counter state) { throw new IllegalStateException("event rejected"); }
-    @EventSourcingHandler public Counter apply(Removed event, Counter state) { return null; }
+    @EventSourcingHandler public Counter handle(Created event, Counter state) { return new Counter(event.id(), 1); }
+    @EventSourcingHandler public Counter handle(Added event, Counter state) { return new Counter(event.id(), state.value + event.amount()); }
+    @EventSourcingHandler public Counter handle(Broken event, Counter state) { throw new IllegalStateException("event rejected"); }
+    @EventSourcingHandler public Counter handle(Removed event, Counter state) { return null; }
   }
 
   private TopologyTestDriver driver;
@@ -162,7 +162,7 @@ class CommandSnapshotTest {
 
   public static class UnwritableHandler {
     @CommandHandler public Touched handle(Touch command, Unwritable state) { return new Touched(command.id()); }
-    @EventSourcingHandler public Unwritable apply(Touched event, Unwritable state) { return new Unwritable(event.id()); }
+    @EventSourcingHandler public Unwritable handle(Touched event, Unwritable state) { return new Unwritable(event.id()); }
   }
 
   @Test

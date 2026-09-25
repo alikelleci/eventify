@@ -138,17 +138,17 @@ class CommandTransactionIT {
     }
 
     @EventSourcingHandler
-    public Order apply(OrderPlaced event, Order state) {
+    public Order handle(OrderPlaced event, Order state) {
       return Order.builder().id(event.getId()).build();
     }
 
     @EventSourcingHandler
-    public Order apply(EventWithoutTopic event, Order state) {
+    public Order handle(EventWithoutTopic event, Order state) {
       return state;
     }
 
     @EventSourcingHandler
-    public Order apply(EventThatFailsWhenSent event, Order state) {
+    public Order handle(EventThatFailsWhenSent event, Order state) {
       return Order.builder().id(event.getId()).build();
     }
   }

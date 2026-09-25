@@ -34,7 +34,7 @@ public class OrderHandler {
     }
 
     @EventSourcingHandler
-    public Order apply(OrderPlaced event, Order state) {
+    public Order handle(OrderPlaced event, Order state) {
         return new Order(event.id(), event.customer());
     }
 }

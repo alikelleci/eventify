@@ -60,7 +60,7 @@ class SnapshotRevisionTest {
     }
 
     @EventSourcingHandler
-    public Counter apply(Incremented event, Counter state) {
+    public Counter handle(Incremented event, Counter state) {
       return new Counter(event.id(), state == null ? 1 : state.count() + 1);
     }
   }

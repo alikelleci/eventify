@@ -76,12 +76,12 @@ class AggregateRemovalTest {
     }
 
     @EventSourcingHandler
-    public Tab apply(Opened event, Tab state) {
+    public Tab handle(Opened event, Tab state) {
       return new Tab(event.id());
     }
 
     @EventSourcingHandler
-    public Tab apply(Closed event, Tab state) {
+    public Tab handle(Closed event, Tab state) {
       return null;
     }
   }

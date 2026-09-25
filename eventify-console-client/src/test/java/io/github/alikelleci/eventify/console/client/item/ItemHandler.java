@@ -13,7 +13,7 @@ public class ItemHandler {
   }
 
   @EventSourcingHandler
-  public Item apply(ItemCreated event, Item state) {
+  public Item handle(ItemCreated event, Item state) {
     return Item.builder().id(event.getId()).name(event.getName()).build();
   }
 }

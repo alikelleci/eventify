@@ -82,7 +82,7 @@ class AggregateIdMismatchTest {
     }
 
     @EventSourcingHandler
-    public Counter apply(Incremented event, Counter state) {
+    public Counter handle(Incremented event, Counter state) {
       return Counter.builder().id(event.getStateId()).value(state != null ? state.getValue() + 1 : 1).build();
     }
   }

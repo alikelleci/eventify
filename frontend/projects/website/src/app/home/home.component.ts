@@ -29,7 +29,7 @@ export class HomeComponent {
     }
 
     @EventSourcingHandler
-    Order apply(OrderPlaced event, Order state) {
+    Order handle(OrderPlaced event, Order state) {
         return new Order(event.id(), event.customer());
     }
 }`);
@@ -58,7 +58,7 @@ export class HomeComponent {
     }
 
     @EventSourcingHandler
-    Order apply(OrderPlaced event, Order state) {
+    Order handle(OrderPlaced event, Order state) {
         return new Order(event.id(), event.customer());
     }
 }`,

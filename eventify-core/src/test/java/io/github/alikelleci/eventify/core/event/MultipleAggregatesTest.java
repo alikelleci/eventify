@@ -65,7 +65,7 @@ class MultipleAggregatesTest {
     }
 
     @EventSourcingHandler
-    public Order apply(OrderPlaced event, Order state) {
+    public Order handle(OrderPlaced event, Order state) {
       return new Order(event.id(), event.customer(), state == null ? 1 : state.events() + 1);
     }
   }
@@ -77,7 +77,7 @@ class MultipleAggregatesTest {
     }
 
     @EventSourcingHandler
-    public Invoice apply(InvoiceSent event, Invoice state) {
+    public Invoice handle(InvoiceSent event, Invoice state) {
       return new Invoice(event.id(), event.amount(), state == null ? 1 : state.events() + 1);
     }
   }

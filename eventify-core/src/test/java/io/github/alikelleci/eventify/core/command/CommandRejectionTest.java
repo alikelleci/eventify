@@ -199,17 +199,17 @@ class CommandRejectionTest {
     }
 
     @EventSourcingHandler
-    public Counter apply(Created event, Counter state) {
+    public Counter handle(Created event, Counter state) {
       return Counter.builder().id(event.getId()).value(state != null ? state.getValue() + 1 : 1).build();
     }
 
     @EventSourcingHandler
-    public Counter apply(Broken event, Counter state) {
+    public Counter handle(Broken event, Counter state) {
       throw new IllegalStateException("cannot apply");
     }
 
     @EventSourcingHandler
-    public Counter apply(Lost event, Counter state) {
+    public Counter handle(Lost event, Counter state) {
       if (event.reason() == null) {
         throw new IllegalStateException("no reason");
       }
@@ -217,17 +217,17 @@ class CommandRejectionTest {
     }
 
     @EventSourcingHandler
-    public Counter apply(Misplaced event, Counter state) {
+    public Counter handle(Misplaced event, Counter state) {
       return state;
     }
 
     @EventSourcingHandler
-    public Counter apply(Corrupted event, Counter state) {
+    public Counter handle(Corrupted event, Counter state) {
       return state;
     }
 
     @EventSourcingHandler
-    public Counter apply(Flaked event, Counter state) {
+    public Counter handle(Flaked event, Counter state) {
       return state;
     }
   }

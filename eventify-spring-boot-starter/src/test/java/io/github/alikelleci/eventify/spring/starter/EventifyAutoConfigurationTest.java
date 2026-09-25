@@ -38,7 +38,7 @@ class EventifyAutoConfigurationTest {
 
   public static class PingHandler {
     @EventHandler
-    public void on(Pinged event) {
+    public void handle(Pinged event) {
     }
 
     @Async

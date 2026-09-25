@@ -49,7 +49,7 @@ class CommandValidationTest {
     }
 
     @EventSourcingHandler
-    public Customer apply(Registered event, Customer state) {
+    public Customer handle(Registered event, Customer state) {
       return new Customer(event.id(), event.name());
     }
   }

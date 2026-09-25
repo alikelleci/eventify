@@ -56,7 +56,7 @@ class HandlerRegistrationTest {
     }
 
     @EventSourcingHandler
-    public Light apply(SwitchedOn event, Light state) {
+    public Light handle(SwitchedOn event, Light state) {
       return new Light(event.getId());
     }
   }
@@ -72,12 +72,12 @@ class HandlerRegistrationTest {
   /** Two event sourcing handlers for the same event in one class. */
   public static class TwiceEventSourcingHandler {
     @EventSourcingHandler
-    public Light apply(SwitchedOn event, Light state) {
+    public Light handle(SwitchedOn event, Light state) {
       return new Light(event.getId());
     }
 
     @EventSourcingHandler
-    public Light apply(SwitchedOn event, Light state, Metadata metadata) {
+    public Light handle(SwitchedOn event, Light state, Metadata metadata) {
       return new Light(event.getId());
     }
   }
@@ -92,7 +92,7 @@ class HandlerRegistrationTest {
 
     @Override
     @EventSourcingHandler
-    public Light apply(SwitchedOn event, Light state) {
+    public Light handle(SwitchedOn event, Light state) {
       return new Light(event.getId());
     }
   }
@@ -125,7 +125,7 @@ class HandlerRegistrationTest {
     }
 
     @EventSourcingHandler
-    public Fan apply(FanSwitchedOn event, Fan state) {
+    public Fan handle(FanSwitchedOn event, Fan state) {
       return new Fan(event.getId());
     }
   }
@@ -133,7 +133,7 @@ class HandlerRegistrationTest {
   /** An event sourcing handler whose declared result does not match the aggregate state it receives. */
   public static class WrongResultEventSourcingHandler {
     @EventSourcingHandler
-    public Fan apply(SwitchedOn event, Light state) {
+    public Fan handle(SwitchedOn event, Light state) {
       return new Fan(event.getId());
     }
   }
@@ -176,26 +176,26 @@ class HandlerRegistrationTest {
 
   public static class FirstEventHandler {
     @EventHandler
-    public void on(SwitchedOn event) {
+    public void handle(SwitchedOn event) {
     }
   }
 
   public static class SecondEventHandler {
     @EventHandler
-    public void on(SwitchedOn event) {
+    public void handle(SwitchedOn event) {
     }
   }
 
   /** Annotated on the interface and on its implementation: still one handler. */
   public interface SwitchListener {
     @EventHandler
-    void on(SwitchedOn event);
+    void handle(SwitchedOn event);
   }
 
   public static class AnnotatedTwiceEventHandler implements SwitchListener {
     @EventHandler
     @Override
-    public void on(SwitchedOn event) {
+    public void handle(SwitchedOn event) {
     }
   }
 
@@ -203,13 +203,13 @@ class HandlerRegistrationTest {
   public static class OverridingEventHandler extends FirstEventHandler {
     @EventHandler
     @Override
-    public void on(SwitchedOn event) {
+    public void handle(SwitchedOn event) {
     }
   }
 
   public static class HandlerWithoutMessage {
     @EventHandler
-    public void on() {
+    public void handle() {
     }
   }
 
@@ -234,7 +234,7 @@ class HandlerRegistrationTest {
 
   public static class HandlerWithoutEventTopic {
     @EventHandler
-    public void on(UnroutedEvent event) {
+    public void handle(UnroutedEvent event) {
     }
   }
 
@@ -376,7 +376,7 @@ class HandlerRegistrationTest {
 
   public static class UnsupportedParameterHandler {
     @EventHandler
-    public void on(SwitchedOn event, String unsupported) {
+    public void handle(SwitchedOn event, String unsupported) {
     }
   }
 
