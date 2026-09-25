@@ -27,20 +27,20 @@ public final class AggregateRepository {
 
   private final EventStore eventStore;
   private final SnapshotStore snapshotStore;
-  private final Map<Class<?>, EventSourcingHandlerMethod> applyMethods;
+  private final Map<Class<?>, EventSourcingHandlerMethod> eventSourcingHandlers;
   private final Map<String, AggregateDefinition> definitions;
   private final AggregateDefinition definition;
 
-  public AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, EventSourcingHandlerMethod> applyMethods,
+  public AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, EventSourcingHandlerMethod> eventSourcingHandlers,
                              Collection<Class<?>> aggregateClasses) {
-    this(eventStore, snapshotStore, applyMethods, definitionsOf(aggregateClasses), null);
+    this(eventStore, snapshotStore, eventSourcingHandlers, definitionsOf(aggregateClasses), null);
   }
 
-  private AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, EventSourcingHandlerMethod> applyMethods,
+  private AggregateRepository(EventStore eventStore, SnapshotStore snapshotStore, Map<Class<?>, EventSourcingHandlerMethod> eventSourcingHandlers,
                               Map<String, AggregateDefinition> definitions, AggregateDefinition definition) {
     this.eventStore = eventStore;
     this.snapshotStore = snapshotStore;
-    this.applyMethods = applyMethods;
+    this.eventSourcingHandlers = eventSourcingHandlers;
     this.definitions = definitions;
     this.definition = definition;
   }
@@ -52,7 +52,7 @@ public final class AggregateRepository {
       throw new IllegalArgumentException("This Eventify instance has no aggregate named '" + aggregateType
           + "'. It handles " + definitions.keySet() + ".");
     }
-    return new AggregateRepository(eventStore, snapshotStore, applyMethods, definitions, definition);
+    return new AggregateRepository(eventStore, snapshotStore, eventSourcingHandlers, definitions, definition);
   }
 
   /** Returns the selected aggregate type. */
@@ -188,12 +188,12 @@ public final class AggregateRepository {
             + " are incomplete or out of order: expected #" + (state.getVersion() + 1) + ", found #" + event.getSequence()
             + " (" + event.getType() + ", event " + event.getId() + ").");
       }
-      EventSourcingHandlerMethod handler = applyMethods.get(event.getPayload().getClass());
+      EventSourcingHandlerMethod handler = eventSourcingHandlers.get(event.getPayload().getClass());
       log.trace("Replaying event {} ({}) at sequence {}: handler {}", event.getType(), event.getAggregateId(),
           event.getSequence(), handler != null ? "found" : "absent, payload unchanged");
       Object payload = state.getPayload();
       if (handler != null) {
-        payload = handler.apply(event, state);
+        payload = handler.handle(event, state);
         String wrongPayload = definition().whyPayloadDoesNotMatch(payload);
         if (wrongPayload != null) {
           throw new EventReplayException("The state after stored event " + event.getId() + " (" + event.getType() + ") cannot be used: " + wrongPayload + ".");

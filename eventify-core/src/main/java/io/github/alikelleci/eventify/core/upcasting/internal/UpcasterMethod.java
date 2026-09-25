@@ -21,9 +21,9 @@ public class UpcasterMethod  {
   public UpcasterMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
-    Upcaster upcast = method.getAnnotation(Upcaster.class);
-    this.type = upcast.type();
-    this.revision = upcast.revision();
+    Upcaster annotation = method.getAnnotation(Upcaster.class);
+    this.type = annotation.type();
+    this.revision = annotation.revision();
   }
 
   public JsonNode handle(JsonNode jsonNode) {

@@ -219,7 +219,7 @@ public class HandlerRegistry {
     }
   }
 
-  /** An apply method must return the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
+  /** An event sourcing handler must return the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
   private static void requireMatchingAggregateReturnType(Method method) {
     Class<?> mismatchingAggregate = aggregateParameterClasses(method).stream()
         .filter(aggregate -> method.getReturnType() != aggregate)

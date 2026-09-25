@@ -70,7 +70,7 @@ class HandlerRegistrationTest {
   }
 
   /** Two event sourcing handlers for the same event in one class. */
-  public static class TwiceApplyingHandler {
+  public static class TwiceEventSourcingHandler {
     @EventSourcingHandler
     public Light apply(SwitchedOn event, Light state) {
       return new Light(event.getId());
@@ -130,8 +130,8 @@ class HandlerRegistrationTest {
     }
   }
 
-  /** An apply method whose declared result does not match the aggregate state it receives. */
-  public static class WrongApplyResultHandler {
+  /** An event sourcing handler whose declared result does not match the aggregate state it receives. */
+  public static class WrongResultEventSourcingHandler {
     @EventSourcingHandler
     public Fan apply(SwitchedOn event, Light state) {
       return new Fan(event.getId());
@@ -253,7 +253,7 @@ class HandlerRegistrationTest {
   @DisplayName("Should refuse a second event sourcing handler for the same event")
   void aSecondEventSourcingHandlerForTheSameEventIsRefused() {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
-        .registerHandler(new TwiceApplyingHandler())
+        .registerHandler(new TwiceEventSourcingHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining(SwitchedOn.class.getName());
@@ -312,7 +312,7 @@ class HandlerRegistrationTest {
   @DisplayName("Should refuse an event sourcing handler that returns another aggregate type")
   void anEventSourcingHandlerWithTheWrongAggregateResultIsRefused() {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
-        .registerHandler(new WrongApplyResultHandler())
+        .registerHandler(new WrongResultEventSourcingHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("@EventSourcingHandler", "Fan", "Light");

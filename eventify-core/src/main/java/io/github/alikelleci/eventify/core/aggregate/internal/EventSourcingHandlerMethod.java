@@ -27,7 +27,7 @@ public class EventSourcingHandlerMethod {
   }
 
   /** The aggregate after the event; {@code null} when the event removes it. */
-  public Object apply(Event event, AggregateState state) {
+  public Object handle(Event event, AggregateState state) {
     try {
       Object result = invokeHandler(event, state);
       requireSameAggregateId(event, result);
