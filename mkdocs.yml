@@ -72,6 +72,7 @@ nav:
       - Testing: testing.md
       - Eventify Console: console.md
   - Upgrading:
+      - Upgrading to 5.0: upgrading.md
       - Migrating from 4.x: migration.md
   - Reference:
       - Annotation Reference: annotation-reference.md

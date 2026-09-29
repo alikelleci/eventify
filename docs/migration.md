@@ -20,7 +20,8 @@ The command, event and result topics are left alone.
 
 ## Before the day
 
-**Port the application to Eventify 5** and test it. Two things must match the stored data:
+**Port the application to Eventify 5** and test it; [Upgrading to 5.0](upgrading.md) lists what changes. Two things
+must match the stored data:
 
 - the `@AggregateRoot` name: you pass the same name to the tool as `--aggregate-type`;
 - the event classes: a stored event names its class (`@class`). Keep the classes in their package, or add an
