@@ -24,6 +24,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.config.ConfigResource;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.common.utils.Utils;
@@ -242,6 +243,80 @@ class MigrationIT {
     assertThat(MigrationTool.run(args("verify", app))).isZero();
   }
 
+  @Test
+  @DisplayName("Should back up an Eventify 4 store and restore it exactly after the migration")
+  void backupAndRestore() throws Exception {
+    String app = "restored";
+    createChangelogs(app);
+    String superseded = writeV4Event(app, "order-1", 0, "1");
+    write(app + "-event-store-changelog", partitionOf("order-1"), superseded, JSON.writeValueAsString(v4Event(superseded, "order-1", 0, "2")));
+    writeV4Event(app, "order-1", 1, "10.50");
+    String deleted = writeV4Event(app, "order-2", 0, "1");
+    write(app + "-event-store-changelog", partitionOf("order-2"), deleted, null);
+    writeV4Event(app, "order-3", 0, "1");
+    write(app + "-snapshot-store-changelog", partitionOf("order-1"), "order-1", "{\"version\":2}");
+    Map<String, String> events = live(app + "-event-store-changelog");
+    Map<String, String> snapshots = live(app + "-snapshot-store-changelog");
+
+    assertThat(MigrationTool.run(args("backup", app))).isZero();
+    assertThat(live(app + "-event-store-changelog" + Backup.SUFFIX)).isEqualTo(events);
+    assertThat(live(app + "-snapshot-store-changelog" + Backup.SUFFIX)).isEqualTo(snapshots);
+    assertThat(MigrationTool.run(args("backup", app))).as("a second backup would replace the first").isEqualTo(1);
+
+    assertThat(MigrationTool.run(args("migrate", app, "--drop-snapshots"))).isZero();
+    assertThat(live(app + "-event-store-changelog")).isNotEqualTo(events);
+
+    assertThat(MigrationTool.run(args("restore", app))).isZero();
+    assertThat(live(app + "-event-store-changelog")).isEqualTo(events);
+    assertThat(live(app + "-snapshot-store-changelog")).isEqualTo(snapshots);
+  }
+
+  @Test
+  @DisplayName("Should copy the partitions and topic settings of the changelogs")
+  void backupTopicsLookLikeTheChangelogs() throws Exception {
+    String app = "settings";
+    createChangelogs(app);
+    writeV4Event(app, "order-1", 0, "1");
+
+    assertThat(MigrationTool.run(args("backup", app))).isZero();
+
+    try (AdminClient admin = admin()) {
+      String backup = app + "-event-store-changelog" + Backup.SUFFIX;
+      assertThat(admin.describeTopics(List.of(backup)).allTopicNames().get().get(backup).partitions()).hasSize(PARTITIONS);
+      ConfigResource resource = new ConfigResource(ConfigResource.Type.TOPIC, backup);
+      assertThat(admin.describeConfigs(List.of(resource)).all().get().get(resource).get("cleanup.policy").value()).isEqualTo("compact");
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse a backup of a store that is already migrated")
+  void refusesABackupAfterTheMigration() throws Exception {
+    String app = "late-backup";
+    createChangelogs(app);
+    writeV4Event(app, "order-1", 0, "1");
+    assertThat(migrate(app)).isZero();
+
+    assertThat(MigrationTool.run(args("backup", app))).isEqualTo(1);
+    assertThat(topicExists(app + "-event-store-changelog" + Backup.SUFFIX)).isFalse();
+  }
+
+  @Test
+  @DisplayName("Should refuse a restore that would lose events Eventify 5 recorded")
+  void refusesARestoreThatLosesEvents() throws Exception {
+    String app = "moved-on";
+    createChangelogs(app);
+    writeV4Event(app, "order-1", 0, "1");
+    assertThat(MigrationTool.run(args("backup", app))).isZero();
+    assertThat(migrate(app)).isZero();
+    ObjectNode recorded = (ObjectNode) v4Event("0b6f7c2e-5d1a-4c3e-9f7a-2b8d4e6a1c90", "order-1", 1, "1");
+    recorded.put("aggregateType", "order").put("sequence", 2);
+    write(app + "-event-store-changelog", partitionOf("order-1"), Keys.v5Event("order", "order-1", 2), JSON.writeValueAsString(recorded));
+    long records = endOffset(app + "-event-store-changelog");
+
+    assertThat(MigrationTool.run(args("restore", app))).isEqualTo(1);
+    assertThat(endOffset(app + "-event-store-changelog")).as("nothing written").isEqualTo(records);
+  }
+
   private static int migrate(String app) {
     return MigrationTool.run(args("migrate", app));
   }
@@ -292,6 +367,19 @@ class MigrationIT {
       if (k.equals(key)) value.append(new String(v, StandardCharsets.UTF_8));
     });
     return value.toString();
+  }
+
+  /** The records that exist in a topic, by key. */
+  private static Map<String, String> live(String topic) {
+    Map<String, String> records = new TreeMap<>();
+    readLive(topic, (key, value) -> records.put(key, new String(value, StandardCharsets.UTF_8)));
+    return records;
+  }
+
+  private static boolean topicExists(String topic) throws Exception {
+    try (AdminClient admin = admin()) {
+      return admin.listTopics().names().get().contains(topic);
+    }
   }
 
   private static void readLive(String topic, BiConsumer<String, byte[]> action) {
