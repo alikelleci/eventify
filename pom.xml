@@ -19,6 +19,7 @@
         <module>eventify-console-client</module>
         <module>eventify-console-server</module>
         <module>eventify-spring-boot-starter</module>
+        <module>eventify-migration</module>
     </modules>
 
     <properties>
