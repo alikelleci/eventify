@@ -15,19 +15,21 @@ import java.util.Properties;
  * Moves the stores of an Eventify 4 application to the Eventify 5 format.
  *
  * <pre>
- * java -jar eventify-migration.jar check --bootstrap-servers host:9092 --application-id my-app --aggregate-type order
- *     [--config client.properties] [--drop-snapshots]
+ * java -jar eventify-migration.jar check|migrate|verify --bootstrap-servers host:9092 --application-id my-app
+ *     --aggregate-type order [--config client.properties] [--drop-snapshots]
  * </pre>
  *
- * Exit code 0: no conflicts; 1: conflicts, see the report; 2: wrong arguments.
+ * Exit code 0: done (check: no conflicts; migrate and verify: complete); 1: see the report; 2: wrong arguments.
  */
 public final class MigrationTool {
 
   private static final String USAGE = """
-      Usage: check --bootstrap-servers <servers> --application-id <id> --aggregate-type <name>
+      Usage: check|migrate|verify --bootstrap-servers <servers> --application-id <id> --aggregate-type <name>
                    [--config <client.properties>] [--drop-snapshots]
 
         check              read both stores and report what the migration would do; writes nothing
+        migrate            check, write, and verify; only while every instance of the application is stopped
+        verify             read both stores and report whether the migration is complete; writes nothing
         --application-id   the application.id of the Eventify 4 application; it names the changelog topics
         --aggregate-type   the @AggregateRoot name of the aggregate in the Eventify 5 application
         --config           Kafka client settings, e.g. security.protocol and sasl.jaas.config
@@ -63,14 +65,35 @@ public final class MigrationTool {
     }
     config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, options.get("--bootstrap-servers"));
 
-    CheckReport report = new MigrationCheck(config, options.get("--aggregate-type"), options.containsKey("--drop-snapshots"))
-        .run(options.get("--application-id"));
-    report.print(System.out);
-    return report.hasConflicts() ? 1 : 0;
+    String command = args[0];
+    String applicationId = options.get("--application-id");
+    MigrationCheck check = new MigrationCheck(config, options.get("--aggregate-type"), options.containsKey("--drop-snapshots"));
+    CheckReport report = check.run(applicationId);
+    if (command.equals("verify")) {
+      report.print(System.out, "Verify");
+      return report.isComplete() ? 0 : 1;
+    }
+    report.print(System.out, "Check");
+    if (command.equals("check") || report.hasConflicts()) {
+      return report.hasConflicts() ? 1 : 0;
+    }
+
+    System.out.println();
+    try {
+      long written = new MigrationWrite(config, check, options.get("--aggregate-type")).run(report);
+      System.out.println("Wrote " + written + " events under their Eventify 5 key.");
+    } catch (IllegalStateException e) {
+      System.out.println("STOPPED: " + e.getMessage());
+      return 1;
+    }
+    System.out.println();
+    CheckReport verified = check.run(applicationId);
+    verified.print(System.out, "Verify");
+    return verified.isComplete() ? 0 : 1;
   }
 
   private static Map<String, String> options(String[] args) {
-    if (args.length == 0 || !args[0].equals("check")) {
+    if (args.length == 0 || !List.of("check", "migrate", "verify").contains(args[0])) {
       throw new IllegalArgumentException(args.length == 0 ? "No command given." : "Unknown command: " + args[0]);
     }
     Map<String, String> options = new HashMap<>();

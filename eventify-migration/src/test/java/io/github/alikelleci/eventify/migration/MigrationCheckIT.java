@@ -101,7 +101,7 @@ class MigrationCheckIT {
         conflict -> assertThat(conflict).contains("has aggregateId \"order-other\""),
         conflict -> assertThat(conflict).contains("is not JSON"),
         conflict -> assertThat(conflict).isEqualTo("Aggregate order-3 has events in partitions 0 and 1."),
-        conflict -> assertThat(conflict).startsWith("Already an Eventify 5 key: order␀order-4␀0000000000000000001"),
+        conflict -> assertThat(conflict).isEqualTo("Event order␀order-4␀0000000000000000001 has no payload with an @class."),
         conflict -> assertThat(conflict).startsWith("1 Eventify 4 snapshots cannot be migrated."));
     assertThat(endOffsets(app + "-event-store-changelog") + endOffsets(app + "-snapshot-store-changelog")).isEqualTo(endOffsets);
   }
@@ -134,14 +134,14 @@ class MigrationCheckIT {
     assertThat(MigrationTool.run(new String[]{"check", "--bootstrap-servers", kafka.getBootstrapServers(),
         "--application-id", "no-such-app", "--aggregate-type", "order"})).isEqualTo(1);
     assertThat(MigrationTool.run(new String[]{"check", "--application-id", "app"})).isEqualTo(2);
-    assertThat(MigrationTool.run(new String[]{"migrate"})).isEqualTo(2);
+    assertThat(MigrationTool.run(new String[]{"rollback"})).isEqualTo(2);
   }
 
   private static CheckReport check(String app, boolean dropSnapshots) {
     Properties config = new Properties();
     config.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     CheckReport report = new MigrationCheck(config, "order", dropSnapshots).run(app);
-    report.print(System.out);
+    report.print(System.out, "Check");
     return report;
   }
 

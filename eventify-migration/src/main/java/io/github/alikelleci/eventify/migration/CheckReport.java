@@ -14,11 +14,13 @@ final class CheckReport {
   private static final int MAX_LISTED = 50;
 
   final String aggregateType;
+  final String applicationId;
   final String eventTopic;
   final String snapshotTopic;
   int eventPartitions;
   int snapshotPartitions;
   long events;
+  long migratedEvents;
   long aggregates;
   String largestAggregate;
   long largestAggregateEvents;
@@ -30,15 +32,21 @@ final class CheckReport {
   long conflictCount;
   Duration duration = Duration.ZERO;
 
-  CheckReport(String aggregateType, String eventTopic, String snapshotTopic, boolean dropSnapshots) {
+  CheckReport(String aggregateType, String applicationId, boolean dropSnapshots) {
     this.aggregateType = aggregateType;
-    this.eventTopic = eventTopic;
-    this.snapshotTopic = snapshotTopic;
+    this.applicationId = applicationId;
+    this.eventTopic = applicationId + "-event-store-changelog";
+    this.snapshotTopic = applicationId + "-snapshot-store-changelog";
     this.dropSnapshots = dropSnapshots;
   }
 
   boolean hasConflicts() {
     return conflictCount > 0;
+  }
+
+  /** Every event is under its Eventify 5 key and no Eventify 4 snapshot is left: Eventify 5 may start. */
+  boolean isComplete() {
+    return !hasConflicts() && eventPartitions > 0 && migratedEvents == events && v4Snapshots == 0;
   }
 
   void conflict(String description) {
@@ -47,12 +55,13 @@ final class CheckReport {
     }
   }
 
-  void print(PrintStream out) {
-    out.println("Eventify migration check: Eventify 4 -> 5, aggregate type \"" + aggregateType + "\". Nothing was written.");
+  void print(PrintStream out, String title) {
+    out.println(title + ": Eventify 4 -> 5, application " + applicationId + ", aggregate type \"" + aggregateType + "\"");
     out.println();
     out.println("Event store    " + eventTopic + " (" + eventPartitions + " partitions)");
     out.println("  " + number(events) + " events in " + number(aggregates) + " aggregates"
         + (largestAggregate == null ? "" : ", the largest is " + largestAggregate + " with " + number(largestAggregateEvents)));
+    out.println("  " + number(events - migratedEvents) + " still under an Eventify 4 key, " + number(migratedEvents) + " migrated");
     if (largestAggregate != null) {
       out.println("  keys become   " + Keys.printable(Keys.v5Event(aggregateType, largestAggregate, 1)) + " and on");
     }
@@ -60,7 +69,7 @@ final class CheckReport {
     eventClasses.forEach((type, count) -> out.println("    " + pad(number(count), 12) + "  " + type));
     out.println();
     out.println("Snapshot store " + snapshotTopic + " (" + snapshotPartitions + " partitions)");
-    out.println("  " + number(v4Snapshots) + " snapshots" + (v4Snapshots > 0 && dropSnapshots ? ", to be deleted" : ""));
+    out.println("  " + number(v4Snapshots) + " Eventify 4 snapshots" + (v4Snapshots > 0 && dropSnapshots ? ", to be deleted" : ""));
     out.println();
     if (!sharedRanges.isEmpty()) {
       out.println("Aggregates whose Eventify 4 state also included another aggregate's events (they will no longer):");
@@ -69,13 +78,13 @@ final class CheckReport {
       out.println();
     }
     if (hasConflicts()) {
-      out.println("CONFLICTS: " + number(conflictCount) + ". Solve them before the migration can be written.");
+      out.println("CONFLICTS: " + number(conflictCount) + ". Nothing is written while there are conflicts.");
       conflicts.forEach(conflict -> out.println("  " + conflict));
       if (conflictCount > conflicts.size()) {
         out.println("  ... and " + number(conflictCount - conflicts.size()) + " more");
       }
     } else {
-      out.println("No conflicts.");
+      out.println("No conflicts." + (isComplete() ? " The migration is complete." : ""));
     }
     out.println("Read in " + duration.toSeconds() + " s.");
   }

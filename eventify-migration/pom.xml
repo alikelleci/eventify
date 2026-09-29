@@ -18,6 +18,7 @@
     <properties>
         <kafka.version>4.3.1</kafka.version>
         <jackson.version>2.16.2</jackson.version>
+        <lombok.version>1.18.46</lombok.version>
         <!-- A command-line tool, run as a jar: not published to Maven Central -->
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
@@ -53,7 +54,19 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!--Test -->
+        <!--Test: Eventify 5 itself, to prove it reads what the tool wrote -->
+        <dependency>
+            <groupId>io.github.alikelleci</groupId>
+            <artifactId>eventify-core</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>test</scope>
+        </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
@@ -80,6 +93,20 @@
 
     <build>
         <plugins>
+            <!-- Lombok named explicitly: since JDK 23, javac no longer runs the annotation processors it finds on the classpath -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <!-- One runnable jar: java -jar eventify-migration.jar check ... -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

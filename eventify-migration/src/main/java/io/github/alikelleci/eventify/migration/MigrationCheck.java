@@ -13,8 +13,11 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 
 /**
- * Phase 1: reads both changelogs and reports what the migration would do, and every reason it cannot. It only reads,
- * so it can run while the Eventify 4 application is running; that is the dry run.
+ * Reads both changelogs and reports what the migration would do, and every reason it cannot. It only reads, so it can
+ * run while the Eventify 4 application is running (the dry run), and it runs again after the write (the verify).
+ * <p>
+ * A store may be partly migrated by an interrupted run. Such an event is recognised by its id, which is still its
+ * Eventify 4 key, and it must have the sequence it would get now; the events that are left are numbered around it.
  */
 final class MigrationCheck {
 
@@ -31,87 +34,141 @@ final class MigrationCheck {
 
   CheckReport run(String applicationId) {
     Instant start = Instant.now();
-    CheckReport report = new CheckReport(aggregateType, applicationId + "-event-store-changelog",
-        applicationId + "-snapshot-store-changelog", dropSnapshots);
+    CheckReport report = new CheckReport(aggregateType, applicationId, dropSnapshots);
     if (aggregateType.isBlank() || aggregateType.indexOf(Keys.NUL) >= 0) {
       report.conflict("The aggregate type must be the @AggregateRoot name of the Eventify 5 application, not \"" + aggregateType + "\".");
     }
     try (ChangelogReader reader = new ChangelogReader(consumerConfig)) {
-      checkEvents(reader, report);
-      checkSnapshots(reader, report);
+      var partitions = reader.partitions(report.eventTopic);
+      report.eventPartitions = partitions.size();
+      if (partitions.isEmpty()) {
+        report.conflict("Topic " + report.eventTopic + " does not exist. Is the application id right?");
+      }
+      Map<String, Integer> partitionOfAggregate = new HashMap<>();
+      for (int partition : partitions) {
+        scanEvents(reader, new TopicPartition(report.eventTopic, partition), report, partitionOfAggregate);
+      }
+      scanSnapshots(reader, report);
     }
     report.duration = Duration.between(start, Instant.now());
     return report;
   }
 
-  private void checkEvents(ChangelogReader reader, CheckReport report) {
-    var partitions = reader.partitions(report.eventTopic);
-    report.eventPartitions = partitions.size();
-    if (partitions.isEmpty()) {
-      report.conflict("Topic " + report.eventTopic + " does not exist. Is the application id right?");
-      return;
-    }
-    Map<String, Integer> partitionOfAggregate = new HashMap<>();
-    for (int number : partitions) {
-      TopicPartition partition = new TopicPartition(report.eventTopic, number);
-      long end = reader.end(partition);
-      Map<String, Long> liveOffsets = reader.liveOffsets(partition, end);
-      Map<String, Long> eventsOfAggregate = new HashMap<>();
-      TreeSet<String> v4Keys = new TreeSet<>();
+  /** Reads one partition of the event store and gives each Eventify 4 event that is left the sequence it gets. */
+  PartitionScan scanEvents(ChangelogReader reader, TopicPartition partition, CheckReport report, Map<String, Integer> partitionOfAggregate) {
+    long end = reader.end(partition);
+    Map<String, Long> liveOffsets = reader.liveOffsets(partition, end);
+    Map<String, TreeMap<String, Slot>> slotsOfAggregate = new HashMap<>();
+    TreeSet<String> v4Keys = new TreeSet<>();
 
-      reader.forEachLive(partition, end, liveOffsets, (key, value) -> {
-        if (Keys.isV5(key)) {
-          report.conflict("Already an Eventify 5 key: " + Keys.printable(key) + ". A partly migrated store is not handled yet.");
-          return;
+    reader.forEachLive(partition, end, liveOffsets, (key, value) -> {
+      Keys.V4EventKey oldKey = Keys.isV5(key) ? migrated(key, value, report) : unmigrated(key, value, report);
+      if (oldKey == null) {
+        return;
+      }
+      Integer other = partitionOfAggregate.putIfAbsent(oldKey.aggregateId(), partition.partition());
+      if (other != null && other != partition.partition()) {
+        report.conflict("Aggregate " + oldKey.aggregateId() + " has events in partitions " + other + " and " + partition.partition() + ".");
+      }
+      Slot slot = slotsOfAggregate.computeIfAbsent(oldKey.aggregateId(), id -> new TreeMap<>())
+          .computeIfAbsent(oldKey.ulid(), ulid -> new Slot());
+      if (Keys.isV5(key)) {
+        if (slot.migratedTo != null) {
+          report.conflict("Event " + oldKey.key() + " was migrated twice, to #" + slot.migratedTo + " and to " + Keys.printable(key) + ".");
         }
-        Keys.V4EventKey v4Key = Keys.v4Event(key);
-        if (v4Key == null) {
-          report.conflict("Not an Eventify 4 event key: " + Keys.printable(key));
-          return;
-        }
-        if (!checkEvent(v4Key, value, report)) {
-          return;
-        }
-        Integer other = partitionOfAggregate.putIfAbsent(v4Key.aggregateId(), number);
-        if (other != null && other != number) {
-          report.conflict("Aggregate " + v4Key.aggregateId() + " has events in partitions " + other + " and " + number + ".");
-        }
-        eventsOfAggregate.merge(v4Key.aggregateId(), 1L, Long::sum);
-        v4Keys.add(key);
-      });
+        slot.migratedTo = Keys.v5Event(key).sequence();
+      } else {
+        slot.unmigrated = true;
+      }
+      v4Keys.add(oldKey.key());
+    });
 
-      eventsOfAggregate.forEach((aggregateId, events) -> {
-        report.events += events;
-        report.aggregates++;
-        if (events > report.largestAggregateEvents) {
-          report.largestAggregate = aggregateId;
-          report.largestAggregateEvents = events;
+    Map<String, Long> sequenceOfOldKey = new HashMap<>();
+    slotsOfAggregate.forEach((aggregateId, slots) -> {
+      long sequence = 0;
+      for (Map.Entry<String, Slot> entry : slots.entrySet()) {
+        sequence++;
+        String oldKey = aggregateId + "@" + entry.getKey();
+        Slot slot = entry.getValue();
+        if (slot.migratedTo != null && slot.migratedTo != sequence) {
+          report.conflict("Event " + oldKey + " was migrated to #" + slot.migratedTo + ", but its place is #" + sequence + ".");
         }
-      });
-      findSharedRanges(eventsOfAggregate.keySet(), v4Keys, report);
-    }
+        if (slot.unmigrated) {
+          sequenceOfOldKey.put(oldKey, sequence);
+        } else {
+          report.migratedEvents++;
+        }
+      }
+      report.events += sequence;
+      report.aggregates++;
+      if (sequence > report.largestAggregateEvents) {
+        report.largestAggregate = aggregateId;
+        report.largestAggregateEvents = sequence;
+      }
+    });
+    findSharedRanges(slotsOfAggregate.keySet(), v4Keys, report);
+    return new PartitionScan(end, liveOffsets, sequenceOfOldKey);
   }
 
-  /** Whether the stored event can be read as an Eventify 4 event of the aggregate its key names. */
-  private boolean checkEvent(Keys.V4EventKey key, byte[] value, CheckReport report) {
+  /** The Eventify 4 key of an event this migration has not written yet, or null when it cannot be migrated. */
+  private Keys.V4EventKey unmigrated(String key, byte[] value, CheckReport report) {
+    Keys.V4EventKey oldKey = Keys.v4Event(key);
+    if (oldKey == null) {
+      report.conflict("Not an Eventify 4 event key: " + Keys.printable(key));
+      return null;
+    }
+    JsonNode event = readEvent(key, value, report);
+    if (event == null) {
+      return null;
+    }
+    if (!oldKey.aggregateId().equals(event.path("aggregateId").asText(null))) {
+      report.conflict("Event " + key + " has aggregateId " + event.path("aggregateId") + ", not the one in its key.");
+      return null;
+    }
+    return oldKey;
+  }
+
+  /** The Eventify 4 key of an event this migration wrote, or null when Eventify 5 wrote it or it is not consistent. */
+  private Keys.V4EventKey migrated(String key, byte[] value, CheckReport report) {
+    Keys.V5EventKey newKey = Keys.v5Event(key);
+    if (newKey == null) {
+      report.conflict("Not an Eventify 5 event key: " + Keys.printable(key));
+      return null;
+    }
+    JsonNode event = readEvent(Keys.printable(key), value, report);
+    if (event == null) {
+      return null;
+    }
+    Keys.V4EventKey oldKey = Keys.v4Event(event.path("id").asText(""));
+    if (oldKey == null) {
+      report.conflict("Event " + Keys.printable(key) + " was written by Eventify 5 itself, not by this migration: the new version already ran on this store.");
+      return null;
+    }
+    if (!newKey.aggregateType().equals(aggregateType) || !newKey.aggregateId().equals(oldKey.aggregateId())
+        || !aggregateType.equals(event.path("aggregateType").asText(null))
+        || !oldKey.aggregateId().equals(event.path("aggregateId").asText(null))
+        || event.path("sequence").asLong(-1) != newKey.sequence()) {
+      report.conflict("Event " + Keys.printable(key) + " (formerly " + oldKey.key() + ") does not match its key.");
+      return null;
+    }
+    return oldKey;
+  }
+
+  private JsonNode readEvent(String key, byte[] value, CheckReport report) {
     JsonNode event;
     try {
       event = objectMapper.readTree(value);
     } catch (Exception e) {
-      report.conflict("Event " + key.key() + " is not JSON: " + e.getMessage());
-      return false;
-    }
-    if (!key.aggregateId().equals(event.path("aggregateId").asText(null))) {
-      report.conflict("Event " + key.key() + " has aggregateId " + event.path("aggregateId") + ", not the one in its key.");
-      return false;
+      report.conflict("Event " + key + " is not JSON: " + e.getMessage());
+      return null;
     }
     String payloadClass = event.path("payload").path("@class").asText(null);
     if (payloadClass == null) {
-      report.conflict("Event " + key.key() + " has no payload with an @class.");
-      return false;
+      report.conflict("Event " + key + " has no payload with an @class.");
+      return null;
     }
     report.eventClasses.merge(payloadClass, 1L, Long::sum);
-    return true;
+    return event;
   }
 
   /** Eventify 4 read {@code id@} up to {@code id@~}, which also holds {@code id@...@ULID} of another aggregate. */
@@ -134,14 +191,14 @@ final class MigrationCheck {
    * version is not an Eventify 5 sequence and cannot be migrated. Snapshots that are only a cache can be deleted; when
    * events before a snapshot were deleted (deleteEvents), the snapshot is the only record of them.
    */
-  private void checkSnapshots(ChangelogReader reader, CheckReport report) {
+  private void scanSnapshots(ChangelogReader reader, CheckReport report) {
     var partitions = reader.partitions(report.snapshotTopic);
     report.snapshotPartitions = partitions.size();
     for (int number : partitions) {
       TopicPartition partition = new TopicPartition(report.snapshotTopic, number);
       for (String key : reader.liveOffsets(partition, reader.end(partition)).keySet()) {
         if (Keys.isV5(key)) {
-          report.conflict("Already an Eventify 5 snapshot key: " + Keys.printable(key) + ". A partly migrated store is not handled yet.");
+          report.conflict("Snapshot " + Keys.printable(key) + " was written by Eventify 5: the new version already ran on this store.");
         } else {
           report.v4Snapshots++;
         }
@@ -151,5 +208,15 @@ final class MigrationCheck {
       report.conflict(report.v4Snapshots + " Eventify 4 snapshots cannot be migrated. If they are only a cache (no"
           + " @EnableSnapshotting(deleteEvents = true) was ever used), run again with --drop-snapshots to delete them.");
     }
+  }
+
+  /** One Eventify 4 event: still under its old key, already under its new key, or both after an interrupted write. */
+  private static final class Slot {
+    boolean unmigrated;
+    Long migratedTo;
+  }
+
+  /** What the write needs of one partition: where the scan ended and the sequence of each event still to migrate. */
+  record PartitionScan(long end, Map<String, Long> liveOffsets, Map<String, Long> sequenceOfOldKey) {
   }
 }

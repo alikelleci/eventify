@@ -28,6 +28,20 @@ final class Keys {
     return key.indexOf(NUL) >= 0;
   }
 
+  /** An Eventify 5 event key, or null when the key has another form. */
+  static V5EventKey v5Event(String key) {
+    int first = key.indexOf(NUL);
+    int second = key.indexOf(NUL, first + 1);
+    if (first < 0 || second < 0 || key.length() - second - 1 != 19 || !key.substring(second + 1).chars().allMatch(c -> c >= '0' && c <= '9')) {
+      return null;
+    }
+    try {
+      return new V5EventKey(key.substring(0, first), key.substring(first + 1, second), Long.parseLong(key.substring(second + 1)));
+    } catch (NumberFormatException e) {
+      return null; // 19 digits above Long.MAX_VALUE
+    }
+  }
+
   static String v5Event(String aggregateType, String aggregateId, long sequence) {
     return v5Snapshot(aggregateType, aggregateId) + NUL + String.format(Locale.ROOT, "%019d", sequence);
   }
@@ -43,5 +57,8 @@ final class Keys {
 
   /** Sorting by {@link #ulid} as text is sorting by the time it was made; ULIDs of the same millisecond are monotonic. */
   record V4EventKey(String key, String aggregateId, String ulid) {
+  }
+
+  record V5EventKey(String aggregateType, String aggregateId, long sequence) {
   }
 }
