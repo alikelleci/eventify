@@ -71,5 +71,7 @@ nav:
       - Advanced Features: advanced.md
       - Testing: testing.md
       - Eventify Console: console.md
+  - Upgrading:
+      - Migrating from 4.x: migration.md
   - Reference:
       - Annotation Reference: annotation-reference.md
