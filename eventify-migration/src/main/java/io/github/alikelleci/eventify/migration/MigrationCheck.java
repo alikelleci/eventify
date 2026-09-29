@@ -83,6 +83,7 @@ final class MigrationCheck {
       v4Keys.add(oldKey.key());
     });
 
+    report.largestPartitionEvents = Math.max(report.largestPartitionEvents, liveOffsets.size());
     Map<String, Long> sequenceOfOldKey = new HashMap<>();
     slotsOfAggregate.forEach((aggregateId, slots) -> {
       long sequence = 0;

@@ -91,17 +91,19 @@ class MigrationCheckIT {
     writeEvent(app, 0, "order-3", ORDER_PLACED);
     writeEvent(app, 1, "order-3", ORDER_PLACED);
     write(app + "-event-store-changelog", 1, "order\u0000order-4\u00000000000000000000001", "{}");
+    writeEvent(app, 1, "order\u0000nul", ORDER_PLACED);
     write(app + "-snapshot-store-changelog", 0, "order-3", "{}");
     long endOffsets = endOffsets(app + "-event-store-changelog") + endOffsets(app + "-snapshot-store-changelog");
 
     CheckReport report = check(app, false);
 
-    assertThat(report.conflicts).hasSize(6).satisfiesExactlyInAnyOrder(
+    assertThat(report.conflicts).hasSize(7).satisfiesExactlyInAnyOrder(
         conflict -> assertThat(conflict).startsWith("Not an Eventify 4 event key: not-a-v4-key"),
         conflict -> assertThat(conflict).contains("has aggregateId \"order-other\""),
         conflict -> assertThat(conflict).contains("is not JSON"),
         conflict -> assertThat(conflict).isEqualTo("Aggregate order-3 has events in partitions 0 and 1."),
         conflict -> assertThat(conflict).isEqualTo("Event order␀order-4␀0000000000000000001 has no payload with an @class."),
+        conflict -> assertThat(conflict).startsWith("Not an Eventify 5 event key: order␀nul@"), // a NUL in an id, which Eventify 5 cannot store
         conflict -> assertThat(conflict).startsWith("1 Eventify 4 snapshots cannot be migrated."));
     assertThat(endOffsets(app + "-event-store-changelog") + endOffsets(app + "-snapshot-store-changelog")).isEqualTo(endOffsets);
   }

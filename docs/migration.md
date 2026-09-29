@@ -23,7 +23,8 @@ The command, event and result topics are left alone.
 **Port the application to Eventify 5** and test it; [Upgrading to 5.0](upgrading.md) lists what changes. Two things
 must match the stored data:
 
-- the `@AggregateRoot` name: you pass the same name to the tool as `--aggregate-type`;
+- the `@AggregateRoot` name: you pass the same name to the tool as `--aggregate-type`. The tool cannot check it: with
+  another name, Eventify 5 finds every aggregate empty;
 - the event classes: a stored event names its class (`@class`). Keep the classes in their package, or add an
   [upcaster](advanced.md#event-upcasting) for a moved one.
 
@@ -37,6 +38,10 @@ mvn -pl eventify-migration -am package -DskipTests
 ```
 
 This gives `eventify-migration/target/eventify-migration.jar`.
+
+**Memory.** The tool keeps the keys of one partition in memory, not the events: about 1 GB of heap per million events
+in the largest partition. The check reports that number and the heap it needs; the examples here use `-Xmx4g`. In a
+test, 4 million events in a single partition took 4 GB, 20 seconds for the check and 90 seconds for `migrate`.
 
 **Kafka settings.** Pass the client settings of your cluster (security, SASL) in a properties file with `--config`. The
 tool reads and writes the changelog topics, creates a backup topic next to each, describes the consumer group of the
@@ -52,7 +57,7 @@ needs:
 **Run the check against production.** It only reads, without a consumer group, so the application keeps running:
 
 ```bash
-java -jar eventify-migration.jar check --config client.properties --bootstrap-servers kafka:9092 --application-id my-app --aggregate-type order
+java -Xmx4g -jar eventify-migration.jar check --config client.properties --bootstrap-servers kafka:9092 --application-id my-app --aggregate-type order
 ```
 
 Read the report:
@@ -88,7 +93,7 @@ kafka-consumer-groups.sh --bootstrap-server kafka:9092 --command-config client.p
 **3. Back up** both stores:
 
 ```bash
-java -jar eventify-migration.jar backup --config client.properties --bootstrap-servers kafka:9092 --application-id my-app
+java -Xmx4g -jar eventify-migration.jar backup --config client.properties --bootstrap-servers kafka:9092 --application-id my-app
 ```
 
 It copies each changelog to a new topic with the same partitions and settings,
@@ -98,7 +103,7 @@ the original. It refuses when a backup topic already exists, and when the store 
 **4. Migrate:**
 
 ```bash
-java -jar eventify-migration.jar migrate --config client.properties --bootstrap-servers kafka:9092 --application-id my-app --aggregate-type order
+java -Xmx4g -jar eventify-migration.jar migrate --config client.properties --bootstrap-servers kafka:9092 --application-id my-app --aggregate-type order
 ```
 
 Add `--drop-snapshots` when the check told you to. `migrate` runs the check again, writes, and verifies. It ends with
@@ -112,7 +117,11 @@ verified.
 
 **6. Start Eventify 5** with the same `application.id`: the changelog topics are named after it.
 
-**7. Open the traffic** again.
+**7. Check a few aggregates you know** through the application: with its queries, or with a command that only an
+existing aggregate accepts. When Eventify 5 finds them empty, the aggregate name was wrong: stop the application,
+`restore`, and migrate again with the right `--aggregate-type`.
+
+**8. Open the traffic** again.
 
 When Eventify 5 runs well, delete the two backup topics.
 
@@ -128,7 +137,7 @@ It recognises the events it already wrote by their id, which is still their Even
 Eventify 4 snapshot is left:
 
 ```bash
-java -jar eventify-migration.jar verify --config client.properties --bootstrap-servers kafka:9092 --application-id my-app --aggregate-type order
+java -Xmx4g -jar eventify-migration.jar verify --config client.properties --bootstrap-servers kafka:9092 --application-id my-app --aggregate-type order
 ```
 
 **Eventify 5 was started before the migration was complete.** It finds unmigrated aggregates empty, and starts them
@@ -138,7 +147,7 @@ solve it before anything else is written.
 **Back to Eventify 4.** Stop every instance, then put the backup back:
 
 ```bash
-java -jar eventify-migration.jar restore --config client.properties --bootstrap-servers kafka:9092 --application-id my-app
+java -Xmx4g -jar eventify-migration.jar restore --config client.properties --bootstrap-servers kafka:9092 --application-id my-app
 ```
 
 It writes every record of the backup into the changelog again and a tombstone for every other key, then compares the

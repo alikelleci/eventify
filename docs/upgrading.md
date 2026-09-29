@@ -60,6 +60,8 @@ validation on command payloads works as before.
   `.with(k, v)`.
 - **A command or event gets no timestamp from the builder.** `Command.builder().timestamp(...)` is gone: the timestamp
   is when the message was made, and an event's is when it was recorded.
+- **The same `ObjectMapper`.** When the Eventify 4 application passed its own to `Eventify.builder().objectMapper(...)`,
+  pass the same to Eventify 5: the stored events were written with it.
 - **Ids are UUIDs.** An Eventify 4 id was `aggregateId@ULID`, and code could sort on it. Nothing may assume a format
   or an order now: an aggregate's events are ordered by their `sequence`.
 

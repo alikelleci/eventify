@@ -22,6 +22,7 @@ final class CheckReport {
   long events;
   long migratedEvents;
   long aggregates;
+  long largestPartitionEvents;
   String largestAggregate;
   long largestAggregateEvents;
   long v4Snapshots;
@@ -62,6 +63,8 @@ final class CheckReport {
     out.println("  " + number(events) + " events in " + number(aggregates) + " aggregates"
         + (largestAggregate == null ? "" : ", the largest is " + largestAggregate + " with " + number(largestAggregateEvents)));
     out.println("  " + number(events - migratedEvents) + " still under an Eventify 4 key, " + number(migratedEvents) + " migrated");
+    out.println("  the largest partition holds " + number(largestPartitionEvents) + " records: give the tool at least "
+        + (largestPartitionEvents / 1_000_000 + 1) + " GB of heap (java -Xmx" + (largestPartitionEvents / 1_000_000 + 1) + "g -jar ...)");
     if (largestAggregate != null) {
       out.println("  keys become   " + Keys.printable(Keys.v5Event(aggregateType, largestAggregate, 1)) + " and on");
     }
