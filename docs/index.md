@@ -1,33 +1,56 @@
-# Eventify
+---
+title: Overview
+---
 
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.alikelleci/eventify-core.svg)](https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+<div class="docs-hero" markdown>
+<p class="docs-eyebrow">Eventify documentation</p>
 
-Eventify is a **functional event-sourcing framework** for the JVM. You define your domain logic using plain, annotated Java methods—no base classes to extend and no framework interfaces to implement.
+# Build your domain.<br>Keep every event.
 
-Eventify handles event storage, state reconstruction, message routing, and event publishing. It is built entirely on Apache Kafka and Kafka Streams: commands and events flow through Kafka topics, while events are durably stored locally.
+<p class="docs-lead">Eventify is a Java event-sourcing library backed by Apache Kafka. You define commands, events and an aggregate; Eventify records events and rebuilds aggregate state when a command arrives.</p>
 
-A Kafka broker is the only infrastructure you need.
+<div class="docs-actions" markdown>
+[Get started <span aria-hidden="true">→</span>](getting-started.md){ .docs-button .docs-button--primary }
+</div>
+</div>
 
-## Core Concepts
+## Explore the guides
 
-**Aggregate**  
-An aggregate is your domain object—it represents the current state of a business entity, such as a `Customer` or an `Order`. In Eventify, an aggregate is always a plain, immutable class. Its state is not stored as the source of truth; instead, it is reconstructed from its event history, optionally starting from a snapshot.
+<div class="docs-grid">
+<a class="docs-card" href="domain-modeling/">
+<strong>Domain Modeling <span aria-hidden="true">→</span></strong>
+<span class="docs-card-description">Define your aggregates, commands, and events.</span>
+</a>
+<a class="docs-card" href="handlers/">
+<strong>Handlers <span aria-hidden="true">→</span></strong>
+<span class="docs-card-description">Validate commands, evolve state, and react to events.</span>
+</a>
+<a class="docs-card" href="command-gateway/">
+<strong>Command Gateway <span aria-hidden="true">→</span></strong>
+<span class="docs-card-description">Send commands from an API or application.</span>
+</a>
+<a class="docs-card" href="testing/">
+<strong>Testing <span aria-hidden="true">→</span></strong>
+<span class="docs-card-description">Test a complete topology in memory.</span>
+</a>
+</div>
 
-**Command**  
-A command is an instruction to perform an action—an intent to change state, such as `CreateCustomer` or `PlaceOrder`. Commands are validated and processed by command handlers. A command either succeeds and produces one or more events, or fails with an error.
+## The model
 
-**Event**  
-An event is a fact—something that has already happened, such as `CustomerCreated` or `OrderPlaced`. Events are immutable and form the source of truth from which aggregate state is reconstructed.
+- A **command** asks to change one aggregate.
+- A **command handler** validates that request and returns event payloads.
+- An **event** is an immutable fact.
+- An **event-sourcing handler** applies an event to produce the next aggregate state.
+- An **event handler** reacts to published events, for example to update a view or send a notification.
 
-**Command Handler**  
-A class that contains the business logic for processing commands. It receives a command and the current aggregate state, validates the command, and returns the event or events that should be recorded.
+## Important choices
 
-**Event-Sourcing Handler**  
-A class that defines how events are applied to the current aggregate state to produce the next state. This is how an aggregate is reconstructed from its event history.
+- Keep aggregates, commands and events immutable.
+- Use the aggregate id as the command key.
+- Keep event-sourcing handlers deterministic and free of side effects.
+- Enable snapshots only when replaying a long history becomes expensive. With `deleteEvents = true`, history before a snapshot is no longer available.
 
-**Event Handler**  
-A class that reacts to published events to perform side effects, such as updating a read model, sending a notification, or triggering a downstream process.
+## Advanced features and tooling
 
-**Upcaster**  
-A class that migrates older event data to a newer schema. As your event structure evolves, upcasters transparently transform stored event data before it is deserialized.
+- [Advanced features](advanced.md): snapshots and event upcasting.
+- [Eventify Console](console.md): inspect aggregate history in an ops UI.

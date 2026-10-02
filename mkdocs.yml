@@ -1,14 +1,13 @@
-site_name: Eventify
-site_url: https://alikelleci.github.io/eventify
-site_description: Functional event-sourcing framework for the JVM
+site_name: Eventify | Docs
+site_url: https://alikelleci.github.io/eventify/docs/
+site_description: Event sourcing for Java, built on Kafka
 site_author: Ali Kelleci
 repo_name: alikelleci/eventify
 repo_url: https://github.com/alikelleci/eventify
 
 theme:
   name: material
-  icon:
-    logo: material/lightning-bolt
+  custom_dir: docs/overrides
   font:
     text: Inter
     code: JetBrains Mono
@@ -44,11 +43,14 @@ markdown_extensions:
   - pymdownx.inlinehilite
   - tables
   - attr_list
+  - md_in_html
 
 extra_css:
   - stylesheets/extra.css
 
 extra:
+  # The logo links back to the website; the docs are published under its /docs/ path (see .github/workflows/pages.yml).
+  homepage: https://alikelleci.github.io/eventify/
   social:
     - icon: fontawesome/brands/github
       link: https://github.com/alikelleci/eventify
@@ -58,11 +60,16 @@ extra:
 copyright: Copyright &copy; Ali Kelleci
 
 nav:
-  - Home: index.md
-  - Getting Started: getting-started.md
-  - Domain Modeling: domain-modeling.md
-  - Handlers: handlers.md
-  - Command Gateway: command-gateway.md
-  - Advanced Features: advanced.md
-  - Testing: testing.md
-  - Annotation Reference: annotation-reference.md
+  - Introduction:
+      - Overview: index.md
+      - Getting Started: getting-started.md
+  - Core Concepts:
+      - Domain Modeling: domain-modeling.md
+      - Handlers: handlers.md
+      - Command Gateway: command-gateway.md
+  - Guides:
+      - Advanced Features: advanced.md
+      - Testing: testing.md
+      - Eventify Console: console.md
+  - Reference:
+      - Annotation Reference: annotation-reference.md

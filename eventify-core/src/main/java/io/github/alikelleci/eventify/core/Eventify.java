@@ -1,311 +1,305 @@
 package io.github.alikelleci.eventify.core;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.alikelleci.eventify.core.common.annotations.TopicInfo;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandHandler;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandProcessor;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult;
-import io.github.alikelleci.eventify.core.messaging.commandhandling.CommandResult.Success;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.EventHandler;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.EventProcessor;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.EventSourcingHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultHandler;
-import io.github.alikelleci.eventify.core.messaging.resulthandling.ResultProcessor;
-import io.github.alikelleci.eventify.core.messaging.upcasting.Upcaster;
-import io.github.alikelleci.eventify.core.support.CustomRocksDbConfig;
-import io.github.alikelleci.eventify.core.support.LoggingStateRestoreListener;
-import io.github.alikelleci.eventify.core.support.serialization.json.JsonSerde;
-import io.github.alikelleci.eventify.core.support.serialization.json.util.JacksonUtils;
-import io.github.alikelleci.eventify.core.util.AnnotationUtils;
-import io.github.alikelleci.eventify.core.util.HandlerUtils;
-import lombok.Getter;
+import io.github.alikelleci.eventify.core.aggregate.AggregateRepository;
+import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
+import io.github.alikelleci.eventify.core.aggregate.internal.DefaultAggregateRepository;
+import io.github.alikelleci.eventify.core.event.EventStore;
+import io.github.alikelleci.eventify.core.internal.EventifyTopology;
+import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
+import io.github.alikelleci.eventify.core.internal.StoreNames;
+import io.github.alikelleci.eventify.core.kafka.StreamsConfigDefaults;
+import io.github.alikelleci.eventify.core.plugin.EventifyPlugin;
+import io.github.alikelleci.eventify.core.plugin.LoggingPlugin;
+import io.github.alikelleci.eventify.core.plugin.PluginContext;
+import io.github.alikelleci.eventify.core.plugin.internal.PluginListeners;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.MultiValuedMap;
-import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
-import org.apache.kafka.streams.KafkaStreams.StateListener;
-import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.KeyQueryMetadata;
+import org.apache.kafka.streams.StoreQueryParameters;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
-import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler;
-import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.processor.StateRestoreListener;
-import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.state.QueryableStoreTypes;
 
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import static io.github.alikelleci.eventify.core.messaging.Metadata.REPLY_TO;
+import java.util.concurrent.CompletableFuture;
 
 @Slf4j
-@Getter
-public class Eventify {
-  private final Map<Class<?>, CommandHandler> commandHandlers = new HashMap<>();
-  private final Map<Class<?>, EventSourcingHandler> eventSourcingHandlers = new HashMap<>();
-  private final MultiValuedMap<Class<?>, ResultHandler> resultHandlers = new ArrayListValuedHashMap<>();
-  private final MultiValuedMap<Class<?>, EventHandler> eventHandlers = new ArrayListValuedHashMap<>();
-  private final MultiValuedMap<String, Upcaster> upcasters = new ArrayListValuedHashMap<>();
+public class Eventify implements PluginContext {
+  private final HandlerRegistry handlers;
 
   private final Properties streamsConfig;
-  private final StateListener stateListener;
-  private final StateRestoreListener stateRestoreListener;
   private final StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
   private final ObjectMapper objectMapper;
+  private final List<EventifyPlugin> plugins;
 
   private KafkaStreams kafkaStreams;
+  /** The plugins of this run, as registered when it started. */
+  private PluginListeners pluginListeners;
+  /** Whether this run is stopped: both the application and the shutdown hook call {@link #stop()}. */
+  private boolean stopped;
+  /** Completed after Kafka Streams and all plugins of this run have stopped. */
+  private CompletableFuture<Void> stopCompletion = CompletableFuture.completedFuture(null);
+  /** Stops this run when the JVM exits without {@link #stop()}. */
+  private Thread shutdownHook;
+  /** How long a close attempt waits before logging and trying again. */
+  private static final Duration CLOSE_WAIT = Duration.ofSeconds(30);
 
-  protected Eventify(Properties streamsConfig,
-                     StateListener stateListener,
-                     StateRestoreListener stateRestoreListener,
+  protected Eventify(List<Object> handlerObjects,
+                     Properties streamsConfig,
                      StreamsUncaughtExceptionHandler uncaughtExceptionHandler,
-                     ObjectMapper objectMapper) {
+                     ObjectMapper objectMapper,
+                     List<EventifyPlugin> plugins) {
+    this.handlers = new HandlerRegistry(handlerObjects);
     this.streamsConfig = streamsConfig;
-    this.stateListener = stateListener;
-    this.stateRestoreListener = stateRestoreListener;
     this.uncaughtExceptionHandler = uncaughtExceptionHandler;
     this.objectMapper = objectMapper;
-  }
-
-  public void registerHandler(Object handler) {
-    HandlerUtils.registerHandler(this, handler);
+    this.plugins = List.copyOf(plugins);
   }
 
   public static EventifyBuilder builder() {
     return new EventifyBuilder();
   }
 
-  public Topology topology() {
-    StreamsBuilder builder = new StreamsBuilder();
-
-    /*
-     * -------------------------------------------------------------
-     * SERDES
-     * -------------------------------------------------------------
-     */
-
-    Serde<Command> commandSerde = new JsonSerde<>(Command.class, objectMapper);
-    Serde<Event> eventSerde = new JsonSerde<>(Event.class, objectMapper, upcasters);
-    Serde<AggregateState> snapshotSerde = new JsonSerde<>(AggregateState.class, objectMapper);
-
-    /*
-     * -------------------------------------------------------------
-     * STORES
-     * -------------------------------------------------------------
-     */
-
-    // Event store
-    builder.addStateStore(Stores
-        .keyValueStoreBuilder(Stores.persistentKeyValueStore("event-store"), Serdes.String(), eventSerde)
-        .withLoggingEnabled(Collections.emptyMap()));
-
-    // Snapshot Store
-    builder.addStateStore(Stores
-        .keyValueStoreBuilder(Stores.persistentKeyValueStore("snapshot-store"), Serdes.String(), snapshotSerde)
-        .withLoggingEnabled(Collections.emptyMap()));
-
-    /*
-     * -------------------------------------------------------------
-     * COMMAND HANDLING
-     * -------------------------------------------------------------
-     */
-
-    if (!getCommandTopics().isEmpty()) {
-      // --> Commands
-      KStream<String, Command> commands = builder.stream(getCommandTopics(), Consumed.with(Serdes.String(), commandSerde))
-          .filter((key, command) -> key != null)
-          .filter((key, command) -> command != null)
-          .filter((key, command) -> command.getPayload() != null);
-
-      // Commands --> Results
-      KStream<String, CommandResult> commandResults = commands
-          .processValues(() -> new CommandProcessor(this), "event-store", "snapshot-store")
-          .filter((key, result) -> result != null);
-
-      // Results --> Push
-      commandResults
-          .mapValues(CommandResult::getCommand)
-          .to((key, command, recordContext) -> command.getTopicInfo().value().concat(".results"),
-              Produced.with(Serdes.String(), commandSerde));
-
-      // Results --> Push to reply topic
-      commandResults
-          .mapValues(CommandResult::getCommand)
-          .filter((key, command) -> StringUtils.isNotBlank(command.getMetadata().get(REPLY_TO)))
-          .to((key, command, recordContext) -> command.getMetadata().get(REPLY_TO),
-              Produced.with(Serdes.String(), commandSerde)
-                  .withStreamPartitioner((topic, key, value, numPartitions) -> Optional.of(Set.of(0))));
-
-      // Events --> Push
-      commandResults
-          .filter((key, result) -> result instanceof Success)
-          .mapValues((key, result) -> (Success) result)
-          .flatMapValues(Success::getEvents)
-          .filter((key, event) -> event != null)
-          .to((key, event, recordContext) -> event.getTopicInfo().value(),
-              Produced.with(Serdes.String(), eventSerde));
-    }
-
-    /*
-     * -------------------------------------------------------------
-     * EVENT HANDLING
-     * -------------------------------------------------------------
-     */
-
-    if (!getEventTopics().isEmpty()) {
-      // --> Events
-      KStream<String, Event> events = builder.stream(getEventTopics(), Consumed.with(Serdes.String(), eventSerde))
-          .filter((key, event) -> key != null)
-          .filter((key, event) -> event != null)
-          .filter((key, event) -> event.getPayload() != null);
-
-      // Events --> Void
-      events
-          .processValues(() -> new EventProcessor(this), "event-store");
-    }
-
-    /*
-     * -------------------------------------------------------------
-     * RESULT HANDLING
-     * -------------------------------------------------------------
-     */
-
-    if (!getResultTopics().isEmpty()) {
-      // --> Results
-      KStream<String, Command> results = builder.stream(getResultTopics(), Consumed.with(Serdes.String(), commandSerde))
-          .filter((key, command) -> key != null)
-          .filter((key, command) -> command != null)
-          .filter((key, command) -> command.getPayload() != null);
-
-      // Results --> Void
-      results
-          .processValues(() -> new ResultProcessor(this));
-    }
-
-
-    return builder.build();
+  /** Returns whether a class contains an Eventify handler method. */
+  public static boolean isHandler(Class<?> handlerClass) {
+    return HandlerRegistry.isHandler(handlerClass);
   }
 
-  public void start() {
+  @Override
+  public Properties getStreamsConfig() {
+    return streamsConfig;
+  }
+
+  @Override
+  public ObjectMapper getObjectMapper() {
+    return objectMapper;
+  }
+
+  /** Returns Kafka Streams, or {@code null} before the first start. */
+  @Override
+  public KafkaStreams getKafkaStreams() {
+    return kafkaStreams;
+  }
+
+  /** Returns registered aggregate types. */
+  @Override
+  public Set<String> getAggregateTypes() {
+    return handlers.aggregateTypes();
+  }
+
+  /** Returns command types with a handler. */
+  @Override
+  public Set<Class<?>> getCommandClasses() {
+    return handlers.commandHandlers().keySet();
+  }
+
+  /** Returns command topics for an aggregate type. */
+  @Override
+  public Set<String> getCommandTopics(String aggregateType) {
+    return handlers.commandTopics(aggregateType);
+  }
+
+  /** Returns registered event-handler objects. */
+  public Set<Object> getEventHandlers() {
+    Set<Object> eventHandlers = Collections.newSetFromMap(new IdentityHashMap<>());
+    handlers.eventHandlers().forEach(method -> eventHandlers.add(method.getHandler()));
+    return Collections.unmodifiableSet(eventHandlers);
+  }
+
+  /** Returns registered event upcasters. */
+  public Upcasters getUpcasters() {
+    return handlers.upcasters();
+  }
+
+  /** Returns read-only history of one aggregate type. */
+  @Override
+  public AggregateRepository getAggregateRepository(String aggregateType) {
+    Class<?> aggregateClass = handlers.aggregateClass(aggregateType);
+    if (aggregateClass == null) {
+      throw new IllegalArgumentException("This Eventify instance has no aggregate named '" + aggregateType
+          + "'. It handles " + getAggregateTypes() + ".");
+    }
+    return new DefaultAggregateRepository(
+        new EventStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore()))),
+        new SnapshotStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()))),
+        handlers.eventSourcingHandlers(), aggregateClass);
+  }
+
+  /** Returns metadata for the instance that owns an aggregate. */
+  @Override
+  public KeyQueryMetadata getAggregateMetadata(String aggregateId) {
+    return runningKafkaStreams().queryMetadataForKey(StoreNames.EVENT_STORE, aggregateId, Serdes.String().serializer());
+  }
+
+  private KafkaStreams runningKafkaStreams() {
+    if (kafkaStreams == null) {
+      throw new IllegalStateException("Eventify is not started");
+    }
+    return kafkaStreams;
+  }
+
+  public Topology topology() {
+    return EventifyTopology.build(handlers, objectMapper);
+  }
+
+  public synchronized void start() {
+    if (kafkaStreams != null) {
+      if (!stopped) {
+        throw new IllegalStateException("Eventify is already started.");
+      }
+      if (!stopCompletion.isDone()) {
+        throw new IllegalStateException("Eventify is still stopping.");
+      }
+    }
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
-      log.info("Eventify is not started: consumer is not subscribed to any topics or assigned any partitions");
+      log.info("Eventify is not started: it has no command or event handlers.");
       return;
     }
 
+    warnAboutHandlersThatStopEachOther();
+
     kafkaStreams = new KafkaStreams(topology, streamsConfig);
+    stopped = false;
+    stopCompletion = new CompletableFuture<>();
+    pluginListeners = new PluginListeners(plugins);
     setUpListeners();
 
     log.info("Eventify is starting...");
     kafkaStreams.start();
+    pluginListeners.notifyPlugins("onStart", plugin -> plugin.onStart(this));
   }
 
-  public void stop() {
-    if (kafkaStreams == null || !kafkaStreams.state().isRunningOrRebalancing()) {
+  private void warnAboutHandlersThatStopEachOther() {
+    if (handlers.commandHandlers().isEmpty() || !handlers.hasEventHandlers()) {
       return;
     }
-    log.info("Eventify is shutting down...");
-    kafkaStreams.close(Duration.ofSeconds(60));
-    log.info("Eventify shut down complete.");
+    log.warn("Command and event handlers share one Kafka Streams app: a failing event handler stops command handling too. "
+        + "Consider running the event handlers with their own '{}'.", StreamsConfig.APPLICATION_ID_CONFIG);
+  }
+
+  /**
+   * Closes Kafka Streams and the plugins once. A stream thread returns before they are closed.
+   */
+  public void stop() {
+    Runnable stop = null;
+    CompletableFuture<Void> completion;
+    synchronized (this) {
+      if (kafkaStreams == null) {
+        return;
+      }
+      completion = stopCompletion;
+      if (stopped) {
+        if (isCallingStreamThread()) {
+          return;
+        }
+      } else {
+        stopped = true;
+        removeShutdownHook();
+        log.info("Eventify is shutting down...");
+        KafkaStreams streams = kafkaStreams;
+        PluginListeners listeners = pluginListeners;
+        stop = () -> stop(streams, listeners, completion);
+        if (isCallingStreamThread()) {
+          Thread closeThread = new Thread(stop, "eventify-stop");
+          closeThread.start();
+          return;
+        }
+      }
+    }
+
+    if (stop != null) {
+      stop.run();
+      return;
+    }
+    completion.join();
+  }
+
+  /** Closes this run from a thread that can wait for all its stream threads to finish. */
+  private void stop(KafkaStreams streams, PluginListeners listeners, CompletableFuture<Void> completion) {
+    try {
+      closeKafkaStreams(streams);
+      listeners.notifyPlugins("onStop", plugin -> plugin.onStop(this));
+      log.info("Eventify shut down complete.");
+      completion.complete(null);
+    } catch (RuntimeException | Error e) {
+      completion.completeExceptionally(e);
+      throw e;
+    }
+  }
+
+  /** Waits until every stream thread has stopped, so plugins can release their resources afterwards. */
+  void closeKafkaStreams(KafkaStreams streams) {
+    while (!streams.close(CLOSE_WAIT)) {
+      log.warn("Eventify is still shutting down: Kafka Streams did not stop yet, a handler is still running.");
+    }
+  }
+
+  /** Uses Kafka Streams' public thread metadata, avoiding a dependency on its internal StreamThread class. */
+  boolean isCallingStreamThread() {
+    String threadName = Thread.currentThread().getName();
+    return kafkaStreams.metadataForLocalThreads().stream()
+        .anyMatch(thread -> threadName.equals(thread.threadName()));
+  }
+
+  private void removeShutdownHook() {
+    if (shutdownHook == null || Thread.currentThread() == shutdownHook) {
+      return;
+    }
+    try {
+      Runtime.getRuntime().removeShutdownHook(shutdownHook);
+    } catch (IllegalStateException e) {
+      // The JVM is already shutting down: the hook runs anyway.
+    }
+    shutdownHook = null;
   }
 
   private void setUpListeners() {
-    kafkaStreams.setStateListener(this.stateListener);
-    kafkaStreams.setGlobalStateRestoreListener(this.stateRestoreListener);
+    kafkaStreams.setStateListener(pluginListeners.stateListener());
+    kafkaStreams.setGlobalStateRestoreListener(pluginListeners.stateRestoreListener());
     kafkaStreams.setUncaughtExceptionHandler(this.uncaughtExceptionHandler);
 
-    Runtime.getRuntime().addShutdownHook(new Thread(this::stop));
+    shutdownHook = new Thread(this::stop, "eventify-shutdown");
+    Runtime.getRuntime().addShutdownHook(shutdownHook);
   }
-
-  private Set<String> getCommandTopics() {
-    return commandHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
-        .filter(Objects::nonNull)
-        .map(TopicInfo::value)
-        .collect(Collectors.toSet());
-  }
-
-  private Set<String> getEventTopics() {
-    return Stream.of(
-            eventHandlers.keySet(),
-            eventSourcingHandlers.keySet()
-        )
-        .flatMap(Collection::stream)
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
-        .filter(Objects::nonNull)
-        .map(TopicInfo::value)
-        .collect(Collectors.toSet());
-  }
-
-  private Set<String> getResultTopics() {
-    return resultHandlers.keySet().stream()
-        .map(aClass -> AnnotationUtils.findAnnotation(aClass, TopicInfo.class))
-        .filter(Objects::nonNull)
-        .map(TopicInfo::value)
-        .map(topic -> topic.concat(".results"))
-        .collect(Collectors.toSet());
-  }
-
 
   public static class EventifyBuilder {
     private final List<Object> handlers = new ArrayList<>();
+    private final List<EventifyPlugin> plugins = new ArrayList<>();
 
     private Properties streamsConfig;
-    private StateListener stateListener;
-    private StateRestoreListener stateRestoreListener;
     private StreamsUncaughtExceptionHandler uncaughtExceptionHandler;
     private ObjectMapper objectMapper;
 
+    /** The same object registered twice counts once. */
     public EventifyBuilder registerHandler(Object handler) {
-      handlers.add(handler);
+      if (handlers.stream().noneMatch(registered -> registered == handler)) {
+        handlers.add(handler);
+      }
+      return this;
+    }
+
+    public EventifyBuilder registerPlugin(EventifyPlugin plugin) {
+      plugins.add(plugin);
       return this;
     }
 
     public EventifyBuilder streamsConfig(Properties streamsConfig) {
-      this.streamsConfig = streamsConfig;
-      this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-      this.streamsConfig.putIfAbsent(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-      this.streamsConfig.putIfAbsent(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
-      this.streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
-      this.streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
-      this.streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, CustomRocksDbConfig.class);
-      this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
+      this.streamsConfig = new Properties();
+      this.streamsConfig.putAll(streamsConfig);
+      StreamsConfigDefaults.apply(this.streamsConfig);
 
-//    ArrayList<String> interceptors = new ArrayList<>();
-//    interceptors.add(CommonProducerInterceptor.class.getName());
-//
-//    this.streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.INTERCEPTOR_CLASSES_CONFIG), interceptors);
-
-      return this;
-    }
-
-    public EventifyBuilder stateListener(StateListener stateListener) {
-      this.stateListener = stateListener;
-      return this;
-    }
-
-    public EventifyBuilder stateRestoreListener(StateRestoreListener stateRestoreListener) {
-      this.stateRestoreListener = stateRestoreListener;
       return this;
     }
 
@@ -320,34 +314,17 @@ public class Eventify {
     }
 
     public Eventify build() {
-      if (this.stateListener == null) {
-        this.stateListener = (newState, oldState) ->
-            log.info("State changed from {} to {}", oldState, newState);
-      }
+      List<EventifyPlugin> allPlugins = new ArrayList<>();
+      allPlugins.add(new LoggingPlugin());
+      allPlugins.addAll(plugins);
 
-      if (this.stateRestoreListener == null) {
-        this.stateRestoreListener = new LoggingStateRestoreListener();
-      }
-
-      if (this.uncaughtExceptionHandler == null) {
-        this.uncaughtExceptionHandler = throwable ->
-            StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT;
-      }
-
-      if (this.objectMapper == null) {
-        this.objectMapper = JacksonUtils.enhancedObjectMapper();
-      }
-
-      Eventify eventify = new Eventify(
-          this.streamsConfig,
-          this.stateListener,
-          this.stateRestoreListener,
-          this.uncaughtExceptionHandler,
-          this.objectMapper);
-
-      this.handlers.forEach(eventify::registerHandler);
-
-      return eventify;
+      return new Eventify(
+          handlers,
+          streamsConfig,
+          uncaughtExceptionHandler != null ? uncaughtExceptionHandler
+              : throwable -> StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse.SHUTDOWN_CLIENT,
+          objectMapper != null ? objectMapper : EventifyObjectMapper.create(),
+          allPlugins);
     }
 
   }

@@ -1,0 +1,139 @@
+<div class="h-full overflow-y-auto">
+  <!-- Hero: dark, continuing from the header, with a faint grid, events streaming through it, -->
+  <section class="relative overflow-hidden bg-slate-950">
+    <div class="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,rgb(255_255_255/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.04)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" aria-hidden="true"></div>
+    <div class="hero-streams pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" aria-hidden="true">
+      @for (stream of streams; track stream.top) {
+        <span class="hero-stream" [style.top.px]="stream.top"><span [style.animation-duration.s]="stream.duration" [style.animation-delay.s]="stream.delay"></span></span>
+      }
+    </div>
+    <div class="pointer-events-none absolute -right-40 -top-40 h-[36rem] w-[36rem] rounded-full bg-primary-500/15 blur-3xl" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute -bottom-60 -left-40 h-[30rem] w-[30rem] rounded-full bg-sky-500/10 blur-3xl" aria-hidden="true"></div>
+
+    <div class="relative mx-auto grid max-w-6xl items-center gap-12 px-6 pt-[8vh] pb-[10vh] grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:pt-[12vh]">
+      <div>
+        <h1 class="text-4xl font-semibold leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-[3.25rem]">
+          Event sourcing for Java, <span class="hero-accent">without framework ceremony</span>
+        </h1>
+        <p class="mt-6 max-w-xl text-lg leading-relaxed text-slate-400">
+          Model decisions as commands and facts. Eventify records the history and rebuilds aggregate state; you keep the business logic in plain Java.
+        </p>
+
+        <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-4">
+          <p-button label="Build your first aggregate" icon="pi pi-arrow-down" iconPos="right" size="large" (onClick)="getStarted.scrollIntoView({ behavior: 'smooth' })" />
+          <a [href]="docsUrl" target="_blank" rel="noopener"
+             class="group inline-flex items-center gap-2 text-sm font-medium text-slate-300 hover:text-white">
+            Read the docs <i class="pi pi-arrow-up-right text-xs transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"></i>
+          </a>
+        </div>
+        <ul class="mt-8 flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-500">
+          <li class="flex items-center gap-2"><i class="pi pi-check text-xs text-primary-400"></i>Plain Java</li>
+          <li class="flex items-center gap-2"><i class="pi pi-check text-xs text-primary-400"></i>Kafka-backed event store</li>
+          <li class="flex items-center gap-2"><i class="pi pi-check text-xs text-primary-400"></i>Replay-ready</li>
+        </ul>
+      </div>
+
+      <!-- Code window: the full command-to-state flow in one handler -->
+      <div class="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/80 shadow-2xl shadow-black/40 backdrop-blur">
+        <div class="border-b border-white/10 px-5 py-2.5 text-xs font-medium text-slate-300">
+          OrderHandler.java
+        </div>
+        <pre class="overflow-x-auto px-5 py-4 font-mono text-[0.8rem] leading-relaxed text-slate-200"><code [innerHTML]="highlightedHeroCode"></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why event sourcing: the same changes, as a row and as events -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="eyebrow">Why event sourcing</div>
+        <h2 class="section-title">Keep the story, not just the ending</h2>
+        <p class="section-text">
+          Most systems only keep the latest value. Event sourcing records the decisions that led there, so state has an explicit history.
+        </p>
+      </div>
+      <app-crud-vs-log class="mt-12 block" />
+      <div class="mt-14 grid gap-8 sm:grid-cols-3">
+        @for (reason of reasons; track reason.title; let i = $index) {
+          <div class="flex gap-4">
+            <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+              <i class="pi text-lg" [class]="reason.icon"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-semibold text-surface-900 dark:text-surface-0">{{ reason.title }}</h3>
+              <p class="mt-1.5 text-sm leading-relaxed text-surface-500 dark:text-surface-400">{{ reason.text }}</p>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Features: the event sourcing itself, as scenes that take turns -->
+  <section class="border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="eyebrow">Built in</div>
+        <h2 class="section-title">The essentials, kept small</h2>
+        <p class="section-text">
+          Replays, snapshots and event evolution are built in. Your handlers remain plain Java.
+        </p>
+      </div>
+      <app-feature-story class="mt-12 block" />
+    </div>
+  </section>
+
+  <!-- Eventify Console: the text, and a real screen of the console beside it that runs off the page and fades out at the bottom -->
+  <section class="overflow-hidden border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto grid max-w-6xl items-center gap-12 px-6 py-20 grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16 lg:py-0">
+      <div class="lg:py-28">
+        <div class="eyebrow">Eventify Console</div>
+        <h2 class="section-title">An ops view for aggregate history</h2>
+        <p class="section-text">
+          Inspect events, state transitions and command outcomes in one place when support needs an answer.
+        </p>
+        <ul class="mt-6 space-y-2.5 text-sm text-surface-600 dark:text-surface-300">
+          <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Browse events and replay to any point in time</span></li>
+          <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>See exactly what each event changed</span></li>
+          <li class="flex gap-3"><i class="pi pi-check mt-1 text-xs text-primary-500"></i><span>Investigate commands and their results</span></li>
+        </ul>
+        <a routerLink="/console"
+           class="group mt-8 inline-flex items-center gap-2 text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300">
+          Explore the Console <i class="pi pi-arrow-right text-xs transition-transform group-hover:translate-x-1"></i>
+        </a>
+      </div>
+
+      <!-- Wider than its column, so about half of it shows, and fading out at the bottom edge of the section; too dense below lg -->
+      <div class="hidden self-end pt-20 lg:block">
+        <div class="max-h-[30rem] w-[60rem] overflow-hidden [mask-image:linear-gradient(to_bottom,black_70%,transparent)]">
+          <app-console-screen class="block" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Get started: add Eventify, write your logic, and start -->
+  <section #getStarted class="scroll-mt-4 border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="eyebrow">Get started</div>
+        <h2 class="section-title">Your first aggregate in three steps</h2>
+        <p class="section-text">
+          Add Eventify, model one decision and one state transition, then start your application.
+        </p>
+        <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
+          <p-button label="Read the docs" icon="pi pi-book" (onClick)="openDocs()" />
+          <a [href]="githubUrl" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
+            <i class="pi pi-github"></i> GitHub
+          </a>
+        </div>
+      </div>
+
+      <app-get-started [steps]="steps" class="mt-12 block" />
+    </div>
+  </section>
+
+  <app-site-footer />
+</div>

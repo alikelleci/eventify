@@ -1,75 +1,52 @@
 # Advanced Features
 
-## Snapshotting
+## Snapshots
 
-By default, aggregate state is reconstructed by replaying its event history from the beginning. For aggregates with a long history, this can become expensive. Snapshotting improves reconstruction performance by periodically saving the current aggregate state, allowing Eventify to replay only the events that occurred after the latest snapshot.
-
-Enable snapshotting by adding `@EnableSnapshotting` to your aggregate class:
+Eventify rebuilds an aggregate from its events. Add a snapshot when a long history makes that too expensive.
 
 ```java
-@Value
-@Builder(toBuilder = true)
-@AggregateRoot
+@AggregateRoot("order")
 @EnableSnapshotting(threshold = 500)
-public class Order {
-    // ...
-}
+public class Order { ... }
 ```
 
-| Attribute | Default | Description |
-|---|---|---|
-| `threshold` | `500` | A snapshot is created whenever the aggregate version reaches a multiple of this value. |
-| `deleteEvents` | `false` | If `true`, events before the snapshot are deleted after the snapshot is created, reducing storage usage. |
+Eventify saves a snapshot after a successful command when the threshold is crossed. Handlers need no special code.
 
-Snapshotting is transparent to your handlers—you do not need to change any handler code.
+| Setting | Meaning |
+|---|---|
+| `threshold` | Create a snapshot every N events. |
+| `deleteEvents` | Remove events before the snapshot after it is safely stored. Defaults to `false`. |
 
-## Event Upcasting
+Keep `deleteEvents` disabled when you need full audit history or time travel before the snapshot. When it is enabled, Eventify fails safely if an old snapshot cannot be used.
 
-As your application evolves, the structure of your events may change. Upcasting lets you transparently migrate older stored event data to a newer schema without modifying the event store.
+### Aggregate changes
 
-### How it works
-
-1. Annotate your event class with `@Revision(n)` to declare its current schema version.
-2. Write an upcaster method for each revision that needs to be migrated and annotate it with `@Upcast(type, revision)`.
-3. When an older event is read, Eventify automatically chains the required upcasters in ascending revision order.
-
-### Example
-
-Suppose `OrderPlaced` started at revision 1 and is now at revision 3 after two schema changes:
+Raise the aggregate's `@Revision` when a changed field or `@EventSourcingHandler` method would produce a different state from the same events.
 
 ```java
-// Current version of the event — revision 3
-@Revision(3)
-@Value
-@Builder
-class OrderPlaced implements OrderEvent {
-    @AggregateId
-    String id;
-    String customer;
-    String shippingAddress; // added in revision 2
-    String couponCode;      // added in revision 3
-}
+@AggregateRoot("order")
+@Revision(2)
+@EnableSnapshotting(threshold = 500)
+public class Order { ... }
 ```
 
+Old snapshots are then ignored and rebuilt from events when possible.
+
+## Event upcasting
+
+Upcasters transform old event JSON into the current event shape while reading history. Increase an event's `@Revision` and add one `@Upcaster` method per step.
+
 ```java
-public class OrderEventUpcaster {
+@Revision(2)
+public record OrderPlaced(@AggregateId String id, String customer, String channel) {}
 
-    // Migrates revision 1 → 2: adds a default shipping address
-    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 1)
-    public JsonNode upcast(ObjectNode node) {
-        node.put("shippingAddress", "unknown");
-        return node;
-    }
-
-    // Migrates revision 2 → 3: adds a default coupon code
-    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 2)
-    public JsonNode upcast(ObjectNode node) {
-        node.putNull("couponCode");
-        return node;
+public class OrderUpcaster {
+    @Upcaster(type = "com.example.OrderPlaced", revision = 1)
+    public JsonNode addChannel(ObjectNode json) {
+        json.put("channel", "web");
+        return json;
     }
 }
 ```
 
-- `type` is the fully qualified class name of the event payload. For nested classes, use `$` as the separator.
-- `revision` is the **source** revision—the version stored in the event store, not the target revision.
-- Events without a `@Revision` annotation default to revision `1`.
+Register the upcaster like any other handler. Keep old upcasters: older events may still need every step in the chain.

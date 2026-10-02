@@ -1,8 +1,12 @@
 # Getting Started
 
-## Installation
+Add Eventify, define your domain, register handlers and start the application.
 
-Add the core dependency to your project:
+## What you need
+
+Access to an Apache Kafka cluster.
+
+## Add the dependency
 
 ```xml
 <dependency>
@@ -12,93 +16,70 @@ Add the core dependency to your project:
 </dependency>
 ```
 
-For Spring Boot, use the starter instead:
+For Spring Boot, use `eventify-spring-boot-starter` instead.
 
-```xml
-<dependency>
-    <groupId>io.github.alikelleci</groupId>
-    <artifactId>eventify-spring-boot-starter</artifactId>
-    <version>x.y.z</version>
-</dependency>
-```
-
-## Configuration
-
-Create an `Eventify` instance with your Kafka configuration, register your handler classes, and call `start()`.
+## Define a small domain
 
 ```java
-Properties props = new Properties();
-props.put(StreamsConfig.APPLICATION_ID_CONFIG, "my-app");
-props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+@Topic("commands.order")
+public record PlaceOrder(@AggregateId String id, String customer) {}
+
+@Topic("events.order")
+public record OrderPlaced(@AggregateId String id, String customer) {}
+
+@AggregateRoot("order")
+public record Order(@AggregateId String id, String customer) {}
+```
+
+## Add the behaviour
+
+```java
+public class OrderHandler {
+    @CommandHandler
+    public OrderPlaced handle(PlaceOrder command, Order state) {
+        if (state != null) throw new ValidationException("Order already exists");
+        return new OrderPlaced(command.id(), command.customer());
+    }
+
+    @EventSourcingHandler
+    public Order handle(OrderPlaced event, Order state) {
+        return new Order(event.id(), event.customer());
+    }
+}
+```
+
+The command handler decides which event to record. The `@EventSourcingHandler` method is the only place that changes aggregate state.
+
+## Start Eventify
+
+```java
+Properties config = new Properties();
+config.put(StreamsConfig.APPLICATION_ID_CONFIG, "orders");
+config.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 Eventify eventify = Eventify.builder()
-    .streamsConfig(props)
-    .registerHandler(new OrderCommandHandler())
-    .registerHandler(new OrderEventSourcingHandler())
-    .registerHandler(new OrderEventHandler())
+    .streamsConfig(config)
+    .registerHandler(new OrderHandler())
     .build();
 
 eventify.start();
 ```
 
-Each handler class is a plain Java object. Eventify inspects each object for annotated methods and registers them automatically. You can register as many handler classes as your application requires.
+Use the aggregate id as the key when sending a command. [Command Gateway](command-gateway.md) is the simplest way to do that.
 
-### Builder options
+## Spring Boot
 
-| Method | Required | Description |
-|---|---|---|
-| `streamsConfig(Properties)` | Yes | Kafka Streams configuration. |
-| `registerHandler(Object)` | At least one | Registers a handler class containing annotated methods. |
-| `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
-| `stateListener(StateListener)` | No | Callback invoked on Kafka Streams state transitions. Defaults to a log statement. |
-| `stateRestoreListener(StateRestoreListener)` | No | Callback invoked during state store restoration. Defaults to a logging implementation. |
-| `uncaughtExceptionHandler(StreamsUncaughtExceptionHandler)` | No | Handler for uncaught stream thread exceptions. Defaults to `SHUTDOWN_CLIENT`. |
-
-## Spring Boot Integration
-
-The Spring Boot starter auto-configures Eventify and automatically registers any Spring bean that contains handler methods.
-
-### Declare an Eventify bean
+Add the starter, expose an `Eventify` bean, and make handler classes Spring beans. The starter registers those handlers and starts Eventify.
 
 ```java
-@Configuration
-public class EventifyConfig {
-
-    @Bean
-    public Eventify eventify() {
-        Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "my-app");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-
-        return Eventify.builder()
-            .streamsConfig(props)
-            .build();
-    }
+@Bean
+Eventify eventify(Eventify.EventifyBuilder builder) {
+    return builder.streamsConfig(config).build();
 }
 ```
 
-### Annotate your handler classes as Spring beans
+## Next steps
 
-```java
-@Component
-public class OrderCommandHandler {
-    @HandleCommand
-    public OrderEvent handle(PlaceOrder command, Order state) { ... }
-}
-
-@Component
-public class OrderEventSourcingHandler {
-    @ApplyEvent
-    public Order apply(OrderPlaced event, Order state) { ... }
-}
-
-@Component
-public class OrderEventHandler {
-    @HandleEvent
-    public void on(OrderPlaced event) { ... }
-}
-```
-
-The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application context is ready.
-
-> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`).
+- [Domain modeling](domain-modeling.md)
+- [Handlers](handlers.md)
+- [Testing](testing.md)

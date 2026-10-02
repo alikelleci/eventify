@@ -2,75 +2,17 @@
 
 [![CI](https://github.com/alikelleci/eventify/actions/workflows/ci.yml/badge.svg)](https://github.com/alikelleci/eventify/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alikelleci/eventify-core.svg)](https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-Eventify is a **functional event-sourcing framework** for the JVM. You define your domain logic using plain, annotated Java methods—no base classes to extend and no framework interfaces to implement.
+Eventify is a Java event-sourcing library backed by Apache Kafka. Define commands, events and aggregates with plain annotated methods; Eventify records events, rebuilds state and publishes resulting events.
 
-Eventify handles event storage, state reconstruction, message routing, and event publishing. It is built entirely on Apache Kafka and Kafka Streams: commands and events flow through Kafka topics, while events are durably stored locally.
-
-A Kafka broker is the only infrastructure you need.
+**[Website](https://alikelleci.github.io/eventify/)** · **[Documentation](https://alikelleci.github.io/eventify/docs/)** · **[Eventify Console](https://alikelleci.github.io/eventify/console)**
 
 ---
 
-## Table of Contents
+## Quick start
 
-1. [Core Concepts](#1-core-concepts)
-2. [Getting Started](#2-getting-started)
-    - [Installation](#21-installation)
-    - [Configuration](#22-configuration)
-    - [Spring Boot Integration](#23-spring-boot-integration)
-        - [Declare an Eventify bean](#231-declare-an-eventify-bean)
-        - [Annotate your handler classes as Spring beans](#232-annotate-your-handler-classes-as-spring-beans)
-3. [Domain Modeling](#3-domain-modeling)
-    - [Defining an Aggregate](#31-defining-an-aggregate)
-    - [Commands and Events](#32-commands-and-events)
-4. [Handlers](#4-handlers)
-    - [Command Handlers](#41-command-handlers)
-    - [Event Sourcing Handlers](#42-event-sourcing-handlers)
-    - [Event Handlers](#43-event-handlers)
-5. [Command Gateway](#5-command-gateway)
-    - [Configuration](#51-configuration)
-    - [Sending Commands](#52-sending-commands)
-6. [Advanced Features](#6-advanced-features)
-    - [Snapshotting](#61-snapshotting)
-    - [Event Upcasting](#62-event-upcasting)
-7. [Testing](#7-testing)
-8. [Annotation Reference](#8-annotation-reference)
-
----
-
-## 1. Core Concepts
-
-Before diving in, here is a brief overview of the terminology used throughout this documentation.
-
-**Aggregate**  
-An aggregate is your domain object—it represents the current state of a business entity, such as a `Customer` or an `Order`. In Eventify, an aggregate is always a plain, immutable class. Its state is not stored as the source of truth; instead, it is reconstructed from its event history, optionally starting from a snapshot.
-
-**Command**  
-A command is an instruction to perform an action—an intent to change state, such as `CreateCustomer` or `PlaceOrder`. Commands are validated and processed by command handlers. A command either succeeds and produces one or more events, or fails with an error.
-
-**Event**  
-An event is a fact—something that has already happened, such as `CustomerCreated` or `OrderPlaced`. Events are immutable and form the source of truth from which aggregate state is reconstructed.
-
-**Command Handler**  
-A class that contains the business logic for processing commands. It receives a command and the current aggregate state, validates the command, and returns the event or events that should be recorded.
-
-**Event-Sourcing Handler**  
-A class that defines how events are applied to the current aggregate state to produce the next state. This is how an aggregate is reconstructed from its event history.
-
-**Event Handler**  
-A class that reacts to published events to perform side effects, such as updating a read model, sending a notification, or triggering a downstream process.
-
-**Upcaster**  
-A class that migrates older event data to a newer schema. As your event structure evolves, upcasters transparently transform stored event data before it is deserialized.
-
----
-
-## 2. Getting Started
-
-### 2.1 Installation
-
-Add the core dependency to your project:
+Add the core dependency (or `eventify-spring-boot-starter` for Spring Boot):
 
 ```xml
 <dependency>
@@ -80,19 +22,25 @@ Add the core dependency to your project:
 </dependency>
 ```
 
-For Spring Boot, use the starter instead:
+Define the decision and state transition:
 
-```xml
-<dependency>
-    <groupId>io.github.alikelleci</groupId>
-    <artifactId>eventify-spring-boot-starter</artifactId>
-    <version>x.y.z</version>
-</dependency>
+```java
+public class OrderHandler {
+
+    @CommandHandler
+    public OrderPlaced handle(PlaceOrder command, Order state) {
+        if (state != null) throw new ValidationException("Order already exists.");
+        return new OrderPlaced(command.id(), command.customer());
+    }
+
+    @EventSourcingHandler
+    public Order handle(OrderPlaced event, Order state) {
+        return new Order(event.id(), event.customer());
+    }
+}
 ```
 
-### 2.2 Configuration
-
-Create an `Eventify` instance with your Kafka configuration, register your handler classes, and call `start()`.
+Register the handler and start:
 
 ```java
 Properties props = new Properties();
@@ -101,575 +49,43 @@ props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
 
 Eventify eventify = Eventify.builder()
     .streamsConfig(props)
-    .registerHandler(new OrderCommandHandler())
-    .registerHandler(new OrderEventSourcingHandler())
-    .registerHandler(new OrderEventHandler())
+    .registerHandler(new OrderHandler())
     .build();
 
 eventify.start();
 ```
 
-Each handler class is a plain Java object. Eventify inspects each object for annotated methods and registers them automatically. You can register as many handler classes as your application requires.
-
-#### Builder options
-
-| Method | Required | Description |
-|---|---|---|
-| `streamsConfig(Properties)` | Yes | Kafka Streams configuration. |
-| `registerHandler(Object)` | At least one | Registers a handler class containing annotated methods. |
-| `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
-| `stateListener(StateListener)` | No | Callback invoked on Kafka Streams state transitions. Defaults to a log statement. |
-| `stateRestoreListener(StateRestoreListener)` | No | Callback invoked during state store restoration. Defaults to a logging implementation. |
-| `uncaughtExceptionHandler(StreamsUncaughtExceptionHandler)` | No | Handler for uncaught stream thread exceptions. Defaults to `SHUTDOWN_CLIENT`. |
-
-### 2.3 Spring Boot Integration
-
-The Spring Boot starter auto-configures Eventify and automatically registers any Spring bean that contains handler methods.
-
-#### 2.3.1 Declare an Eventify bean
-
-```java
-@Configuration
-public class EventifyConfig {
-
-    @Bean
-    public Eventify eventify() {
-        Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "my-app");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-
-        return Eventify.builder()
-            .streamsConfig(props)
-            .build();
-    }
-}
-```
-
-#### 2.3.2 Annotate your handler classes as Spring beans
-
-```java
-@Component
-public class OrderCommandHandler {
-    @HandleCommand
-    public OrderEvent handle(PlaceOrder command, Order state) { ... }
-}
-
-@Component
-public class OrderEventSourcingHandler {
-    @ApplyEvent
-    public Order apply(OrderPlaced event, Order state) { ... }
-}
-
-@Component
-public class OrderEventHandler {
-    @HandleEvent
-    public void on(OrderPlaced event) { ... }
-}
-```
-
-The starter automatically discovers Spring beans containing handler methods and registers them with Eventify. Eventify starts when the application context is ready.
-
-> **Important:** Auto-discovery only applies to `Eventify` beans that have **no handlers pre-registered** (i.e. the builder was not called with `registerHandler(...)`).
+See [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started/) for a complete first aggregate.
 
 ---
 
-## 3. Domain Modeling
+## Documentation
 
-### 3.1 Defining an Aggregate
-
-An aggregate is a plain, immutable class annotated with `@AggregateRoot`. It represents the current state of your domain entity.
-
-```java
-@Value
-@Builder(toBuilder = true)
-@AggregateRoot
-public class Order {
-    @AggregateId
-    String id;
-    String customer;
-    String trackingNumber;
-    Instant placedAt;
-}
-```
-
-- `@AggregateRoot` marks the class as an aggregate. Eventify also uses it to identify the aggregate state that can be injected into handler methods.
-- `@Builder(toBuilder = true)` is recommended so that event-sourcing handlers can create updated state using `state.toBuilder()...build()`.
-- The class should be immutable—use Lombok `@Value` or make all fields `final`.
-
-### 3.2 Commands and Events
-
-Commands and events are plain, immutable value objects. The recommended pattern is to group them under a marker interface annotated with `@TopicInfo`, which declares the Kafka topic used for those messages. Every command and event class must contain exactly one `String` field annotated with `@AggregateId`. This field identifies the target aggregate instance.
-
-#### Commands
-
-```java
-@TopicInfo("commands.order")
-public interface OrderCommand {
-
-    @Value
-    @Builder
-    class PlaceOrder implements OrderCommand {
-        @AggregateId
-        String id;
-        @NotBlank
-        String customer;
-    }
-
-    @Value
-    @Builder
-    class ShipOrder implements OrderCommand {
-        @AggregateId
-        String id;
-        @NotBlank
-        String trackingNumber;
-    }
-
-    @Value
-    @Builder
-    class CancelOrder implements OrderCommand {
-        @AggregateId
-        String id;
-    }
-}
-```
-
-> Bean Validation annotations such as `@NotBlank` and `@Max` on command fields are enforced automatically before the handler is invoked. If validation fails, Eventify produces a command failure result without invoking the handler.
-
-#### Events
-
-```java
-@TopicInfo("events.order")
-public interface OrderEvent {
-
-    @Value
-    @Builder
-    class OrderPlaced implements OrderEvent {
-        @AggregateId
-        String id;
-        String customer;
-    }
-
-    @Value
-    @Builder
-    class OrderShipped implements OrderEvent {
-        @AggregateId
-        String id;
-        String trackingNumber;
-    }
-
-    @Value
-    @Builder
-    class OrderCancelled implements OrderEvent {
-        @AggregateId
-        String id;
-    }
-}
-```
-
----
-
-## 4. Handlers
-
-### 4.1 Command Handlers
-
-Create a plain class and annotate its command-handling methods with `@HandleCommand`. The first parameter is always the command payload. Eventify automatically injects the remaining parameters.
-
-```java
-public class OrderCommandHandler {
-
-    @HandleCommand
-    public OrderEvent handle(PlaceOrder command, Order state) {
-        if (state != null) {
-            throw new ValidationException("Order already exists.");
-        }
-        return OrderPlaced.builder()
-            .id(command.getId())
-            .customer(command.getCustomer())
-            .build();
-    }
-
-    @HandleCommand
-    public OrderEvent handle(ShipOrder command, Order state) {
-        if (state == null) {
-            throw new ValidationException("Order does not exist.");
-        }
-        return OrderShipped.builder()
-            .id(command.getId())
-            .trackingNumber(command.getTrackingNumber())
-            .build();
-    }
-
-    @HandleCommand
-    public OrderEvent handle(CancelOrder command, Order state) {
-        if (state == null) {
-            throw new ValidationException("Order does not exist.");
-        }
-        return OrderCancelled.builder()
-            .id(command.getId())
-            .build();
-    }
-}
-```
-
-#### Return values
-
-| Return type | Behavior |
+| Topic | |
 |---|---|
-| A single event payload | One event is recorded and published. |
-| A `List` of event payloads | Multiple events are recorded and published. |
-| `null` | No events are produced, and no result is forwarded. |
+| [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started/) | Build a first aggregate |
+| [Domain Modeling](https://alikelleci.github.io/eventify/docs/domain-modeling/) | Aggregates, commands and events |
+| [Handlers](https://alikelleci.github.io/eventify/docs/handlers/) | Decisions, state transitions and reactions |
+| [Command Gateway](https://alikelleci.github.io/eventify/docs/command-gateway/) | Sending commands and receiving their results |
+| [Advanced Features](https://alikelleci.github.io/eventify/docs/advanced/) | Snapshots and event upcasting |
+| [Testing](https://alikelleci.github.io/eventify/docs/testing/) | Test the complete flow in memory |
+| [Annotation Reference](https://alikelleci.github.io/eventify/docs/annotation-reference/) | All annotations at a glance |
+| [Eventify Console](https://alikelleci.github.io/eventify/docs/console/) | Running the console, connecting applications and security |
 
-#### Throwing exceptions
+---
 
-Throw any exception to signal a business-rule failure. Eventify catches the exception and produces a failure result containing its message. Your handler does not need to create failure responses manually.
+## Modules
 
-#### Injectable parameters
-
-In addition to the command payload and aggregate state, you can declare the following injectable parameters in any order:
-
-```java
-@HandleCommand
-public OrderEvent handle(PlaceOrder command,
-                          Order state,
-                          Metadata metadata,
-                          @Timestamp Instant timestamp,
-                          @MessageId String messageId,
-                          @MetadataValue("$correlationId") String correlationId) {
-    // ...
-}
-```
-
-| Parameter | What is injected |
+| Module | Description |
 |---|---|
-| Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. |
-| `Metadata` | The complete metadata map for the command. |
-| `@Timestamp Instant` | The command timestamp. |
-| `@MessageId String` | The unique ID of the command message. |
-| `@MetadataValue("key") String` | A specific value from the metadata map. |
-
-### 4.2 Event Sourcing Handlers
-
-Create a plain class and annotate its event-sourcing methods with `@ApplyEvent`. These methods define how each event is applied to produce the next aggregate state. The first parameter is the event payload; all remaining parameters are resolved by type and can appear in any order.
-
-```java
-public class OrderEventSourcingHandler {
-
-    @ApplyEvent
-    public Order apply(OrderPlaced event, Order state) {
-        return Order.builder()
-            .id(event.getId())
-            .customer(event.getCustomer())
-            .placedAt(Instant.now())
-            .build();
-    }
-
-    @ApplyEvent
-    public Order apply(OrderShipped event, Order state) {
-        return state.toBuilder()
-            .trackingNumber(event.getTrackingNumber())
-            .build();
-    }
-
-    @ApplyEvent
-    public Order apply(OrderCancelled event, Order state) {
-        return null; // returning null signals the aggregate no longer exists
-    }
-}
-```
-
-- Always return a **new** state object—never mutate the existing one.
-- Return `null` to indicate that the aggregate has been deleted. Subsequent commands will receive `null` as the aggregate state.
-
-#### Injectable parameters
-
-| Parameter | What is injected |
-|---|---|
-| Type annotated with `@AggregateRoot` | The current aggregate state, or `null` if the aggregate does not yet exist. |
-| `Metadata` | The complete metadata map for the event. |
-| `@Timestamp Instant` | The event timestamp. |
-| `@MessageId String` | The unique ID of the event message. |
-| `@MetadataValue("key") String` | A specific value from the metadata map. |
-
-### 4.3 Event Handlers
-
-Create a plain class and annotate methods with `@HandleEvent` to react to published events. Event handlers are typically used for side effects such as updating a read model, sending a notification, or triggering a downstream process.
-
-```java
-public class OrderEventHandler {
-
-    @HandleEvent
-    public void on(OrderPlaced event) {
-        // e.g. insert into a read model database
-    }
-
-    @HandleEvent
-    public void on(OrderShipped event) {
-        // e.g. update the read model
-    }
-
-    @HandleEvent
-    public void on(OrderCancelled event) {
-        // e.g. remove from the read model
-    }
-}
-```
-
-#### Handler priority
-
-If multiple handlers process the same event type and you need to control their execution order, use `@Priority`. Handlers with a higher priority value are invoked first.
-
-```java
-@HandleEvent
-@Priority(10)
-public void on(OrderPlaced event) {
-    // invoked before handlers with lower priority
-}
-```
-
-#### Injectable parameters
-
-| Parameter | What is injected |
-|---|---|
-| `Metadata` | The complete metadata map for the event. |
-| `@Timestamp Instant` | The event timestamp. |
-| `@MessageId String` | The unique ID of the event message. |
-| `@MetadataValue("key") String` | A specific value from the metadata map. |
+| `eventify-core` | The framework |
+| `eventify-spring-boot-starter` | Spring Boot auto-configuration: registers handler beans and starts Eventify with the application |
+| `eventify-console-client` | Optional: connects your application to the Eventify Console |
+| `eventify-console-protocol` | The messages between the client and the console (used by both) |
+| `ghcr.io/alikelleci/eventify-console` | Optional: the Eventify Console as a Docker image, for all your applications |
 
 ---
 
-## 5. Command Gateway
+## License
 
-The `CommandGateway` is the client-side component used to send commands and receive their results. It is typically used in your API layer, such as a REST controller, to dispatch commands to Eventify and await their outcome.
-
-### 5.1 Configuration
-
-```java
-Properties producerConfig = new Properties();
-producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-
-CommandGateway gateway = CommandGateway.builder()
-    .producerConfig(producerConfig)
-    .replyTopic("my-app.replies")
-    .build();
-```
-
-#### Builder options
-
-| Method | Required | Description |
-|---|---|---|
-| `producerConfig(Properties)` | Yes | Kafka producer configuration. |
-| `replyTopic(String)` | Yes | Topic on which command results are received. |
-| `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
-
-### 5.2 Sending Commands
-
-```java
-// Async — returns a CompletableFuture
-CompletableFuture<PlaceOrder> future = gateway.send(
-    PlaceOrder.builder().id("order-1").customer("John Doe").build()
-);
-
-// Blocking — waits up to 1 minute by default
-PlaceOrder result = gateway.sendAndWait(
-    PlaceOrder.builder().id("order-1").customer("John Doe").build()
-);
-
-// Blocking with a custom timeout
-PlaceOrder result = gateway.sendAndWait(
-    PlaceOrder.builder().id("order-1").customer("John Doe").build(),
-    30, TimeUnit.SECONDS);
-```
-
-If the command fails, `sendAndWait` throws a `CommandExecutionException` containing the failure message. When using `send`, the returned future completes exceptionally with the same exception.
-
----
-
-## 6. Advanced Features
-
-### 6.1 Snapshotting
-
-By default, aggregate state is reconstructed by replaying its event history from the beginning. For aggregates with a long history, this can become expensive. Snapshotting improves reconstruction performance by periodically saving the current aggregate state, allowing Eventify to replay only the events that occurred after the latest snapshot.
-
-Enable snapshotting by adding `@EnableSnapshotting` to your aggregate class:
-
-```java
-@Value
-@Builder(toBuilder = true)
-@AggregateRoot
-@EnableSnapshotting(threshold = 500)
-public class Order {
-    // ...
-}
-```
-
-| Attribute | Default | Description |
-|---|---|---|
-| `threshold` | `500` | A snapshot is created whenever the aggregate version reaches a multiple of this value. |
-| `deleteEvents` | `false` | If `true`, events before the snapshot are deleted after the snapshot is created, reducing storage usage. |
-
-Snapshotting is transparent to your handlers—you do not need to change any handler code.
-
-### 6.2 Event Upcasting
-
-As your application evolves, the structure of your events may change. Upcasting lets you transparently migrate older stored event data to a newer schema without modifying the event store.
-
-#### How it works
-
-1. Annotate your event class with `@Revision(n)` to declare its current schema version.
-2. Write an upcaster method for each revision that needs to be migrated and annotate it with `@Upcast(type, revision)`.
-3. When an older event is read, Eventify automatically chains the required upcasters in ascending revision order.
-
-#### Example
-
-Suppose `OrderPlaced` started at revision 1 and is now at revision 3 after two schema changes:
-
-```java
-// Current version of the event — revision 3
-@Revision(3)
-@Value
-@Builder
-class OrderPlaced implements OrderEvent {
-    @AggregateId
-    String id;
-    String customer;
-    String shippingAddress; // added in revision 2
-    String couponCode;      // added in revision 3
-}
-```
-
-```java
-public class OrderEventUpcaster {
-
-    // Migrates revision 1 → 2: adds a default shipping address
-    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 1)
-    public JsonNode upcast(ObjectNode node) {
-        node.put("shippingAddress", "unknown");
-        return node;
-    }
-
-    // Migrates revision 2 → 3: adds a default coupon code
-    @Upcast(type = "com.example.OrderEvent$OrderPlaced", revision = 2)
-    public JsonNode upcast(ObjectNode node) {
-        node.putNull("couponCode");
-        return node;
-    }
-}
-```
-
-- `type` is the fully qualified class name of the event payload. For nested classes, use `$` as the separator.
-- `revision` is the **source** revision—the version stored in the event store, not the target revision.
-- Events without a `@Revision` annotation default to revision `1`.
-
----
-
-## 7. Testing
-
-Eventify works with the Kafka Streams `TopologyTestDriver`, which runs the complete processing topology in memory without requiring a running Kafka broker. This makes tests fast and deterministic.
-
-```java
-class OrderTest {
-
-    TopologyTestDriver driver;
-    TestInputTopic<String, Command> commands;
-    TestOutputTopic<String, Command> results;
-    TestOutputTopic<String, Event> events;
-
-    @BeforeEach
-    void setup() {
-        Properties props = new Properties();
-        props.put(StreamsConfig.APPLICATION_ID_CONFIG, "test");
-        props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-
-        Eventify eventify = Eventify.builder()
-            .streamsConfig(props)
-            .registerHandler(new OrderCommandHandler())
-            .registerHandler(new OrderEventSourcingHandler())
-            .build();
-
-        driver = new TopologyTestDriver(eventify.topology());
-
-        commands = driver.createInputTopic(
-            "commands.order",
-            new StringSerializer(), new JsonSerializer<>());
-
-        results = driver.createOutputTopic(
-            "commands.order.results",
-            new StringDeserializer(), new JsonDeserializer<>(Command.class));
-
-        events = driver.createOutputTopic(
-            "events.order",
-            new StringDeserializer(), new JsonDeserializer<>(Event.class));
-    }
-
-    @AfterEach
-    void tearDown() {
-        driver.close();
-    }
-
-    @Test
-    void shouldPlaceOrder() {
-        Command command = Command.builder()
-            .payload(PlaceOrder.builder()
-                .id("order-1")
-                .customer("John Doe")
-                .build())
-            .build();
-
-        commands.pipeInput(command.getAggregateId(), command);
-
-        List<Command> resultList = results.readValuesToList();
-        assertThat(resultList).hasSize(1);
-        assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
-
-        List<Event> eventList = events.readValuesToList();
-        assertThat(eventList).hasSize(1);
-        assertThat(eventList.get(0).getPayload()).isInstanceOf(OrderPlaced.class);
-    }
-
-    @Test
-    void shouldFailWhenOrderAlreadyExists() {
-        Command place1 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("John Doe").build())
-            .build();
-        Command place2 = Command.builder()
-            .payload(PlaceOrder.builder().id("order-1").customer("Jane Doe").build())
-            .build();
-
-        commands.pipeInput(place1.getAggregateId(), place1);
-        commands.pipeInput(place2.getAggregateId(), place2);
-
-        List<Command> resultList = results.readValuesToList();
-        assertThat(resultList.get(0).getMetadata().get("$result")).isEqualTo("success");
-        assertThat(resultList.get(1).getMetadata().get("$result")).isEqualTo("failure");
-    }
-}
-```
-
-#### Inspecting the stores directly
-
-You can query the event store and snapshot store directly in your tests:
-
-```java
-KeyValueStore<String, Event> eventStore = driver.getKeyValueStore("event-store");
-KeyValueStore<String, AggregateState> snapshotStore = driver.getKeyValueStore("snapshot-store");
-```
-
----
-
-## 8. Annotation Reference
-
-| Annotation | Where | Description |
-|---|---|---|
-| `@TopicInfo("topic")` | Command / Event interface or class | Declares the Kafka topic. Inherited by all nested classes. |
-| `@AggregateId` | Field | Marks the `String` field that identifies the aggregate. |
-| `@AggregateRoot` | Class | Marks a class as an aggregate root. |
-| `@EnableSnapshotting` | Aggregate class | Enables periodic snapshotting. |
-| `@Revision(n)` | Event payload class | Declares the current schema revision. Defaults to `1`. |
-| `@HandleCommand` | Method | Marks a command-handler method. |
-| `@ApplyEvent` | Method | Marks an event-sourcing handler method. |
-| `@HandleEvent` | Method | Marks an event-handler method. |
-| `@Upcast(type, revision)` | Method | Marks an upcaster method for a specific event type and source revision. |
-| `@Priority(n)` | `@HandleEvent` method | Controls invocation order when multiple handlers exist for the same event. Higher values run first. |
-| `@Timestamp` | Method parameter | Injects the message timestamp as an `Instant`. |
-| `@MessageId` | Method parameter | Injects the unique message ID as a `String`. |
-| `@MetadataValue("key")` | Method parameter | Injects a specific metadata value as a `String`. |
+Eventify is licensed under the [Apache License, Version 2.0](LICENSE).

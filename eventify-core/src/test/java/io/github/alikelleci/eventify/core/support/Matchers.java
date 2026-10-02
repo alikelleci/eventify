@@ -1,58 +1,20 @@
 package io.github.alikelleci.eventify.core.support;
 
-import io.github.alikelleci.eventify.core.messaging.commandhandling.Command;
-import io.github.alikelleci.eventify.core.messaging.eventhandling.Event;
-import io.github.alikelleci.eventify.core.messaging.eventsourcing.AggregateState;
-import org.assertj.core.api.recursive.comparison.RecursiveComparisonConfiguration;
+import io.github.alikelleci.eventify.core.command.CommandResult;
 
-import static io.github.alikelleci.eventify.core.messaging.Metadata.CAUSE;
-import static io.github.alikelleci.eventify.core.messaging.Metadata.RESULT;
-import static org.assertj.core.api.Assertions.assertThat;
-
+/** Short descriptions of a command's result, to compare several results in one assertion. */
 public class Matchers {
 
-  public static void assertCommandResult(Command command, Command commandResult, boolean isSuccess) {
-    assertThat(commandResult)
-        .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
-            .withIgnoredFields("metadata.$result", "metadata.$cause")
-            .build())
-        .isEqualTo(command);
-
-    if (isSuccess) {
-      assertThat(commandResult.getMetadata()).containsEntry(RESULT, "success");
-      assertThat(commandResult.getMetadata()).doesNotContainKey(CAUSE);
-    } else {
-      assertThat(commandResult.getMetadata()).containsEntry(RESULT, "failure");
-      assertThat(commandResult.getMetadata()).hasEntrySatisfying(CAUSE, value -> assertThat(value).isNotBlank());
-    }
+  private Matchers() {
   }
 
-
-  public static void assertEvent(Command command, Event event, Class<?> type) {
-    assertThat(event)
-        .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
-            .withIgnoredFields("id", "type", "revision")
-            .build())
-        .isEqualTo(command);
-
-    assertThat(event.getId()).isNotBlank();
-    assertThat(event.getType()).isEqualTo(type.getSimpleName());
-    assertThat(event.getRevision()).isNotNegative();
-    assertThat(event.getPayload()).isInstanceOf(type);
+  /** "success" or "failure", as the result is written. */
+  public static String outcome(CommandResult result) {
+    return result instanceof CommandResult.Success ? "success" : "failure";
   }
 
-
-  public static void assertSnapshot(Event event, AggregateState state, Class<?> type, long version) {
-    assertThat(state)
-        .usingRecursiveComparison(RecursiveComparisonConfiguration.builder()
-            .withIgnoredFields("id", "type", "payload", "eventId", "version")
-            .build())
-        .isEqualTo(event);
-
-    assertThat(state.getId()).isNotBlank();
-    assertThat(state.getType()).isEqualTo(type.getSimpleName());
-    assertThat(state.getEventId()).isEqualTo(event.getId());
-    assertThat(state.getVersion()).isEqualTo(version);
-    assertThat(state.getPayload()).isInstanceOf(type);
+  /** Why the command failed; {@code null} when it succeeded. */
+  public static String causeOf(CommandResult result) {
+    return result instanceof CommandResult.Failure failure ? failure.cause() : null;
   }
 }

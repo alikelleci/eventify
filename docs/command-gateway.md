@@ -1,44 +1,39 @@
 # Command Gateway
 
-The `CommandGateway` is the client-side component used to send commands and receive their results. It is typically used in your API layer, such as a REST controller, to dispatch commands to Eventify and await their outcome.
-
-## Configuration
+Use `CommandGateway` at your application boundary to send a command and receive its outcome.
 
 ```java
-Properties producerConfig = new Properties();
-producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-
 CommandGateway gateway = CommandGateway.builder()
     .producerConfig(producerConfig)
-    .replyTopic("my-app.replies")
+    .replyTopic("orders.replies")
     .build();
 ```
 
-### Builder options
-
-| Method | Required | Description |
-|---|---|---|
-| `producerConfig(Properties)` | Yes | Kafka producer configuration. |
-| `replyTopic(String)` | Yes | Topic on which command results are received. |
-| `objectMapper(ObjectMapper)` | No | Custom Jackson `ObjectMapper`. Defaults to an enhanced mapper with common modules registered. |
-
-## Sending Commands
+## Send a command
 
 ```java
-// Async — returns a CompletableFuture
-CompletableFuture<PlaceOrder> future = gateway.send(
-    PlaceOrder.builder().id("order-1").customer("John Doe").build()
+CompletableFuture<CommandResult.Success> result = gateway.send(
+    new PlaceOrder("order-1", "Ada")
 );
 
-// Blocking — waits up to 1 minute by default
-PlaceOrder result = gateway.sendAndWait(
-    PlaceOrder.builder().id("order-1").customer("John Doe").build()
+CommandResult.Success completed = gateway.sendAndWait(
+    new PlaceOrder("order-1", "Ada")
 );
-
-// Blocking with a custom timeout
-PlaceOrder result = gateway.sendAndWait(
-    PlaceOrder.builder().id("order-1").customer("John Doe").build(),
-    30, TimeUnit.SECONDS);
 ```
 
-If the command fails, `sendAndWait` throws a `CommandExecutionException` containing the failure message. When using `send`, the returned future completes exceptionally with the same exception.
+`send` is asynchronous. `sendAndWait` blocks until a result or timeout. A rejected command completes exceptionally with `CommandExecutionException`.
+
+## Metadata
+
+Wrap a payload in `Command` when you want to add metadata.
+
+```java
+gateway.send(Command.builder()
+    .payload(new PlaceOrder("order-1", "Ada"))
+    .metadata(Metadata.of("tenant", "acme"))
+    .build());
+```
+
+Eventify passes command metadata to produced events and adds correlation and causation ids.
+
+> A timeout means the caller did not receive a result in time; it does not prove that the command was not handled.

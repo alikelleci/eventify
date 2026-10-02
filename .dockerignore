@@ -1,0 +1,10 @@
+.git
+.idea
+.angular
+**/.DS_Store
+**/target
+**/node_modules
+frontend/dist
+frontend/.angular
+site
+site-docs

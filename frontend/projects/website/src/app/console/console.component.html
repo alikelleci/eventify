@@ -1,0 +1,82 @@
+<div class="h-full overflow-y-auto">
+
+  <!-- Hero: the pitch, and a real screen of the console right below it -->
+  <section class="relative overflow-hidden">
+    <!-- A faint grid that fades out, and a soft glow behind the screen -->
+    <div class="pointer-events-none absolute inset-x-0 top-0 h-[40rem] bg-[linear-gradient(to_right,var(--p-surface-100)_1px,transparent_1px),linear-gradient(to_bottom,var(--p-surface-100)_1px,transparent_1px)] bg-[size:48px_48px] [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)] dark:bg-[linear-gradient(to_right,rgb(255_255_255/0.04)_1px,transparent_1px),linear-gradient(to_bottom,rgb(255_255_255/0.04)_1px,transparent_1px)]" aria-hidden="true"></div>
+    <div class="pointer-events-none absolute top-[28rem] left-1/2 h-[32rem] w-[64rem] -translate-x-1/2 rounded-full bg-primary-400/15 blur-3xl dark:bg-primary-500/10" aria-hidden="true"></div>
+
+    <div class="relative mx-auto max-w-6xl px-6 pt-[8vh] pb-20 lg:pt-[10vh]">
+      <div class="mx-auto max-w-3xl text-center">
+        <h1 class="text-4xl font-semibold leading-[1.08] tracking-tight text-balance text-surface-900 sm:text-5xl lg:text-[3.25rem] dark:text-surface-0">
+          Inspect aggregate history <span class="text-primary-600 dark:text-primary-400">with confidence</span>
+        </h1>
+        <p class="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-surface-500 dark:text-surface-400">
+          Give support a clear view of events, state transitions and command outcomes—without asking engineers to reconstruct the story.
+        </p>
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-4">
+          <p-button label="Run the Console" icon="pi pi-arrow-down" iconPos="right" size="large" (onClick)="getStarted.scrollIntoView({ behavior: 'smooth' })" />
+          <a [href]="docsUrl" target="_blank" rel="noopener"
+             class="group inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
+            Read the docs <i class="pi pi-arrow-up-right text-xs transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- A real screen of the console; too dense for a phone, where the replay below tells the story -->
+      <app-console-screen class="mx-auto mt-14 hidden max-w-6xl md:block" />
+    </div>
+  </section>
+
+  <!-- The event timeline of one order, played as steps -->
+  <section class="border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="eyebrow">Replay</div>
+        <h2 class="section-title">Replay an aggregate, one event at a time</h2>
+        <p class="section-text">
+          Walk through the retained history in order. Compare state before and after each event.
+        </p>
+      </div>
+      <app-aggregate-replay class="mt-12 block" />
+    </div>
+  </section>
+
+  <!-- The commands of the same order: what they produced, why one failed, and its retry -->
+  <section class="border-t border-surface-100 dark:border-surface-800">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="eyebrow">Commands</div>
+        <h2 class="section-title">Follow a decision from command to events</h2>
+        <p class="section-text">
+          See which events a command produced and the reason a command failed.
+        </p>
+      </div>
+      <app-command-trace class="mt-12 block" />
+    </div>
+  </section>
+
+  <!-- Get started: run the console, and connect an application to it -->
+  <section #getStarted class="scroll-mt-4 border-t border-surface-100 bg-surface-50 dark:border-surface-800 dark:bg-surface-950">
+    <div class="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+      <div class="max-w-2xl">
+        <div class="eyebrow">Get started</div>
+        <h2 class="section-title">Run the Console in three steps</h2>
+        <p class="section-text">
+          Start the Console, add the small client dependency, then connect your application.
+        </p>
+        <div class="mt-6 flex flex-wrap items-center gap-x-6 gap-y-4">
+          <p-button label="Read the docs" icon="pi pi-book" (onClick)="openDocs()" />
+          <a [href]="githubUrl" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-2 text-sm font-medium text-surface-600 hover:text-primary-600 dark:text-surface-300 dark:hover:text-primary-400">
+            <i class="pi pi-github"></i> GitHub
+          </a>
+        </div>
+      </div>
+
+      <app-get-started [steps]="steps" class="mt-12 block" />
+    </div>
+  </section>
+
+  <app-site-footer />
+</div>

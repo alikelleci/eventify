@@ -1,0 +1,38 @@
+@import "../../ui/src/styles.css";
+
+/* Where Tailwind looks for classes, relative to this file: the website and the shared ui code */
+@source ".";
+@source "../../ui/src";
+
+/* The website's motion: one set of curves, so everything moves alike */
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html, body { font-feature-settings: 'cv11', 'ss01'; }
+
+/* The heading of a section: a small label, the title and a line of text */
+.eyebrow { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--p-primary-600); }
+.section-title { margin-top: 0.75rem; font-size: 1.875rem; line-height: 1.15; font-weight: 600; letter-spacing: -0.025em; color: var(--p-surface-900); text-wrap: balance; }
+.section-text { margin-top: 1rem; font-size: 1rem; line-height: 1.7; color: var(--p-surface-500); }
+@media (min-width: 640px) { .section-title { font-size: 2.25rem; } }
+@media (prefers-color-scheme: dark) {
+  .eyebrow { color: var(--p-primary-400); }
+  .section-title { color: var(--p-surface-0); }
+  .section-text { color: var(--p-surface-400); }
+}
+
+/* The hero's accent words */
+.hero-accent { background: linear-gradient(100deg, var(--p-primary-300), #7dd3fc 70%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+/* Events streaming through the hero: a line of the grid, and a spark running along it */
+.hero-stream { position: absolute; left: 0; right: 0; height: 1px; overflow: hidden; }
+.hero-stream > span {
+  position: absolute; top: 0; left: 0; width: 160px; height: 1px; transform: translateX(-160px);
+  background: linear-gradient(to right, transparent, var(--p-primary-400), transparent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hero-stream > span { animation: hero-stream linear infinite; }
+}
+@keyframes hero-stream { to { transform: translateX(100vw); } }
