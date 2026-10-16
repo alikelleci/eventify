@@ -7,6 +7,7 @@ import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.github.benmanes.caffeine.cache.Scheduler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
+import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
@@ -41,7 +42,7 @@ public class DefaultCommandGateway implements CommandGateway {
   /** How long {@link #close()} waits for the commands still being sent to reach Kafka. */
   private static final Duration CLOSE_TIMEOUT = Duration.ofSeconds(10);
 
-  private final Cache<String, CompletableFuture<CommandResult.Success>> cache;
+  private final Cache<String, CompletableFuture<List<Event>>> cache;
 
   private final Producer<String, Command> producer;
 
@@ -66,7 +67,7 @@ public class DefaultCommandGateway implements CommandGateway {
         .expireAfterWrite(timeout)
         // Without a scheduler, entries only expire when the cache is used.
         .scheduler(Scheduler.systemScheduler())
-        .removalListener((String key, CompletableFuture<CommandResult.Success> future, RemovalCause cause) -> {
+        .removalListener((String key, CompletableFuture<List<Event>> future, RemovalCause cause) -> {
           if (cause.wasEvicted()) {
             completeExceptionally(future, new TimeoutException("Command timed out: no reply received within the allowed time."));
           }
@@ -87,7 +88,7 @@ public class DefaultCommandGateway implements CommandGateway {
   }
 
   @Override
-  public CompletableFuture<CommandResult.Success> send(Command command) {
+  public CompletableFuture<List<Event>> send(Command command) {
     if (replies.isClosed()) {
       throw new IllegalStateException("The command gateway is closed.");
     }
@@ -96,9 +97,9 @@ public class DefaultCommandGateway implements CommandGateway {
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(command.getTopic().value(), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command,
         List.of(new RecordHeader(HeaderNames.REPLY_TO, replies.getReplyTopic().getBytes(StandardCharsets.UTF_8))));
 
-    CompletableFuture<CommandResult.Success> future = new CompletableFuture<>();
+    CompletableFuture<List<Event>> future = new CompletableFuture<>();
     // Refused while the same command still waits: it would be handled twice and replace the first future.
-    CompletableFuture<CommandResult.Success> waiting = cache.asMap().putIfAbsent(command.getId(), future);
+    CompletableFuture<List<Event>> waiting = cache.asMap().putIfAbsent(command.getId(), future);
     if (waiting != null) {
       return CompletableFuture.failedFuture(new IllegalStateException("Command " + command.getId() + " was already sent and still waits for its result."));
     }
@@ -119,13 +120,13 @@ public class DefaultCommandGateway implements CommandGateway {
     return future;
   }
 
-  private void failSend(Command command, CompletableFuture<CommandResult.Success> future, Exception exception) {
+  private void failSend(Command command, CompletableFuture<List<Event>> future, Exception exception) {
     log.warn("Failed to send command: {} ({})", command.getType(), command.getAggregateId(), exception);
     cache.asMap().remove(command.getId(), future);
     completeExceptionally(future, exception);
   }
 
-  private void completeExceptionally(CompletableFuture<CommandResult.Success> future, Throwable exception) {
+  private void completeExceptionally(CompletableFuture<List<Event>> future, Throwable exception) {
     complete(() -> future.completeExceptionally(exception));
   }
 
@@ -169,14 +170,14 @@ public class DefaultCommandGateway implements CommandGateway {
       return;
     }
     // Removed before it completes: its callbacks may send the same command again.
-    CompletableFuture<CommandResult.Success> future = cache.asMap().remove(result.command().getId());
+    CompletableFuture<List<Event>> future = cache.asMap().remove(result.command().getId());
     if (future == null) {
       return;
     }
     if (result instanceof CommandResult.Failure failure) {
       completeExceptionally(future, new CommandExecutionException(failure.cause()));
     } else {
-      complete(() -> future.complete((CommandResult.Success) result));
+      complete(() -> future.complete(((CommandResult.Success) result).events()));
     }
   }
 

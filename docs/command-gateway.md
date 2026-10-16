@@ -12,11 +12,11 @@ CommandGateway gateway = CommandGateway.builder()
 ## Send a command
 
 ```java
-CompletableFuture<CommandResult.Success> result = gateway.send(
+CompletableFuture<List<Event>> result = gateway.send(
     new PlaceOrder("order-1", "Ada")
 );
 
-CommandResult.Success completed = gateway.sendAndWait(
+List<Event> completed = gateway.sendAndWait(
     new PlaceOrder("order-1", "Ada")
 );
 ```
