@@ -2,7 +2,7 @@ package io.github.alikelleci.eventify.core.command.gateway;
 
 import io.github.alikelleci.eventify.core.EventifyException;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.CommandResult;
+import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -27,11 +27,13 @@ class SendAndWaitTest {
   private final Command command = Command.builder().payload(new Ship("order-1")).build();
 
   @Test
-  @DisplayName("Should return the result")
-  void returnsTheResult() {
-    CommandResult.Success success = new CommandResult.Success(command, List.of());
+  @DisplayName("Should return the events in stored order")
+  void returnsTheEvents() {
+    List<Event> events = List.of(
+        Event.builder().aggregateType("order").payload(new Ship("order-1")).sequence(1).build(),
+        Event.builder().aggregateType("order").payload(new Ship("order-1")).sequence(2).build());
 
-    assertThat(answering(CompletableFuture.completedFuture(success)).sendAndWait(command)).isSameAs(success);
+    assertThat(answering(CompletableFuture.completedFuture(events)).sendAndWait(command)).isSameAs(events);
   }
 
   @Test
@@ -54,7 +56,7 @@ class SendAndWaitTest {
   @Test
   @DisplayName("Should throw CommandTimeoutException when the gateway stopped waiting for the result")
   void throwsATimeoutWhenTheGatewayStoppedWaiting() {
-    CompletableFuture<CommandResult.Success> timedOut = CompletableFuture.failedFuture(new TimeoutException("Command timed out"));
+    CompletableFuture<List<Event>> timedOut = CompletableFuture.failedFuture(new TimeoutException("Command timed out"));
 
     assertThatThrownBy(() -> answering(timedOut).sendAndWait(command))
         .isInstanceOf(CommandTimeoutException.class);
@@ -74,10 +76,10 @@ class SendAndWaitTest {
     }
   }
 
-  private static CommandGateway answering(CompletableFuture<CommandResult.Success> future) {
+  private static CommandGateway answering(CompletableFuture<List<Event>> future) {
     return new CommandGateway() {
       @Override
-      public CompletableFuture<CommandResult.Success> send(Command command) {
+      public CompletableFuture<List<Event>> send(Command command) {
         return future;
       }
 

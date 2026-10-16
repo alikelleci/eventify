@@ -3,8 +3,7 @@ package io.github.alikelleci.eventify.core.command.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.EventifyException;
 import io.github.alikelleci.eventify.core.command.Command;
-import io.github.alikelleci.eventify.core.command.CommandResult;
-import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
+import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
 import io.github.alikelleci.eventify.core.command.gateway.internal.DefaultCommandGateway;
 import io.github.alikelleci.eventify.core.kafka.KafkaClientConfigs;
@@ -12,6 +11,7 @@ import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -21,21 +21,21 @@ import java.util.concurrent.TimeoutException;
 public interface CommandGateway extends AutoCloseable {
 
   /** Sends a command. The future fails when it is rejected. */
-  CompletableFuture<CommandResult.Success> send(Command command);
+  CompletableFuture<List<Event>> send(Command command);
 
   /** Releases gateway resources. */
   @Override
   void close();
 
-  default CompletableFuture<CommandResult.Success> send(Object payload) {
+  default CompletableFuture<List<Event>> send(Object payload) {
     return send(Command.builder()
         .payload(payload)
         .build());
   }
 
   /** Sends a command and waits for its result. A timeout does not mean the command was not handled. */
-  default CommandResult.Success sendAndWait(Command command, long timeout, TimeUnit unit) {
-    CompletableFuture<CommandResult.Success> future = send(command);
+  default List<Event> sendAndWait(Command command, long timeout, TimeUnit unit) {
+    CompletableFuture<List<Event>> future = send(command);
     try {
       return future.get(timeout, unit);
     } catch (ExecutionException e) {
@@ -48,17 +48,17 @@ public interface CommandGateway extends AutoCloseable {
     }
   }
 
-  default CommandResult.Success sendAndWait(Object payload, long timeout, TimeUnit unit) {
+  default List<Event> sendAndWait(Object payload, long timeout, TimeUnit unit) {
     return sendAndWait(Command.builder()
         .payload(payload)
         .build(), timeout, unit);
   }
 
-  default CommandResult.Success sendAndWait(Command command) {
+  default List<Event> sendAndWait(Command command) {
     return sendAndWait(command, 1, TimeUnit.MINUTES);
   }
 
-  default CommandResult.Success sendAndWait(Object payload) {
+  default List<Event> sendAndWait(Object payload) {
     return sendAndWait(payload, 1, TimeUnit.MINUTES);
   }
 
