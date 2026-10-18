@@ -5,7 +5,7 @@ title: Overview
 <div class="docs-hero" markdown>
 <p class="docs-eyebrow">Eventify documentation</p>
 
-# Build your domain.<br>Keep every event.
+# Get started with Eventify.
 
 <p class="docs-lead">Eventify is a Java event-sourcing library backed by Apache Kafka. You define commands, events and an aggregate; Eventify records events and rebuilds aggregate state when a command arrives.</p>
 
