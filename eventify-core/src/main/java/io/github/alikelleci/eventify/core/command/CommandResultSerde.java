@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.command;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -12,6 +13,10 @@ public final class CommandResultSerde implements Serde<CommandResult> {
 
   private final JsonSerializer<CommandResult> serializer;
   private final JsonDeserializer<CommandResult> deserializer;
+
+  public CommandResultSerde() {
+    this(EventifyObjectMapper.create());
+  }
 
   public CommandResultSerde(ObjectMapper objectMapper) {
     this.serializer = new JsonSerializer<>(objectMapper);

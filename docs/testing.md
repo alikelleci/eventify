@@ -12,12 +12,15 @@ try (TopologyTestDriver driver = new TopologyTestDriver(eventify.topology())) {
     var commands = driver.createInputTopic(
         "commands.order", new StringSerializer(), new CommandSerde().serializer());
     var results = driver.createOutputTopic(
-        "commands.order.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
+        "commands.order.results", new StringDeserializer(), new CommandResultSerde().deserializer());
+    var events = driver.createOutputTopic(
+        "events.order", new StringDeserializer(), new EventSerde().deserializer());
 
     Command command = Command.builder().payload(new PlaceOrder("order-1", "Ada")).build();
     commands.pipeInput(command.getAggregateId(), command);
 
     assertThat(results.readValue()).isInstanceOf(CommandResult.Success.class);
+    assertThat(events.readValue().getPayload()).isEqualTo(new OrderPlaced("order-1", "Ada"));
 }
 ```
 
