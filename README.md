@@ -1,7 +1,7 @@
 # Eventify
 
 [![CI](https://github.com/alikelleci/eventify/actions/workflows/ci.yml/badge.svg)](https://github.com/alikelleci/eventify/actions/workflows/ci.yml)
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.alikelleci/eventify-core.svg)](https://central.sonatype.com/artifact/io.github.alikelleci/eventify-core)
+[![GitHub Release](https://img.shields.io/github/v/release/alikelleci/eventify)](https://github.com/alikelleci/eventify/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 Eventify is a Java event-sourcing library backed by Apache Kafka. Define commands, events and aggregates with plain annotated methods; Eventify records events, rebuilds state and publishes resulting events.

@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.aggregate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.common.errors.SerializationException;
@@ -15,6 +16,10 @@ public class SnapshotSerde implements Serde<AggregateState> {
   private final ObjectMapper objectMapper;
   private final JsonSerializer<AggregateState> serializer;
   private final JsonDeserializer<AggregateState> deserializer;
+
+  public SnapshotSerde() {
+    this(EventifyObjectMapper.create());
+  }
 
   public SnapshotSerde(ObjectMapper objectMapper) {
     this.objectMapper = objectMapper;
