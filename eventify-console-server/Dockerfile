@@ -6,7 +6,12 @@
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /build
 COPY . .
-RUN mvn --batch-mode --no-transfer-progress -pl eventify-console-server -am -DskipTests package
+ARG RELEASE_VERSION
+RUN if [ -n "$RELEASE_VERSION" ]; then \
+      mvn --batch-mode --no-transfer-progress versions:set \
+        -DnewVersion="$RELEASE_VERSION" -DgenerateBackupPoms=false; \
+    fi \
+    && mvn --batch-mode --no-transfer-progress -pl eventify-console-server -am -DskipTests package
 
 # 2. The image
 FROM eclipse-temurin:21-jre
