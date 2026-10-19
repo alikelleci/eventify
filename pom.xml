@@ -28,6 +28,8 @@
         <archunit.version>1.5.0</archunit.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- Replaced with the release commit in the publication workspace for safe retries. -->
+        <eventify.release.commit>development</eventify.release.commit>
     </properties>
 
     <build>
