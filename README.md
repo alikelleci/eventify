@@ -86,12 +86,6 @@ See [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started
 
 ---
 
-## Development
-
-Build and test with `mvn verify`. See the [maintainer release guide](docs/releasing.md) for GitHub Releases, publication credentials, CI protection, and recovery from a failed publication.
-
----
-
 ## License
 
 Eventify is licensed under the [Apache License, Version 2.0](LICENSE).
