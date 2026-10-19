@@ -12,7 +12,6 @@ import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
-import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -99,7 +98,7 @@ class CommandResultTest {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
     driver = new TopologyTestDriver(Eventify.builder().streamsConfig(properties).registerHandler(new CartHandler()).build().topology());
     commands = driver.createInputTopic("commands.cart", new StringSerializer(), new CommandSerde().serializer());
-    CommandResultSerde resultSerde = new CommandResultSerde(EventifyObjectMapper.create());
+    CommandResultSerde resultSerde = new CommandResultSerde();
     results = driver.createOutputTopic("commands.cart.results", new StringDeserializer(), resultSerde.deserializer());
     replies = driver.createOutputTopic(REPLY_TOPIC, new StringDeserializer(), resultSerde.deserializer());
     events = driver.createOutputTopic("events.cart", new StringDeserializer(), new EventSerde().deserializer());
