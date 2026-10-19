@@ -1,66 +1,136 @@
 name: Deploy Website and Docs
 
-# One GitHub Pages site: the website at the root, the documentation under /docs/.
+# Deploy the exact static artifact tested by the successful CI run on main.
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
-  contents: write
-
-# A newer deploy replaces an older one that is still running.
-concurrency:
-  group: pages
-  cancel-in-progress: true
+  actions: read
+  contents: read
 
 jobs:
-  deploy:
-    name: Build and Deploy
+  select:
+    name: Verify CI for Deployment
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.ci.outputs.deploy }}
+      run-id: ${{ steps.ci.outputs.run-id }}
+      sha: ${{ steps.ci.outputs.sha }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Select successful CI for the current main commit
+        id: ci
+        uses: actions/github-script@v7
         with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          script: |
+            const { owner, repo } = context.repo;
+            if (context.eventName === 'workflow_dispatch' && context.ref !== 'refs/heads/main') {
+              throw new Error('Manual deployment is only allowed from main.');
+            }
 
-      - name: Build website
-        working-directory: frontend
-        run: |
-          npm ci
-          npx ng build website --base-href /eventify/
+            const { data: workflow } = await github.rest.actions.getWorkflow({
+              owner, repo, workflow_id: 'ci.yml'
+            });
+            let runId = context.payload.workflow_run?.id;
+            if (context.eventName === 'workflow_dispatch') {
+              const { data } = await github.rest.actions.listWorkflowRuns({
+                owner, repo, workflow_id: workflow.id,
+                branch: 'main', event: 'push', head_sha: context.sha,
+                status: 'success', per_page: 100
+              });
+              runId = data.workflow_runs[0]?.id;
+              if (!runId) {
+                throw new Error('This exact main commit needs a successful CI run before deployment.');
+              }
+            }
+
+            const { data: run } = await github.rest.actions.getWorkflowRun({
+              owner, repo, run_id: runId
+            });
+            if (run.workflow_id !== workflow.id || run.event !== 'push' ||
+                run.head_branch !== 'main' || run.head_repository?.full_name !== `${owner}/${repo}` ||
+                run.status !== 'completed' || run.conclusion !== 'success') {
+              throw new Error('Deployment requires successful CI from a trusted main push.');
+            }
+
+            const { data: main } = await github.rest.git.getRef({ owner, repo, ref: 'heads/main' });
+            if (run.head_sha !== main.object.sha) {
+              core.notice('Skipping deployment: main has moved beyond this CI run.');
+              core.setOutput('deploy', 'false');
+              return;
+            }
+            if (context.eventName === 'workflow_dispatch' && run.head_sha !== context.sha) {
+              throw new Error('The successful CI run must match the manually selected commit.');
+            }
+            core.setOutput('deploy', 'true');
+            core.setOutput('run-id', run.id);
+            core.setOutput('sha', run.head_sha);
+
+  deploy:
+    name: Deploy Verified Site
+    needs: select
+    if: needs.select.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    # Rejected or stale CI runs never enter this group or cancel a valid deploy.
+    concurrency:
+      group: pages
+      cancel-in-progress: true
+    steps:
+      - name: Checkout verified main commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.select.outputs.sha }}
+
+      # Never download PR artifacts or unpack artifacts into the executable checkout.
+      - name: Download verified website and docs
+        uses: actions/download-artifact@v4
+        with:
+          name: website-and-docs
+          path: ${{ runner.temp }}/verified-site
+          run-id: ${{ needs.select.outputs.run-id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
-      - name: Build docs
-        run: |
-          pip install mkdocs-material ghp-import
-          mkdocs build --site-dir site-docs
+      - name: Install deployment tool
+        run: python -m pip install ghp-import
 
-      - name: Assemble site
-        run: |
-          mkdir -p public
-          cp -r frontend/dist/website/browser/. public/
-          cp -r site-docs public/docs
-          # The website is one HTML page; GitHub Pages only serves files that exist. Each website page besides the root
-          # gets its own copy, so opening it directly returns 200. Add new website routes here.
-          mkdir -p public/console && cp public/index.html public/console/index.html
-          # Any other unknown address loads the website too, which redirects to the home page.
-          cp public/index.html public/404.html
-          touch public/.nojekyll
+      - name: Confirm main has not changed
+        id: current
+        uses: actions/github-script@v7
+        env:
+          VERIFIED_SHA: ${{ needs.select.outputs.sha }}
+        with:
+          script: |
+            const { data: main } = await github.rest.git.getRef({
+              ...context.repo, ref: 'heads/main'
+            });
+            const current = main.object.sha === process.env.VERIFIED_SHA;
+            core.setOutput('deploy', String(current));
+            if (!current) core.notice('Skipping deployment: a newer main commit is waiting for CI.');
 
       - name: Deploy to gh-pages
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          VERIFIED_SITE: ${{ runner.temp }}/verified-site
+          VERIFIED_SHA: ${{ needs.select.outputs.sha }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          ghp-import --no-jekyll --push --force --message "Deploy website and docs" public
+          ghp-import --no-jekyll --push --force --message "Deploy website and docs for $VERIFIED_SHA" "$VERIFIED_SITE"
