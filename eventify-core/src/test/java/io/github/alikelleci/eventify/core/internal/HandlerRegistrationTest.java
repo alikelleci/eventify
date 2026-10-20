@@ -61,6 +61,21 @@ class HandlerRegistrationTest {
     }
   }
 
+  public static class InvalidTimestampHandler {
+    @EventHandler
+    public void handle(SwitchedOn event,
+                       @io.github.alikelleci.eventify.core.handler.annotation.Timestamp String timestamp) {
+    }
+  }
+
+  @Test
+  @DisplayName("Should reject an incompatible annotated parameter at registration")
+  void incompatibleAnnotatedParameterIsRejected() {
+    assertThatThrownBy(() -> Eventify.builder().registerHandler(new InvalidTimestampHandler()).build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("unsupported parameter");
+  }
+
   /** Handles the same command as LightHandler. */
   public static class OtherCommandHandler {
     @CommandHandler

@@ -94,6 +94,23 @@ class HandlerParameterResolverTest {
         .hasMessageContaining("Unsupported parameter");
   }
 
+  @SuppressWarnings("unused")
+  static void invalid(@Timestamp String timestamp, @MessageId int id,
+                      @MetadataValue("userId") Metadata value, @MetadataValue String metadata,
+                      @Timestamp @MessageId Object conflicting) {
+  }
+
+  @Test
+  @DisplayName("Should reject incompatible types and conflicting annotations before invocation")
+  void invalidParameters() throws Exception {
+    for (Parameter parameter : getClass().getDeclaredMethod("invalid", String.class, int.class,
+        Metadata.class, String.class, Object.class).getParameters()) {
+      assertThat(HandlerParameterResolver.supports(parameter)).isFalse();
+      assertThatThrownBy(() -> HandlerParameterResolver.resolve(parameter, event))
+          .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Unsupported parameter");
+    }
+  }
+
   private Object resolve(int position) {
     return HandlerParameterResolver.resolve(handlerParameters()[position], event);
   }
