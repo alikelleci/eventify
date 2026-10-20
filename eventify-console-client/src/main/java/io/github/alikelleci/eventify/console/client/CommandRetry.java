@@ -73,7 +73,7 @@ class CommandRetry {
       }
       original = objectMapper.treeToValue(tree, Command.class);
     } catch (Exception e) {
-      log.warn("Failed to read the command to retry", e);
+      log.warn("Cannot retry command, request could not be decoded", e);
       return Result.badRequest("Unreadable command");
     }
 
@@ -91,13 +91,13 @@ class CommandRetry {
     try {
       producer.send(new ProducerRecord<>(commandTopic, null, retryCommand.getTimestamp().toEpochMilli(),
           retryCommand.getAggregateId(), retryCommand)).get(RETRY_SEND_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS);
-      log.info("Retried command {} as {} on topic {}", original.getId(), retryCommand.getId(), commandTopic);
+      log.info("Published retry command: originalCommandId={}, retryCommandId={}, topic={}", original.getId(), retryCommand.getId(), commandTopic);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       return Result.unavailable("Interrupted while publishing the retry command");
     } catch (Exception e) {
       Throwable cause = e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e;
-      log.error("Failed to publish retry command for {}", original.getId(), cause);
+      log.error("Failed to publish retry command: originalCommandId={}", original.getId(), cause);
       return Result.unavailable("Failed to publish retry command: " + cause.getMessage());
     }
 

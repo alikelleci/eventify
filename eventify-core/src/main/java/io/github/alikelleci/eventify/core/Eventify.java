@@ -164,7 +164,7 @@ public class Eventify implements PluginContext {
     }
     Topology topology = topology();
     if (topology.describe().subtopologies().isEmpty()) {
-      log.info("Eventify is not started: it has no command or event handlers.");
+      log.info("Eventify startup skipped, no handlers registered");
       return;
     }
 
@@ -176,7 +176,7 @@ public class Eventify implements PluginContext {
     pluginListeners = new PluginListeners(plugins);
     setUpListeners();
 
-    log.info("Eventify is starting...");
+    log.info("Starting Eventify");
     kafkaStreams.start();
     pluginListeners.notifyPlugins("onStart", plugin -> plugin.onStart(this));
   }
@@ -185,8 +185,8 @@ public class Eventify implements PluginContext {
     if (handlers.commandHandlers().isEmpty() || !handlers.hasEventHandlers()) {
       return;
     }
-    log.warn("Command and event handlers share one Kafka Streams app: a failing event handler stops command handling too. "
-        + "Consider running the event handlers with their own '{}'.", StreamsConfig.APPLICATION_ID_CONFIG);
+    log.warn("Command and event handlers share a Kafka Streams application, event handler failures can interrupt command processing."
+        + " Use a separate '{}' for event handlers to isolate failures.", StreamsConfig.APPLICATION_ID_CONFIG);
   }
 
   /**
@@ -207,7 +207,7 @@ public class Eventify implements PluginContext {
       } else {
         stopped = true;
         removeShutdownHook();
-        log.info("Eventify is shutting down...");
+        log.info("Shutting down Eventify");
         KafkaStreams streams = kafkaStreams;
         PluginListeners listeners = pluginListeners;
         stop = () -> stop(streams, listeners, completion);
@@ -231,7 +231,7 @@ public class Eventify implements PluginContext {
     try {
       closeKafkaStreams(streams);
       listeners.notifyPlugins("onStop", plugin -> plugin.onStop(this));
-      log.info("Eventify shut down complete.");
+      log.info("Eventify shutdown completed");
       completion.complete(null);
     } catch (RuntimeException | Error e) {
       completion.completeExceptionally(e);
@@ -242,7 +242,7 @@ public class Eventify implements PluginContext {
   /** Waits until every stream thread has stopped, so plugins can release their resources afterwards. */
   void closeKafkaStreams(KafkaStreams streams) {
     while (!streams.close(CLOSE_WAIT)) {
-      log.warn("Eventify is still shutting down: Kafka Streams did not stop yet, a handler is still running.");
+      log.warn("Waiting for Kafka Streams to stop, a handler may still be running");
     }
   }
 

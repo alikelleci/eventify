@@ -29,7 +29,7 @@ public class NodeAcceptor implements SocketAcceptor {
     this.jsonMapper = jsonMapper;
     this.properties = properties;
     if (!properties.appTokenRequired()) {
-      log.warn("No application token configured (eventify.console.app-token): any client that can reach the console can connect as an application.");
+      log.warn("No application token configured, any client that can reach the console can connect: setting=eventify.console.app-token");
     }
   }
 
@@ -39,20 +39,20 @@ public class NodeAcceptor implements SocketAcceptor {
     try {
       info = jsonMapper.readValue(setup.getDataUtf8(), NodeInfo.class);
     } catch (Exception e) {
-      log.warn("Rejected a connection: unreadable instance info ({})", e.getMessage());
+      log.warn("Rejected application connection, unreadable instance info: reason={}", e.getMessage());
       return Mono.error(new RejectedSetupException("Unreadable instance info"));
     }
 
     if (isBlank(info.applicationId()) || isBlank(info.nodeId())) {
-      log.warn("Rejected a connection without an application id or node id: {}", info);
+      log.warn("Rejected application connection, missing applicationId or nodeId: nodeId={}, applicationId={}", info.nodeId(), info.applicationId());
       return Mono.error(new RejectedSetupException("applicationId and nodeId are required"));
     }
     if (properties.appTokenRequired() && !tokenMatches(setup.getMetadataUtf8())) {
-      log.warn("Rejected instance {} of application {}: wrong or missing application token", info.nodeId(), info.applicationId());
+      log.warn("Rejected application connection, invalid or missing token: nodeId={}, applicationId={}", info.nodeId(), info.applicationId());
       return Mono.error(new RejectedSetupException("Wrong or missing application token"));
     }
     if (info.protocolVersion() > ConsoleProtocol.VERSION) {
-      log.warn("Rejected instance {} of application {}: it uses protocol version {}, this console supports up to {}",
+      log.warn("Rejected application connection, unsupported protocol version: nodeId={}, applicationId={}, protocolVersion={}, maxProtocolVersion={}",
           info.nodeId(), info.applicationId(), info.protocolVersion(), ConsoleProtocol.VERSION);
       return Mono.error(new RejectedSetupException("Protocol version " + info.protocolVersion()
           + " is not supported by this console (up to " + ConsoleProtocol.VERSION + "): upgrade the console"));
@@ -62,7 +62,7 @@ public class NodeAcceptor implements SocketAcceptor {
     // Closed on shutdown, on a network failure, or when the heartbeat stops (after the keepalive lifetime).
     sendingSocket.onClose()
         .doFinally(signal -> registry.unregister(node))
-        .subscribe(null, e -> log.debug("Connection of instance {} closed with an error", node.nodeId(), e));
+        .subscribe(null, e -> log.debug("Application connection closed with an error: nodeId={}, applicationId={}", node.nodeId(), node.applicationId(), e));
 
     // The console only sends requests; it answers none.
     return Mono.just(new RSocket() {});

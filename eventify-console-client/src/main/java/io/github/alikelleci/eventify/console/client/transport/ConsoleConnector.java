@@ -133,9 +133,9 @@ public class ConsoleConnector {
             .doBeforeRetry(signal -> {
               // Once, not on every attempt: the console may well be down for a while.
               if (signal.totalRetries() == 0) {
-                log.warn("Can't connect to the Eventify Console at {} ({}). Retrying in the background.", uri, signal.failure().toString());
+                log.warn("Cannot connect to Eventify Console, retrying: url={}, reason={}", uri, signal.failure().toString());
               } else {
-                log.debug("Can't connect to the Eventify Console at {} ({})", uri, signal.failure().toString());
+                log.debug("Eventify Console connection failed: url={}, reason={}", uri, signal.failure().toString());
               }
             }));
 
@@ -143,7 +143,7 @@ public class ConsoleConnector {
         .then(connect)
         .subscribe(this::onConnected, e -> {
           if (running) {
-            log.error("Stopped connecting to the Eventify Console at {}", uri, e);
+            log.error("Stopped trying to connect to Eventify Console: url={}", uri, e);
           }
         });
   }
@@ -161,7 +161,7 @@ public class ConsoleConnector {
         .subscribe(ignored -> {
           accepted = true;
           lastRejection = null;
-          log.info("Connected to the Eventify Console at {} as {}", uri, nodeInfo.nodeId());
+          log.info("Connected to Eventify Console: url={}, nodeId={}", uri, nodeInfo.nodeId());
         });
 
     rsocket.onClose().subscribe(null, this::onClosed, () -> onClosed(null));
@@ -176,13 +176,13 @@ public class ConsoleConnector {
     if (error instanceof RejectedSetupException rejected) {
       // Trying again every second won't help (the console will refuse again), so try again slowly and say why once.
       if (!String.valueOf(rejected.getMessage()).equals(lastRejection)) {
-        log.error("The Eventify Console at {} rejected this instance: {}. Trying again every {} seconds.",
+        log.error("Connection to Eventify Console rejected: url={}, reason={}, retryDelaySeconds={}",
             uri, rejected.getMessage(), MAX_BACKOFF.toSeconds());
       }
       lastRejection = String.valueOf(rejected.getMessage());
       connect(MAX_BACKOFF);
     } else {
-      log.warn("Lost the connection to the Eventify Console at {}. Reconnecting.", uri);
+      log.warn("Eventify Console connection lost, reconnecting: url={}", uri);
       connect(MIN_BACKOFF);
     }
   }
@@ -216,10 +216,10 @@ public class ConsoleConnector {
           String reason;
           if (cause instanceof RejectedExecutionException) {
             // Not an error: this instance protects itself against more console requests than it handles at once.
-            log.warn("Refused a {} request from the Eventify Console: this instance is already handling as many as it allows", route);
+            log.warn("Console request rejected, instance is busy: route={}", route);
             reason = "The application is busy right now: try again in a moment";
           } else {
-            log.warn("Failed to handle console request for route {}", route, cause);
+            log.warn("Failed to handle console request: route={}", route, cause);
             reason = "Unexpected error";
           }
           return Mono.fromCallable(() -> toPayload(Reply.of(ReplyHeader.unavailable(reason))));
@@ -281,8 +281,7 @@ public class ConsoleConnector {
       default -> throw new IllegalArgumentException("The Eventify Console url must start with http:// or https://, but is " + consoleUrl);
     };
     if ("ws".equals(scheme) && !isLocal(consoleUrl.getHost())) {
-      log.warn("The Eventify Console at {} is reached without encryption: the application token and everything the "
-          + "console asks about travel in the clear. Use https:// when the console is not on this machine.", consoleUrl);
+      log.warn("Console connection is not encrypted, use HTTPS to protect tokens and data: url={}", consoleUrl);
     }
     String path = consoleUrl.getPath() == null ? "" : consoleUrl.getPath().replaceAll("/+$", "");
     if (!path.endsWith(ConsoleProtocol.RSOCKET_PATH)) {

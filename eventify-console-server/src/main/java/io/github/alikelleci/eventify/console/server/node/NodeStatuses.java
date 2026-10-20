@@ -61,7 +61,7 @@ public class NodeStatuses {
     try {
       return Optional.of(jsonMapper.readValue(reply.body(), NodeStatus.class)).filter(status -> status.state() != null);
     } catch (Exception e) {
-      log.warn("Could not read the status of instance {}", node.nodeId(), e);
+      log.warn("Failed to read application status: nodeId={}, applicationId={}", node.nodeId(), node.applicationId(), e);
       return Optional.empty();
     }
   }
