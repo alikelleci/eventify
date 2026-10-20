@@ -40,7 +40,7 @@ public class LoggingPlugin implements EventifyPlugin {
 
   @Override
   public StateListener stateListener() {
-    return (newState, oldState) -> log.info("State changed from {} to {}", oldState, newState);
+    return (newState, oldState) -> log.info("Kafka Streams state changed: from={}, to={}", oldState, newState);
   }
 
   @Override
@@ -53,7 +53,7 @@ public class LoggingPlugin implements EventifyPlugin {
 
     @Override
     public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
-      log.info("State restoration started: topic={}, partition={}, store={}, startingOffset={}, endingOffset={}",
+      log.info("State store restoration started: topic={}, partition={}, store={}, startingOffset={}, endingOffset={}",
           topicPartition.topic(), topicPartition.partition(), storeName, startingOffset, endingOffset);
       restoring.put(topicPartition, Stats.builder()
           .storeName(storeName)
@@ -73,14 +73,14 @@ public class LoggingPlugin implements EventifyPlugin {
 
     @Override
     public void onRestoreEnd(TopicPartition topicPartition, String storeName, long totalRestored) {
-      log.info("State restoration ended: topic={}, partition={}, store={}, totalRestored={}",
+      log.info("State store restoration completed: topic={}, partition={}, store={}, totalRestored={}",
           topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
       restoring.remove(topicPartition);
     }
 
     @Override
     public void onRestoreSuspended(TopicPartition topicPartition, String storeName, long totalRestored) {
-      log.info("State restoration suspended: topic={}, partition={}, store={}, totalRestored={}",
+      log.info("State store restoration suspended: topic={}, partition={}, store={}, totalRestored={}",
           topicPartition.topic(), topicPartition.partition(), storeName, totalRestored);
       restoring.remove(topicPartition);
     }
@@ -89,7 +89,7 @@ public class LoggingPlugin implements EventifyPlugin {
   private void logProgress() {
     restoring.forEach((topicPartition, stats) -> {
       if (stats.getCurrentOffset() < stats.getEndingOffset()) {
-        log.info("State restoration in progress: topic={}, partition={}, store={}, progress={}%",
+        log.info("State store restoration in progress: topic={}, partition={}, store={}, progress={}%",
             topicPartition.topic(), topicPartition.partition(), stats.getStoreName(), stats.progressPercentage());
       }
     });

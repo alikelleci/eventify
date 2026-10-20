@@ -88,19 +88,19 @@ class CommandHistory {
         } catch (WakeupException e) {
           throw e;
         } catch (CommandsReadTimeout e) {
-          log.warn("Reading the commands of aggregate {} {} took longer than {}", aggregateType, aggregateId, MAX_COMMANDS_READ);
+          log.warn("Loading command history timed out: aggregateType={}, aggregateId={}, timeoutSeconds={}", aggregateType, aggregateId, MAX_COMMANDS_READ.toSeconds());
           return Result.unavailable("Reading the commands took too long");
         } catch (Exception e) {
           // Not an empty list: that would look like the aggregate has no commands.
-          log.warn("Failed to read commands of aggregate {} {} from topic {}", aggregateType, aggregateId, topic, e);
+          log.warn("Failed to load command history: aggregateType={}, aggregateId={}, topic={}", aggregateType, aggregateId, topic, e);
           return Result.unavailable("Failed to read commands from topic " + topic + ": " + e.getMessage());
         }
       }
     } catch (WakeupException e) {
-      log.debug("Stopped reading commands for aggregate {} {}: the request was cancelled", aggregateType, aggregateId);
+      log.debug("Command history load cancelled: aggregateType={}, aggregateId={}", aggregateType, aggregateId);
       return Result.unavailable("Cancelled");
     } catch (Exception e) {
-      log.error("Unexpected error querying commands for aggregate {} {}", aggregateType, aggregateId, e);
+      log.error("Failed to load command history: aggregateType={}, aggregateId={}", aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error");
     }
 
@@ -151,7 +151,7 @@ class CommandHistory {
             results.add(CommandView.of(result));
           }
         } catch (Exception e) {
-          log.warn("Failed to deserialize command record on topic {} at offset {}", topic, record.offset(), e);
+          log.warn("Skipping unreadable command result: topic={}, partition={}, offset={}", topic, record.partition(), record.offset(), e);
         }
       }
     }

@@ -81,8 +81,8 @@ public class EventifyKafkaListenerAutoConfiguration {
       return eventify.getUpcasters();
     }
     if (apps.stream().findAny().isPresent()) {
-      log.warn("More than one Eventify bean: @KafkaListener methods upcast only with @Upcaster beans, "
-          + "not with upcasters registered via registerHandler(...).");
+      log.warn("Multiple Eventify beans found, @KafkaListener uses only @Upcaster methods on Spring beans. "
+          + "Upcasters registered only via registerHandler(...) are ignored.");
     }
     return Upcasters.of(EventifyHandlerBeans.of(beanFactory));
   }
@@ -123,8 +123,8 @@ public class EventifyKafkaListenerAutoConfiguration {
     String readCommitted = IsolationLevel.READ_COMMITTED.toString();
     Object isolationLevel = config.put(ConsumerConfig.ISOLATION_LEVEL_CONFIG, readCommitted);
     if (isolationLevel != null && !readCommitted.equalsIgnoreCase(isolationLevel.toString())) {
-      log.warn("'{}' is set by Eventify to '{}' for @KafkaListener methods; the configured value '{}' is not used.",
-          ConsumerConfig.ISOLATION_LEVEL_CONFIG, readCommitted, isolationLevel);
+      log.warn("Overriding Kafka setting for @KafkaListener: name={}, configured={}, required={}",
+          ConsumerConfig.ISOLATION_LEVEL_CONFIG, isolationLevel, readCommitted);
     }
     // From the first event, as Eventify's own event handlers read them: a new projection is built from all events.
     config.putIfAbsent(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");

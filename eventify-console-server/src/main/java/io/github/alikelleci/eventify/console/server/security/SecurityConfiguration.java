@@ -48,7 +48,7 @@ public class SecurityConfiguration {
   public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http, ConsoleProperties properties,
                                                        ObjectProvider<ReactiveClientRegistrationRepository> registrations) {
     if (!properties.loginEnabled()) {
-      log.warn("No login configured (eventify.console.oidc): anyone who can reach the console can use it.");
+      log.warn("No login configured, anyone who can reach the console can use it: setting=eventify.console.oidc");
       return http
           .authorizeExchange(exchanges -> exchanges.anyExchange().permitAll())
           .csrf(ServerHttpSecurity.CsrfSpec::disable)

@@ -41,7 +41,7 @@ public final class StreamsConfigDefaults {
     Object configured = streamsConfig.put(name, value);
     String configuredName = configured instanceof Class<?> type ? type.getName() : String.valueOf(configured);
     if (configured != null && !value.equals(configuredName)) {
-      log.warn("'{}' is set by Eventify to '{}'; the configured value '{}' is not used.", name, value, configured);
+      log.warn("Overriding Kafka setting: name={}, configured={}, required={}", name, configured, value);
     }
   }
 }
