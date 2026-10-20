@@ -30,7 +30,7 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
 
     handlers.eventHandlers(event.getPayload().getClass()).stream()
         .sorted(Comparator.comparingInt(EventHandlerMethod::getPriority).reversed())
-        .peek(handler -> log.debug("Handling event: {} ({})", event.getType(), event.getAggregateId()))
+        .peek(handler -> log.debug("Handling event: eventType={}, aggregateId={}, sequence={}, handler={}.{}", event.getType(), event.getAggregateId(), event.getSequence(), handler.getMethod().getDeclaringClass().getSimpleName(), handler.getMethod().getName()))
         .forEach(handler -> handler.handle(event));
 
     context.forward(fixedKeyRecord);

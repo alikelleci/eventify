@@ -104,7 +104,7 @@ public class DefaultCommandGateway implements CommandGateway {
       return CompletableFuture.failedFuture(new IllegalStateException("Command " + command.getId() + " was already sent and still waits for its result."));
     }
 
-    log.debug("Sending command: {} ({})", command.getType(), command.getAggregateId());
+    log.debug("Sending command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
     try {
       // A failed send fails the future right away instead of by timeout.
       producer.send(producerRecord, (metadata, exception) -> {
@@ -121,7 +121,7 @@ public class DefaultCommandGateway implements CommandGateway {
   }
 
   private void failSend(Command command, CompletableFuture<List<Event>> future, Exception exception) {
-    log.warn("Failed to send command: {} ({})", command.getType(), command.getAggregateId(), exception);
+    log.warn("Failed to send command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
     cache.asMap().remove(command.getId(), future);
     completeExceptionally(future, exception);
   }
@@ -159,7 +159,7 @@ public class DefaultCommandGateway implements CommandGateway {
       try {
         onReply(consumerRecord);
       } catch (Exception e) {
-        log.warn("Skipping reply on {}-{} at offset {}", consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset(), e);
+        log.warn("Skipping command reply, handling failed: topic={}, partition={}, offset={}", consumerRecord.topic(), consumerRecord.partition(), consumerRecord.offset(), e);
       }
     });
   }

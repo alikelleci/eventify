@@ -66,7 +66,7 @@ public class PluginListeners {
       try {
         call.accept(listener);
       } catch (Exception e) {
-        log.warn("Plugin {} failed in {}", listener.getClass().getName(), hook, e);
+        log.warn("Plugin callback failed: targetClass={}, callback={}", listener.getClass().getName(), hook, e);
       }
     });
   }

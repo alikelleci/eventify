@@ -29,9 +29,9 @@ public class NodeRegistry {
     if (previous != null) {
       // The instance reconnected before its old connection timed out: the newest connection wins.
       previous.rsocket().dispose();
-      log.info("Instance {} of application {} reconnected", info.nodeId(), info.applicationId());
+      log.info("Application instance reconnected: nodeId={}, applicationId={}", info.nodeId(), info.applicationId());
     } else {
-      log.info("Instance {} of application {} connected", info.nodeId(), info.applicationId());
+      log.info("Application instance connected: nodeId={}, applicationId={}", info.nodeId(), info.applicationId());
     }
     return node;
   }
@@ -39,7 +39,7 @@ public class NodeRegistry {
   public void unregister(ConnectedNode node) {
     // Only this connection: after a reconnect, the instance's entry is a newer connection that stays.
     if (nodes.remove(node.nodeId(), node)) {
-      log.info("Instance {} of application {} disconnected", node.nodeId(), node.applicationId());
+      log.info("Application instance disconnected: nodeId={}, applicationId={}", node.nodeId(), node.applicationId());
     }
   }
 

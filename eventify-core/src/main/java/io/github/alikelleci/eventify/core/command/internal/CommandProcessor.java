@@ -61,7 +61,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     Command command = fixedKeyRecord.value();
     CommandHandlerMethod commandHandler = handlers.commandHandler(command.getPayload().getClass());
     if (commandHandler == null) {
-      log.debug("No Command Handler found for command: {} ({})", command.getType(), command.getAggregateId());
+      log.debug("Skipping command, no handler registered: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       return; // not a command of this application
     }
 
@@ -75,12 +75,12 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
         throw new AggregateIdMismatchException("Command " + command.getType() + " has aggregate id " + command.getAggregateId() + ", but its record key is " + aggregateId);
       }
-      log.debug("Handling command: {} ({})", command.getType(), command.getAggregateId());
+      log.debug("Handling command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       replayResult = aggregateRepository.replay(aggregateId);
       events = copyEvents(toEvents(commandHandler.getAggregateType(), command, replayResult.currentState(), commandHandler.handle(command, replayResult.currentState())));
       newState = aggregateRepository.applyEvents(replayResult.currentState(), events);
     } catch (Exception e) {
-      logFailure(e);
+      logFailure(command, e);
       context.forward(fixedKeyRecord.withValue(new CommandResult.Failure(command, ExceptionUtils.getRootCauseMessage(e))));
       return;
     }
@@ -124,11 +124,11 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     if (snapshot == null) {
       return;
     }
-    log.debug("Creating snapshot: {} ({}) at version {}", aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
+    log.debug("Saving snapshot: aggregateType={}, aggregateId={}, version={}", aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
     snapshotStore.save(aggregateRepository.getAggregateType(), snapshot);
     if (aggregateRepository.deletesEventsAtSnapshot()) {
       long deleted = eventStore.deleteBefore(aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
-      log.debug("Deleted {} events before snapshot: {} ({}) at version {}", deleted, aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion());
+      log.debug("Deleted events before snapshot: aggregateType={}, aggregateId={}, snapshotVersion={}, deleted={}", aggregateRepository.getAggregateType(), snapshot.getAggregateId(), snapshot.getVersion(), deleted);
     }
   }
 
@@ -137,19 +137,19 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     try {
       return JsonRoundTrip.copy(objectMapper, state, AggregateState.class, "Snapshot " + aggregateRepository.getAggregateType());
     } catch (RuntimeException e) {
-      log.warn("Snapshot of {} ({}) at version {} skipped: {}", aggregateRepository.getAggregateType(), state.getAggregateId(), state.getVersion(), e.getMessage());
+      log.warn("Skipping snapshot: aggregateType={}, aggregateId={}, version={}, reason={}", aggregateRepository.getAggregateType(), state.getAggregateId(), state.getVersion(), e.getMessage());
       return null;
     }
   }
 
-  private void logFailure(Exception e) {
+  private void logFailure(Command command, Exception e) {
     Throwable throwable = ExceptionUtils.getRootCause(e);
     String message = ExceptionUtils.getRootCauseMessage(e);
 
     if (throwable instanceof ValidationException) {
-      log.debug("Handling command failed: {}", message, throwable);
+      log.debug("Command rejected, validation failed: commandId={}, commandType={}, aggregateId={}, reason={}", command.getId(), command.getType(), command.getAggregateId(), message, throwable);
     } else {
-      log.error("Handling command failed: {}", message, throwable);
+      log.error("Command failed: commandId={}, commandType={}, aggregateId={}, reason={}", command.getId(), command.getType(), command.getAggregateId(), message, throwable);
     }
   }
 }

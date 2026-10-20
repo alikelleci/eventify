@@ -86,10 +86,10 @@ class ConsoleRequestHandler {
     } catch (BadRequestException e) {
       return Reply.of(ReplyHeader.badRequest(e.getMessage()));
     } catch (IOException e) {
-      log.warn("Failed to read console request for route {}", route, e);
+      log.warn("Failed to read console request or write response: route={}", route, e);
       return Reply.of(ReplyHeader.badRequest("Invalid request data"));
     } catch (Exception e) {
-      log.error("Unexpected error handling console request for route {}", route, e);
+      log.error("Failed to handle console request: route={}", route, e);
       return Reply.of(ReplyHeader.unavailable("Unexpected error"));
     }
   }

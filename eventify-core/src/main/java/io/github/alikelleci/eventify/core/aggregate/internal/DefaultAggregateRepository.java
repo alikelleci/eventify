@@ -63,8 +63,8 @@ public final class DefaultAggregateRepository implements AggregateRepository {
       AggregateState state = applyEvents(aggregateId, start, events);
       long eventsReplayed = state.getVersion() - start.getVersion();
       // No payloads in the log: they may hold personal data.
-      log.debug("Replayed {} events for {} ({}) to version {} in {} ms", eventsReplayed,
-          aggregateType, aggregateId, state.getVersion(), (System.nanoTime() - started) / 1_000_000);
+      log.debug("Aggregate replayed: aggregateType={}, aggregateId={}, eventsApplied={}, version={}, ms={}", aggregateType,
+          aggregateId, eventsReplayed, state.getVersion(), (System.nanoTime() - started) / 1_000_000);
       return new ReplayResult(snapshot, state, eventsReplayed);
     }
   }
@@ -142,7 +142,7 @@ public final class DefaultAggregateRepository implements AggregateRepository {
       throw new SnapshotOutdatedException("Snapshot of " + aggregateType + " " + aggregateId + " can't be used (" + whyUnusable
           + "), and the events before it were deleted, so the aggregate can't be rebuilt.");
     }
-    log.info("Snapshot of aggregate {} {} not used: {}. Rebuilding it from its events.", aggregateType, aggregateId, whyUnusable);
+    log.info("Aggregate loaded without snapshot: aggregateType={}, aggregateId={}, reason={}", aggregateType, aggregateId, whyUnusable);
     return null;
   }
 
@@ -155,7 +155,7 @@ public final class DefaultAggregateRepository implements AggregateRepository {
     }
     // A type without payload is an unreadable aggregate (see SnapshotSerde), not a removal.
     if (snapshot.getPayload() == null && snapshot.getType() != null) {
-      return "its aggregate can't be read, e.g. its class was moved or a field no longer fits";
+      return "the snapshot payload cannot be read; the aggregate class or fields may have changed";
     }
     String wrongPayload = whyPayloadDoesNotMatch(snapshot.getPayload());
     if (wrongPayload != null) {
@@ -163,8 +163,8 @@ public final class DefaultAggregateRepository implements AggregateRepository {
     }
     // Also for a removed state: a later revision may not remove it.
     if (snapshot.getRevision() != revision) {
-      return "it was made with revision " + snapshot.getRevision() + " of " + aggregateClass.getSimpleName()
-          + ", the code is revision " + revision;
+      return "the snapshot uses revision " + snapshot.getRevision() + " of " + aggregateClass.getSimpleName()
+          + ", but the current revision is " + revision;
     }
     return null;
   }
@@ -192,8 +192,8 @@ public final class DefaultAggregateRepository implements AggregateRepository {
             + " (" + event.getType() + ", event " + event.getId() + ").");
       }
       EventSourcingHandlerMethod handler = eventSourcingHandlers.get(event.getPayload().getClass());
-      log.trace("Replaying event {} ({}) at sequence {}: handler {}", event.getType(), event.getAggregateId(),
-          event.getSequence(), handler != null ? "found" : "absent, payload unchanged");
+      log.trace("Applying event: eventType={}, aggregateId={}, sequence={}, handlerFound={}", event.getType(), event.getAggregateId(),
+          event.getSequence(), handler != null);
       Object payload = state.getPayload();
       if (handler != null) {
         payload = handler.handle(event, state);
@@ -212,6 +212,6 @@ public final class DefaultAggregateRepository implements AggregateRepository {
     if (payload == null || payload.getClass() == aggregateClass) {
       return null;
     }
-    return "its aggregate is " + payload.getClass().getName() + ", but " + aggregateType + " requires " + aggregateClass.getName();
+    return "the aggregate payload has type " + payload.getClass().getName() + ", but " + aggregateType + " requires " + aggregateClass.getName();
   }
 }

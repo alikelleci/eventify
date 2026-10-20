@@ -124,7 +124,7 @@ public class NodeGateway {
         .map(this::toReply)
         .switchIfEmpty(Mono.fromSupplier(() -> Reply.of(ReplyHeader.unavailable("Empty answer from instance " + node.nodeId()))))
         .onErrorResume(e -> {
-          log.warn("Request {} to instance {} of application {} failed: {}", route, node.nodeId(), node.applicationId(), e.toString());
+          log.warn("Console request failed: route={}, nodeId={}, applicationId={}, reason={}", route, node.nodeId(), node.applicationId(), e.toString());
           return Mono.just(Reply.of(ReplyHeader.unavailable("No answer from instance " + node.nodeId())));
         });
   }

@@ -31,13 +31,13 @@ class Ownership {
     KafkaStreams streams = eventify.getKafkaStreams();
 
     if (streams == null || streams.state() != KafkaStreams.State.RUNNING) {
-      log.debug("Kafka Streams is not running");
+      log.debug("Cannot load aggregate, Kafka Streams is not running: aggregateId={}, streamsState={}", aggregateId, streams == null ? "not initialized" : streams.state());
       return Result.unavailable("Kafka Streams is not running");
     }
 
     KeyQueryMetadata metadata = eventify.getAggregateMetadata(aggregateId);
     if (metadata == null || metadata.activeHost().equals(HostInfo.unavailable())) {
-      log.warn("Metadata unavailable for aggregate {}", aggregateId);
+      log.warn("Cannot locate aggregate owner: aggregateId={}", aggregateId);
       return Result.unavailable("Metadata unavailable");
     }
 
@@ -52,7 +52,7 @@ class Ownership {
   /** Nothing found; unless this instance stopped owning the aggregate during the query, and simply no longer has it. */
   <T> Result<T> notFound(String aggregateId) {
     if (!isLocallyAuthoritative(aggregateId)) {
-      log.debug("Ownership/availability changed while querying aggregate {}; returning 503", aggregateId);
+      log.debug("Aggregate no longer available on this instance: aggregateId={}", aggregateId);
       return Result.unavailable("Ownership changed during query");
     }
     return Result.notFound();

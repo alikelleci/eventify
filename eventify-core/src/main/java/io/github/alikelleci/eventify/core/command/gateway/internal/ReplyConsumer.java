@@ -92,14 +92,14 @@ public class ReplyConsumer {
           consumerRecords = consumer.poll(Duration.ofMillis(1000));
         } catch (RecordDeserializationException e) {
           // Skip an unreadable record, so later replies still arrive.
-          log.warn("Skipping unreadable record on {} at offset {}", e.topicPartition(), e.offset(), e);
+          log.warn("Skipping unreadable command reply: topicPartition={}, offset={}", e.topicPartition(), e.offset(), e);
           consumer.seek(e.topicPartition(), e.offset() + 1);
           continue;
         } catch (WakeupException e) {
           throw e;
         } catch (Exception e) {
           // Keep listening: if this thread stops, every command times out.
-          log.error("Failed to poll replies from {}", replyTopic, e);
+          log.error("Failed to poll command replies: topic={}", replyTopic, e);
           if (!pause()) {
             break;
           }
@@ -108,7 +108,7 @@ public class ReplyConsumer {
         try {
           onReplies.accept(consumerRecords);
         } catch (Exception e) {
-          log.error("Failed to handle replies from {}", replyTopic, e);
+          log.error("Failed to handle command replies: topic={}", replyTopic, e);
         }
       }
     } catch (WakeupException e) {
