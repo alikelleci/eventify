@@ -4,7 +4,7 @@ Add Eventify, define your domain, register handlers and start the application.
 
 ## What you need
 
-Access to an Apache Kafka cluster.
+Java 17 or later and access to an Apache Kafka cluster.
 
 ## Add the dependency
 
