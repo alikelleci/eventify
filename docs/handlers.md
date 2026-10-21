@@ -24,7 +24,7 @@ An event-sourcing handler returns the next aggregate state.
 ```java
 @EventSourcingHandler
 public Order handle(OrderShipped event, Order state) {
-    return state.toBuilder().trackingNumber(event.trackingNumber()).build();
+    return new Order(state.id(), state.customer(), event.trackingNumber());
 }
 ```
 
