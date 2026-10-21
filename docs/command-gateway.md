@@ -21,7 +21,7 @@ List<Event> completed = gateway.sendAndWait(
 );
 ```
 
-`send` is asynchronous. `sendAndWait` blocks until a result or timeout. A rejected command completes exceptionally with `CommandExecutionException`.
+`send` is asynchronous. `sendAndWait` blocks until a result or timeout (one minute by default). A rejected command completes exceptionally with `CommandExecutionException`. A timeout means no result arrived in time; the command may still have been handled.
 
 ## Metadata
 
@@ -36,4 +36,4 @@ gateway.send(Command.builder()
 
 Eventify passes command metadata to produced events and adds correlation and causation ids.
 
-> A timeout means the caller did not receive a result in time; it does not prove that the command was not handled.
+Close the gateway when the application shuts down; it implements `AutoCloseable`.

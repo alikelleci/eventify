@@ -24,4 +24,4 @@ try (TopologyTestDriver driver = new TopologyTestDriver(eventify.topology())) {
 }
 ```
 
-Test both successful decisions and rejected business rules. When helpful, inspect the emitted event topic or the `event-store` and `snapshot-store` test stores directly.
+Test both successful decisions and rejected business rules. Assert the command result and the events your application publishes.

@@ -51,7 +51,7 @@ Besides the payload and aggregate state, handlers can receive:
 
 | Parameter | Value |
 |---|---|
-| `@AggregateRoot` type | Current state; required for `@CommandHandler` |
+| `@AggregateRoot` type | Current state; allowed in command and event-sourcing handlers, required in command handlers |
 | `Metadata` | All message metadata |
 | `@Timestamp Instant` | Message timestamp |
 | `@MessageId String` | Message id |
@@ -63,4 +63,14 @@ Use `@Priority` only when multiple `@EventHandler` methods handle the same event
 
 ## Spring listeners
 
-The Spring Boot starter can also deserialize Eventify events for `@KafkaListener` methods. Use that when a projection should have its own lifecycle and error handling; command handling always uses `@CommandHandler`.
+The Spring Boot starter can also deserialize Eventify events for `@KafkaListener` methods. Select its container factory:
+
+```java
+@KafkaListener(topics = "events.order", groupId = "orders-view",
+               containerFactory = "eventifyListenerContainerFactory")
+public void handle(OrderPlaced event) {
+    ordersView.insert(event.id(), event.customer());
+}
+```
+
+Use this when a projection should have its own lifecycle and error handling; command handling always uses `@CommandHandler`.

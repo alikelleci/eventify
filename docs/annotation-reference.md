@@ -11,7 +11,7 @@
 | `@EnableSnapshotting` | Enables periodic snapshots. |
 | `@Revision(n)` | Version of an event schema or aggregate snapshot shape. |
 | `@Upcaster(type, revision)` | Migrates an older event shape while reading it. |
-| `@Priority(n)` | Order for handlers of the same event; high runs first. |
+| `@Priority(n)` | Execution order of matching `@EventHandler` methods; higher runs first. |
 | `@Timestamp` | Injects a message timestamp. |
 | `@MessageId` | Injects a message id. |
 | `@MetadataValue("key")` | Injects one metadata value. |
