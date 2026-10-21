@@ -3,17 +3,11 @@
 An aggregate is one consistency boundary. Give it a stable name and an identifier; commands and events for that aggregate carry the same id.
 
 ```java
-@Value
-@Builder(toBuilder = true)
 @AggregateRoot("order")
-public class Order {
-    @AggregateId String id;
-    String customer;
-    String trackingNumber;
-}
+public record Order(@AggregateId String id, String customer, String trackingNumber) {}
 ```
 
-Use an immutable class. The name in `@AggregateRoot` identifies stored history, so keep it stable.
+Use an immutable aggregate. The name in `@AggregateRoot` identifies stored history, so keep it stable.
 
 ## Commands and events
 
