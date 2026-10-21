@@ -63,7 +63,7 @@ Use `@Priority` only when multiple `@EventHandler` methods handle the same event
 
 ## Spring listeners
 
-The Spring Boot starter can also deserialize Eventify events for `@KafkaListener` methods. Select its container factory:
+With Spring Kafka on the classpath, the Spring Boot starter can also deserialize Eventify events for `@KafkaListener` methods. Select its container factory:
 
 ```java
 @KafkaListener(topics = "events.order", groupId = "orders-view",
