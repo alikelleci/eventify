@@ -3,6 +3,10 @@
 Use Kafka Streams' `TopologyTestDriver` to test commands, events and results without a broker.
 
 ```java
+Properties testConfig = new Properties();
+testConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, "orders-test");
+testConfig.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "dummy:9092");
+
 Eventify eventify = Eventify.builder()
     .streamsConfig(testConfig)
     .registerHandler(new OrderHandler())
@@ -24,4 +28,4 @@ try (TopologyTestDriver driver = new TopologyTestDriver(eventify.topology())) {
 }
 ```
 
-Test both successful decisions and rejected business rules. When helpful, inspect the emitted event topic or the `event-store` and `snapshot-store` test stores directly.
+Test both successful decisions and rejected business rules. Assert the command result and the events your application publishes.

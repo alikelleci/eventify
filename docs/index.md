@@ -31,7 +31,7 @@ title: Overview
 </a>
 <a class="docs-card" href="testing/">
 <strong>Testing <span aria-hidden="true">→</span></strong>
-<span class="docs-card-description">Test a complete topology in memory.</span>
+<span class="docs-card-description">Test commands, events and results without a broker.</span>
 </a>
 </div>
 
