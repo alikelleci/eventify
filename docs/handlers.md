@@ -30,7 +30,7 @@ public Order handle(OrderShipped event, Order state) {
 
 Keep `@EventSourcingHandler` methods deterministic and side-effect free. They run whenever Eventify rebuilds state. Return `null` to remove an aggregate.
 
-An event without an `@EventSourcingHandler` method still becomes part of the history and advances the aggregate version; it simply leaves state unchanged.
+Events without a matching method are recorded but do not change aggregate state.
 
 ## React to an event
 

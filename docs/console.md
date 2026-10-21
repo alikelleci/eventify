@@ -31,7 +31,7 @@ Eventify eventify = Eventify.builder()
     .build();
 ```
 
-Connected applications appear automatically. The console can show stored events, aggregate state and command results.
+Connected applications appear automatically. The console can show stored events, aggregate state and recent command outcomes.
 
 ## Secure it
 
@@ -40,4 +40,4 @@ For production, protect both the UI and application connection:
 - Set `EVENTIFY_CONSOLE_APPTOKEN` on the console and pass the same value with `.token(...)` in each client.
 - Configure OpenID Connect with `EVENTIFY_CONSOLE_OIDC_ISSUERURI`, `EVENTIFY_CONSOLE_OIDC_CLIENTID` and `EVENTIFY_CONSOLE_OIDC_CLIENTSECRET`.
 
-The redirect URI is `https://<console-address>/login/oauth2/code/sso`.
+Register `<scheme>://<console-address>/login/oauth2/code/sso` as the redirect URI with your identity provider; use HTTPS in production.
