@@ -15,6 +15,7 @@ import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.upcasting.annotation.Upcaster;
+import io.github.alikelleci.eventify.spring.starter.EventifyAutoConfiguration;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -273,7 +274,7 @@ class EventifyKafkaListenerIT {
 
     received.clear();
     ApplicationContextRunner runner = new ApplicationContextRunner()
-        .withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))
+        .withConfiguration(AutoConfigurations.of(EventifyAutoConfiguration.class, EventifyKafkaListenerAutoConfiguration.class))
         .withUserConfiguration(ListenersOnly.class, DeadLetterTopic.class)
         .withBean(FailingListener.class);
     runner.run(context -> {
@@ -324,7 +325,7 @@ class EventifyKafkaListenerIT {
     send("whole-event-2", Event.builder().aggregateType("order").payload(OrderShipped.builder().id("order-2").build()).sequence(1).build());
 
     new ApplicationContextRunner()
-        .withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))
+        .withConfiguration(AutoConfigurations.of(EventifyAutoConfiguration.class, EventifyKafkaListenerAutoConfiguration.class))
         .withUserConfiguration(EnableKafkaOnly.class, WithEventifyBean.class)
         .withBean(EventListenerOnSecondTopic.class)
         .run(context -> {
@@ -368,7 +369,7 @@ class EventifyKafkaListenerIT {
     send("upcasted", atRevision1(Event.builder().aggregateType("order").payload(OrderPlaced.builder().id("order-3").total(30).build()).sequence(1).build()));
 
     new ApplicationContextRunner()
-        .withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))
+        .withConfiguration(AutoConfigurations.of(EventifyAutoConfiguration.class, EventifyKafkaListenerAutoConfiguration.class))
         .withUserConfiguration(EnableKafkaOnly.class, WithUpcasterOnEventifyBean.class)
         .withBean(UpcastedListener.class)
         .run(context -> {
@@ -404,7 +405,7 @@ class EventifyKafkaListenerIT {
   private static void run(Class<?> listener, Assertions assertions, Class<?>... beans) {
     received.clear();
     ApplicationContextRunner runner = new ApplicationContextRunner()
-        .withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))
+        .withConfiguration(AutoConfigurations.of(EventifyAutoConfiguration.class, EventifyKafkaListenerAutoConfiguration.class))
         .withUserConfiguration(ListenersOnly.class)
         .withBean(listener);
     for (Class<?> bean : beans) {

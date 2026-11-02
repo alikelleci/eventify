@@ -2,8 +2,12 @@ package io.github.alikelleci.eventify.spring.starter;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
+import io.github.alikelleci.eventify.core.event.EventSerde;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import io.github.alikelleci.eventify.core.upcasting.Upcasters;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -38,6 +42,29 @@ public class EventifyAutoConfiguration {
   @ConditionalOnMissingBean
   public CommandGateway.CommandGatewayBuilder commandGatewayBuilder() {
     return CommandGateway.builder();
+  }
+
+  /**
+   * How events are read outside Eventify: by {@code @KafkaListener} methods and by projections of their own, e.g. a
+   * Kafka Streams application. With one Eventify bean, as that bean reads them: its object mapper and upcasters, also
+   * those registered with {@code registerHandler(...)} that are not beans.
+   *
+   * <p>Without an Eventify bean, the {@code @Upcaster} methods of the beans. With several, those too: which Eventify
+   * bean's upcasters apply to a topic is not known here.
+   */
+  @Bean
+  @ConditionalOnMissingBean(EventSerde.class)
+  public EventSerde eventifyEventSerde(ObjectProvider<Eventify> apps, ListableBeanFactory beanFactory) {
+    // Counted, not getIfUnique(): that picks a @Primary one and would leave out the upcasters of the others.
+    List<Eventify> all = apps.stream().toList();
+    if (all.size() == 1) {
+      return new EventSerde(all.get(0).getObjectMapper(), all.get(0).getUpcasters());
+    }
+    if (all.size() > 1) {
+      log.warn("Multiple Eventify beans found, the EventSerde bean uses only @Upcaster methods on Spring beans. "
+          + "Upcasters registered only via registerHandler(...) are ignored.");
+    }
+    return new EventSerde(EventifyObjectMapper.create(), Upcasters.of(EventifyHandlerBeans.of(beanFactory)));
   }
 
   @Bean
