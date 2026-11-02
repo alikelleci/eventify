@@ -14,6 +14,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.SmartLifecycle;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Scope;
 import org.springframework.util.ClassUtils;
 
@@ -51,8 +52,11 @@ public class EventifyAutoConfiguration {
    *
    * <p>Without an Eventify bean, the {@code @Upcaster} methods of the beans. With several, those too: which Eventify
    * bean's upcasters apply to a topic is not known here.
+   *
+   * <p>Lazy: made only when used, so an application that reads no events this way is left as it is.
    */
   @Bean
+  @Lazy
   @ConditionalOnMissingBean(EventSerde.class)
   public EventSerde eventifyEventSerde(ObjectProvider<Eventify> apps, ListableBeanFactory beanFactory) {
     // Counted, not getIfUnique(): that picks a @Primary one and would leave out the upcasters of the others.

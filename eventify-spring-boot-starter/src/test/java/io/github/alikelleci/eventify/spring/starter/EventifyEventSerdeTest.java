@@ -116,6 +116,17 @@ class EventifyEventSerdeTest {
         assertThat(read(context.getBean(EventSerde.class)).getRevision()).isEqualTo(2));
   }
 
+  /** Otherwise every application would build it, and log the warning for several Eventify beans, without using it. */
+  @Test
+  @DisplayName("Should make the EventSerde bean only when it is used")
+  void makesTheEventSerdeOnlyWhenUsed() {
+    runner.withUserConfiguration(UpcasterBeanWithAPrimaryEventify.class).run(context -> {
+      assertThat(context.getBeanFactory().containsSingleton("eventifyEventSerde")).isFalse();
+      context.getBean(EventSerde.class);
+      assertThat(context.getBeanFactory().containsSingleton("eventifyEventSerde")).isTrue();
+    });
+  }
+
   @Test
   @DisplayName("Should back off when the application has an EventSerde bean")
   void backsOffForAnEventSerdeOfTheApplication() {
