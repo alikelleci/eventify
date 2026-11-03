@@ -25,8 +25,11 @@ import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.listener.CommonErrorHandler;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -47,7 +50,12 @@ public class EventifyKafkaListenerAutoConfiguration {
 
   @Bean
   public KafkaListenerConfigurer eventifyKafkaListenerConfigurer() {
-    return registrar -> registrar.setCustomMethodArgumentResolvers(new EventifyArgumentResolver());
+    // Added to the list, not set: setting it would drop the resolvers of the application.
+    return registrar -> {
+      List<HandlerMethodArgumentResolver> resolvers = new ArrayList<>(registrar.getCustomMethodArgumentResolvers());
+      resolvers.add(new EventifyArgumentResolver());
+      registrar.setCustomMethodArgumentResolvers(resolvers.toArray(HandlerMethodArgumentResolver[]::new));
+    };
   }
 
   /** Used with {@code @KafkaListener(containerFactory = "eventifyListenerContainerFactory")}; reads with the EventSerde bean. */
