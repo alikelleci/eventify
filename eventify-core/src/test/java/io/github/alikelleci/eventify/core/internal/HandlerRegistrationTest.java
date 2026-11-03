@@ -61,6 +61,35 @@ class HandlerRegistrationTest {
     }
   }
 
+  /** Grouping by interface, as the docs show; a handler can't take the interface: handlers are found by exact class. */
+  @Topic("commands.light")
+  public interface LightCommand {
+  }
+
+  @Topic("events.light")
+  public interface LightEvent {
+  }
+
+  public static class CommandHandlerOnInterface {
+    @CommandHandler
+    public Object handle(LightCommand command, Light state) {
+      return null;
+    }
+  }
+
+  public static class EventSourcingHandlerOnInterface {
+    @EventSourcingHandler
+    public Light handle(LightEvent event, Light state) {
+      return state;
+    }
+  }
+
+  public static class EventHandlerOnInterface {
+    @EventHandler
+    public void handle(LightEvent event) {
+    }
+  }
+
   public static class InvalidTimestampHandler {
     @EventHandler
     public void handle(SwitchedOn event,
@@ -367,6 +396,18 @@ class HandlerRegistrationTest {
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("@EventSourcingHandler", "void");
+  }
+
+  @Test
+  @DisplayName("Should refuse a handler that takes an interface as its message, for every kind of handler")
+  void aHandlerOnAnInterfaceIsRefused() {
+    for (Object handler : List.of(new CommandHandlerOnInterface(), new EventSourcingHandlerOnInterface(), new EventHandlerOnInterface())) {
+      assertThatThrownBy(() -> Eventify.builder().streamsConfig(config()).registerHandler(handler).build())
+          .as(handler.getClass().getSimpleName())
+          .isInstanceOf(HandlerRegistrationException.class)
+          .hasMessageContaining("Light")
+          .hasMessageContaining("interface");
+    }
   }
 
   @Test
