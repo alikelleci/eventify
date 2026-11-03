@@ -19,10 +19,17 @@ public final class JsonRoundTrip {
     } catch (JsonProcessingException e) {
       throw new IllegalArgumentException(name + " cannot be written as JSON: " + e.getOriginalMessage(), e);
     }
+    T copy;
     try {
-      return objectMapper.readValue(json, type);
+      copy = objectMapper.readValue(json, type);
     } catch (IOException e) {
       throw new IllegalArgumentException(name + " cannot be read back from JSON: " + e.getMessage(), e);
     }
+    try {
+      objectMapper.writeValueAsBytes(copy); // the copy is what gets stored or sent
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(name + " cannot be written as JSON after reading it back: " + e.getOriginalMessage(), e);
+    }
+    return copy;
   }
 }

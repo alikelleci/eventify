@@ -4,7 +4,7 @@ import java.util.Locale;
 
 /**
  * Keys: name, id and (for an event) the sequence as 19 digits, separated by NUL. Names and ids can't hold NUL, so a
- * key range holds exactly one aggregate; with "@", "PO-1-7" would fall inside the range of "PO-1".
+ * key range holds exactly one aggregate: the range of "PO-1" can't include "PO-1-7".
  */
 public final class StoreKeys {
 

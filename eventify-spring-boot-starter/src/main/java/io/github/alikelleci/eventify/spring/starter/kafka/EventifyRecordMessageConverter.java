@@ -42,7 +42,7 @@ public class EventifyRecordMessageConverter extends MessagingMessageConverter {
     return value;
   }
 
-  /** {@code Object}, the type of a class-level listener, asks for the payload. */
+  /** Whether the listener takes the {@code Event}; a class-level listener gets {@code Object}, so the payload. */
   private static boolean asksForEvent(Type type) {
     Class<?> rawType = type == null ? null : ResolvableType.forType(type).resolve();
     return rawType != null && Event.class.isAssignableFrom(rawType);

@@ -153,6 +153,13 @@ class HandlerRegistrationTest {
     }
   }
 
+  /** Returns nothing, which Eventify would read as "removed", on every replay. */
+  public static class VoidEventSourcingHandler {
+    @EventSourcingHandler
+    public void handle(SwitchedOn event) {
+    }
+  }
+
   /** Another aggregate that is called the same as Light. */
   @Value
   @AggregateRoot("light")
@@ -350,6 +357,16 @@ class HandlerRegistrationTest {
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
         .hasMessageContaining("@EventSourcingHandler", "Fan", "Light");
+  }
+
+  @Test
+  @DisplayName("Should refuse a void event sourcing handler")
+  void aVoidEventSourcingHandlerIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new VoidEventSourcingHandler())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@EventSourcingHandler", "void");
   }
 
   @Test

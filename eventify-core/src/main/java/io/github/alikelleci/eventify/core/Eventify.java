@@ -168,6 +168,10 @@ public class Eventify implements PluginContext {
       return;
     }
 
+    if (streamsConfig == null) {
+      throw new IllegalStateException("Eventify needs streamsConfig(...) to start.");
+    }
+
     warnAboutHandlersThatStopEachOther();
 
     kafkaStreams = new KafkaStreams(topology, streamsConfig);
@@ -189,9 +193,7 @@ public class Eventify implements PluginContext {
         + " Use a separate '{}' for event handlers to isolate failures.", StreamsConfig.APPLICATION_ID_CONFIG);
   }
 
-  /**
-   * Closes Kafka Streams and the plugins once. A stream thread returns before they are closed.
-   */
+  /** Closes Kafka Streams and the plugins once. From a stream thread it doesn't wait. */
   public void stop() {
     Runnable stop = null;
     CompletableFuture<Void> completion;

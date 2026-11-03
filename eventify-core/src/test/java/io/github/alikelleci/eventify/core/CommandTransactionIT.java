@@ -1,10 +1,12 @@
 package io.github.alikelleci.eventify.core;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EnableSnapshotting;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
+import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -21,6 +23,7 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.KafkaStreams;
@@ -34,6 +37,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -153,6 +157,103 @@ class CommandTransactionIT {
     }
   }
 
+  /** Scenario 4: its own topic, so the other scenarios' applications don't read it. */
+  @Topic("orders.copy")
+  @Value
+  @Builder
+  public static class EmitEventWithoutCopy {
+    @AggregateId
+    String id;
+  }
+
+  /** Can be written as JSON once: the copy read back has no {@code note}, and {@code getNoteLength()} then fails. */
+  @Value
+  @Builder
+  public static class EventWithoutCopy implements OrderEvent {
+    @AggregateId
+    String id;
+    @JsonIgnore
+    String note;
+
+    public int getNoteLength() {
+      return note.length();
+    }
+  }
+
+  public static class CopyHandler {
+    @CommandHandler
+    public Object handle(EmitEventWithoutCopy command, Order state) {
+      return EventWithoutCopy.builder().id(command.getId()).note("not in the JSON").build();
+    }
+
+    @EventSourcingHandler
+    public Order handle(EventWithoutCopy event, Order state) {
+      return Order.builder().id(event.getId()).build();
+    }
+  }
+
+  /** Scenario 5: can be written as JSON once, as {@link EventWithoutCopy}; every result holds the command. */
+  @Topic("orders.command-copy")
+  @Value
+  @Builder
+  public static class CommandWithoutCopy {
+    @AggregateId
+    String id;
+    @JsonIgnore
+    String note;
+
+    public int getNoteLength() {
+      return note.length();
+    }
+  }
+
+  /** Scenario 5: a valid command, after the one that fails. */
+  @Topic("orders.command-copy")
+  @Value
+  @Builder
+  public static class PlaceOrder {
+    @AggregateId
+    String id;
+  }
+
+  public static class PlaceOrderHandler {
+    @CommandHandler
+    public Object handle(CommandWithoutCopy command, Order state) {
+      return OrderPlaced.builder().id(command.getId()).build();
+    }
+
+    @CommandHandler
+    public Object handle(PlaceOrder command, Order state) {
+      return OrderPlaced.builder().id(command.getId()).build();
+    }
+
+    @EventSourcingHandler
+    public Order handle(OrderPlaced event, Order state) {
+      return Order.builder().id(event.getId()).build();
+    }
+  }
+
+  /** Scenario 6: its own topic, so it doesn't read the command of scenario 5. */
+  @Topic("orders.reply-to")
+  @Value
+  @Builder
+  public static class ShipOrder {
+    @AggregateId
+    String id;
+  }
+
+  public static class ShipOrderHandler {
+    @CommandHandler
+    public Object handle(ShipOrder command, Order state) {
+      return OrderPlaced.builder().id(command.getId()).build();
+    }
+
+    @EventSourcingHandler
+    public Order handle(OrderPlaced event, Order state) {
+      return Order.builder().id(event.getId()).build();
+    }
+  }
+
   @TempDir
   Path stateDir;
 
@@ -164,7 +265,13 @@ class CommandTransactionIT {
       admin.createTopics(List.of(
           new NewTopic("orders", 1, (short) 1),
           new NewTopic("orders.results", 1, (short) 1),
-          new NewTopic("orders.events", 1, (short) 1))).all().get();
+          new NewTopic("orders.events", 1, (short) 1),
+          new NewTopic("orders.copy", 1, (short) 1),
+          new NewTopic("orders.copy.results", 1, (short) 1),
+          new NewTopic("orders.command-copy", 1, (short) 1),
+          new NewTopic("orders.command-copy.results", 1, (short) 1),
+          new NewTopic("orders.reply-to", 1, (short) 1),
+          new NewTopic("orders.reply-to.results", 1, (short) 1))).all().get();
     }
   }
 
@@ -253,13 +360,66 @@ class CommandTransactionIT {
     assertThat(committed(applicationId + "-snapshot-store-changelog", id)).containsExactly(StoreKeys.aggregate("order", id));
   }
 
+  /** Scenario 4: the event's JSON copy can't be written again. The command fails; Eventify keeps running. */
+  @Test
+  @DisplayName("Should fail the command, and keep running, when the JSON copy of its event can't be written")
+  void aCommandWithAnEventWhoseCopyCantBeWrittenFails() {
+    eventify = start("orders-copy-not-writable", new CopyHandler());
+    send(EmitEventWithoutCopy.builder().id("order-4").build());
+    await("the command to fail or Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+        || !committed("orders.copy.results", "order-4").isEmpty());
+
+    assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
+    assertThat(committed("orders.copy.results", "order-4")).as("committed results").containsExactly("failure");
+    assertThat(committed("orders.events", "order-4")).as("committed events").isEmpty();
+  }
+
+  /** Scenario 5: the command's JSON copy can't be written again, so it can't get a result. It is skipped; Eventify keeps running. */
+  @Test
+  @DisplayName("Should skip a command that can't be written again, and keep running")
+  void aCommandThatCantBeWrittenAgainIsSkipped() {
+    eventify = start("orders-command-not-writable", new PlaceOrderHandler());
+    send(CommandWithoutCopy.builder().id("order-5").note("not in the JSON").build());
+    send(PlaceOrder.builder().id("order-5b").build());
+    await("the next command or Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+        || !committed("orders.command-copy.results", "order-5b").isEmpty());
+
+    assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
+    assertThat(committed("orders.command-copy.results", "order-5")).as("results of the skipped command").isEmpty();
+    assertThat(committed("orders.command-copy.results", "order-5b")).as("results of the next command").containsExactly("success");
+  }
+
+  /** Scenario 6: a reply-to header that is no valid topic name. No reply is sent; Eventify keeps running. */
+  @Test
+  @DisplayName("Should send no reply to an invalid reply topic, and keep running")
+  void anInvalidReplyTopicIsSkipped() {
+    eventify = start("orders-invalid-reply-to", new ShipOrderHandler());
+    Command command = Command.builder().payload(ShipOrder.builder().id("order-6").build()).build();
+    try (KafkaProducer<String, Command> producer = new KafkaProducer<>(
+        Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()), new StringSerializer(), new JsonSerializer<>())) {
+      producer.send(new ProducerRecord<>("orders.reply-to", null, command.getAggregateId(), command,
+          List.of(new RecordHeader(HeaderNames.REPLY_TO, "not a topic!".getBytes(StandardCharsets.UTF_8)))));
+    }
+    send(ShipOrder.builder().id("order-6b").build());
+    await("the next command or Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+        || !committed("orders.reply-to.results", "order-6b").isEmpty());
+
+    assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
+    assertThat(committed("orders.reply-to.results", "order-6")).as("results of the command").containsExactly("success");
+    assertThat(committed("orders.reply-to.results", "order-6b")).as("results of the next command").containsExactly("success");
+  }
+
   private Eventify start(String applicationId) {
+    return start(applicationId, new OrderHandler());
+  }
+
+  private Eventify start(String applicationId, Object handler) {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
-    Eventify instance = Eventify.builder().streamsConfig(properties).registerHandler(new OrderHandler()).build();
+    Eventify instance = Eventify.builder().streamsConfig(properties).registerHandler(handler).build();
     instance.start();
     await("Eventify to run", () -> instance.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
     return instance;
@@ -269,7 +429,7 @@ class CommandTransactionIT {
     Command command = Command.builder().payload(payload).build();
     try (KafkaProducer<String, Command> producer = new KafkaProducer<>(
         Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()), new StringSerializer(), new JsonSerializer<>())) {
-      producer.send(new ProducerRecord<>("orders", command.getAggregateId(), command));
+      producer.send(new ProducerRecord<>(command.getTopic().value(), command.getAggregateId(), command));
     }
   }
 
