@@ -28,6 +28,7 @@ import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Lets {@code @KafkaListener} methods read Eventify's event topics, next to or instead of {@code @EventHandler}: each
@@ -57,15 +58,15 @@ public class EventifyKafkaListenerAutoConfiguration {
       ObjectProvider<Eventify> apps,
       ObjectProvider<ConsumerFactory<?, ?>> consumerFactories,
       ObjectProvider<CommonErrorHandler> errorHandlers,
-      EventSerde eventSerde) {
-    return containerFactory(consumerConfig(apps, consumerFactories), errorHandlers, eventSerde.deserializer());
+      ObjectProvider<EventSerde> eventSerde) {
+    return containerFactory(consumerConfig(apps, consumerFactories), errorHandlers, () -> eventSerde.getObject().deserializer());
   }
 
   private static <T> ConcurrentKafkaListenerContainerFactory<String, T> containerFactory(
-      Map<String, Object> consumerConfig, ObjectProvider<CommonErrorHandler> errorHandlers, Deserializer<T> deserializer) {
+      Map<String, Object> consumerConfig, ObjectProvider<CommonErrorHandler> errorHandlers, Supplier<Deserializer<T>> deserializer) {
     // A record that can't be read goes to the error handler, instead of being read again and again.
     ConsumerFactory<String, T> consumerFactory = new DefaultKafkaConsumerFactory<>(consumerConfig,
-        StringDeserializer::new, () -> new ErrorHandlingDeserializer<>(deserializer));
+        StringDeserializer::new, () -> new ErrorHandlingDeserializer<>(deserializer.get()));
 
     ConcurrentKafkaListenerContainerFactory<String, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory);
