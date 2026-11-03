@@ -48,6 +48,16 @@ class EventifyStopTest {
   Path stateDir;
 
   @Test
+  @DisplayName("Should say streamsConfig is missing when starting without it")
+  void startingWithoutStreamsConfigSaysSo() {
+    Eventify eventify = Eventify.builder().registerHandler(new PingHandler()).build();
+
+    assertThatThrownBy(eventify::start)
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessageContaining("streamsConfig");
+  }
+
+  @Test
   @DisplayName("Should stop plugins once, also when Kafka Streams stopped by itself")
   void pluginsAreStoppedOnceAlsoWhenKafkaStreamsStoppedByItself() {
     AtomicInteger stops = new AtomicInteger();

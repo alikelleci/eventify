@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import org.apache.kafka.streams.KafkaStreams;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +22,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -242,6 +244,35 @@ class EventifyAutoConfigurationTest {
   @DisplayName("Should allow different handlers of one event on two Eventify beans")
   void differentHandlersOfOneEventMayBeOnTwoEventifyBeans() {
     runner.withUserConfiguration(TwoEventHandlersForOneEvent.class).run(context -> assertThat(context).hasNotFailed());
+  }
+
+  @Configuration
+  static class SecondEventifyFailsToStart {
+    static final AtomicReference<Eventify> FIRST = new AtomicReference<>();
+
+    @Bean
+    Eventify first() {
+      FIRST.set(Eventify.builder().streamsConfig(streamsConfig("first")).registerHandler(new PingHandler()).build());
+      return FIRST.get();
+    }
+
+    /** No streamsConfig: its start fails. */
+    @Bean
+    Eventify second() {
+      return Eventify.builder().registerHandler(new PingHandler()).build();
+    }
+  }
+
+  @Test
+  @DisplayName("Should stop the Eventify beans already started when another fails to start")
+  void theStartedEventifyBeansAreStoppedWhenAnotherFailsToStart() {
+    try {
+      runner.withUserConfiguration(SecondEventifyFailsToStart.class).run(context -> assertThat(context).hasFailed());
+
+      assertThat(SecondEventifyFailsToStart.FIRST.get().getKafkaStreams().state()).isEqualTo(KafkaStreams.State.NOT_RUNNING);
+    } finally {
+      SecondEventifyFailsToStart.FIRST.get().stop();
+    }
   }
 
   @Test
