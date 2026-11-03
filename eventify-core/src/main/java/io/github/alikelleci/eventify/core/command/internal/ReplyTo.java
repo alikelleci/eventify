@@ -1,9 +1,12 @@
 package io.github.alikelleci.eventify.core.command.internal;
 
 import io.github.alikelleci.eventify.core.command.CommandResult;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.kafka.common.errors.InvalidTopicException;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.internals.Topic;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
@@ -11,6 +14,7 @@ import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import java.nio.charset.StandardCharsets;
 
 /** The reply topic from the command's {@link HeaderNames#REPLY_TO} header; Kafka Streams keeps it on the result. */
+@Slf4j
 public final class ReplyTo {
 
   private ReplyTo() {
@@ -23,7 +27,16 @@ public final class ReplyTo {
       return null;
     }
     String topic = new String(header.value(), StandardCharsets.UTF_8);
-    return StringUtils.isNotBlank(topic) ? topic : null;
+    if (StringUtils.isBlank(topic)) {
+      return null;
+    }
+    try {
+      Topic.validate(topic);
+    } catch (InvalidTopicException e) {
+      log.warn("Skipping reply, invalid reply topic: topic={}", topic);
+      return null; // sending to it would stop Eventify
+    }
+    return topic;
   }
 
   /** Passes on only the results their sender waits for: the ones with a reply topic. */

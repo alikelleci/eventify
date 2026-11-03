@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.command.internal;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.aggregate.AggregateState;
 import io.github.alikelleci.eventify.core.aggregate.SnapshotStore;
@@ -63,6 +64,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     if (commandHandler == null) {
       log.debug("Skipping command, no handler registered: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       return; // not a command of this application
+    }
+    if (!isWritable(command)) {
+      return;
     }
 
     // Decide: nothing is written yet, so any exception rejects the command.
@@ -139,6 +143,17 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     } catch (RuntimeException e) {
       log.warn("Skipping snapshot: aggregateType={}, aggregateId={}, version={}, reason={}", aggregateRepository.getAggregateType(), state.getAggregateId(), state.getVersion(), e.getMessage());
       return null;
+    }
+  }
+
+  /** Every result holds the command: one that can't be written as JSON gets no result, instead of stopping Eventify. */
+  private boolean isWritable(Command command) {
+    try {
+      objectMapper.writeValueAsBytes(command);
+      return true;
+    } catch (JsonProcessingException e) {
+      log.error("Skipping command, it can't be written as JSON: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), e);
+      return false;
     }
   }
 

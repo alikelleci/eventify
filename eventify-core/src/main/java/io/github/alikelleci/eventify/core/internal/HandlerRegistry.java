@@ -167,6 +167,10 @@ public class HandlerRegistry {
     requireMessageParameter("@EventSourcingHandler", method);
     requireSupportedParameters("@EventSourcingHandler", method, true);
     requireMatchingAggregateReturnType(method);
+    // Void would return null, which removes the aggregate on every replay.
+    if (method.getReturnType() == void.class) {
+      throw new HandlerRegistrationException("@EventSourcingHandler method " + method + " must return the aggregate, not void.");
+    }
     Class<?> messageClass = method.getParameters()[0].getType();
     EventSourcingHandlerMethod previous = eventSourcingHandlers.put(messageClass, new EventSourcingHandlerMethod(handler, method));
     if (previous != null) {

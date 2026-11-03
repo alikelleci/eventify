@@ -18,6 +18,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Scope;
 import org.springframework.util.ClassUtils;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -76,7 +77,16 @@ public class EventifyAutoConfiguration {
         requireOneEventifyPerCommand(apps);
         requireOneEventifyPerAggregate(apps);
         requireOneEventifyPerEventHandler(apps);
-        apps.forEach(Eventify::start);
+        List<Eventify> started = new ArrayList<>();
+        try {
+          for (Eventify app : apps) {
+            app.start();
+            started.add(app);
+          }
+        } catch (RuntimeException e) {
+          started.forEach(Eventify::stop); // Spring doesn't stop them: this lifecycle never started
+          throw e;
+        }
         running = true;
       }
 

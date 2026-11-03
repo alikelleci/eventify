@@ -13,8 +13,8 @@ public class RocksDBConfig implements RocksDBConfigSetter {
     options.setCompressionType(CompressionType.ZSTD_COMPRESSION);
   }
 
+  /** Nothing to close: Kafka Streams closes the options itself, after the store. */
   @Override
   public void close(String storeName, Options options) {
-    options.close();
   }
 }

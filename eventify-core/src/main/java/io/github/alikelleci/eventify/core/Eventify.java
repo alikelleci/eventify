@@ -168,6 +168,10 @@ public class Eventify implements PluginContext {
       return;
     }
 
+    if (streamsConfig == null) {
+      throw new IllegalStateException("Eventify needs streamsConfig(...) to start.");
+    }
+
     warnAboutHandlersThatStopEachOther();
 
     kafkaStreams = new KafkaStreams(topology, streamsConfig);
