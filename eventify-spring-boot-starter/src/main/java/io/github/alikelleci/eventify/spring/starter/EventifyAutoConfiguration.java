@@ -46,14 +46,8 @@ public class EventifyAutoConfiguration {
   }
 
   /**
-   * How events are read outside Eventify: by {@code @KafkaListener} methods and by projections of their own, e.g. a
-   * Kafka Streams application. With one Eventify bean, as that bean reads them: its object mapper and upcasters, also
-   * those registered with {@code registerHandler(...)} that are not beans.
-   *
-   * <p>Without an Eventify bean, the {@code @Upcaster} methods of the beans. With several, those too: which Eventify
-   * bean's upcasters apply to a topic is not known here.
-   *
-   * <p>Lazy: made only when used, so an application that reads no events this way is left as it is.
+   * Reads events outside Eventify. One Eventify bean: its mapper and upcasters; otherwise the {@code @Upcaster} beans.
+   * Lazy: made only when used.
    */
   @Bean
   @Lazy

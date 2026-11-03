@@ -10,6 +10,7 @@ import io.github.alikelleci.eventify.core.message.annotation.Revision;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.upcasting.annotation.Upcaster;
+import io.github.alikelleci.eventify.spring.starter.kafka.EventifyKafkaListenerAutoConfiguration;
 import lombok.Builder;
 import lombok.Value;
 import org.junit.jupiter.api.DisplayName;
@@ -125,6 +126,16 @@ class EventifyEventSerdeTest {
       context.getBean(EventSerde.class);
       assertThat(context.getBeanFactory().containsSingleton("eventifyEventSerde")).isTrue();
     });
+  }
+
+  @Test
+  @DisplayName("Should make the EventSerde bean only when used, also with the @KafkaListener support")
+  void makesTheEventSerdeOnlyWhenUsedWithTheListenerFactory() {
+    runner.withConfiguration(AutoConfigurations.of(EventifyKafkaListenerAutoConfiguration.class))
+        .withUserConfiguration(UpcasterBeanWithAPrimaryEventify.class).run(context -> {
+          assertThat(context).hasBean("eventifyListenerContainerFactory");
+          assertThat(context.getBeanFactory().containsSingleton("eventifyEventSerde")).isFalse();
+        });
   }
 
   @Test

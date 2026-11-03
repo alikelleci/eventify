@@ -34,9 +34,11 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.MethodParameter;
 import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.annotation.KafkaHandler;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.annotation.KafkaListenerConfigurer;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -44,11 +46,16 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
 import org.springframework.kafka.listener.DefaultErrorHandler;
 import org.springframework.kafka.support.serializer.DelegatingByTypeSerializer;
+import org.springframework.messaging.handler.invocation.HandlerMethodArgumentResolver;
 import org.springframework.util.backoff.FixedBackOff;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -375,6 +382,56 @@ class EventifyKafkaListenerIT {
         .run(context -> {
           assertThat(context).hasNotFailed();
           assertThat(take()).isEqualTo(OrderPlaced.builder().id("order-3").total(30).build());
+        });
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------
+
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.PARAMETER)
+  @interface Tenant {
+  }
+
+  /** The application's own argument resolver, registered as Spring Kafka documents it. */
+  @Configuration
+  static class OwnArgumentResolver {
+    @Bean
+    KafkaListenerConfigurer tenantResolver() {
+      return registrar -> registrar.setCustomMethodArgumentResolvers(new HandlerMethodArgumentResolver() {
+        @Override
+        public boolean supportsParameter(MethodParameter parameter) {
+          return parameter.hasParameterAnnotation(Tenant.class);
+        }
+
+        @Override
+        public Object resolveArgument(MethodParameter parameter, org.springframework.messaging.Message<?> message) {
+          return "acme";
+        }
+      });
+    }
+  }
+
+  public static class TenantListener {
+    @KafkaListener(topics = "own-resolver", groupId = "own-resolver", containerFactory = "eventifyListenerContainerFactory")
+    public void on(OrderShipped event, @Tenant String tenant, @MessageId String id) {
+      received.add(List.of(tenant, id));
+    }
+  }
+
+  @Test
+  @DisplayName("Should keep the application's own argument resolvers next to Eventify's")
+  void ownArgumentResolvers() throws Exception {
+    Event event = Event.builder().aggregateType("order").payload(OrderShipped.builder().id("order-1").build()).sequence(1).build();
+    send("own-resolver", event);
+
+    received.clear();
+    new ApplicationContextRunner()
+        .withConfiguration(AutoConfigurations.of(EventifyAutoConfiguration.class, EventifyKafkaListenerAutoConfiguration.class))
+        .withUserConfiguration(ListenersOnly.class, OwnArgumentResolver.class)
+        .withBean(TenantListener.class)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          assertThat(take()).isEqualTo(List.of("acme", event.getId()));
         });
   }
 

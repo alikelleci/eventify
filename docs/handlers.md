@@ -74,3 +74,9 @@ public void handle(OrderPlaced event) {
 ```
 
 Use this when a projection should have its own lifecycle and error handling; command handling always uses `@CommandHandler`.
+
+To read events in a projection of your own, e.g. a Kafka Streams application, inject the starter's `EventSerde` bean. It reads events with the same upcasters as Eventify.
+
+```java
+builder.stream("events.order", Consumed.with(Serdes.String(), eventSerde));
+```

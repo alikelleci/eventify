@@ -39,7 +39,7 @@ public final class EventStore {
     return new EventIterator(readable.range(StoreKeys.event(aggregateType, aggregateId, from), StoreKeys.event(aggregateType, aggregateId, to)));
   }
 
-  /** Returns an inclusive range newest first. Close the iterator. */
+  /** Returns events from {@code from} down to {@code to}. Close the iterator. */
   public EventIterator eventsNewestFirst(String aggregateType, String aggregateId, long from, long to) {
     requireSequences(aggregateType, aggregateId, from, to);
     if (from < to) {

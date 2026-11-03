@@ -30,6 +30,6 @@ public interface AggregateRepository {
   /** Returns stored events oldest first. Close the iterator. */
   EventStore.EventIterator events(String aggregateId);
 
-  /** Returns stored events newest first. Close the iterator. */
+  /** Returns events from {@code from} down to {@code to}. Close the iterator. */
   EventStore.EventIterator eventsNewestFirst(String aggregateId, long from, long to);
 }
