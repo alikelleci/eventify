@@ -20,6 +20,7 @@ import org.apache.commons.collections4.multimap.ArrayListValuedHashMap;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.Collection;
@@ -207,6 +208,12 @@ public class HandlerRegistry {
   private static void requireMessageParameter(String annotation, Method method) {
     if (method.getParameterCount() == 0) {
       throw new HandlerRegistrationException(annotation + " method must take its message as its first parameter: " + method);
+    }
+    // Handlers are found by the message's exact class: one on an interface would never be called.
+    Class<?> messageClass = method.getParameterTypes()[0];
+    if (messageClass.isInterface() || Modifier.isAbstract(messageClass.getModifiers())) {
+      throw new HandlerRegistrationException(annotation + " method " + method + " takes " + messageClass.getName()
+          + ", an interface or abstract class: take the message class itself.");
     }
   }
 

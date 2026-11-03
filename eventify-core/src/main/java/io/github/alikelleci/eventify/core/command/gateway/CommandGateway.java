@@ -8,6 +8,7 @@ import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutExcept
 import io.github.alikelleci.eventify.core.command.gateway.internal.DefaultCommandGateway;
 import io.github.alikelleci.eventify.core.kafka.KafkaClientConfigs;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
@@ -108,6 +109,12 @@ public interface CommandGateway extends AutoCloseable {
 
     /** Builds a gateway using the producer's connection settings. */
     public CommandGateway build() {
+      if (this.producerConfig == null) {
+        throw new IllegalStateException("CommandGateway needs producerConfig(...).");
+      }
+      if (StringUtils.isBlank(this.replyTopic)) {
+        throw new IllegalStateException("CommandGateway needs replyTopic(...).");
+      }
       Properties consumerConfig = KafkaClientConfigs.consumerConnectionOf(this.producerConfig);
 
       if (this.objectMapper == null) {
