@@ -65,7 +65,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       log.debug("Skipping command, no handler registered: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       return; // not a command of this application
     }
-    if (!isWritable(command)) {
+    if (!isWritable(objectMapper, command)) {
       return;
     }
 
@@ -147,7 +147,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   }
 
   /** Every result holds the command: one that can't be written as JSON gets no result, instead of stopping Eventify. */
-  private boolean isWritable(Command command) {
+  static boolean isWritable(ObjectMapper objectMapper, Command command) {
     try {
       objectMapper.writeValueAsBytes(command);
       return true;

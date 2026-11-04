@@ -5,6 +5,7 @@ public final class StoreNames {
 
   public static final String EVENT_STORE = "event-store";
   public static final String SNAPSHOT_STORE = "snapshot-store";
+  public static final String SCHEDULED_COMMANDS = "scheduled-commands";
 
   private StoreNames() {
   }

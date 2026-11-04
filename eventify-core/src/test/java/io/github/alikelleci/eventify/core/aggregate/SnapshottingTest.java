@@ -146,7 +146,7 @@ class SnapshottingTest {
   @DisplayName("Should only store events from commands, not from the event topic")
   void anAggregateIsOnlyStoredFromItsCommandsNotFromItsEventTopic() {
     // Stored only when handled: storing them again from the event topic would bring back pruned events.
-    assertThat(sourceTopics(accounts())).containsExactly("commands.account");
+    assertThat(sourceTopics(accounts())).containsExactly("commands.account", "commands.account.scheduled");
   }
 
   private static Command send(TestInputTopic<String, Command> commands, Object payload) {
