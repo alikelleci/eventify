@@ -10,6 +10,7 @@ import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
+import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
@@ -108,14 +109,14 @@ class EventHandlerCommandsTest {
     }
   }
 
-  public static class PaymentPolicy {
+  public static class PaymentEventHandler {
     @EventHandler
     public RequestPayment on(OrderPlaced event) {
       return new RequestPayment(event.paymentId(), event.id(), event.amount());
     }
   }
 
-  public static class FirstPolicy {
+  public static class FirstEventHandler {
     @EventHandler
     @Priority(1)
     public List<Object> on(OrderPlaced event) {
@@ -123,7 +124,7 @@ class EventHandlerCommandsTest {
     }
   }
 
-  public static class SecondPolicy {
+  public static class SecondEventHandler {
     @EventHandler
     public NotifyCustomer on(OrderPlaced event) {
       return new NotifyCustomer(event.paymentId());
@@ -144,7 +145,7 @@ class EventHandlerCommandsTest {
     }
   }
 
-  public static class BrokenPolicy {
+  public static class BrokenEventHandler {
     @EventHandler
     @Priority(1)
     public RequestPayment first(OrderPlaced event) {
@@ -157,14 +158,14 @@ class EventHandlerCommandsTest {
     }
   }
 
-  public static class CorruptPolicy {
+  public static class CorruptEventHandler {
     @EventHandler
     public CorruptPayment on(OrderPlaced event) {
       return new CorruptPayment(event.paymentId());
     }
   }
 
-  public static class UnaddressedPolicy {
+  public static class UnaddressedEventHandler {
     @EventHandler
     public RequestPayment on(OrderPlaced event) {
       return new RequestPayment(null, event.id(), event.amount());
@@ -246,7 +247,7 @@ class EventHandlerCommandsTest {
   @Test
   @DisplayName("Should send a returned command to its topic, keyed by its own aggregate id, with the event's correlation and the event as cause")
   void aReturnedCommandIsSent() {
-    start(new PaymentPolicy());
+    start(new PaymentEventHandler());
     Event event = orderPlaced("order-1", "payment-1", Metadata.of(MetadataKeys.CORRELATION_ID, "flow-1").with("tenant", "acme"));
 
     pipe(event);
@@ -265,7 +266,7 @@ class EventHandlerCommandsTest {
   @Test
   @DisplayName("Should not pass the event's reply topic on to the command")
   void theReplyTopicIsNotPassedOn() {
-    start(new PaymentPolicy());
+    start(new PaymentEventHandler());
 
     Event event = orderPlaced("order-1", "payment-1", Metadata.EMPTY);
     driver.createInputTopic("events.order", new StringSerializer(), new EventSerde().serializer())
@@ -278,7 +279,7 @@ class EventHandlerCommandsTest {
   @Test
   @DisplayName("Should send the commands of every handler, in priority order, and skip null entries")
   void commandsOfSeveralHandlersAreSentInPriorityOrder() {
-    start(new SecondPolicy(), new FirstPolicy());
+    start(new SecondEventHandler(), new FirstEventHandler());
 
     pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY));
 
@@ -302,9 +303,10 @@ class EventHandlerCommandsTest {
   @Test
   @DisplayName("Should fail the event and send none of its commands when one returned value is not a command")
   void aNonCommandFailsTheEventAndSendsNothing() {
-    start(new BrokenPolicy());
+    start(new BrokenEventHandler());
 
     assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining(EventHandlingException.class.getName())
         .hasStackTraceContaining("NotACommand has no @Topic");
     assertThat(paymentCommands().isEmpty()).isTrue();
   }
@@ -313,7 +315,7 @@ class EventHandlerCommandsTest {
   @Test
   @DisplayName("Should fail the event and send nothing when a command cannot be written as JSON")
   void aCommandThatCannotBeWrittenAsJsonIsNotSent() {
-    start(new CorruptPolicy());
+    start(new CorruptEventHandler());
 
     assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
         .hasStackTraceContaining("Command CorruptPayment cannot be written as JSON")
@@ -325,7 +327,7 @@ class EventHandlerCommandsTest {
   @Test
   @DisplayName("Should fail the event and send nothing when a command has no aggregate id")
   void aCommandWithoutAnAggregateIdIsNotSent() {
-    start(new UnaddressedPolicy());
+    start(new UnaddressedEventHandler());
 
     assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
         .hasStackTraceContaining("The @AggregateId field id of " + RequestPayment.class.getName() + " is null.");
@@ -336,7 +338,7 @@ class EventHandlerCommandsTest {
   @Test
   @DisplayName("Should let one aggregate's event lead to another aggregate's event")
   void anEventLeadsToAnotherAggregatesEvent() {
-    start(new OrderHandler(), new PaymentHandler(), new PaymentPolicy());
+    start(new OrderHandler(), new PaymentHandler(), new PaymentEventHandler());
 
     Command placeOrder = Command.builder().payload(new PlaceOrder("order-1", "payment-1", 42)).build();
     driver.createInputTopic("commands.order", new StringSerializer(), new CommandSerde().serializer())
@@ -465,6 +467,7 @@ class EventHandlerCommandsTest {
     start(new UnaddressedEnvelopeEventHandler());
 
     assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining(EventHandlingException.class.getName())
         .hasStackTraceContaining("The @AggregateId field id of " + RequestPayment.class.getName() + " is null.");
     assertThat(paymentCommands().isEmpty()).isTrue();
   }

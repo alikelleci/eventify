@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.Scheduled;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
@@ -12,6 +13,7 @@ import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import io.github.alikelleci.eventify.core.message.internal.Topics;
 import io.github.alikelleci.eventify.core.serialization.internal.JsonRoundTrip;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
@@ -87,11 +89,15 @@ public class EventProcessor implements Processor<String, Event, String, Command>
     Object payload = value instanceof Command command ? command.getPayload() : value;
     Metadata own = value instanceof Command command ? command.getMetadata() : Metadata.EMPTY;
 
-    // Checked now: the topic and key are only looked up when sending.
-    if (Topics.of(payload.getClass()) == null) {
-      throw new TopicMissingException("Command " + payload.getClass().getSimpleName() + " has no @Topic.");
+    // Checked now: the topic and key are only looked up when sending. Failing like the handler did.
+    try {
+      if (Topics.of(payload.getClass()) == null) {
+        throw new TopicMissingException("Command " + payload.getClass().getSimpleName() + " has no @Topic.");
+      }
+      AggregateIdResolver.getAggregateId(payload);
+    } catch (RuntimeException e) {
+      throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
-    AggregateIdResolver.getAggregateId(payload);
 
     // The handler adds or replaces application keys; the flow and the cause stay the event's.
     Metadata metadata = event.getMetadata().with(applicationKeys(own)).with(CAUSATION_ID, event.getId());
