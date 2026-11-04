@@ -423,6 +423,8 @@ class CommandTransactionIT {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
+    // A stopped instance doesn't leave the group: the broker waits this long before reassigning its partitions.
+    properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG), 6000);
     Eventify instance = Eventify.builder().streamsConfig(properties).registerHandler(handler).build();
     instance.start();
     await("Eventify to run", () -> instance.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
