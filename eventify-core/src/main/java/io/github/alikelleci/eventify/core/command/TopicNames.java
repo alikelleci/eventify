@@ -4,6 +4,7 @@ package io.github.alikelleci.eventify.core.command;
 public final class TopicNames {
 
   private static final String RESULTS_SUFFIX = ".results";
+  private static final String SCHEDULED_SUFFIX = ".scheduled";
 
   private TopicNames() {
   }
@@ -11,5 +12,10 @@ public final class TopicNames {
   /** Where the result of every handled command is written: the command topic with ".results". */
   public static String resultTopicOf(String commandTopic) {
     return commandTopic + RESULTS_SUFFIX;
+  }
+
+  /** Where scheduled commands wait until they are delivered: the command topic with ".scheduled". */
+  public static String scheduledTopicOf(String commandTopic) {
+    return commandTopic + SCHEDULED_SUFFIX;
   }
 }

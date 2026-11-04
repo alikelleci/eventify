@@ -70,7 +70,7 @@ class ConsoleServiceRoutingIT {
   static void createTopics() throws Exception {
     // Co-partitioned source topics, with a partition for each instance.
     try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
-      admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
+      admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("commands.item.scheduled", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
     }
   }
 

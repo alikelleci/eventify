@@ -26,6 +26,16 @@ class StoreKeysTest {
   }
 
   @Test
+  @DisplayName("Should sort scheduled command keys as their delivery times, up to and including a time")
+  void scheduledKeysSortAsTheirTimes() {
+    assertThat(StoreKeys.scheduled(42, "c-1")).isEqualTo("0000000000000000042" + NUL + "c-1");
+    assertThat(StoreKeys.scheduled(999, "z")).isLessThan(StoreKeys.scheduled(1000, "a"));
+    assertThat(StoreKeys.scheduled(1000, "a")).isLessThanOrEqualTo(StoreKeys.scheduledUpTo(1000));
+    assertThat(StoreKeys.scheduledUpTo(1000)).isLessThan(StoreKeys.scheduled(1001, "a"));
+    assertThatThrownBy(() -> StoreKeys.scheduled(-1, "c-1")).isInstanceOf(IllegalArgumentException.class);
+  }
+
+  @Test
   @DisplayName("Should write ASCII digits whatever the JVM's locale")
   void keysDoNotDependOnTheLocale() {
     Locale previous = Locale.getDefault();

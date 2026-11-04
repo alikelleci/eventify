@@ -33,6 +33,19 @@ public final class StoreKeys {
     return aggregateType + SEPARATOR + aggregateId;
   }
 
+  /** The key of a scheduled command: its delivery time first, so the store is ordered by it. */
+  public static String scheduled(long deliverAtMillis, String commandId) {
+    if (deliverAtMillis < 0) {
+      throw new IllegalArgumentException("A delivery time can't be before 1970, not " + deliverAtMillis + ".");
+    }
+    return String.format(Locale.ROOT, "%0" + SEQUENCE_LENGTH + "d", deliverAtMillis) + SEPARATOR + commandId;
+  }
+
+  /** The end of the key range that holds the commands to deliver at or before this time. */
+  public static String scheduledUpTo(long deliverAtMillis) {
+    return String.format(Locale.ROOT, "%0" + SEQUENCE_LENGTH + "d", deliverAtMillis) + SEPARATOR + Character.MAX_VALUE;
+  }
+
   /** The start of the key range that holds an aggregate's events, and nothing else. */
   public static String first(String aggregateType, String aggregateId) {
     return event(aggregateType, aggregateId, 1);
