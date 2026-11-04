@@ -53,7 +53,8 @@ import java.util.function.BooleanSupplier;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Policies against a real broker: an event handler returns commands, sent in the transaction that reads the event.
+ * Commands from event handlers against a real broker: an event handler returns commands, sent in the transaction that
+ * reads the event.
  * Every topic has three partitions, so a command is routed by its own aggregate id, not by the event's.
  * Tests share topics; each uses its own aggregate ids and application ids, and checks only its own records.
  */
@@ -65,13 +66,13 @@ class EventHandlerCommandsIT {
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
 
   private static final int PARTITIONS = 3;
-  private static final String REPLY_TOPIC = "policy.replies";
+  private static final String REPLY_TOPIC = "handler.replies";
 
-  @Topic("policy.orders")
+  @Topic("handler.orders")
   public record PlaceOrder(@AggregateId String id, String paymentId, int amount) {
   }
 
-  @Topic("policy.order-events")
+  @Topic("handler.order-events")
   public record OrderPlaced(@AggregateId String id, String paymentId, int amount) {
   }
 
@@ -79,11 +80,11 @@ class EventHandlerCommandsIT {
   public record Order(@AggregateId String id) {
   }
 
-  @Topic("policy.payments")
+  @Topic("handler.payments")
   public record RequestPayment(@AggregateId String id, String orderId, int amount) {
   }
 
-  @Topic("policy.payment-events")
+  @Topic("handler.payment-events")
   public record PaymentRequested(@AggregateId String id, String orderId, int amount) {
   }
 
@@ -118,7 +119,7 @@ class EventHandlerCommandsIT {
     }
   }
 
-  public static class PaymentPolicy {
+  public static class PaymentEventHandler {
     @EventHandler
     public RequestPayment on(OrderPlaced event) {
       return new RequestPayment(event.paymentId(), event.id(), event.amount());
@@ -127,19 +128,19 @@ class EventHandlerCommandsIT {
 
   // Failure scenarios: each its own event topic, so no other application reads the event that makes it fail.
 
-  @Topic("policy.risky")
+  @Topic("handler.risky")
   public record PlaceThrowingOrder(@AggregateId String id) {
   }
 
-  @Topic("policy.risky")
+  @Topic("handler.risky")
   public record PlaceFlakyOrder(@AggregateId String id) {
   }
 
-  @Topic("policy.throwing-events")
+  @Topic("handler.throwing-events")
   public record ThrowingOrderPlaced(@AggregateId String id) {
   }
 
-  @Topic("policy.flaky-events")
+  @Topic("handler.flaky-events")
   public record FlakyOrderPlaced(@AggregateId String id) {
   }
 
@@ -170,18 +171,18 @@ class EventHandlerCommandsIT {
   }
 
   /** Returns two commands, and then fails for an id starting with "poison". */
-  public static class ThrowingPolicy {
+  public static class ThrowingEventHandler {
     @EventHandler
     public List<Object> on(ThrowingOrderPlaced event) {
       if (event.id().startsWith("poison")) {
-        throw new IllegalStateException("policy failed");
+        throw new IllegalStateException("event handler failed");
       }
       return List.of(new RequestPayment(event.id() + "-pay", event.id(), 1), new RequestPayment(event.id() + "-pay-2", event.id(), 1));
     }
   }
 
   /** Fails on the {@link #FAIL_ON_WRITE}th JSON write; set to the last one, it fails when sent, after the command before it. */
-  @Topic("policy.flaky")
+  @Topic("handler.flaky")
   @Value
   @Builder
   public static class FlakyCommand {
@@ -201,7 +202,7 @@ class EventHandlerCommandsIT {
   }
 
   /** A valid command first, then the flaky one. */
-  public static class FlakyPolicy {
+  public static class FlakyEventHandler {
     @EventHandler
     public List<Object> on(FlakyOrderPlaced event) {
       return List.of(new RequestPayment(event.id() + "-pay", event.id(), 1), FlakyCommand.builder().id(event.id()).build());
@@ -218,10 +219,10 @@ class EventHandlerCommandsIT {
   static void createTopics() throws Exception {
     try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
       admin.createTopics(List.of(
-          "policy.orders", "policy.orders.results", "policy.order-events",
-          "policy.payments", "policy.payments.results", "policy.payment-events",
-          "policy.risky", "policy.risky.results", "policy.throwing-events", "policy.flaky-events", "policy.flaky",
-          "policy.orders.scheduled", "policy.payments.scheduled", "policy.risky.scheduled", "policy.flaky.scheduled",
+          "handler.orders", "handler.orders.results", "handler.order-events",
+          "handler.payments", "handler.payments.results", "handler.payment-events",
+          "handler.risky", "handler.risky.results", "handler.throwing-events", "handler.flaky-events", "handler.flaky",
+          "handler.orders.scheduled", "handler.payments.scheduled", "handler.risky.scheduled", "handler.flaky.scheduled",
           REPLY_TOPIC).stream().map(name -> new NewTopic(name, PARTITIONS, (short) 1)).toList()).all().get();
     }
   }
@@ -237,9 +238,9 @@ class EventHandlerCommandsIT {
   }
 
   @Test
-  @DisplayName("Should send each policy command once, routed by its own id, with the flow's correlation and no reply topic")
-  void aPolicyLeadsFromOneAggregateToAnother() throws Exception {
-    start("policy-flow", new OrderHandler(), new PaymentHandler(), new PaymentPolicy());
+  @DisplayName("Should send each command from an event handler once, routed by its own id, with the flow's correlation and no reply topic")
+  void anEventHandlerLeadsFromOneAggregateToAnother() throws Exception {
+    start("handler-flow", new OrderHandler(), new PaymentHandler(), new PaymentEventHandler());
     gateway = gateway();
     int orders = 20;
 
@@ -259,12 +260,12 @@ class EventHandlerCommandsIT {
       List<Event> events = replies.get(i).get(60, java.util.concurrent.TimeUnit.SECONDS);
       assertThat(events).singleElement().satisfies(event -> assertThat(event.getPayload()).isInstanceOf(OrderPlaced.class));
     }
-    await("every payment to be requested", () -> committedEvents("policy.payment-events", "flow-").size() == orders);
+    await("every payment to be requested", () -> committedEvents("handler.payment-events", "flow-").size() == orders);
     settle();
 
-    List<ConsumerRecord<String, Command>> commands = committedCommands("policy.payments", "flow-");
+    List<ConsumerRecord<String, Command>> commands = committedCommands("handler.payments", "flow-");
     assertThat(commands).as("one command per order, no duplicates").hasSize(orders);
-    List<ConsumerRecord<String, Event>> orderEvents = committedEvents("policy.order-events", "flow-");
+    List<ConsumerRecord<String, Event>> orderEvents = committedEvents("handler.order-events", "flow-");
     for (ConsumerRecord<String, Command> record : commands) {
       Command command = record.value();
       RequestPayment payment = (RequestPayment) command.getPayload();
@@ -282,13 +283,13 @@ class EventHandlerCommandsIT {
     }
 
     // The payment aggregate handled every command; its events carry the same flow.
-    for (ConsumerRecord<String, Event> record : committedEvents("policy.payment-events", "flow-")) {
+    for (ConsumerRecord<String, Event> record : committedEvents("handler.payment-events", "flow-")) {
       Command command = commands.stream().filter(c -> c.key().equals(record.key())).findFirst().orElseThrow().value();
       assertThat(record.partition()).isEqualTo(partitionOf(record.key()));
       assertThat(record.value().getMetadata().getCorrelationId()).isEqualTo(command.getMetadata().getCorrelationId());
       assertThat(record.value().getMetadata().getCausationId()).isEqualTo(command.getId());
     }
-    assertThat(committedStrings("policy.payments.results", "flow-")).hasSize(orders).allMatch(EventHandlerCommandsIT::isSuccess);
+    assertThat(committedStrings("handler.payments.results", "flow-")).hasSize(orders).allMatch(EventHandlerCommandsIT::isSuccess);
 
     // Only the gateway's own commands were answered.
     List<ConsumerRecord<String, String>> answered = committedStrings(REPLY_TOPIC, "flow-");
@@ -296,81 +297,81 @@ class EventHandlerCommandsIT {
   }
 
   @Test
-  @DisplayName("Should record a rejected policy command as failed, answer no one, and keep running")
-  void aRejectedPolicyCommandIsOnlyAFailedResult() throws Exception {
-    Eventify eventify = start("policy-rejected", new OrderHandler(), new PaymentHandler(), new PaymentPolicy());
+  @DisplayName("Should record a rejected command from an event handler as failed, answer no one, and keep running")
+  void aRejectedCommandFromAnEventHandlerIsOnlyAFailedResult() throws Exception {
+    Eventify eventify = start("handler-rejected", new OrderHandler(), new PaymentHandler(), new PaymentEventHandler());
     gateway = gateway();
 
     assertThat(gateway.send(new PlaceOrder("rejected-order-1", "rejected-payment-1", 0)).get(60, java.util.concurrent.TimeUnit.SECONDS))
         .as("the order itself is accepted").hasSize(1);
     gateway.send(new PlaceOrder("rejected-order-2", "rejected-payment-2", 5)).get(60, java.util.concurrent.TimeUnit.SECONDS);
-    await("the next payment", () -> !committedEvents("policy.payment-events", "rejected-payment-2").isEmpty());
+    await("the next payment", () -> !committedEvents("handler.payment-events", "rejected-payment-2").isEmpty());
     settle();
 
     assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
-    assertThat(committedStrings("policy.payments.results", "rejected-payment-1")).singleElement()
+    assertThat(committedStrings("handler.payments.results", "rejected-payment-1")).singleElement()
         .satisfies(record -> assertThat(record.value()).contains("\"result\":\"failure\"").contains("amount must be positive"));
-    assertThat(committedEvents("policy.payment-events", "rejected-payment-1")).isEmpty();
+    assertThat(committedEvents("handler.payment-events", "rejected-payment-1")).isEmpty();
     assertThat(committedStrings(REPLY_TOPIC, "rejected-")).hasSize(2).allMatch(record -> record.key().startsWith("rejected-order-"));
   }
 
   @Test
   @DisplayName("Should send the commands once over a restart, and again when the events are read under a new application id")
-  void aPolicyInItsOwnApplicationSendsOnceAndAgainOnReplay() throws Exception {
-    start("policy-aggregates", new OrderHandler(), new PaymentHandler());
-    Eventify policy = start("policy-only", new PaymentPolicy());
+  void anEventHandlerInItsOwnApplicationSendsOnceAndAgainOnReplay() throws Exception {
+    start("handler-aggregates", new OrderHandler(), new PaymentHandler());
+    Eventify handlers = start("handler-only", new PaymentEventHandler());
     gateway = gateway();
     int orders = 5;
     for (int i = 0; i < orders; i++) {
       gateway.send(new PlaceOrder("own-order-" + i, "own-payment-" + i, 1)).get(60, java.util.concurrent.TimeUnit.SECONDS);
     }
-    await("every payment command", () -> committedCommands("policy.payments", "own-").size() == orders);
+    await("every payment command", () -> committedCommands("handler.payments", "own-").size() == orders);
     settle();
 
     // The same application again: it goes on from its committed offsets.
-    policy.stop();
-    started.remove(policy);
-    start("policy-only", new PaymentPolicy());
+    handlers.stop();
+    started.remove(handlers);
+    start("handler-only", new PaymentEventHandler());
     gateway.send(new PlaceOrder("own-order-after-restart", "own-payment-after-restart", 1)).get(60, java.util.concurrent.TimeUnit.SECONDS);
-    await("the command after the restart", () -> !committedCommands("policy.payments", "own-payment-after-restart").isEmpty());
+    await("the command after the restart", () -> !committedCommands("handler.payments", "own-payment-after-restart").isEmpty());
     settle();
-    assertThat(committedCommands("policy.payments", "own-")).as("nothing sent twice over a restart").hasSize(orders + 1);
+    assertThat(committedCommands("handler.payments", "own-")).as("nothing sent twice over a restart").hasSize(orders + 1);
 
     // A new application id reads all events from the start, so it sends every command again.
-    start("policy-only-replayed", new PaymentPolicy());
-    await("the replayed commands", () -> committedCommands("policy.payments", "own-").size() == 2 * (orders + 1));
+    start("handler-only-replayed", new PaymentEventHandler());
+    await("the replayed commands", () -> committedCommands("handler.payments", "own-").size() == 2 * (orders + 1));
     settle();
-    assertThat(committedCommands("policy.payments", "own-")).hasSize(2 * (orders + 1));
-    await("the aggregate to handle them", () -> committedStrings("policy.payments.results", "own-").size() == 2 * (orders + 1));
+    assertThat(committedCommands("handler.payments", "own-")).hasSize(2 * (orders + 1));
+    await("the aggregate to handle them", () -> committedStrings("handler.payments.results", "own-").size() == 2 * (orders + 1));
   }
 
   @Test
-  @DisplayName("Should commit none of an event's commands when the policy fails, and stop")
-  void aFailingPolicyCommitsNothingOfTheEvent() {
-    Eventify eventify = start("policy-throwing", new RiskyHandler(), new ThrowingPolicy());
+  @DisplayName("Should commit none of an event's commands when the event handler fails, and stop")
+  void aFailingEventHandlerCommitsNothingOfTheEvent() {
+    Eventify eventify = start("handler-throwing", new RiskyHandler(), new ThrowingEventHandler());
     send(new PlaceThrowingOrder("throwing-ok"));
-    await("the commands of the first event", () -> committedCommands("policy.payments", "throwing-ok").size() == 2);
+    await("the commands of the first event", () -> committedCommands("handler.payments", "throwing-ok").size() == 2);
 
     send(new PlaceThrowingOrder("poison-1"));
     await("Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR);
 
-    assertThat(committedEvents("policy.throwing-events", "poison-1")).as("the aggregate's event stays").hasSize(1);
-    assertThat(committedCommands("policy.payments", "poison-1")).as("commands of the failed event").isEmpty();
-    assertThat(committedCommands("policy.payments", "throwing-ok")).as("commands of the event before it").hasSize(2);
+    assertThat(committedEvents("handler.throwing-events", "poison-1")).as("the aggregate's event stays").hasSize(1);
+    assertThat(committedCommands("handler.payments", "poison-1")).as("commands of the failed event").isEmpty();
+    assertThat(committedCommands("handler.payments", "throwing-ok")).as("commands of the event before it").hasSize(2);
   }
 
   @Test
   @DisplayName("Should abort a command already sent when the next command of the same event fails to be sent")
   void aFailureAfterTheFirstCommandWasSentAbortsIt() {
-    Eventify eventify = start("policy-flaky", new RiskyHandler(), new FlakyPolicy());
+    Eventify eventify = start("handler-flaky", new RiskyHandler(), new FlakyEventHandler());
 
     // First one that succeeds, to count how often the flaky command is written: the last time is when it is sent.
     FlakyCommand.COUNTED_ID = "flaky-count";
     FlakyCommand.TIMES_WRITTEN.set(0);
     send(new PlaceFlakyOrder("flaky-count"));
-    await("the counted commands", () -> committedStrings("policy.flaky", "flaky-count").size() == 1);
+    await("the counted commands", () -> committedStrings("handler.flaky", "flaky-count").size() == 1);
     int writesPerCommand = FlakyCommand.TIMES_WRITTEN.get();
-    assertThat(committedCommands("policy.payments", "flaky-count-pay")).hasSize(1);
+    assertThat(committedCommands("handler.payments", "flaky-count-pay")).hasSize(1);
 
     // The same again, now failing on that last write: after the payment command before it was forwarded.
     FlakyCommand.COUNTED_ID = "flaky-fail";
@@ -380,9 +381,9 @@ class EventHandlerCommandsIT {
     await("Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR);
 
     assertThat(FlakyCommand.TIMES_WRITTEN.get()).as("failed on the send itself").isGreaterThanOrEqualTo(writesPerCommand);
-    assertThat(committedEvents("policy.flaky-events", "flaky-fail")).hasSize(1);
-    assertThat(committedCommands("policy.payments", "flaky-fail-pay")).as("the command sent before the failure").isEmpty();
-    assertThat(committedStrings("policy.flaky", "flaky-fail")).isEmpty();
+    assertThat(committedEvents("handler.flaky-events", "flaky-fail")).hasSize(1);
+    assertThat(committedCommands("handler.payments", "flaky-fail-pay")).as("the command sent before the failure").isEmpty();
+    assertThat(committedStrings("handler.flaky", "flaky-fail")).isEmpty();
   }
 
   private Eventify start(String applicationId, Object... handlers) {
