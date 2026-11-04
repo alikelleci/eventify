@@ -184,7 +184,6 @@ public class HandlerRegistry {
     requireSupportedParameters("@EventHandler", method, false);
     Class<?> messageClass = method.getParameters()[0].getType();
     requireTopicOnHandledMessage("@EventHandler", messageClass, method);
-    requireCommandReturnType(method);
     // The same object registered twice is still one handler.
     boolean registered = eventHandlers.get(messageClass).stream()
         .anyMatch(previous -> previous.getHandler() == handler && previous.getMethod().equals(method));
@@ -247,23 +246,6 @@ public class HandlerRegistry {
         .orElse(null);
     if (mismatchingAggregate != null) {
       throw new HandlerRegistrationException("@EventSourcingHandler method " + method + " must return " + mismatchingAggregate.getName() + ", its @AggregateRoot parameter.");
-    }
-  }
-
-  /**
-   * What an event handler returns is sent as commands: a class without {@code @Topic}, e.g. a saved entity, is caught
-   * here, not on its first event. A List, Object, interface or abstract class is checked per command when sending.
-   */
-  private static void requireCommandReturnType(Method method) {
-    Class<?> returnType = method.getReturnType();
-    // Primitives and arrays are marked abstract too, but are never commands.
-    boolean abstractType = !returnType.isPrimitive() && !returnType.isArray()
-        && (returnType.isInterface() || Modifier.isAbstract(returnType.getModifiers()));
-    boolean checkedWhenSending = returnType == void.class || returnType == Void.class || returnType == Object.class
-        || List.class.isAssignableFrom(returnType) || abstractType;
-    if (!checkedWhenSending && Topics.of(returnType) == null) {
-      throw new HandlerRegistrationException("@EventHandler method " + method + " returns " + returnType.getName()
-          + ", which has no @Topic: return void, or the commands to send.");
     }
   }
 

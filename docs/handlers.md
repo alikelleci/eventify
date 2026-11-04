@@ -56,7 +56,7 @@ public RequestPayment handle(OrderPlaced event) {
 }
 ```
 
-Use this to let one aggregate's event lead to a command for another. The aggregate keeps the state; the handler only decides which command follows. A handler that returns a class without `@Topic` is refused at startup.
+Use this to let one aggregate's event lead to a command for another. The aggregate keeps the state; the handler only decides which command follows.
 
 ## Available message values
 

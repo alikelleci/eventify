@@ -466,62 +466,6 @@ class HandlerRegistrationTest {
         .containsExactly(AnnotatedTwiceEventHandler.class, OverridingEventHandler.class);
   }
 
-  public static class EventHandlerReturningEntity {
-    @EventHandler
-    public UnroutedEvent handle(SwitchedOn event) {
-      return new UnroutedEvent(event.getId());
-    }
-  }
-
-  public static class EventHandlerReturningPrimitive {
-    @EventHandler
-    public boolean handle(SwitchedOn event) {
-      return true;
-    }
-  }
-
-  public static class EventHandlersReturningCommands {
-    @EventHandler
-    public SwitchOn command(SwitchedOn event) {
-      return null;
-    }
-
-    @EventHandler
-    public List<Object> commands(SwitchedOn event) {
-      return List.of();
-    }
-
-    @EventHandler
-    public Object anything(SwitchedOn event) {
-      return null;
-    }
-
-    @EventHandler
-    public LightCommand grouped(SwitchedOn event) {
-      return null;
-    }
-  }
-
-  /** Its return value is sent as commands: a class that can't be one is refused at startup, not on its first event. */
-  @Test
-  @DisplayName("Should refuse an event handler that returns a class without a topic")
-  void anEventHandlerReturningANonCommandIsRefused() {
-    for (Object handler : List.of(new EventHandlerReturningEntity(), new EventHandlerReturningPrimitive())) {
-      assertThatThrownBy(() -> Eventify.builder().streamsConfig(config()).registerHandler(handler).build())
-          .as(handler.getClass().getSimpleName())
-          .isInstanceOf(HandlerRegistrationException.class)
-          .hasMessageContaining("@EventHandler", "returns", "@Topic");
-    }
-  }
-
-  @Test
-  @DisplayName("Should accept event handlers that return a command, a list, Object or a grouping interface")
-  void anEventHandlerReturningCommandsIsAccepted() {
-    HandlerRegistry handlers = new HandlerRegistry(List.of(new EventHandlersReturningCommands()));
-
-    assertThat(handlers.eventHandlers(SwitchedOn.class)).hasSize(4);
-  }
-
   public static class UnsupportedParameterHandler {
     @EventHandler
     public void handle(SwitchedOn event, String unsupported) {
