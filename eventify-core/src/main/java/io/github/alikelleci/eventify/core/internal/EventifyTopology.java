@@ -100,9 +100,12 @@ public final class EventifyTopology {
           .filter((key, event) -> event != null)
           .filter((key, event) -> event.getPayload() != null);
 
-      // Events --> Void
+      // Events --> Commands returned by event handlers
       events
-          .processValues(() -> new EventProcessor(handlers));
+          .processValues(() -> new EventProcessor(handlers))
+          .process(() -> new CommandsFromEvents(objectMapper))
+          .to((key, command, recordContext) -> command.getTopic().value(),
+              Produced.with(Serdes.String(), commandSerde));
     }
 
     return builder.build();

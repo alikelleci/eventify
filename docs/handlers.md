@@ -45,6 +45,19 @@ public void handle(OrderPlaced event) {
 
 Make side effects idempotent. A handler may run again after recovery.
 
+## Send a command from an event
+
+An event handler can return one command, a list of commands, or `null`. Eventify sends them to their `@Topic` in the same transaction as reading the event, with the event's correlation id and the event as cause.
+
+```java
+@EventHandler
+public RequestPayment handle(OrderPlaced event) {
+    return new RequestPayment(event.paymentId(), event.id(), event.amount());
+}
+```
+
+Use this to let one aggregate's event lead to a command for another. The aggregate keeps the state; the handler only decides which command follows. A handler that returns a class without `@Topic` is refused at startup.
+
 ## Available message values
 
 Besides the payload and aggregate state, handlers can receive:

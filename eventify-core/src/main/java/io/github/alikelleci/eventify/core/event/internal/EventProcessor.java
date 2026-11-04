@@ -7,20 +7,22 @@ import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 
 @Slf4j
-public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
+public class EventProcessor implements FixedKeyProcessor<String, Event, HandledEvent> {
 
   private final HandlerRegistry handlers;
-  private FixedKeyProcessorContext<String, Event> context;
+  private FixedKeyProcessorContext<String, HandledEvent> context;
 
   public EventProcessor(HandlerRegistry handlers) {
     this.handlers = handlers;
   }
 
   @Override
-  public void init(FixedKeyProcessorContext<String, Event> context) {
+  public void init(FixedKeyProcessorContext<String, HandledEvent> context) {
     this.context = context;
   }
 
@@ -28,12 +30,16 @@ public class EventProcessor implements FixedKeyProcessor<String, Event, Event> {
   public void process(FixedKeyRecord<String, Event> fixedKeyRecord) {
     Event event = fixedKeyRecord.value();
 
+    // Forwarded after every handler ran: a failing handler sends none of the commands.
+    List<Object> commandPayloads = new ArrayList<>();
     handlers.eventHandlers(event.getPayload().getClass()).stream()
         .sorted(Comparator.comparingInt(EventHandlerMethod::getPriority).reversed())
         .peek(handler -> log.debug("Handling event: eventType={}, aggregateId={}, sequence={}, handler={}.{}", event.getType(), event.getAggregateId(), event.getSequence(), handler.getMethod().getDeclaringClass().getSimpleName(), handler.getMethod().getName()))
-        .forEach(handler -> handler.handle(event));
+        .forEach(handler -> commandPayloads.addAll(handler.handle(event)));
 
-    context.forward(fixedKeyRecord);
+    if (!commandPayloads.isEmpty()) {
+      context.forward(fixedKeyRecord.withValue(new HandledEvent(event, commandPayloads)));
+    }
   }
 
   @Override

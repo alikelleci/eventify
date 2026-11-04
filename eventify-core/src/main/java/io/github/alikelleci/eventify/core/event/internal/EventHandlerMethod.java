@@ -4,12 +4,18 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
+import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
+import io.github.alikelleci.eventify.core.message.internal.Topics;
 import lombok.Getter;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Getter
@@ -27,9 +33,11 @@ public class EventHandlerMethod {
         .orElse(0);
   }
 
-  public void handle(Event event) {
+  /** The command payloads the handler returns, in order; empty for a void handler. */
+  public List<Object> handle(Event event) {
     try {
-      invokeHandler(event);
+      Object result = invokeHandler(event);
+      return commandPayloads(result);
     } catch (Exception e) {
       throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
@@ -49,5 +57,24 @@ public class EventHandlerMethod {
     }
 
     return method.invoke(handler, args);
+  }
+
+  private List<Object> commandPayloads(Object result) {
+    List<Object> payloads = new ArrayList<>();
+    if (result instanceof List<?> list) {
+      list.stream().filter(Objects::nonNull).forEach(payloads::add);
+    } else if (result != null) {
+      payloads.add(result);
+    }
+
+    payloads.forEach(payload -> {
+      // Checked now: the topic and key are only looked up when sending.
+      if (Topics.of(payload.getClass()) == null) {
+        throw new TopicMissingException("Command " + payload.getClass().getSimpleName() + " has no @Topic.");
+      }
+      AggregateIdResolver.getAggregateId(payload);
+    });
+
+    return payloads;
   }
 }
