@@ -221,6 +221,7 @@ class PolicyIT {
           "policy.orders", "policy.orders.results", "policy.order-events",
           "policy.payments", "policy.payments.results", "policy.payment-events",
           "policy.risky", "policy.risky.results", "policy.throwing-events", "policy.flaky-events", "policy.flaky",
+          "policy.orders.scheduled", "policy.payments.scheduled", "policy.risky.scheduled", "policy.flaky.scheduled",
           REPLY_TOPIC).stream().map(name -> new NewTopic(name, PARTITIONS, (short) 1)).toList()).all().get();
     }
   }
