@@ -53,7 +53,7 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
   public void process(Record<String, Command> record) {
     Command command = record.value();
     if (command == null) {
-      cancel(record.headers());
+      cancel(record.key(), record.headers());
       return;
     }
     if (command.getPayload() == null) {
@@ -75,13 +75,13 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
   }
 
   /** Removes the command a cancel record names; nothing when it is delivered already. */
-  private void cancel(Headers headers) {
+  private void cancel(String aggregateId, Headers headers) {
     String commandId = text(headers, HeaderNames.CANCEL);
     Long deliverAt = deliverAt(headers);
     if (StringUtils.isBlank(commandId) || deliverAt == null) {
       return; // not a cancel record: a record without a value
     }
-    log.debug("Cancelling scheduled command: commandId={}", commandId);
+    log.debug("Cancelling scheduled command: commandId={}, aggregateId={}", commandId, aggregateId);
     scheduled.delete(StoreKeys.scheduled(deliverAt, commandId));
   }
 
