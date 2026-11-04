@@ -47,8 +47,8 @@ import static org.awaitility.Awaitility.await;
  * restores after its local state is gone.
  */
 @Testcontainers
-@DisplayName("Instance status (real broker)")
-class StatusIT {
+@DisplayName("Console service status (real broker)")
+class ConsoleServiceStatusIT {
 
   @Container
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
