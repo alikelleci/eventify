@@ -102,6 +102,7 @@ public final class EventifyTopology {
       // Events --> Commands
       events
           .process(() -> new EventProcessor(handlers, objectMapper))
+          .filter((key, command) -> command != null)
           .to((key, command, recordContext) -> command.getTopic().value(),
               Produced.with(Serdes.String(), commandSerde));
     }
