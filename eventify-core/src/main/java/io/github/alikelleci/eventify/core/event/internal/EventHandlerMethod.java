@@ -4,9 +4,6 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
-import io.github.alikelleci.eventify.core.message.exception.TopicMissingException;
-import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
-import io.github.alikelleci.eventify.core.message.internal.Topics;
 import lombok.Getter;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -33,11 +30,11 @@ public class EventHandlerMethod {
         .orElse(0);
   }
 
-  /** The command payloads the handler returns, in order; empty for a void handler. */
+  /** What the handler returns, in order and without nulls; empty for a void handler. */
   public List<Object> handle(Event event) {
     try {
       Object result = invokeHandler(event);
-      return commandPayloads(result);
+      return returned(result);
     } catch (Exception e) {
       throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
@@ -59,22 +56,14 @@ public class EventHandlerMethod {
     return method.invoke(handler, args);
   }
 
-  private List<Object> commandPayloads(Object result) {
-    List<Object> payloads = new ArrayList<>();
+  private static List<Object> returned(Object result) {
+    List<Object> values = new ArrayList<>();
     if (result instanceof List<?> list) {
-      list.stream().filter(Objects::nonNull).forEach(payloads::add);
+      list.stream().filter(Objects::nonNull).forEach(values::add);
     } else if (result != null) {
-      payloads.add(result);
+      values.add(result);
     }
-
-    payloads.forEach(payload -> {
-      // Checked now: the topic and key are only looked up when sending.
-      if (Topics.of(payload.getClass()) == null) {
-        throw new TopicMissingException("Command " + payload.getClass().getSimpleName() + " has no @Topic.");
-      }
-      AggregateIdResolver.getAggregateId(payload);
-    });
-
-    return payloads;
+    return values;
   }
+
 }

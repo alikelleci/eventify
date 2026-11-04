@@ -5,10 +5,12 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
+import io.github.alikelleci.eventify.core.command.Scheduled;
 import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
+import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -26,6 +28,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -167,6 +171,69 @@ class EventHandlerCommandsTest {
     }
   }
 
+  /** Scheduled half an hour after the event, by the event's own time. */
+  public static class SchedulingEventHandler {
+    @EventHandler
+    public Scheduled on(OrderPlaced event, @Timestamp Instant placedAt) {
+      return Scheduled.of(new RequestPayment(event.paymentId(), event.id(), event.amount()), placedAt.plus(Duration.ofMinutes(30)));
+    }
+  }
+
+  /** Adds its own keys, replaces one of the event's, and tries to change the flow and the cause. */
+  public static class EnvelopeEventHandler {
+    @EventHandler
+    public Command on(OrderPlaced event) {
+      return Command.builder()
+          .payload(new RequestPayment(event.paymentId(), event.id(), event.amount()))
+          .metadata(Metadata.of("priority", "high").with("tenant", "beta")
+              .with(MetadataKeys.CORRELATION_ID, "another-flow").with(MetadataKeys.CAUSATION_ID, "another-cause"))
+          .build();
+    }
+  }
+
+  /** Every kind of value in one list: a payload, a command, a scheduled payload, a scheduled command and a null. */
+  public static class MixingEventHandler {
+    static final Duration LATER = Duration.ofMinutes(10);
+
+    @EventHandler
+    public List<Object> on(OrderPlaced event, @Timestamp Instant placedAt) {
+      return Arrays.asList(
+          new RequestPayment(event.paymentId(), event.id(), event.amount()),
+          Command.builder().payload(new NotifyCustomer("notify-" + event.paymentId())).metadata(Metadata.of("channel", "email")).build(),
+          null,
+          Scheduled.of(new RequestPayment("later-" + event.paymentId(), event.id(), event.amount()), placedAt.plus(LATER)),
+          Scheduled.of(Command.builder().payload(new NotifyCustomer("reminder-" + event.paymentId())).metadata(Metadata.of("reason", "unpaid")).build(),
+              placedAt.plus(LATER.multipliedBy(2))));
+    }
+  }
+
+  /** Its scheduled command has no topic: none of the others may be sent. */
+  public static class BrokenSchedulingEventHandler {
+    @EventHandler
+    public List<Object> on(OrderPlaced event, @Timestamp Instant placedAt) {
+      return List.of(
+          new RequestPayment(event.paymentId(), event.id(), event.amount()),
+          Scheduled.of(new RequestPayment("later-" + event.paymentId(), event.id(), event.amount()), placedAt),
+          Scheduled.of(new NotACommand(event.id()), placedAt));
+    }
+  }
+
+  /** Fails while building its result: the command before it is not sent. */
+  public static class TimelessSchedulingEventHandler {
+    @EventHandler
+    public List<Object> on(OrderPlaced event) {
+      return List.of(new RequestPayment(event.paymentId(), event.id(), event.amount()), Scheduled.of(new NotifyCustomer(event.paymentId()), null));
+    }
+  }
+
+  /** A command without an aggregate id, wrapped: it has no key. */
+  public static class UnaddressedEnvelopeEventHandler {
+    @EventHandler
+    public Command on(OrderPlaced event) {
+      return Command.builder().payload(new RequestPayment(null, event.id(), event.amount())).build();
+    }
+  }
+
   private TopologyTestDriver driver;
 
   @AfterEach
@@ -279,6 +346,146 @@ class EventHandlerCommandsTest {
         .readValue();
     assertThat(paymentRequested.getPayload()).isEqualTo(new PaymentRequested("payment-1", "order-1", 42));
     assertThat(paymentRequested.getMetadata().getCorrelationId()).isEqualTo(placeOrder.getMetadata().getCorrelationId());
+  }
+
+  @Test
+  @DisplayName("Should send a scheduled command to its scheduled topic with its delivery time, not to its command topic")
+  void aScheduledCommandGoesToTheScheduledTopic() {
+    start(new SchedulingEventHandler());
+    Event event = orderPlaced("order-1", "payment-1", Metadata.of(MetadataKeys.CORRELATION_ID, "flow-1"));
+
+    pipe(event);
+
+    assertThat(paymentCommands().isEmpty()).as("sent right away").isTrue();
+    TestRecord<String, Command> scheduled = scheduledPaymentCommands().readRecord();
+    assertThat(scheduled.key()).isEqualTo("payment-1");
+    assertThat(scheduled.value().getPayload()).isEqualTo(new RequestPayment("payment-1", "order-1", 42));
+    assertThat(deliverAt(scheduled)).isEqualTo(event.getTimestamp().plus(Duration.ofMinutes(30)).toEpochMilli());
+    assertThat(scheduled.headers().lastHeader(HeaderNames.REPLY_TO)).isNull();
+    assertThat(scheduled.value().getMetadata())
+        .containsEntry(MetadataKeys.CORRELATION_ID, "flow-1")
+        .containsEntry(MetadataKeys.CAUSATION_ID, event.getId());
+  }
+
+  /** In one instance: the scheduler keeps it, delivers it at its time, and the payment aggregate handles it. */
+  @Test
+  @DisplayName("Should deliver a command scheduled by an event handler at its time, and have it handled in the same flow")
+  void aScheduledCommandIsHandledAtItsTime() {
+    Instant now = Instant.parse("2026-11-04T12:00:00Z");
+    start(now, new PaymentHandler(), new SchedulingEventHandler());
+    Event event = Event.builder().aggregateType("order").payload(new OrderPlaced("order-1", "payment-1", 42))
+        .metadata(Metadata.of(MetadataKeys.CORRELATION_ID, "flow-1")).sequence(1).build();
+
+    pipe(event);
+    TestOutputTopic<String, Event> paymentEvents = driver.createOutputTopic("events.payment", new StringDeserializer(), new EventSerde().deserializer());
+    driver.advanceWallClockTime(Duration.between(now, event.getTimestamp().plus(Duration.ofMinutes(29))));
+    assertThat(paymentEvents.isEmpty()).as("handled before its time").isTrue();
+
+    driver.advanceWallClockTime(Duration.ofMinutes(2));
+    Event paymentRequested = paymentEvents.readValue();
+    assertThat(paymentRequested.getPayload()).isEqualTo(new PaymentRequested("payment-1", "order-1", 42));
+    assertThat(paymentRequested.getMetadata().getCorrelationId()).isEqualTo("flow-1");
+    assertThat(paymentEvents.isEmpty()).as("handled twice").isTrue();
+  }
+
+  @Test
+  @DisplayName("Should add and replace the handler's own metadata keys, and keep the event's correlation and cause")
+  void aCommandEnvelopeAddsItsMetadata() {
+    start(new EnvelopeEventHandler());
+    Event event = orderPlaced("order-1", "payment-1", Metadata.of(MetadataKeys.CORRELATION_ID, "flow-1").with("tenant", "acme").with("user", "ada"));
+
+    pipe(event);
+
+    Command sent = paymentCommands().readValue();
+    assertThat(sent.getPayload()).isEqualTo(new RequestPayment("payment-1", "order-1", 42));
+    assertThat(sent.getMetadata())
+        .containsEntry("priority", "high")
+        .containsEntry("tenant", "beta")
+        .containsEntry("user", "ada")
+        .containsEntry(MetadataKeys.CORRELATION_ID, "flow-1")
+        .containsEntry(MetadataKeys.CAUSATION_ID, event.getId());
+  }
+
+  @Test
+  @DisplayName("Should send every value of a mixed list in order, each to its topic with its own metadata, and skip nulls")
+  void aMixedListIsSentInOrder() {
+    start(new MixingEventHandler());
+    Event event = orderPlaced("order-1", "payment-1", Metadata.of(MetadataKeys.CORRELATION_ID, "flow-1").with("tenant", "acme"));
+
+    pipe(event);
+
+    List<TestRecord<String, Command>> now = paymentCommands().readRecordsToList();
+    assertThat(now).extracting(record -> record.value().getPayload())
+        .containsExactly(new RequestPayment("payment-1", "order-1", 42), new NotifyCustomer("notify-payment-1"));
+    assertThat(now).extracting(TestRecord::key).containsExactly("payment-1", "notify-payment-1");
+    assertThat(now.get(0).value().getMetadata()).doesNotContainKey("channel");
+    assertThat(now.get(1).value().getMetadata()).containsEntry("channel", "email");
+
+    List<TestRecord<String, Command>> later = scheduledPaymentCommands().readRecordsToList();
+    assertThat(later).extracting(record -> record.value().getPayload())
+        .containsExactly(new RequestPayment("later-payment-1", "order-1", 42), new NotifyCustomer("reminder-payment-1"));
+    assertThat(later).extracting(this::deliverAt).containsExactly(
+        event.getTimestamp().plus(MixingEventHandler.LATER).toEpochMilli(),
+        event.getTimestamp().plus(MixingEventHandler.LATER.multipliedBy(2)).toEpochMilli());
+    assertThat(later.get(1).value().getMetadata()).containsEntry("reason", "unpaid");
+
+    assertThat(now).noneMatch(record -> record.headers().lastHeader(HeaderNames.DELIVER_AT) != null);
+    assertThat(List.of(now, later)).allSatisfy(records -> assertThat(records).allSatisfy(record -> assertThat(record.value().getMetadata())
+        .containsEntry("tenant", "acme")
+        .containsEntry(MetadataKeys.CORRELATION_ID, "flow-1")
+        .containsEntry(MetadataKeys.CAUSATION_ID, event.getId())));
+  }
+
+  /** Sending the others and failing on one would leave half a reaction: none is sent, now or later. */
+  @Test
+  @DisplayName("Should fail the event and send nothing, now or later, when one scheduled command has no topic")
+  void aBrokenScheduledCommandSendsNothing() {
+    start(new BrokenSchedulingEventHandler());
+
+    assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining("NotACommand has no @Topic");
+    assertThat(paymentCommands().isEmpty()).isTrue();
+    assertThat(scheduledPaymentCommands().isEmpty()).isTrue();
+  }
+
+  @Test
+  @DisplayName("Should fail the event and send nothing when a scheduled command has no delivery time")
+  void aScheduledCommandWithoutATimeSendsNothing() {
+    start(new TimelessSchedulingEventHandler());
+
+    assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining("A scheduled command needs a command and a delivery time.");
+    assertThat(paymentCommands().isEmpty()).isTrue();
+    assertThat(scheduledPaymentCommands().isEmpty()).isTrue();
+  }
+
+  @Test
+  @DisplayName("Should fail the event and send nothing when a returned command envelope has no aggregate id")
+  void anEnvelopeWithoutAnAggregateIdIsNotSent() {
+    start(new UnaddressedEnvelopeEventHandler());
+
+    assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining("The @AggregateId field id of " + RequestPayment.class.getName() + " is null.");
+    assertThat(paymentCommands().isEmpty()).isTrue();
+  }
+
+  private long deliverAt(TestRecord<String, Command> record) {
+    return Long.parseLong(new String(record.headers().lastHeader(HeaderNames.DELIVER_AT).value(), StandardCharsets.UTF_8));
+  }
+
+  private TestOutputTopic<String, Command> scheduledPaymentCommands() {
+    return driver.createOutputTopic("commands.payment.scheduled", new StringDeserializer(), new CommandSerde().deserializer());
+  }
+
+  private void start(Instant wallClock, Object... handlers) {
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "event-handler-commands-test");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    Eventify.EventifyBuilder builder = Eventify.builder().streamsConfig(properties);
+    for (Object handler : handlers) {
+      builder.registerHandler(handler);
+    }
+    driver = new TopologyTestDriver(builder.build().topology(), properties, wallClock);
   }
 
   private void start(Object... handlers) {
