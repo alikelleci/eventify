@@ -13,6 +13,7 @@ import io.github.alikelleci.eventify.core.command.ScheduleToken;
 import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
+import io.github.alikelleci.eventify.core.command.internal.DeliverAt;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -139,18 +140,23 @@ public class DefaultCommandGateway implements CommandGateway {
 
     // No reply header: nobody waits when the command is handled.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, command.getTimestamp().toEpochMilli(), token.aggregateId(), command,
-        List.of(deliverAtHeader(token)));
+        List.of(DeliverAt.header(token.deliverAt())));
 
     CompletableFuture<ScheduleToken> future = new CompletableFuture<>();
     log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), token.deliverAt());
-    producer.send(producerRecord, (metadata, exception) -> {
-      if (exception != null) {
-        log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
-        completeExceptionally(future, exception);
-      } else {
-        complete(() -> future.complete(token));
-      }
-    });
+    try {
+      producer.send(producerRecord, (metadata, exception) -> {
+        if (exception != null) {
+          log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
+          completeExceptionally(future, exception);
+        } else {
+          complete(() -> future.complete(token));
+        }
+      });
+    } catch (RuntimeException e) {
+      log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), e);
+      throw e;
+    }
     return future;
   }
 
@@ -165,23 +171,24 @@ public class DefaultCommandGateway implements CommandGateway {
 
     // Same key as the scheduled command: the same partition, so the same store. No value: nothing to deliver.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, null, token.aggregateId(), null,
-        List.of(new RecordHeader(HeaderNames.CANCEL, token.commandId().getBytes(StandardCharsets.UTF_8)), deliverAtHeader(token)));
+        List.of(new RecordHeader(HeaderNames.CANCEL, token.commandId().getBytes(StandardCharsets.UTF_8)), DeliverAt.header(token.deliverAt())));
 
     CompletableFuture<Void> future = new CompletableFuture<>();
     log.debug("Cancelling scheduled command: commandId={}, aggregateId={}, deliverAt={}", token.commandId(), token.aggregateId(), token.deliverAt());
-    producer.send(producerRecord, (metadata, exception) -> {
-      if (exception != null) {
-        log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), exception);
-        completeExceptionally(future, exception);
-      } else {
-        complete(() -> future.complete(null));
-      }
-    });
+    try {
+      producer.send(producerRecord, (metadata, exception) -> {
+        if (exception != null) {
+          log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), exception);
+          completeExceptionally(future, exception);
+        } else {
+          complete(() -> future.complete(null));
+        }
+      });
+    } catch (RuntimeException e) {
+      log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), e);
+      throw e;
+    }
     return future;
-  }
-
-  private static RecordHeader deliverAtHeader(ScheduleToken token) {
-    return new RecordHeader(HeaderNames.DELIVER_AT, Long.toString(token.deliverAt().toEpochMilli()).getBytes(StandardCharsets.UTF_8));
   }
 
   private void failSend(Command command, CompletableFuture<List<Event>> future, Exception exception) {

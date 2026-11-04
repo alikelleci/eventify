@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.core.internal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.Scheduled;
-import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
+import io.github.alikelleci.eventify.core.command.internal.DeliverAt;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
@@ -19,7 +19,6 @@ import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -72,8 +71,7 @@ public class EventProcessor implements Processor<String, Event, String, Command>
       } else {
         log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, eventId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), event.getId(), out.deliverAt());
         // The sink sends it to the scheduled topic.
-        commandRecord = commandRecord.withHeaders(new RecordHeaders()
-            .add(HeaderNames.DELIVER_AT, Long.toString(out.deliverAt().toEpochMilli()).getBytes(StandardCharsets.UTF_8)));
+        commandRecord = commandRecord.withHeaders(new RecordHeaders().add(DeliverAt.header(out.deliverAt())));
       }
       context.forward(commandRecord);
     });

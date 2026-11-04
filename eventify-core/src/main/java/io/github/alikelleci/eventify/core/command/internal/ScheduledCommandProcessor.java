@@ -22,7 +22,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Keeps scheduled commands until their delivery time, then sends them to their command topic. */
+/** Keeps scheduled commands until their delivery time, then sends them to their command topic; a cancel record removes one. */
 @Slf4j
 public class ScheduledCommandProcessor implements Processor<String, Command, String, Command> {
 
@@ -66,7 +66,7 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
     if (!CommandProcessor.isWritable(objectMapper, command)) {
       return;
     }
-    Long deliverAt = deliverAt(record.headers());
+    Long deliverAt = DeliverAt.millis(record.headers());
     if (deliverAt == null) {
       log.warn("Skipping scheduled command, no valid delivery time: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       return;
@@ -77,7 +77,7 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
   /** Removes the command a cancel record names; nothing when it is delivered already. */
   private void cancel(String aggregateId, Headers headers) {
     String commandId = text(headers, HeaderNames.CANCEL);
-    Long deliverAt = deliverAt(headers);
+    Long deliverAt = DeliverAt.millis(headers);
     if (StringUtils.isBlank(commandId) || deliverAt == null) {
       return; // not a cancel record: a record without a value
     }
@@ -98,20 +98,6 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
       log.debug("Delivering scheduled command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       context.forward(new Record<>(command.getAggregateId(), command, now));
       scheduled.delete(entry.key);
-    }
-  }
-
-  /** The delivery time from the {@link HeaderNames#DELIVER_AT} header; {@code null} when missing or invalid. */
-  private static Long deliverAt(Headers headers) {
-    String text = text(headers, HeaderNames.DELIVER_AT);
-    if (text == null) {
-      return null;
-    }
-    try {
-      long millis = Long.parseLong(text);
-      return millis >= 0 ? millis : null;
-    } catch (NumberFormatException e) {
-      return null;
     }
   }
 
