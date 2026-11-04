@@ -10,6 +10,7 @@ import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
 import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
+import io.github.alikelleci.eventify.core.command.internal.ScheduledCommandProcessor;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
 import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
@@ -54,6 +55,11 @@ public final class EventifyTopology {
         .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SNAPSHOT_STORE), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
+    // Scheduled command store
+    builder.addStateStore(Stores
+        .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SCHEDULED_COMMANDS), Serdes.String(), commandSerde)
+        .withLoggingEnabled(Collections.emptyMap()));
+
     // Command handling
 
     Set<String> commandTopics = handlers.commandTopics();
@@ -88,6 +94,14 @@ public final class EventifyTopology {
           .filter((key, event) -> event != null)
           .to((key, event, recordContext) -> event.getTopic().value(),
               Produced.with(Serdes.String(), eventSerde));
+
+      // --> Scheduled commands --> Commands, when due
+      builder.stream(commandTopics.stream().map(TopicNames::scheduledTopicOf).toList(), Consumed.with(Serdes.String(), commandSerde))
+          .filter((key, command) -> command != null)
+          .filter((key, command) -> command.getPayload() != null)
+          .process(ScheduledCommandProcessor::new, StoreNames.SCHEDULED_COMMANDS)
+          .to((key, command, recordContext) -> command.getTopic().value(),
+              Produced.with(Serdes.String(), commandSerde));
     }
 
     // Event handling

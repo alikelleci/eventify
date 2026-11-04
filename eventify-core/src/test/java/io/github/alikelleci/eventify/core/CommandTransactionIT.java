@@ -264,13 +264,17 @@ class CommandTransactionIT {
     try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
       admin.createTopics(List.of(
           new NewTopic("orders", 1, (short) 1),
+          new NewTopic("orders.scheduled", 1, (short) 1),
           new NewTopic("orders.results", 1, (short) 1),
           new NewTopic("orders.events", 1, (short) 1),
           new NewTopic("orders.copy", 1, (short) 1),
+          new NewTopic("orders.copy.scheduled", 1, (short) 1),
           new NewTopic("orders.copy.results", 1, (short) 1),
           new NewTopic("orders.command-copy", 1, (short) 1),
+          new NewTopic("orders.command-copy.scheduled", 1, (short) 1),
           new NewTopic("orders.command-copy.results", 1, (short) 1),
           new NewTopic("orders.reply-to", 1, (short) 1),
+          new NewTopic("orders.reply-to.scheduled", 1, (short) 1),
           new NewTopic("orders.reply-to.results", 1, (short) 1))).all().get();
     }
   }

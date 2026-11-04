@@ -84,6 +84,11 @@ class SendAndWaitTest {
       }
 
       @Override
+      public CompletableFuture<Void> schedule(Command command, java.time.Instant deliverAt) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
       public void close() {
       }
     };

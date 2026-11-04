@@ -12,6 +12,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
@@ -24,6 +25,12 @@ public interface CommandGateway extends AutoCloseable {
   /** Sends a command. The future fails when it is rejected. */
   CompletableFuture<List<Event>> send(Command command);
 
+  /**
+   * Delivers the command to its aggregate at deliverAt, not earlier; a time in the past delivers it right away. The
+   * future completes once Kafka has the command; its result is written to the results topic only.
+   */
+  CompletableFuture<Void> schedule(Command command, Instant deliverAt);
+
   /** Releases gateway resources. */
   @Override
   void close();
@@ -32,6 +39,12 @@ public interface CommandGateway extends AutoCloseable {
     return send(Command.builder()
         .payload(payload)
         .build());
+  }
+
+  default CompletableFuture<Void> schedule(Object payload, Instant deliverAt) {
+    return schedule(Command.builder()
+        .payload(payload)
+        .build(), deliverAt);
   }
 
   /** Sends a command and waits for its result. A timeout does not mean the command was not handled. */

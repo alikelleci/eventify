@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
+import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
@@ -24,7 +25,9 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -120,13 +123,40 @@ public class DefaultCommandGateway implements CommandGateway {
     return future;
   }
 
+  @Override
+  public CompletableFuture<Void> schedule(Command command, Instant deliverAt) {
+    if (replies.isClosed()) {
+      throw new IllegalStateException("The command gateway is closed.");
+    }
+    Objects.requireNonNull(deliverAt, "deliverAt");
+    if (deliverAt.toEpochMilli() < 0) {
+      throw new IllegalArgumentException("A delivery time can't be before 1970, not " + deliverAt + ".");
+    }
+
+    // No reply header: nobody waits when the command is handled.
+    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(command.getTopic().value()), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command,
+        List.of(new RecordHeader(HeaderNames.DELIVER_AT, Long.toString(deliverAt.toEpochMilli()).getBytes(StandardCharsets.UTF_8))));
+
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), deliverAt);
+    producer.send(producerRecord, (metadata, exception) -> {
+      if (exception != null) {
+        log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
+        completeExceptionally(future, exception);
+      } else {
+        complete(() -> future.complete(null));
+      }
+    });
+    return future;
+  }
+
   private void failSend(Command command, CompletableFuture<List<Event>> future, Exception exception) {
     log.warn("Failed to send command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
     cache.asMap().remove(command.getId(), future);
     completeExceptionally(future, exception);
   }
 
-  private void completeExceptionally(CompletableFuture<List<Event>> future, Throwable exception) {
+  private void completeExceptionally(CompletableFuture<?> future, Throwable exception) {
     complete(() -> future.completeExceptionally(exception));
   }
 
