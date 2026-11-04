@@ -41,7 +41,7 @@ title: Overview
 - A **command handler** validates that request and returns event payloads.
 - An **event** is an immutable fact.
 - An **event-sourcing handler** applies an event to produce the next aggregate state.
-- An **event handler** reacts to published events, for example to update a view or send a notification.
+- An **event handler** reacts to published events, for example to update a view, send a notification or return a command for another aggregate.
 
 ## Important choices
 
