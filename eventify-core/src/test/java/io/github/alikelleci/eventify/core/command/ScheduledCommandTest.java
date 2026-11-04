@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
@@ -173,6 +174,28 @@ class ScheduledCommandTest {
     driver.advanceWallClockTime(Duration.ofSeconds(30));
 
     assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(sooner.getId(), later.getId());
+  }
+
+  /** One round delivers at most 1000: a larger transaction may not commit in time, and would be retried forever. */
+  @Test
+  @DisplayName("Should deliver a backlog over several rounds, oldest first, each command once")
+  void deliversABacklogOverSeveralRounds() {
+    List<String> scheduledIds = new ArrayList<>();
+    for (int i = 0; i < 2500; i++) {
+      scheduledIds.add(schedule(Tick.builder().id("id-" + i).build(), START.plusMillis(i)).getId());
+    }
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+    List<String> delivered = new ArrayList<>(commands.readValuesToList().stream().map(Command::getId).toList());
+    assertThat(delivered).as("first round").hasSize(1000);
+
+    driver.advanceWallClockTime(Duration.ofSeconds(1));
+    delivered.addAll(commands.readValuesToList().stream().map(Command::getId).toList());
+    assertThat(delivered).as("after the second round").hasSize(2000);
+
+    driver.advanceWallClockTime(Duration.ofSeconds(1));
+    delivered.addAll(commands.readValuesToList().stream().map(Command::getId).toList());
+    assertThat(delivered).as("oldest first, each once").containsExactlyElementsOf(scheduledIds);
+    assertThat(stored()).isEmpty();
   }
 
   @Test

@@ -28,6 +28,9 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
   /** How often due commands are delivered: a command is delivered up to this long after its time. */
   static final Duration INTERVAL = Duration.ofSeconds(1);
 
+  /** At most this many per round, so a backlog can't make a transaction too large to commit. */
+  static final int MAX_PER_ROUND = 1000;
+
   private final HandlerRegistry handlers;
   private final ObjectMapper objectMapper;
   private ProcessorContext<String, Command> context;
@@ -63,11 +66,13 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
     scheduled.put(StoreKeys.scheduled(deliverAt, command.getId()), command);
   }
 
-  /** Delivers and removes the commands that are due; both are committed in the same transaction. */
+  /** Delivers and removes the oldest due commands; the rest waits for the next round. */
   private void deliverDue(long now) {
     List<KeyValue<String, Command>> due = new ArrayList<>();
     try (KeyValueIterator<String, Command> iterator = scheduled.range(null, StoreKeys.scheduledUpTo(now))) {
-      iterator.forEachRemaining(due::add);
+      while (iterator.hasNext() && due.size() < MAX_PER_ROUND) {
+        due.add(iterator.next());
+      }
     }
     for (KeyValue<String, Command> entry : due) {
       Command command = entry.value;
