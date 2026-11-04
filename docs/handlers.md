@@ -58,6 +58,19 @@ public RequestPayment handle(OrderPlaced event) {
 
 Use this to let one aggregate's event lead to a command for another. The aggregate keeps the state; the handler only decides which command follows.
 
+Return a `Command` to add metadata of your own, or `Scheduled.of(...)` to have the command handled later. A list can mix them.
+
+```java
+@EventHandler
+public List<Object> handle(OrderPlaced event, @Timestamp Instant placedAt) {
+    return List.of(
+        Command.builder().payload(new ReserveStock(event.id())).metadata(Metadata.of("priority", "high")).build(),
+        Scheduled.of(new CancelOrderIfUnpaid(event.id()), placedAt.plus(Duration.ofMinutes(30))));
+}
+```
+
+Take the time from the event, so a replay schedules the same time.
+
 ## Available message values
 
 Besides the payload and aggregate state, handlers can receive:

@@ -10,6 +10,7 @@ import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
 import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
+import io.github.alikelleci.eventify.core.command.internal.ScheduleHeaders;
 import io.github.alikelleci.eventify.core.command.internal.ScheduledCommandProcessor;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
@@ -112,11 +113,13 @@ public final class EventifyTopology {
           .filter((key, event) -> event != null)
           .filter((key, event) -> event.getPayload() != null);
 
-      // Events --> Commands
+      // Events --> Commands, or scheduled commands when they have a delivery time
       events
           .process(() -> new EventProcessor(handlers, objectMapper))
           .filter((key, command) -> command != null)
-          .to((key, command, recordContext) -> command.getTopic().value(),
+          .to((key, command, recordContext) -> ScheduleHeaders.deliverAt(recordContext.headers()) != null
+                  ? TopicNames.scheduledTopicOf(command.getTopic().value())
+                  : command.getTopic().value(),
               Produced.with(Serdes.String(), commandSerde));
     }
 

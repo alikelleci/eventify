@@ -4,11 +4,13 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.Scheduled;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
+import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -123,6 +125,21 @@ class EventHandlerCommandsIT {
     @EventHandler
     public RequestPayment on(OrderPlaced event) {
       return new RequestPayment(event.paymentId(), event.id(), event.amount());
+    }
+  }
+
+  /** A command now and, a few seconds after the event, a command with its own metadata. */
+  public static class MixingEventHandler {
+    static final Duration LATER = Duration.ofSeconds(4);
+
+    @EventHandler
+    public List<Object> on(OrderPlaced event, @Timestamp Instant placedAt) {
+      return List.of(
+          new RequestPayment(event.paymentId(), event.id(), event.amount()),
+          Scheduled.of(Command.builder()
+              .payload(new RequestPayment("later-" + event.paymentId(), event.id(), event.amount()))
+              .metadata(Metadata.of("reason", "later"))
+              .build(), placedAt.plus(LATER)));
     }
   }
 
@@ -294,6 +311,38 @@ class EventHandlerCommandsIT {
     // Only the gateway's own commands were answered.
     List<ConsumerRecord<String, String>> answered = committedStrings(REPLY_TOPIC, "flow-");
     assertThat(answered).hasSize(orders).allMatch(record -> record.key().startsWith("flow-order-"));
+  }
+
+  /** The scheduled one goes through the scheduled topic and the scheduler, under exactly-once, like the gateway's. */
+  @Test
+  @DisplayName("Should send a command now and deliver a scheduled one once at its time, both in the event's flow")
+  void anEventHandlerSendsOneNowAndSchedulesAnother() throws Exception {
+    start("handler-mixed", new OrderHandler(), new PaymentHandler(), new MixingEventHandler());
+    gateway = gateway();
+    Command placeOrder = Command.builder()
+        .payload(new PlaceOrder("mixed-order-1", "mixed-payment-1", 5))
+        .metadata(Metadata.of("tenant", "acme"))
+        .build();
+
+    gateway.send(placeOrder).get(60, java.util.concurrent.TimeUnit.SECONDS);
+    await("the command sent now", () -> !committedCommands("handler.payments", "mixed-payment-1").isEmpty());
+    Event orderPlaced = committedEvents("handler.order-events", "mixed-order-1").get(0).value();
+    assertThat(committedCommands("handler.payments", "later-mixed-payment-1")).as("delivered right away").isEmpty();
+
+    await("the scheduled command", () -> !committedCommands("handler.payments", "later-mixed-payment-1").isEmpty());
+    settle();
+
+    assertThat(committedCommands("handler.payments", "mixed-payment-1")).as("the command sent now").hasSize(1);
+    List<ConsumerRecord<String, Command>> later = committedCommands("handler.payments", "later-mixed-payment-1");
+    assertThat(later).as("the scheduled command, once").hasSize(1);
+    assertThat(later.get(0).timestamp()).as("not before its time")
+        .isGreaterThanOrEqualTo(orderPlaced.getTimestamp().plus(MixingEventHandler.LATER).toEpochMilli());
+    assertThat(later.get(0).value().getMetadata())
+        .containsEntry("reason", "later")
+        .containsEntry("tenant", "acme")
+        .containsEntry(MetadataKeys.CORRELATION_ID, placeOrder.getMetadata().getCorrelationId())
+        .containsEntry(MetadataKeys.CAUSATION_ID, orderPlaced.getId());
+    assertThat(committedStrings("handler.payments.results", "later-mixed-payment-1")).singleElement().matches(EventHandlerCommandsIT::isSuccess);
   }
 
   @Test
