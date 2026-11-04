@@ -13,6 +13,7 @@ import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.MetadataKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import lombok.Value;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -66,6 +67,17 @@ class EventHandlerCommandsTest {
   }
 
   public record NotACommand(@AggregateId String id) {
+  }
+
+  @Value
+  @Topic("commands.payment")
+  public static class CorruptPayment {
+    @AggregateId
+    String id;
+
+    public String getContent() {
+      throw new IllegalStateException("not writable");
+    }
   }
 
   public static class OrderHandler {
@@ -141,6 +153,20 @@ class EventHandlerCommandsTest {
     }
   }
 
+  public static class CorruptPolicy {
+    @EventHandler
+    public CorruptPayment on(OrderPlaced event) {
+      return new CorruptPayment(event.paymentId());
+    }
+  }
+
+  public static class UnaddressedPolicy {
+    @EventHandler
+    public RequestPayment on(OrderPlaced event) {
+      return new RequestPayment(null, event.id(), event.amount());
+    }
+  }
+
   private TopologyTestDriver driver;
 
   @AfterEach
@@ -213,6 +239,29 @@ class EventHandlerCommandsTest {
 
     assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
         .hasStackTraceContaining("NotACommand has no @Topic");
+    assertThat(paymentCommands().isEmpty()).isTrue();
+  }
+
+  /** Its command handler couldn't read it and would skip it without a trace: it fails here instead. */
+  @Test
+  @DisplayName("Should fail the event and send nothing when a command cannot be written as JSON")
+  void aCommandThatCannotBeWrittenAsJsonIsNotSent() {
+    start(new CorruptPolicy());
+
+    assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining("Command CorruptPayment cannot be written as JSON")
+        .hasStackTraceContaining("not writable");
+    assertThat(paymentCommands().isEmpty()).isTrue();
+  }
+
+  /** Without an id it has no key, so no partition and no aggregate to handle it. */
+  @Test
+  @DisplayName("Should fail the event and send nothing when a command has no aggregate id")
+  void aCommandWithoutAnAggregateIdIsNotSent() {
+    start(new UnaddressedPolicy());
+
+    assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining("The @AggregateId field id of " + RequestPayment.class.getName() + " is null.");
     assertThat(paymentCommands().isEmpty()).isTrue();
   }
 

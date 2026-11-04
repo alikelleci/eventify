@@ -47,7 +47,7 @@ Make side effects idempotent. A handler may run again after recovery.
 
 ## Send a command from an event
 
-An event handler can return one command, a list of commands, or `null`. Eventify sends them to their `@Topic` in the same transaction as reading the event, with the event's correlation id and the event as cause.
+An event handler can return one command, a list of commands, or `null`. Eventify sends them to their `@Topic` in the same transaction as reading the event. It passes the event's metadata to the commands and sets the event as their cause.
 
 ```java
 @EventHandler
