@@ -121,6 +121,7 @@ class MigrationIT {
       admin.createTopics(List.of(
           new NewTopic("orders", PARTITIONS, (short) 1),
           new NewTopic("orders.results", PARTITIONS, (short) 1),
+          new NewTopic("orders.scheduled", PARTITIONS, (short) 1),
           new NewTopic("orders.events", PARTITIONS, (short) 1))).all().get();
     }
   }
