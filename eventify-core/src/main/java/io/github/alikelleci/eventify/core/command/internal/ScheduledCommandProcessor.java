@@ -6,8 +6,6 @@ import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.internal.StoreNames;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.PunctuationType;
@@ -17,7 +15,6 @@ import org.apache.kafka.streams.processor.api.Record;
 import org.apache.kafka.streams.state.KeyValueIterator;
 import org.apache.kafka.streams.state.KeyValueStore;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -66,7 +63,7 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
     if (!CommandProcessor.isWritable(objectMapper, command)) {
       return;
     }
-    Long deliverAt = DeliverAt.millis(record.headers());
+    Long deliverAt = ScheduleHeaders.deliverAt(record.headers());
     if (deliverAt == null) {
       log.warn("Skipping scheduled command, no valid delivery time: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       return;
@@ -76,9 +73,9 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
 
   /** Removes the command a cancel record names; nothing when it is delivered already. */
   private void cancel(String aggregateId, Headers headers) {
-    String commandId = text(headers, HeaderNames.CANCEL);
-    Long deliverAt = DeliverAt.millis(headers);
-    if (StringUtils.isBlank(commandId) || deliverAt == null) {
+    String commandId = ScheduleHeaders.cancel(headers);
+    Long deliverAt = ScheduleHeaders.deliverAt(headers);
+    if (commandId == null || deliverAt == null) {
       return; // not a cancel record: a record without a value
     }
     log.debug("Cancelling scheduled command: commandId={}, aggregateId={}", commandId, aggregateId);
@@ -99,10 +96,5 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
       context.forward(new Record<>(command.getAggregateId(), command, now));
       scheduled.delete(entry.key);
     }
-  }
-
-  private static String text(Headers headers, String name) {
-    Header header = headers != null ? headers.lastHeader(name) : null;
-    return header != null && header.value() != null ? new String(header.value(), StandardCharsets.UTF_8) : null;
   }
 }

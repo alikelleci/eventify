@@ -3,7 +3,7 @@ package io.github.alikelleci.eventify.core.internal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.Scheduled;
-import io.github.alikelleci.eventify.core.command.internal.DeliverAt;
+import io.github.alikelleci.eventify.core.command.internal.ScheduleHeaders;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
@@ -71,7 +71,7 @@ public class EventProcessor implements Processor<String, Event, String, Command>
       } else {
         log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, eventId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), event.getId(), out.deliverAt());
         // The sink sends it to the scheduled topic.
-        commandRecord = commandRecord.withHeaders(new RecordHeaders().add(DeliverAt.header(out.deliverAt())));
+        commandRecord = commandRecord.withHeaders(new RecordHeaders().add(ScheduleHeaders.deliverAt(out.deliverAt())));
       }
       context.forward(commandRecord);
     });

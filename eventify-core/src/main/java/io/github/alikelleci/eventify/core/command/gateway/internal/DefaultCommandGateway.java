@@ -13,8 +13,8 @@ import io.github.alikelleci.eventify.core.command.ScheduleToken;
 import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
-import io.github.alikelleci.eventify.core.command.internal.DeliverAt;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
+import io.github.alikelleci.eventify.core.command.internal.ScheduleHeaders;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -140,7 +140,7 @@ public class DefaultCommandGateway implements CommandGateway {
 
     // No reply header: nobody waits when the command is handled.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, command.getTimestamp().toEpochMilli(), token.aggregateId(), command,
-        List.of(DeliverAt.header(token.deliverAt())));
+        List.of(ScheduleHeaders.deliverAt(token.deliverAt())));
 
     CompletableFuture<ScheduleToken> future = new CompletableFuture<>();
     log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), token.deliverAt());
@@ -171,7 +171,7 @@ public class DefaultCommandGateway implements CommandGateway {
 
     // Same key as the scheduled command: the same partition, so the same store. No value: nothing to deliver.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, null, token.aggregateId(), null,
-        List.of(new RecordHeader(HeaderNames.CANCEL, token.commandId().getBytes(StandardCharsets.UTF_8)), DeliverAt.header(token.deliverAt())));
+        List.of(ScheduleHeaders.cancel(token.commandId()), ScheduleHeaders.deliverAt(token.deliverAt())));
 
     CompletableFuture<Void> future = new CompletableFuture<>();
     log.debug("Cancelling scheduled command: commandId={}, aggregateId={}, deliverAt={}", token.commandId(), token.aggregateId(), token.deliverAt());
