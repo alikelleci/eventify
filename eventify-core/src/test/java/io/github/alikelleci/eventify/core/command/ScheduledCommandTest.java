@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.command;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
@@ -66,6 +67,28 @@ class ScheduledCommandTest {
     String id;
   }
 
+  /** No handler in this application. */
+  @Value
+  @Builder
+  public static class Reset implements CounterCommand {
+    @AggregateId
+    String id;
+  }
+
+  /** Can be written as JSON once: read back, it has no note. */
+  @Value
+  @Builder
+  public static class Annotate implements CounterCommand {
+    @AggregateId
+    String id;
+    @JsonIgnore
+    String note;
+
+    public int getNoteLength() {
+      return note.length();
+    }
+  }
+
   @Value
   @Builder
   public static class Ticked implements CounterEvent {
@@ -76,6 +99,11 @@ class ScheduledCommandTest {
   public static class CounterHandler {
     @CommandHandler
     public Object handle(Tick command, Counter state) {
+      return Ticked.builder().id(command.getId()).build();
+    }
+
+    @CommandHandler
+    public Object handle(Annotate command, Counter state) {
       return Ticked.builder().id(command.getId()).build();
     }
 
@@ -182,6 +210,30 @@ class ScheduledCommandTest {
 
     assertThat(stored()).isEmpty();
     assertThat(commands.readValuesToList()).isEmpty();
+  }
+
+  /** Another application with handlers on the same topic delivers it; delivered here too, it would be handled twice. */
+  @Test
+  @DisplayName("Should skip a scheduled command this application has no handler for")
+  void skipsACommandWithoutAHandler() {
+    schedule(Reset.builder().id("ada").build(), START.plusSeconds(10));
+
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(stored()).isEmpty();
+    assertThat(commands.readValuesToList()).isEmpty();
+  }
+
+  /** Stored, it could not be written to the store: Eventify would stop. */
+  @Test
+  @DisplayName("Should skip a scheduled command that can't be written as JSON, and deliver the next one")
+  void skipsACommandThatCantBeWrittenAgain() {
+    schedule(Annotate.builder().id("ada").note("not in the JSON").build(), START.plusSeconds(10));
+    Command next = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
   }
 
   private Command schedule(Object payload, Instant deliverAt) {

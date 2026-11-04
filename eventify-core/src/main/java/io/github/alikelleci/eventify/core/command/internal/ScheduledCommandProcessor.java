@@ -1,6 +1,8 @@
 package io.github.alikelleci.eventify.core.command.internal;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.internal.StoreNames;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +28,15 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
   /** How often due commands are delivered: a command is delivered up to this long after its time. */
   static final Duration INTERVAL = Duration.ofSeconds(1);
 
+  private final HandlerRegistry handlers;
+  private final ObjectMapper objectMapper;
   private ProcessorContext<String, Command> context;
   private KeyValueStore<String, Command> scheduled;
+
+  public ScheduledCommandProcessor(HandlerRegistry handlers, ObjectMapper objectMapper) {
+    this.handlers = handlers;
+    this.objectMapper = objectMapper;
+  }
 
   @Override
   public void init(ProcessorContext<String, Command> context) {
@@ -39,6 +48,13 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
   @Override
   public void process(Record<String, Command> record) {
     Command command = record.value();
+    if (handlers.commandHandler(command.getPayload().getClass()) == null) {
+      log.debug("Skipping scheduled command, no handler registered: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
+      return; // another application delivers it
+    }
+    if (!CommandProcessor.isWritable(objectMapper, command)) {
+      return;
+    }
     Long deliverAt = deliverAt(record.headers());
     if (deliverAt == null) {
       log.warn("Skipping scheduled command, no valid delivery time: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());

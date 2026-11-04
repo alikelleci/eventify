@@ -99,7 +99,7 @@ public final class EventifyTopology {
       builder.stream(commandTopics.stream().map(TopicNames::scheduledTopicOf).toList(), Consumed.with(Serdes.String(), commandSerde))
           .filter((key, command) -> command != null)
           .filter((key, command) -> command.getPayload() != null)
-          .process(ScheduledCommandProcessor::new, StoreNames.SCHEDULED_COMMANDS)
+          .process(() -> new ScheduledCommandProcessor(handlers, objectMapper), StoreNames.SCHEDULED_COMMANDS)
           .to((key, command, recordContext) -> command.getTopic().value(),
               Produced.with(Serdes.String(), commandSerde));
     }

@@ -33,10 +33,12 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.BooleanSupplier;
+import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -131,6 +133,30 @@ class ScheduledCommandIT {
     assertThat(committedResults(command.getId())).as("handled again").hasSize(1);
   }
 
+  @Test
+  @DisplayName("Should handle commands of several aggregates, over both partitions, each once and not before its time")
+  void handlesManyCommandsEachOnceAtTheirTime() {
+    eventify = start("scheduled-many", stateDir.resolve("many"));
+    gateway = gateway();
+
+    Instant now = Instant.now();
+    Map<String, Instant> deliverAt = new HashMap<>();
+    for (int i = 0; i < 20; i++) {
+      Command command = Command.builder().payload(Remind.builder().id("rem-many-" + i).build()).build();
+      Instant at = now.plusSeconds(2 + i % 5);
+      assertThat(gateway.schedule(command, at)).succeedsWithin(Duration.ofSeconds(10));
+      deliverAt.put(command.getId(), at);
+    }
+
+    await("every result", () -> deliverAt.keySet().stream().allMatch(id -> !committedResults(id).isEmpty()));
+    sleep(Duration.ofSeconds(3));
+    deliverAt.forEach((id, at) -> {
+      List<Long> results = committedResults(id);
+      assertThat(results).as("results of " + id).hasSize(1);
+      assertThat(results.get(0)).as("not handled before its time: " + id).isGreaterThanOrEqualTo(at.toEpochMilli());
+    });
+  }
+
   /** The store is restored from its changelog: a fresh state directory has nothing of it locally. */
   @Test
   @DisplayName("Should still deliver a scheduled command after a restart with an empty state directory")
@@ -187,7 +213,7 @@ class ScheduledCommandIT {
     return found.size();
   }
 
-  private static void readCommitted(String topic, java.util.function.Consumer<ConsumerRecord<String, String>> each) {
+  private static void readCommitted(String topic, Consumer<ConsumerRecord<String, String>> each) {
     try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(Map.of(
         ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
         ConsumerConfig.ISOLATION_LEVEL_CONFIG, "read_committed",
