@@ -12,7 +12,6 @@ import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
 import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
-import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -100,10 +99,9 @@ public final class EventifyTopology {
           .filter((key, event) -> event != null)
           .filter((key, event) -> event.getPayload() != null);
 
-      // Events --> Commands returned by event handlers
+      // Events --> Commands
       events
-          .processValues(() -> new EventProcessor(handlers))
-          .process(() -> new CommandsFromEvents(objectMapper))
+          .process(() -> new EventProcessor(handlers, objectMapper))
           .to((key, command, recordContext) -> command.getTopic().value(),
               Produced.with(Serdes.String(), commandSerde));
     }
