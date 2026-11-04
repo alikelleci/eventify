@@ -28,7 +28,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -129,7 +128,9 @@ public class DefaultCommandGateway implements CommandGateway {
     if (replies.isClosed()) {
       throw new IllegalStateException("The command gateway is closed.");
     }
-    Objects.requireNonNull(deliverAt, "deliverAt");
+    if (deliverAt == null) {
+      throw new IllegalArgumentException("A scheduled command needs a delivery time.");
+    }
     if (deliverAt.toEpochMilli() < 0) {
       throw new IllegalArgumentException("A delivery time can't be before 1970, not " + deliverAt + ".");
     }
@@ -158,7 +159,9 @@ public class DefaultCommandGateway implements CommandGateway {
     if (replies.isClosed()) {
       throw new IllegalStateException("The command gateway is closed.");
     }
-    Objects.requireNonNull(token, "token");
+    if (token == null) {
+      throw new IllegalArgumentException("Cancel needs the token schedule returned.");
+    }
 
     // Same key as the scheduled command: the same partition, so the same store. No value: nothing to deliver.
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, null, token.aggregateId(), null,

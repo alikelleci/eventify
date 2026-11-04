@@ -26,9 +26,9 @@ class ScheduleTokenTest {
   @Test
   @DisplayName("Should refuse a missing part")
   void refusesAMissingPart() {
-    assertThatThrownBy(() -> new ScheduleToken(null, "order-1", "c-1", Instant.now())).isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> new ScheduleToken("orders", null, "c-1", Instant.now())).isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> new ScheduleToken("orders", "order-1", null, Instant.now())).isInstanceOf(NullPointerException.class);
-    assertThatThrownBy(() -> new ScheduleToken("orders", "order-1", "c-1", null)).isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> new ScheduleToken(null, "order-1", "c-1", Instant.now())).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new ScheduleToken("orders", null, "c-1", Instant.now())).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new ScheduleToken("orders", "order-1", null, Instant.now())).isInstanceOf(IllegalArgumentException.class);
+    assertThatThrownBy(() -> new ScheduleToken("orders", "order-1", "c-1", null)).isInstanceOf(IllegalArgumentException.class);
   }
 }

@@ -142,10 +142,10 @@ class CommandGatewayScheduleIT {
     gateway = gateway();
     Ping ping = Ping.builder().id("ping-2").build();
 
-    assertThatThrownBy(() -> gateway.schedule(ping, null)).isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> gateway.schedule(ping, null)).isInstanceOf(IllegalArgumentException.class);
     assertThatThrownBy(() -> gateway.schedule(ping, Instant.ofEpochMilli(-1))).isInstanceOf(IllegalArgumentException.class);
 
-    assertThatThrownBy(() -> gateway.cancel(null)).isInstanceOf(NullPointerException.class);
+    assertThatThrownBy(() -> gateway.cancel(null)).isInstanceOf(IllegalArgumentException.class);
 
     gateway.close();
     assertThatThrownBy(() -> gateway.schedule(ping, Instant.now())).isInstanceOf(IllegalStateException.class);
