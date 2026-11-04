@@ -36,7 +36,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 
 @Slf4j
 public class DefaultCommandGateway implements CommandGateway {
@@ -141,8 +140,17 @@ public class DefaultCommandGateway implements CommandGateway {
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, command.getTimestamp().toEpochMilli(), token.aggregateId(), command,
         List.of(deliverAtHeader(token)));
 
+    CompletableFuture<ScheduleToken> future = new CompletableFuture<>();
     log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), token.deliverAt());
-    return write(producerRecord, token, e -> log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), e));
+    producer.send(producerRecord, (metadata, exception) -> {
+      if (exception != null) {
+        log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
+        completeExceptionally(future, exception);
+      } else {
+        complete(() -> future.complete(token));
+      }
+    });
+    return future;
   }
 
   @Override
@@ -156,26 +164,21 @@ public class DefaultCommandGateway implements CommandGateway {
     ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, null, token.aggregateId(), null,
         List.of(new RecordHeader(HeaderNames.CANCEL, token.commandId().getBytes(StandardCharsets.UTF_8)), deliverAtHeader(token)));
 
+    CompletableFuture<Void> future = new CompletableFuture<>();
     log.debug("Cancelling scheduled command: commandId={}, aggregateId={}, deliverAt={}", token.commandId(), token.aggregateId(), token.deliverAt());
-    return write(producerRecord, null, e -> log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), e));
+    producer.send(producerRecord, (metadata, exception) -> {
+      if (exception != null) {
+        log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), exception);
+        completeExceptionally(future, exception);
+      } else {
+        complete(() -> future.complete(null));
+      }
+    });
+    return future;
   }
 
   private static RecordHeader deliverAtHeader(ScheduleToken token) {
     return new RecordHeader(HeaderNames.DELIVER_AT, Long.toString(token.deliverAt().toEpochMilli()).getBytes(StandardCharsets.UTF_8));
-  }
-
-  /** Completes with the value once Kafka has the record, or with the reason it doesn't. */
-  private <T> CompletableFuture<T> write(ProducerRecord<String, Command> producerRecord, T value, Consumer<Exception> logFailure) {
-    CompletableFuture<T> future = new CompletableFuture<>();
-    producer.send(producerRecord, (metadata, exception) -> {
-      if (exception != null) {
-        logFailure.accept(exception);
-        completeExceptionally(future, exception);
-      } else {
-        complete(() -> future.complete(value));
-      }
-    });
-    return future;
   }
 
   private void failSend(Command command, CompletableFuture<List<Event>> future, Exception exception) {

@@ -98,6 +98,7 @@ public final class EventifyTopology {
       // --> Scheduled commands and cancels --> Commands, when due
       builder.stream(commandTopics.stream().map(TopicNames::scheduledTopicOf).toList(), Consumed.with(Serdes.String(), commandSerde))
           .process(() -> new ScheduledCommandProcessor(handlers, objectMapper), StoreNames.SCHEDULED_COMMANDS)
+          .filter((key, command) -> command != null)
           .to((key, command, recordContext) -> command.getTopic().value(),
               Produced.with(Serdes.String(), commandSerde));
     }
