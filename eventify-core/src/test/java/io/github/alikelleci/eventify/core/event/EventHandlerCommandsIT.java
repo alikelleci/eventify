@@ -58,8 +58,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests share topics; each uses its own aggregate ids and application ids, and checks only its own records.
  */
 @Testcontainers
-@DisplayName("Policies: commands from event handlers (exactly-once, real broker)")
-class PolicyIT {
+@DisplayName("Commands from event handlers (exactly-once, real broker)")
+class EventHandlerCommandsIT {
 
   @Container
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
@@ -288,7 +288,7 @@ class PolicyIT {
       assertThat(record.value().getMetadata().getCorrelationId()).isEqualTo(command.getMetadata().getCorrelationId());
       assertThat(record.value().getMetadata().getCausationId()).isEqualTo(command.getId());
     }
-    assertThat(committedStrings("policy.payments.results", "flow-")).hasSize(orders).allMatch(PolicyIT::isSuccess);
+    assertThat(committedStrings("policy.payments.results", "flow-")).hasSize(orders).allMatch(EventHandlerCommandsIT::isSuccess);
 
     // Only the gateway's own commands were answered.
     List<ConsumerRecord<String, String>> answered = committedStrings(REPLY_TOPIC, "flow-");
@@ -391,6 +391,8 @@ class PolicyIT {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.resolve(applicationId).toString());
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
+    // A stopped instance doesn't leave the group: the broker waits this long before reassigning its partitions.
+    properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG), 6000);
     Eventify.EventifyBuilder builder = Eventify.builder().streamsConfig(properties);
     for (Object handler : handlers) {
       builder.registerHandler(handler);
