@@ -38,7 +38,6 @@ public class ReplyConsumer {
   private final java.util.function.Consumer<ConsumerRecords<String, CommandResult>> onReplies;
   private final AtomicBoolean closed = new AtomicBoolean(false);
   private Thread thread;
-  private Thread shutdownHook;
 
   public ReplyConsumer(Properties config, String replyTopic, ObjectMapper objectMapper,
                        java.util.function.Consumer<ConsumerRecords<String, CommandResult>> onReplies) {
@@ -77,10 +76,8 @@ public class ReplyConsumer {
 
     thread = new Thread(this::listen, "eventify-command-gateway-" + replyTopic);
     // A gateway that is never closed doesn't keep the JVM running.
+    // No shutdown hook: it would close the gateway before the application has shut down.
     thread.setDaemon(true);
-    // A gateway that is never closed still leaves the group cleanly when the JVM exits.
-    shutdownHook = new Thread(this::signalStop, "eventify-command-gateway-shutdown");
-    Runtime.getRuntime().addShutdownHook(shutdownHook);
     thread.start();
   }
 
@@ -112,7 +109,7 @@ public class ReplyConsumer {
         }
       }
     } catch (WakeupException e) {
-      // closing: only signalStop() wakes the consumer
+      // closing: only stopListening() wakes the consumer
     } finally {
       consumer.close();
     }
@@ -121,7 +118,6 @@ public class ReplyConsumer {
   /** Ends the poll loop, closes the consumer and waits a while for that; later replies are not received. */
   public void stopListening() {
     signalStop();
-    removeShutdownHook();
     if (thread != null && thread != Thread.currentThread()) {
       try {
         thread.join(STOP_TIMEOUT.toMillis());
@@ -134,17 +130,6 @@ public class ReplyConsumer {
   private void signalStop() {
     if (closed.compareAndSet(false, true)) {
       consumer.wakeup();
-    }
-  }
-
-  private void removeShutdownHook() {
-    if (shutdownHook == null) {
-      return;
-    }
-    try {
-      Runtime.getRuntime().removeShutdownHook(shutdownHook);
-    } catch (IllegalStateException e) {
-      // The JVM is shutting down already: the hook runs anyway.
     }
   }
 
