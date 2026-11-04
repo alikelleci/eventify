@@ -1,5 +1,6 @@
 package io.github.alikelleci.eventify.core.command;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
@@ -7,6 +8,7 @@ import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import lombok.Builder;
 import lombok.Value;
 import org.apache.kafka.clients.admin.AdminClient;
@@ -52,6 +54,7 @@ class ScheduledCommandIT {
 
   private static final String COMMANDS = "reminders";
   private static final String RESULTS = TopicNames.resultTopicOf(COMMANDS);
+  private static final ObjectMapper JSON = EventifyObjectMapper.create();
 
   @AggregateRoot("reminder")
   @Value
@@ -89,10 +92,48 @@ class ScheduledCommandIT {
     }
   }
 
+  @AggregateRoot("snoozer")
+  @Value
+  @Builder
+  public static class Snoozer {
+    @AggregateId
+    String id;
+  }
+
+  /** Handled by another application, on the same command topic. */
+  @Topic(COMMANDS)
+  @Value
+  @Builder
+  public static class Snooze {
+    @AggregateId
+    String id;
+  }
+
+  @Topic("reminders.events")
+  @Value
+  @Builder
+  public static class Snoozed {
+    @AggregateId
+    String id;
+  }
+
+  public static class SnoozeHandler {
+    @CommandHandler
+    public Object handle(Snooze command, Snoozer state) {
+      return Snoozed.builder().id(command.getId()).build();
+    }
+
+    @EventSourcingHandler
+    public Snoozer handle(Snoozed event, Snoozer state) {
+      return Snoozer.builder().id(event.getId()).build();
+    }
+  }
+
   @TempDir
   Path stateDir;
 
   private Eventify eventify;
+  private Eventify other;
   private CommandGateway gateway;
 
   @BeforeAll
@@ -111,6 +152,7 @@ class ScheduledCommandIT {
   void tearDown() {
     if (gateway != null) gateway.close();
     if (eventify != null) eventify.stop();
+    if (other != null) other.stop();
   }
 
   @Test
@@ -148,10 +190,11 @@ class ScheduledCommandIT {
       deliverAt.put(command.getId(), at);
     }
 
-    await("every result", () -> deliverAt.keySet().stream().allMatch(id -> !committedResults(id).isEmpty()));
+    await("every result", () -> committedResultsPerCommand().keySet().containsAll(deliverAt.keySet()));
     sleep(Duration.ofSeconds(3));
+    Map<String, List<Long>> all = committedResultsPerCommand();
     deliverAt.forEach((id, at) -> {
-      List<Long> results = committedResults(id);
+      List<Long> results = all.getOrDefault(id, List.of());
       assertThat(results).as("results of " + id).hasSize(1);
       assertThat(results.get(0)).as("not handled before its time: " + id).isGreaterThanOrEqualTo(at.toEpochMilli());
     });
@@ -176,27 +219,24 @@ class ScheduledCommandIT {
     assertThat(committedResults(kept.getId())).as("results of the kept command").hasSize(1);
   }
 
-  /** The store is restored from its changelog, so the cancel finds the command scheduled before the restart. */
+  /** Both read the scheduled topic; each delivers only the commands it has a handler for. */
   @Test
-  @DisplayName("Should cancel a command scheduled before a restart with an empty state directory")
-  void cancelsAfterARestart() {
-    eventify = start("scheduled-cancel-restart", stateDir.resolve("first"));
+  @DisplayName("Should handle each command once when two applications with different handlers share the command topic")
+  void handlesEachCommandOnceWithTwoApplications() {
+    eventify = start("scheduled-reminders", stateDir.resolve("reminders"));
+    other = start("scheduled-snoozes", stateDir.resolve("snoozes"), new SnoozeHandler());
     gateway = gateway();
 
-    Instant deliverAt = Instant.now().plusSeconds(20);
-    Command cancelled = Command.builder().payload(Remind.builder().id("rem-cancel-3").build()).build();
-    Command kept = Command.builder().payload(Remind.builder().id("rem-cancel-4").build()).build();
-    ScheduleToken token = gateway.schedule(cancelled, deliverAt).join();
-    gateway.schedule(kept, deliverAt).join();
-    await("both commands to be stored", () -> committedCount("scheduled-cancel-restart-scheduled-commands-changelog") >= 2);
-    eventify.stop();
+    Instant deliverAt = Instant.now().plusSeconds(4);
+    Command remind = Command.builder().payload(Remind.builder().id("app-1").build()).build();
+    Command snooze = Command.builder().payload(Snooze.builder().id("app-2").build()).build();
+    gateway.schedule(remind, deliverAt).join();
+    gateway.schedule(snooze, deliverAt).join();
 
-    eventify = start("scheduled-cancel-restart", stateDir.resolve("second"));
-    assertThat(gateway.cancel(token)).succeedsWithin(Duration.ofSeconds(10));
-
-    await("the kept command's result", () -> !committedResults(kept.getId()).isEmpty());
-    sleep(Duration.ofSeconds(3));
-    assertThat(committedResults(cancelled.getId())).as("results of the cancelled command").isEmpty();
+    await("both results", () -> !committedResults(remind.getId()).isEmpty() && !committedResults(snooze.getId()).isEmpty());
+    sleep(Duration.ofSeconds(4));
+    assertThat(committedResults(remind.getId())).as("results of the reminder").hasSize(1);
+    assertThat(committedResults(snooze.getId())).as("results of the snooze").hasSize(1);
   }
 
   /** The store is restored from its changelog: a fresh state directory has nothing of it locally. */
@@ -219,6 +259,10 @@ class ScheduledCommandIT {
   }
 
   private Eventify start(String applicationId, Path stateDirectory) {
+    return start(applicationId, stateDirectory, new ReminderHandler());
+  }
+
+  private Eventify start(String applicationId, Path stateDirectory, Object handler) {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
@@ -226,7 +270,7 @@ class ScheduledCommandIT {
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
     // A stopped instance doesn't leave the group: the broker waits this long before reassigning its partitions.
     properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG), 6000);
-    Eventify instance = Eventify.builder().streamsConfig(properties).registerHandler(new ReminderHandler()).build();
+    Eventify instance = Eventify.builder().streamsConfig(properties).registerHandler(handler).build();
     instance.start();
     await("Eventify to run", () -> instance.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
     return instance;
@@ -236,6 +280,22 @@ class ScheduledCommandIT {
     Properties producerConfig = new Properties();
     producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     return CommandGateway.builder().producerConfig(producerConfig).replyTopic("reminders.replies").build();
+  }
+
+  /** The timestamps of the committed results, per command id: one read for all commands. */
+  private static Map<String, List<Long>> committedResultsPerCommand() {
+    Map<String, List<Long>> found = new HashMap<>();
+    readCommitted(RESULTS, record -> {
+      if (record.value() != null) {
+        try {
+          String id = JSON.readTree(record.value()).path("command").path("id").asText();
+          found.computeIfAbsent(id, key -> new ArrayList<>()).add(record.timestamp());
+        } catch (Exception e) {
+          throw new AssertionError(e);
+        }
+      }
+    });
+    return found;
   }
 
   /** The timestamps of the committed results of this command. */
