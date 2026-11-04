@@ -259,6 +259,64 @@ class ScheduledCommandTest {
     assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
   }
 
+  @Test
+  @DisplayName("Should not deliver a cancelled command, and still deliver the others")
+  void cancelledIsNotDelivered() {
+    Command cancelled = schedule(Tick.builder().id("ada").build(), START.plusSeconds(10));
+    Command kept = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    cancel(cancelled, START.plusSeconds(10));
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(kept.getId());
+    assertThat(stored()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Should do nothing when a cancel comes after the delivery")
+  void aLateCancelDoesNothing() {
+    Command command = schedule(Tick.builder().id("ada").build(), START.plusSeconds(10));
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(command.getId());
+
+    cancel(command, START.plusSeconds(10));
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).isEmpty();
+    assertThat(results.readValuesToList()).hasSize(1);
+  }
+
+  /** The store key holds the time: a cancel with another time names another command. */
+  @Test
+  @DisplayName("Should only cancel the command at the time the cancel names")
+  void aCancelNamesTheTime() {
+    Command command = schedule(Tick.builder().id("ada").build(), START.plusSeconds(10));
+
+    cancel(command, START.plusSeconds(11));
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(command.getId());
+  }
+
+  @Test
+  @DisplayName("Should skip a record without a value that is no valid cancel")
+  void skipsAnInvalidCancel() {
+    Command command = schedule(Tick.builder().id("ada").build(), START.plusSeconds(10));
+
+    scheduled.pipeInput(new TestRecord<>("ada", null, new RecordHeaders(), START));
+    scheduled.pipeInput(new TestRecord<>("ada", null, new RecordHeaders()
+        .add(new RecordHeader(HeaderNames.CANCEL, command.getId().getBytes(StandardCharsets.UTF_8))), START));
+    scheduled.pipeInput(new TestRecord<>("ada", null, header(START.plusSeconds(10)), START));
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(command.getId());
+  }
+
+  private void cancel(Command command, Instant deliverAt) {
+    Headers headers = header(deliverAt).add(new RecordHeader(HeaderNames.CANCEL, command.getId().getBytes(StandardCharsets.UTF_8)));
+    scheduled.pipeInput(new TestRecord<>(command.getAggregateId(), null, headers, START));
+  }
+
   private Command schedule(Object payload, Instant deliverAt) {
     Command command = Command.builder().payload(payload).build();
     pipe(command, header(deliverAt));

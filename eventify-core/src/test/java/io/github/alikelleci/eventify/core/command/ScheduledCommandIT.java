@@ -157,6 +157,48 @@ class ScheduledCommandIT {
     });
   }
 
+  @Test
+  @DisplayName("Should not handle a cancelled command, and still handle the others")
+  void doesNotHandleACancelledCommand() {
+    eventify = start("scheduled-cancel", stateDir.resolve("cancel"));
+    gateway = gateway();
+
+    Instant deliverAt = Instant.now().plusSeconds(5);
+    Command cancelled = Command.builder().payload(Remind.builder().id("rem-cancel-1").build()).build();
+    Command kept = Command.builder().payload(Remind.builder().id("rem-cancel-2").build()).build();
+    ScheduleToken token = gateway.schedule(cancelled, deliverAt).join();
+    gateway.schedule(kept, deliverAt).join();
+    assertThat(gateway.cancel(token)).succeedsWithin(Duration.ofSeconds(10));
+
+    await("the kept command's result", () -> !committedResults(kept.getId()).isEmpty());
+    sleep(Duration.ofSeconds(3));
+    assertThat(committedResults(cancelled.getId())).as("results of the cancelled command").isEmpty();
+    assertThat(committedResults(kept.getId())).as("results of the kept command").hasSize(1);
+  }
+
+  /** The store is restored from its changelog, so the cancel finds the command scheduled before the restart. */
+  @Test
+  @DisplayName("Should cancel a command scheduled before a restart with an empty state directory")
+  void cancelsAfterARestart() {
+    eventify = start("scheduled-cancel-restart", stateDir.resolve("first"));
+    gateway = gateway();
+
+    Instant deliverAt = Instant.now().plusSeconds(20);
+    Command cancelled = Command.builder().payload(Remind.builder().id("rem-cancel-3").build()).build();
+    Command kept = Command.builder().payload(Remind.builder().id("rem-cancel-4").build()).build();
+    ScheduleToken token = gateway.schedule(cancelled, deliverAt).join();
+    gateway.schedule(kept, deliverAt).join();
+    await("both commands to be stored", () -> committedCount("scheduled-cancel-restart-scheduled-commands-changelog") >= 2);
+    eventify.stop();
+
+    eventify = start("scheduled-cancel-restart", stateDir.resolve("second"));
+    assertThat(gateway.cancel(token)).succeedsWithin(Duration.ofSeconds(10));
+
+    await("the kept command's result", () -> !committedResults(kept.getId()).isEmpty());
+    sleep(Duration.ofSeconds(3));
+    assertThat(committedResults(cancelled.getId())).as("results of the cancelled command").isEmpty();
+  }
+
   /** The store is restored from its changelog: a fresh state directory has nothing of it locally. */
   @Test
   @DisplayName("Should still deliver a scheduled command after a restart with an empty state directory")

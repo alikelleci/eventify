@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
+import io.github.alikelleci.eventify.core.command.ScheduleToken;
 import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
@@ -35,6 +36,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 @Slf4j
 public class DefaultCommandGateway implements CommandGateway {
@@ -124,7 +126,7 @@ public class DefaultCommandGateway implements CommandGateway {
   }
 
   @Override
-  public CompletableFuture<Void> schedule(Command command, Instant deliverAt) {
+  public CompletableFuture<ScheduleToken> schedule(Command command, Instant deliverAt) {
     if (replies.isClosed()) {
       throw new IllegalStateException("The command gateway is closed.");
     }
@@ -132,19 +134,45 @@ public class DefaultCommandGateway implements CommandGateway {
     if (deliverAt.toEpochMilli() < 0) {
       throw new IllegalArgumentException("A delivery time can't be before 1970, not " + deliverAt + ".");
     }
+    // In milliseconds, as it is stored: a cancel finds the command by it.
+    ScheduleToken token = new ScheduleToken(command.getTopic().value(), command.getAggregateId(), command.getId(), Instant.ofEpochMilli(deliverAt.toEpochMilli()));
 
     // No reply header: nobody waits when the command is handled.
-    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(command.getTopic().value()), null, command.getTimestamp().toEpochMilli(), command.getAggregateId(), command,
-        List.of(new RecordHeader(HeaderNames.DELIVER_AT, Long.toString(deliverAt.toEpochMilli()).getBytes(StandardCharsets.UTF_8))));
+    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, command.getTimestamp().toEpochMilli(), token.aggregateId(), command,
+        List.of(deliverAtHeader(token)));
 
-    CompletableFuture<Void> future = new CompletableFuture<>();
-    log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), deliverAt);
+    log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), token.deliverAt());
+    return write(producerRecord, token, e -> log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), e));
+  }
+
+  @Override
+  public CompletableFuture<Void> cancel(ScheduleToken token) {
+    if (replies.isClosed()) {
+      throw new IllegalStateException("The command gateway is closed.");
+    }
+    Objects.requireNonNull(token, "token");
+
+    // Same key as the scheduled command: the same partition, so the same store. No value: nothing to deliver.
+    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, null, token.aggregateId(), null,
+        List.of(new RecordHeader(HeaderNames.CANCEL, token.commandId().getBytes(StandardCharsets.UTF_8)), deliverAtHeader(token)));
+
+    log.debug("Cancelling scheduled command: commandId={}, aggregateId={}, deliverAt={}", token.commandId(), token.aggregateId(), token.deliverAt());
+    return write(producerRecord, null, e -> log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), e));
+  }
+
+  private static RecordHeader deliverAtHeader(ScheduleToken token) {
+    return new RecordHeader(HeaderNames.DELIVER_AT, Long.toString(token.deliverAt().toEpochMilli()).getBytes(StandardCharsets.UTF_8));
+  }
+
+  /** Completes with the value once Kafka has the record, or with the reason it doesn't. */
+  private <T> CompletableFuture<T> write(ProducerRecord<String, Command> producerRecord, T value, Consumer<Exception> logFailure) {
+    CompletableFuture<T> future = new CompletableFuture<>();
     producer.send(producerRecord, (metadata, exception) -> {
       if (exception != null) {
-        log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
+        logFailure.accept(exception);
         completeExceptionally(future, exception);
       } else {
-        complete(() -> future.complete(null));
+        complete(() -> future.complete(value));
       }
     });
     return future;

@@ -3,6 +3,7 @@ package io.github.alikelleci.eventify.core.command.gateway;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.alikelleci.eventify.core.EventifyException;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.ScheduleToken;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
 import io.github.alikelleci.eventify.core.command.gateway.internal.DefaultCommandGateway;
@@ -29,7 +30,13 @@ public interface CommandGateway extends AutoCloseable {
    * Delivers the command to its aggregate at deliverAt, not earlier; a time in the past delivers it right away. The
    * future completes once Kafka has the command; its result is written to the results topic only.
    */
-  CompletableFuture<Void> schedule(Command command, Instant deliverAt);
+  CompletableFuture<ScheduleToken> schedule(Command command, Instant deliverAt);
+
+  /**
+   * Cancels a scheduled command that is not delivered yet; one that is delivered is still handled. The future completes
+   * once Kafka has the cancellation, not when it is applied.
+   */
+  CompletableFuture<Void> cancel(ScheduleToken token);
 
   /** Releases gateway resources. */
   @Override
@@ -41,7 +48,7 @@ public interface CommandGateway extends AutoCloseable {
         .build());
   }
 
-  default CompletableFuture<Void> schedule(Object payload, Instant deliverAt) {
+  default CompletableFuture<ScheduleToken> schedule(Object payload, Instant deliverAt) {
     return schedule(Command.builder()
         .payload(payload)
         .build(), deliverAt);

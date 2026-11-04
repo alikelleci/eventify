@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.command.gateway;
 
 import io.github.alikelleci.eventify.core.EventifyException;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.ScheduleToken;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
@@ -84,7 +85,12 @@ class SendAndWaitTest {
       }
 
       @Override
-      public CompletableFuture<Void> schedule(Command command, java.time.Instant deliverAt) {
+      public CompletableFuture<ScheduleToken> schedule(Command command, java.time.Instant deliverAt) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public CompletableFuture<Void> cancel(ScheduleToken token) {
         throw new UnsupportedOperationException();
       }
 

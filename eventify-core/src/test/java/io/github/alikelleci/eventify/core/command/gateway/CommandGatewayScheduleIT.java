@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.command.gateway;
 
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.ScheduleToken;
 import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -88,21 +89,38 @@ class CommandGatewayScheduleIT {
   void writesTheCommandToTheScheduledTopic() {
     gateway = gateway();
     Command command = Command.builder().payload(Ping.builder().id("ping-1").build()).build();
-    Instant deliverAt = Instant.parse("2030-01-01T00:00:00Z");
+    Instant deliverAt = Instant.parse("2030-01-01T00:00:00.123456Z");
 
-    CompletableFuture<Void> future = gateway.schedule(command, deliverAt);
+    CompletableFuture<ScheduleToken> future = gateway.schedule(command, deliverAt);
 
-    assertThat(future).succeedsWithin(Duration.ofSeconds(10));
-    List<ConsumerRecord<String, String>> records = read(SCHEDULED_TOPIC);
+    // In milliseconds, as stored: the cancel must name the same time.
+    assertThat(future).succeedsWithin(Duration.ofSeconds(10))
+        .isEqualTo(new ScheduleToken(COMMAND_TOPIC, "ping-1", command.getId(), Instant.parse("2030-01-01T00:00:00.123Z")));
+    List<ConsumerRecord<String, String>> records = read(SCHEDULED_TOPIC).stream().filter(record -> "ping-1".equals(record.key())).toList();
     assertThat(records).hasSize(1);
     ConsumerRecord<String, String> record = records.get(0);
-    assertThat(record.key()).isEqualTo("ping-1");
     assertThat(record.value()).contains(command.getId());
     assertThat(record.timestamp()).isEqualTo(command.getTimestamp().toEpochMilli());
     assertThat(new String(record.headers().lastHeader(HeaderNames.DELIVER_AT).value(), StandardCharsets.UTF_8))
         .isEqualTo(Long.toString(deliverAt.toEpochMilli()));
     assertThat(record.headers().lastHeader(HeaderNames.REPLY_TO)).isNull();
     assertThat(read(COMMAND_TOPIC)).as("sent to the command topic right away").isEmpty();
+  }
+
+  @Test
+  @DisplayName("Should cancel with a record without a value, with the key, id and time of the scheduled command")
+  void writesACancelRecord() {
+    gateway = gateway();
+    ScheduleToken token = new ScheduleToken(COMMAND_TOPIC, "ping-3", "c-3", Instant.ofEpochMilli(1_893_456_000_123L));
+
+    assertThat(gateway.cancel(token)).succeedsWithin(Duration.ofSeconds(10));
+
+    List<ConsumerRecord<String, String>> records = read(SCHEDULED_TOPIC).stream().filter(record -> "ping-3".equals(record.key())).toList();
+    assertThat(records).hasSize(1);
+    ConsumerRecord<String, String> record = records.get(0);
+    assertThat(record.value()).isNull();
+    assertThat(new String(record.headers().lastHeader(HeaderNames.CANCEL).value(), StandardCharsets.UTF_8)).isEqualTo("c-3");
+    assertThat(new String(record.headers().lastHeader(HeaderNames.DELIVER_AT).value(), StandardCharsets.UTF_8)).isEqualTo("1893456000123");
   }
 
   @Test
@@ -119,7 +137,7 @@ class CommandGatewayScheduleIT {
   }
 
   @Test
-  @DisplayName("Should refuse a missing or pre-1970 time, and scheduling after close")
+  @DisplayName("Should refuse a missing or pre-1970 time, a missing token, and scheduling or cancelling after close")
   void refusesInvalidInput() {
     gateway = gateway();
     Ping ping = Ping.builder().id("ping-2").build();
@@ -127,8 +145,11 @@ class CommandGatewayScheduleIT {
     assertThatThrownBy(() -> gateway.schedule(ping, null)).isInstanceOf(NullPointerException.class);
     assertThatThrownBy(() -> gateway.schedule(ping, Instant.ofEpochMilli(-1))).isInstanceOf(IllegalArgumentException.class);
 
+    assertThatThrownBy(() -> gateway.cancel(null)).isInstanceOf(NullPointerException.class);
+
     gateway.close();
     assertThatThrownBy(() -> gateway.schedule(ping, Instant.now())).isInstanceOf(IllegalStateException.class);
+    assertThatThrownBy(() -> gateway.cancel(new ScheduleToken(COMMAND_TOPIC, "ping-2", "c-2", Instant.now()))).isInstanceOf(IllegalStateException.class);
   }
 
   private static CommandGateway gateway() {

@@ -6,6 +6,7 @@ import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.internal.StoreNames;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.streams.KeyValue;
@@ -51,6 +52,13 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
   @Override
   public void process(Record<String, Command> record) {
     Command command = record.value();
+    if (command == null) {
+      cancel(record.headers());
+      return;
+    }
+    if (command.getPayload() == null) {
+      return;
+    }
     if (handlers.commandHandler(command.getPayload().getClass()) == null) {
       log.debug("Skipping scheduled command, no handler registered: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       return; // another application delivers it
@@ -64,6 +72,17 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
       return;
     }
     scheduled.put(StoreKeys.scheduled(deliverAt, command.getId()), command);
+  }
+
+  /** Removes the command a cancel record names; nothing when it is delivered already. */
+  private void cancel(Headers headers) {
+    String commandId = text(headers, HeaderNames.CANCEL);
+    Long deliverAt = deliverAt(headers);
+    if (StringUtils.isBlank(commandId) || deliverAt == null) {
+      return; // not a cancel record: a record without a value
+    }
+    log.debug("Cancelling scheduled command: commandId={}", commandId);
+    scheduled.delete(StoreKeys.scheduled(deliverAt, commandId));
   }
 
   /** Delivers and removes the oldest due commands; the rest waits for the next round. */
@@ -84,15 +103,20 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
 
   /** The delivery time from the {@link HeaderNames#DELIVER_AT} header; {@code null} when missing or invalid. */
   private static Long deliverAt(Headers headers) {
-    Header header = headers != null ? headers.lastHeader(HeaderNames.DELIVER_AT) : null;
-    if (header == null || header.value() == null) {
+    String text = text(headers, HeaderNames.DELIVER_AT);
+    if (text == null) {
       return null;
     }
     try {
-      long millis = Long.parseLong(new String(header.value(), StandardCharsets.UTF_8));
+      long millis = Long.parseLong(text);
       return millis >= 0 ? millis : null;
     } catch (NumberFormatException e) {
       return null;
     }
+  }
+
+  private static String text(Headers headers, String name) {
+    Header header = headers != null ? headers.lastHeader(name) : null;
+    return header != null && header.value() != null ? new String(header.value(), StandardCharsets.UTF_8) : null;
   }
 }

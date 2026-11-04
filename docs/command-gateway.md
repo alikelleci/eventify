@@ -26,10 +26,12 @@ List<Event> completed = gateway.sendAndWait(
 ## Schedule a command
 
 ```java
-gateway.schedule(new CancelOrderIfUnpaid("order-1"), Instant.now().plus(Duration.ofMinutes(30)));
+ScheduleToken token = gateway.schedule(new CancelOrderIfUnpaid("order-1"), Instant.now().plus(Duration.ofMinutes(30))).join();
+
+gateway.cancel(token);
 ```
 
-The command is handled at that time, not earlier. The future completes once the command is scheduled, not when it is handled. A scheduled command can't be cancelled: let its handler check the state, for example whether the order is already paid.
+The command is handled at that time, not earlier. The future completes once the command is scheduled, not when it is handled. Keep the token to cancel the command; a command that is already handled stays handled, so let its handler check the state too, for example whether the order is already paid.
 
 ## Metadata
 

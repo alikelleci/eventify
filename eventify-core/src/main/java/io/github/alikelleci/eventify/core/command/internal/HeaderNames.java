@@ -9,6 +9,9 @@ public final class HeaderNames {
   /** On a scheduled command record: when to deliver it, in epoch milliseconds. */
   public static final String DELIVER_AT = "eventify-deliver-at";
 
+  /** On a cancel record, which has no value: the id of the scheduled command to cancel. */
+  public static final String CANCEL = "eventify-cancel";
+
   private HeaderNames() {
   }
 }
