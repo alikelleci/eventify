@@ -113,7 +113,7 @@ public class NodeGateway {
 
   private static void requireTarget(Route route, Route.Target target) {
     if (route.target() != target) {
-      throw new IllegalArgumentException("Route " + route + " goes to " + route.target() + ", not " + target);
+      throw new IllegalArgumentException("Route " + route + " goes to " + route.target() + ", not " + target + ".");
     }
   }
 
@@ -122,10 +122,10 @@ public class NodeGateway {
     return node.rsocket().requestResponse(request)
         .timeout(requestTimeout)
         .map(this::toReply)
-        .switchIfEmpty(Mono.fromSupplier(() -> Reply.of(ReplyHeader.unavailable("Empty answer from instance " + node.nodeId()))))
+        .switchIfEmpty(Mono.fromSupplier(() -> Reply.of(ReplyHeader.unavailable("Empty answer from instance " + node.nodeId() + "."))))
         .onErrorResume(e -> {
           log.warn("Console request failed: route={}, nodeId={}, applicationId={}, reason={}", route, node.nodeId(), node.applicationId(), e.toString());
-          return Mono.just(Reply.of(ReplyHeader.unavailable("No answer from instance " + node.nodeId())));
+          return Mono.just(Reply.of(ReplyHeader.unavailable("No answer from instance " + node.nodeId() + ".")));
         });
   }
 
@@ -139,7 +139,7 @@ public class NodeGateway {
   }
 
   private static Reply notConnected(String applicationId) {
-    return Reply.of(ReplyHeader.unavailable("No instance of application '" + applicationId + "' is connected"));
+    return Reply.of(ReplyHeader.unavailable("No instance of application '" + applicationId + "' is connected."));
   }
 
   private static byte[] toBytes(ByteBuffer buffer) {

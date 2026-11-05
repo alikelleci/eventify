@@ -74,7 +74,7 @@ class CommandRetry {
       original = objectMapper.treeToValue(tree, Command.class);
     } catch (Exception e) {
       log.warn("Cannot retry command, request could not be decoded", e);
-      return Result.badRequest("Unreadable command");
+      return Result.badRequest("Unreadable command.");
     }
 
     // The correlation id stays: the retry belongs to the same flow (e.g. a saga) as the command it retries, and its
@@ -94,7 +94,7 @@ class CommandRetry {
       log.info("Published retry command: originalCommandId={}, retryCommandId={}, topic={}", original.getId(), retryCommand.getId(), commandTopic);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      return Result.unavailable("Interrupted while publishing the retry command");
+      return Result.unavailable("Interrupted while publishing the retry command.");
     } catch (Exception e) {
       Throwable cause = e instanceof ExecutionException && e.getCause() != null ? e.getCause() : e;
       log.error("Failed to publish retry command: originalCommandId={}", original.getId(), cause);

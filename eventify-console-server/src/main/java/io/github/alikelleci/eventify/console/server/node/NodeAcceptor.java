@@ -40,22 +40,22 @@ public class NodeAcceptor implements SocketAcceptor {
       info = jsonMapper.readValue(setup.getDataUtf8(), NodeInfo.class);
     } catch (Exception e) {
       log.warn("Rejected application connection, unreadable instance info: reason={}", e.getMessage());
-      return Mono.error(new RejectedSetupException("Unreadable instance info"));
+      return Mono.error(new RejectedSetupException("Unreadable instance info."));
     }
 
     if (isBlank(info.applicationId()) || isBlank(info.nodeId())) {
       log.warn("Rejected application connection, missing applicationId or nodeId: nodeId={}, applicationId={}", info.nodeId(), info.applicationId());
-      return Mono.error(new RejectedSetupException("applicationId and nodeId are required"));
+      return Mono.error(new RejectedSetupException("applicationId and nodeId are required."));
     }
     if (properties.appTokenRequired() && !tokenMatches(setup.getMetadataUtf8())) {
       log.warn("Rejected application connection, invalid or missing token: nodeId={}, applicationId={}", info.nodeId(), info.applicationId());
-      return Mono.error(new RejectedSetupException("Wrong or missing application token"));
+      return Mono.error(new RejectedSetupException("Wrong or missing application token."));
     }
     if (info.protocolVersion() > ConsoleProtocol.VERSION) {
       log.warn("Rejected application connection, unsupported protocol version: nodeId={}, applicationId={}, protocolVersion={}, maxProtocolVersion={}",
           info.nodeId(), info.applicationId(), info.protocolVersion(), ConsoleProtocol.VERSION);
       return Mono.error(new RejectedSetupException("Protocol version " + info.protocolVersion()
-          + " is not supported by this console (up to " + ConsoleProtocol.VERSION + "): upgrade the console"));
+          + " is not supported by this console (up to " + ConsoleProtocol.VERSION + "): upgrade the console."));
     }
 
     ConnectedNode node = registry.register(info, sendingSocket);

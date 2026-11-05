@@ -174,7 +174,7 @@ class ConsoleServiceRoutingIT {
       // Someone refreshed the page: the read stops instead of reading the topic.
       CancelSignal refreshed = new CancelSignal();
       refreshed.cancel();
-      assertThat(service.getCommands(new Requests.Commands("item", id, 50), refreshed)).isEqualTo(Result.unavailable("Cancelled"));
+      assertThat(service.getCommands(new Requests.Commands("item", id, 50), refreshed)).isEqualTo(Result.unavailable("Cancelled."));
     } finally {
       service.close();
     }
