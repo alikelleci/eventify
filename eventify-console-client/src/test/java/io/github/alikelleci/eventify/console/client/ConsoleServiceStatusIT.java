@@ -75,11 +75,13 @@ class ConsoleServiceStatusIT {
   }
 
   @Test
-  @DisplayName("A running instance reports its state, how long it has been in it, and nothing to restore")
+  @DisplayName("Should report a running instance's state, how long it has been in it, and nothing to restore")
   void runningInstance() {
     eventify = start("status-running", "running");
     awaitRunning();
 
+    // Asked in the millisecond it became RUNNING, it has been so for 0 ms.
+    await().atMost(Duration.ofSeconds(5)).until(() -> status().stateForMs() > 0);
     NodeStatus status = status();
     assertThat(status.state()).isEqualTo("RUNNING");
     assertThat(status.stateForMs()).isPositive();
@@ -87,7 +89,7 @@ class ConsoleServiceStatusIT {
   }
 
   @Test
-  @DisplayName("Restoring the state stores is reported, and is over once the instance runs")
+  @DisplayName("Should report restoring the state stores, and that it is over once the instance runs")
   void restoresAfterLosingItsLocalState() throws Exception {
     eventify = start("status-restore", "first-run");
     awaitRunning();

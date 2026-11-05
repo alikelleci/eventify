@@ -72,7 +72,7 @@ public final class DefaultAggregateRepository implements AggregateRepository {
   @Override
   public AggregateState stateAt(String aggregateId, long sequence) {
     if (sequence < 0) {
-      throw new IllegalArgumentException("Sequence can't be negative: " + sequence);
+      throw new IllegalArgumentException("A sequence can't be negative, not " + sequence + ".");
     }
     AggregateState storedSnapshot = snapshotStore.get(aggregateType, aggregateId);
     AggregateState start;
