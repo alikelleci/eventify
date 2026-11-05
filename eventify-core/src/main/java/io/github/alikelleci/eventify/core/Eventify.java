@@ -144,7 +144,7 @@ public class Eventify implements PluginContext {
 
   private KafkaStreams runningKafkaStreams() {
     if (kafkaStreams == null) {
-      throw new IllegalStateException("Eventify is not started");
+      throw new IllegalStateException("Eventify is not started.");
     }
     return kafkaStreams;
   }
