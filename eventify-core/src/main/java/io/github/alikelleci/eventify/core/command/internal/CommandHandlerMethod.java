@@ -84,7 +84,7 @@ public class CommandHandlerMethod {
       // Another id would be stored and replayed as another aggregate's event.
       String aggregateId = AggregateIdResolver.getAggregateId(payload);
       if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
-        throw new AggregateIdMismatchException("Event " + type + " has aggregate id " + aggregateId + ", expected " + command.getAggregateId());
+        throw new AggregateIdMismatchException("Event " + type + " has aggregate id " + aggregateId + ", expected " + command.getAggregateId() + ".");
       }
       // Checked now: the topic is only looked up when sending, after the events are stored.
       if (Topics.of(payload.getClass()) == null) {

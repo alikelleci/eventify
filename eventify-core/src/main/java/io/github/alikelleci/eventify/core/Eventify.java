@@ -144,7 +144,7 @@ public class Eventify implements PluginContext {
 
   private KafkaStreams runningKafkaStreams() {
     if (kafkaStreams == null) {
-      throw new IllegalStateException("Eventify is not started");
+      throw new IllegalStateException("Eventify is not started.");
     }
     return kafkaStreams;
   }
@@ -189,8 +189,8 @@ public class Eventify implements PluginContext {
     if (handlers.commandHandlers().isEmpty() || !handlers.hasEventHandlers()) {
       return;
     }
-    log.warn("Command and event handlers share a Kafka Streams application, event handler failures can interrupt command processing."
-        + " Use a separate '{}' for event handlers to isolate failures.", StreamsConfig.APPLICATION_ID_CONFIG);
+    log.warn("Command and event handlers share a Kafka Streams application, event handler failures can interrupt command processing;"
+        + " use a separate '{}' for event handlers to isolate failures", StreamsConfig.APPLICATION_ID_CONFIG);
   }
 
   /** Closes Kafka Streams and the plugins once. From a stream thread it doesn't wait. */

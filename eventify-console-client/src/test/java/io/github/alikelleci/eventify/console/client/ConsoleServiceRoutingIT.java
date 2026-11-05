@@ -14,6 +14,7 @@ import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -70,7 +71,7 @@ class ConsoleServiceRoutingIT {
   static void createTopics() throws Exception {
     // Co-partitioned source topics, with a partition for each instance.
     try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
-      admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
+      admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("commands.item.scheduled", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
     }
   }
 
@@ -173,7 +174,7 @@ class ConsoleServiceRoutingIT {
       // Someone refreshed the page: the read stops instead of reading the topic.
       CancelSignal refreshed = new CancelSignal();
       refreshed.cancel();
-      assertThat(service.getCommands(new Requests.Commands("item", id, 50), refreshed)).isEqualTo(Result.unavailable("Cancelled"));
+      assertThat(service.getCommands(new Requests.Commands("item", id, 50), refreshed)).isEqualTo(Result.unavailable("Cancelled."));
     } finally {
       service.close();
     }
@@ -185,6 +186,8 @@ class ConsoleServiceRoutingIT {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.resolve(name).toString());
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
+    // A stopped instance doesn't leave the group: the broker waits this long before reassigning its partitions.
+    properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG), 6000);
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)

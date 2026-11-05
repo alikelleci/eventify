@@ -278,7 +278,7 @@ public class ConsoleConnector {
     String scheme = switch (String.valueOf(consoleUrl.getScheme()).toLowerCase()) {
       case "http", "ws" -> "ws";
       case "https", "wss" -> "wss";
-      default -> throw new IllegalArgumentException("The Eventify Console url must start with http:// or https://, but is " + consoleUrl);
+      default -> throw new IllegalArgumentException("The Eventify Console url must start with http:// or https://, but is " + consoleUrl + ".");
     };
     if ("ws".equals(scheme) && !isLocal(consoleUrl.getHost())) {
       log.warn("Console connection is not encrypted, use HTTPS to protect tokens and data: url={}", consoleUrl);

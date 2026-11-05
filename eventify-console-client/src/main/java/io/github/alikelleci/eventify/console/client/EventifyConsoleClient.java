@@ -29,7 +29,7 @@ public class EventifyConsoleClient implements EventifyPlugin {
   @Builder
   private EventifyConsoleClient(String url, String token) {
     if (url == null || url.isBlank()) {
-      throw new IllegalArgumentException("The Eventify Console url is required");
+      throw new IllegalArgumentException("The Eventify Console url is required.");
     }
     this.url = URI.create(url.trim());
     this.token = token;

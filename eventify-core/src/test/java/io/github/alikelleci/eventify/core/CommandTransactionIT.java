@@ -264,13 +264,17 @@ class CommandTransactionIT {
     try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
       admin.createTopics(List.of(
           new NewTopic("orders", 1, (short) 1),
+          new NewTopic("orders.scheduled", 1, (short) 1),
           new NewTopic("orders.results", 1, (short) 1),
           new NewTopic("orders.events", 1, (short) 1),
           new NewTopic("orders.copy", 1, (short) 1),
+          new NewTopic("orders.copy.scheduled", 1, (short) 1),
           new NewTopic("orders.copy.results", 1, (short) 1),
           new NewTopic("orders.command-copy", 1, (short) 1),
+          new NewTopic("orders.command-copy.scheduled", 1, (short) 1),
           new NewTopic("orders.command-copy.results", 1, (short) 1),
           new NewTopic("orders.reply-to", 1, (short) 1),
+          new NewTopic("orders.reply-to.scheduled", 1, (short) 1),
           new NewTopic("orders.reply-to.results", 1, (short) 1))).all().get();
     }
   }
@@ -419,6 +423,8 @@ class CommandTransactionIT {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.toString());
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
+    // A stopped instance doesn't leave the group: the broker waits this long before reassigning its partitions.
+    properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG), 6000);
     Eventify instance = Eventify.builder().streamsConfig(properties).registerHandler(handler).build();
     instance.start();
     await("Eventify to run", () -> instance.getKafkaStreams().state() == KafkaStreams.State.RUNNING);

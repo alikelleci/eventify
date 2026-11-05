@@ -10,6 +10,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Getter
@@ -27,9 +30,11 @@ public class EventHandlerMethod {
         .orElse(0);
   }
 
-  public void handle(Event event) {
+  /** What the handler returns, in order and without nulls; empty for a void handler. */
+  public List<Object> handle(Event event) {
     try {
-      invokeHandler(event);
+      Object result = invokeHandler(event);
+      return returned(result);
     } catch (Exception e) {
       throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
     }
@@ -50,4 +55,15 @@ public class EventHandlerMethod {
 
     return method.invoke(handler, args);
   }
+
+  private static List<Object> returned(Object result) {
+    List<Object> values = new ArrayList<>();
+    if (result instanceof List<?> list) {
+      list.stream().filter(Objects::nonNull).forEach(values::add);
+    } else if (result != null) {
+      values.add(result);
+    }
+    return values;
+  }
+
 }

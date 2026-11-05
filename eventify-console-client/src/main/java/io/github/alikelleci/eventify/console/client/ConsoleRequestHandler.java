@@ -87,10 +87,10 @@ class ConsoleRequestHandler {
       return Reply.of(ReplyHeader.badRequest(e.getMessage()));
     } catch (IOException e) {
       log.warn("Failed to read console request or write response: route={}", route, e);
-      return Reply.of(ReplyHeader.badRequest("Invalid request data"));
+      return Reply.of(ReplyHeader.badRequest("Invalid request data."));
     } catch (Exception e) {
       log.error("Failed to handle console request: route={}", route, e);
-      return Reply.of(ReplyHeader.unavailable("Unexpected error"));
+      return Reply.of(ReplyHeader.unavailable("Unexpected error."));
     }
   }
 
@@ -102,7 +102,7 @@ class ConsoleRequestHandler {
   private static String requireAggregateId(String aggregateId) {
     String id = require("aggregateId", aggregateId);
     if (id.indexOf('\u0000') >= 0) {
-      throw new BadRequestException("aggregateId cannot contain a NUL character");
+      throw new BadRequestException("aggregateId cannot contain a NUL character.");
     }
     return id;
   }
@@ -115,7 +115,7 @@ class ConsoleRequestHandler {
   private String requireAggregateType(String aggregateType) {
     String name = require("aggregateType", aggregateType);
     if (!aggregateTypes.contains(name)) {
-      throw new BadRequestException("This application has no aggregate named '" + name + "'");
+      throw new BadRequestException("This application has no aggregate named '" + name + "'.");
     }
     return name;
   }
@@ -123,14 +123,14 @@ class ConsoleRequestHandler {
   /** An event's sequence: 1 for an aggregate's first event, so never below 1. */
   private static long requireSequence(String name, Long sequence) {
     if (sequence == null || sequence < 1) {
-      throw new BadRequestException(name + " must be a sequence of 1 or more");
+      throw new BadRequestException(name + " must be a sequence of 1 or more.");
     }
     return sequence;
   }
 
   private static String require(String name, String value) {
     if (value == null || value.isBlank()) {
-      throw new BadRequestException(name + " is required");
+      throw new BadRequestException(name + " is required.");
     }
     return value;
   }

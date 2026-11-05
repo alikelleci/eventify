@@ -12,6 +12,7 @@ import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -46,8 +47,8 @@ import static org.awaitility.Awaitility.await;
  * restores after its local state is gone.
  */
 @Testcontainers
-@DisplayName("Instance status (real broker)")
-class StatusIT {
+@DisplayName("Console service status (real broker)")
+class ConsoleServiceStatusIT {
 
   @Container
   static final KafkaContainer kafka = new KafkaContainer("apache/kafka-native:3.9.1");
@@ -69,16 +70,18 @@ class StatusIT {
   @BeforeAll
   static void createTopics() throws Exception {
     try (AdminClient admin = AdminClient.create(Map.of(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()))) {
-      admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
+      admin.createTopics(List.of(new NewTopic("commands.item", 2, (short) 1), new NewTopic("commands.item.scheduled", 2, (short) 1), new NewTopic("events.item", 2, (short) 1))).all().get();
     }
   }
 
   @Test
-  @DisplayName("A running instance reports its state, how long it has been in it, and nothing to restore")
+  @DisplayName("Should report a running instance's state, how long it has been in it, and nothing to restore")
   void runningInstance() {
     eventify = start("status-running", "running");
     awaitRunning();
 
+    // Asked in the millisecond it became RUNNING, it has been so for 0 ms.
+    await().atMost(Duration.ofSeconds(5)).until(() -> status().stateForMs() > 0);
     NodeStatus status = status();
     assertThat(status.state()).isEqualTo("RUNNING");
     assertThat(status.stateForMs()).isPositive();
@@ -86,7 +89,7 @@ class StatusIT {
   }
 
   @Test
-  @DisplayName("Restoring the state stores is reported, and is over once the instance runs")
+  @DisplayName("Should report restoring the state stores, and that it is over once the instance runs")
   void restoresAfterLosingItsLocalState() throws Exception {
     eventify = start("status-restore", "first-run");
     awaitRunning();
@@ -138,6 +141,8 @@ class StatusIT {
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
     properties.put(StreamsConfig.STATE_DIR_CONFIG, stateDir.resolve(name).toString());
     properties.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, 100);
+    // A stopped instance doesn't leave the group: the broker waits this long before reassigning its partitions.
+    properties.put(StreamsConfig.consumerPrefix(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG), 6000);
 
     Eventify instance = Eventify.builder()
         .streamsConfig(properties)

@@ -10,9 +10,10 @@ import io.github.alikelleci.eventify.core.command.CommandSerde;
 import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.internal.CommandProcessor;
 import io.github.alikelleci.eventify.core.command.internal.ReplyTo;
+import io.github.alikelleci.eventify.core.command.internal.ScheduleHeaders;
+import io.github.alikelleci.eventify.core.command.internal.ScheduledCommandProcessor;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.EventSerde;
-import io.github.alikelleci.eventify.core.event.internal.EventProcessor;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
@@ -54,6 +55,11 @@ public final class EventifyTopology {
         .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SNAPSHOT_STORE), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
+    // Scheduled command store
+    builder.addStateStore(Stores
+        .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SCHEDULED_COMMANDS), Serdes.String(), commandSerde)
+        .withLoggingEnabled(Collections.emptyMap()));
+
     // Command handling
 
     Set<String> commandTopics = handlers.commandTopics();
@@ -88,6 +94,13 @@ public final class EventifyTopology {
           .filter((key, event) -> event != null)
           .to((key, event, recordContext) -> event.getTopic().value(),
               Produced.with(Serdes.String(), eventSerde));
+
+      // --> Scheduled commands and cancels --> Commands, when due
+      builder.stream(commandTopics.stream().map(TopicNames::scheduledTopicOf).toList(), Consumed.with(Serdes.String(), commandSerde))
+          .process(() -> new ScheduledCommandProcessor(handlers, objectMapper), StoreNames.SCHEDULED_COMMANDS)
+          .filter((key, command) -> command != null)
+          .to((key, command, recordContext) -> command.getTopic().value(),
+              Produced.with(Serdes.String(), commandSerde));
     }
 
     // Event handling
@@ -100,9 +113,14 @@ public final class EventifyTopology {
           .filter((key, event) -> event != null)
           .filter((key, event) -> event.getPayload() != null);
 
-      // Events --> Void
+      // Events --> Commands, or scheduled commands when they have a delivery time
       events
-          .processValues(() -> new EventProcessor(handlers));
+          .process(() -> new EventProcessor(handlers, objectMapper))
+          .filter((key, command) -> command != null)
+          .to((key, command, recordContext) -> ScheduleHeaders.deliverAt(recordContext.headers()) != null
+                  ? TopicNames.scheduledTopicOf(command.getTopic().value())
+                  : command.getTopic().value(),
+              Produced.with(Serdes.String(), commandSerde));
     }
 
     return builder.build();

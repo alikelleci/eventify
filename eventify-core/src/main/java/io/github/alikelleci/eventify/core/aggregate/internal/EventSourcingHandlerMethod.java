@@ -60,7 +60,7 @@ public class EventSourcingHandlerMethod {
       String stateAggregateId = AggregateIdResolver.getAggregateId(result);
       // Otherwise it would be snapshotted under this event's aggregate id.
       if (!StringUtils.equals(stateAggregateId, event.getAggregateId())) {
-        throw new AggregateIdMismatchException("State " + result.getClass().getSimpleName() + " after event " + event.getType() + " has aggregate id " + stateAggregateId + ", expected " + event.getAggregateId());
+        throw new AggregateIdMismatchException("State " + result.getClass().getSimpleName() + " after event " + event.getType() + " has aggregate id " + stateAggregateId + ", expected " + event.getAggregateId() + ".");
       }
     }
   }

@@ -7,7 +7,7 @@
 | `@AggregateRoot("...")` | Stable name of an aggregate type. |
 | `@CommandHandler` | Decides which events a command produces. |
 | `@EventSourcingHandler` | Produces the next aggregate state from an event. |
-| `@EventHandler` | Reacts to a published event outside the aggregate. |
+| `@EventHandler` | Reacts to a published event outside the aggregate; may return commands to send. |
 | `@EnableSnapshotting` | Enables periodic snapshots. |
 | `@Revision(n)` | Version of an event schema or aggregate snapshot shape. |
 | `@Upcaster(type, revision)` | Migrates an older event shape while reading it. |

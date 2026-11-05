@@ -9,9 +9,12 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.command.CommandSerde;
+import io.github.alikelleci.eventify.core.command.ScheduleToken;
+import io.github.alikelleci.eventify.core.command.TopicNames;
 import io.github.alikelleci.eventify.core.command.exception.CommandExecutionException;
 import io.github.alikelleci.eventify.core.command.gateway.CommandGateway;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
+import io.github.alikelleci.eventify.core.command.internal.ScheduleHeaders;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -24,6 +27,7 @@ import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CancellationException;
@@ -120,13 +124,80 @@ public class DefaultCommandGateway implements CommandGateway {
     return future;
   }
 
+  @Override
+  public CompletableFuture<ScheduleToken> schedule(Command command, Instant deliverAt) {
+    if (replies.isClosed()) {
+      throw new IllegalStateException("The command gateway is closed.");
+    }
+    if (deliverAt == null) {
+      throw new IllegalArgumentException("A scheduled command needs a delivery time.");
+    }
+    if (deliverAt.toEpochMilli() < 0) {
+      throw new IllegalArgumentException("A delivery time can't be before 1970, not " + deliverAt + ".");
+    }
+    // In milliseconds, as it is stored: a cancel finds the command by it.
+    ScheduleToken token = new ScheduleToken(command.getTopic().value(), command.getAggregateId(), command.getId(), Instant.ofEpochMilli(deliverAt.toEpochMilli()));
+
+    // No reply header: nobody waits when the command is handled.
+    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, command.getTimestamp().toEpochMilli(), token.aggregateId(), command,
+        List.of(ScheduleHeaders.deliverAt(token.deliverAt())));
+
+    CompletableFuture<ScheduleToken> future = new CompletableFuture<>();
+    log.debug("Scheduling command: commandId={}, commandType={}, aggregateId={}, deliverAt={}", command.getId(), command.getType(), command.getAggregateId(), token.deliverAt());
+    try {
+      producer.send(producerRecord, (metadata, exception) -> {
+        if (exception != null) {
+          log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
+          completeExceptionally(future, exception);
+        } else {
+          complete(() -> future.complete(token));
+        }
+      });
+    } catch (RuntimeException e) {
+      log.warn("Failed to schedule command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), e);
+      throw e;
+    }
+    return future;
+  }
+
+  @Override
+  public CompletableFuture<Void> cancel(ScheduleToken token) {
+    if (replies.isClosed()) {
+      throw new IllegalStateException("The command gateway is closed.");
+    }
+    if (token == null) {
+      throw new IllegalArgumentException("Cancel needs the token schedule returned.");
+    }
+
+    // Same key as the scheduled command: the same partition, so the same store. No value: nothing to deliver.
+    ProducerRecord<String, Command> producerRecord = new ProducerRecord<>(TopicNames.scheduledTopicOf(token.topic()), null, null, token.aggregateId(), null,
+        List.of(ScheduleHeaders.cancel(token.commandId()), ScheduleHeaders.deliverAt(token.deliverAt())));
+
+    CompletableFuture<Void> future = new CompletableFuture<>();
+    log.debug("Cancelling scheduled command: commandId={}, aggregateId={}, deliverAt={}", token.commandId(), token.aggregateId(), token.deliverAt());
+    try {
+      producer.send(producerRecord, (metadata, exception) -> {
+        if (exception != null) {
+          log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), exception);
+          completeExceptionally(future, exception);
+        } else {
+          complete(() -> future.complete(null));
+        }
+      });
+    } catch (RuntimeException e) {
+      log.warn("Failed to cancel scheduled command: commandId={}, aggregateId={}", token.commandId(), token.aggregateId(), e);
+      throw e;
+    }
+    return future;
+  }
+
   private void failSend(Command command, CompletableFuture<List<Event>> future, Exception exception) {
     log.warn("Failed to send command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId(), exception);
     cache.asMap().remove(command.getId(), future);
     completeExceptionally(future, exception);
   }
 
-  private void completeExceptionally(CompletableFuture<List<Event>> future, Throwable exception) {
+  private void completeExceptionally(CompletableFuture<?> future, Throwable exception) {
     complete(() -> future.completeExceptionally(exception));
   }
 
