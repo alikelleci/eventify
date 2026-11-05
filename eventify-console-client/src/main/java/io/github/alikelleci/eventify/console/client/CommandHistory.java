@@ -89,7 +89,7 @@ class CommandHistory {
           throw e;
         } catch (CommandsReadTimeout e) {
           log.warn("Loading command history timed out: aggregateType={}, aggregateId={}, timeoutSeconds={}", aggregateType, aggregateId, MAX_COMMANDS_READ.toSeconds());
-          return Result.unavailable("Reading the commands took too long");
+          return Result.unavailable("Reading the commands took too long.");
         } catch (Exception e) {
           // Not an empty list: that would look like the aggregate has no commands.
           log.warn("Failed to load command history: aggregateType={}, aggregateId={}, topic={}", aggregateType, aggregateId, topic, e);
@@ -98,10 +98,10 @@ class CommandHistory {
       }
     } catch (WakeupException e) {
       log.debug("Command history load cancelled: aggregateType={}, aggregateId={}", aggregateType, aggregateId);
-      return Result.unavailable("Cancelled");
+      return Result.unavailable("Cancelled.");
     } catch (Exception e) {
       log.error("Failed to load command history: aggregateType={}, aggregateId={}", aggregateType, aggregateId, e);
-      return Result.unavailable("Unexpected error");
+      return Result.unavailable("Unexpected error.");
     }
 
     results.sort((a, b) -> b.command().getTimestamp().compareTo(a.command().getTimestamp()));

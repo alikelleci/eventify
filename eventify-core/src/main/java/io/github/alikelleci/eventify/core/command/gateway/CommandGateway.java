@@ -62,10 +62,10 @@ public interface CommandGateway extends AutoCloseable {
     } catch (ExecutionException e) {
       throw resultFailure(command, e.getCause());
     } catch (TimeoutException e) {
-      throw new CommandTimeoutException("No result for command " + command.getId() + " within " + timeout + " " + unit.name().toLowerCase(), e);
+      throw new CommandTimeoutException("No result for command " + command.getId() + " within " + timeout + " " + unit.name().toLowerCase() + ".", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new EventifyException("Interrupted while waiting for the result of command " + command.getId(), e);
+      throw new EventifyException("Interrupted while waiting for the result of command " + command.getId() + ".", e);
     }
   }
 

@@ -28,7 +28,7 @@ public class JsonSerializer<T> implements Serializer<T> {
     try {
       return objectMapper.writeValueAsBytes(object);
     } catch (Exception e) {
-      throw new SerializationException("Error serializing JSON", e);
+      throw new SerializationException("Error serializing JSON.", e);
     }
   }
 

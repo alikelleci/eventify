@@ -77,7 +77,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     try {
       // The state is loaded by record key: another key would load another aggregate.
       if (!StringUtils.equals(aggregateId, command.getAggregateId())) {
-        throw new AggregateIdMismatchException("Command " + command.getType() + " has aggregate id " + command.getAggregateId() + ", but its record key is " + aggregateId);
+        throw new AggregateIdMismatchException("Command " + command.getType() + " has aggregate id " + command.getAggregateId() + ", but its record key is " + aggregateId + ".");
       }
       log.debug("Handling command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       replayResult = aggregateRepository.replay(aggregateId);

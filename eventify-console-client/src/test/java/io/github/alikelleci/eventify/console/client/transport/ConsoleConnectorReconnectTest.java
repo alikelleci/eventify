@@ -90,7 +90,7 @@ class ConsoleConnectorReconnectTest {
         .acceptor((setup, sendingSocket) -> {
           setups.incrementAndGet();
           if (rejecting) {
-            return Mono.error(new RejectedSetupException("Protocol version 2 is not supported by this console (up to 1): upgrade the console"));
+            return Mono.error(new RejectedSetupException("Protocol version 2 is not supported by this console (up to 1): upgrade the console."));
           }
           connections.add(sendingSocket);
           return Mono.just(new RSocket() {});

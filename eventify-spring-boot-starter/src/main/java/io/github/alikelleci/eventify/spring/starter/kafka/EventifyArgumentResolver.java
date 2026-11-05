@@ -34,7 +34,7 @@ public class EventifyArgumentResolver implements HandlerMethodArgumentResolver {
   public Object resolveArgument(MethodParameter parameter, Message<?> message) {
     if (!(message.getHeaders().get(EventifyRecordMessageConverter.EVENT_HEADER) instanceof Event event)) {
       throw new MethodArgumentResolutionException(message, parameter,
-          "The record is not an Eventify event: use containerFactory = \"eventifyListenerContainerFactory\"");
+          "The record is not an Eventify event: use containerFactory = \"eventifyListenerContainerFactory\".");
     }
     return parameter.getParameterType() == Event.class ? event : HandlerParameterResolver.resolve(parameter.getParameter(), event);
   }

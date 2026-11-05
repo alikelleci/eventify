@@ -32,10 +32,10 @@ public record ConsoleProperties(
     // Checked when the console starts, not when the first person logs in.
     if (loginEnabled(oidc)) {
       if (isBlank(oidc.clientId())) {
-        throw new IllegalArgumentException("eventify.console.oidc.client-id (EVENTIFY_CONSOLE_OIDC_CLIENTID) is required when login is enabled");
+        throw new IllegalArgumentException("eventify.console.oidc.client-id (EVENTIFY_CONSOLE_OIDC_CLIENTID) is required when login is enabled.");
       }
       if (isBlank(oidc.clientSecret())) {
-        throw new IllegalArgumentException("eventify.console.oidc.client-secret (EVENTIFY_CONSOLE_OIDC_CLIENTSECRET) is required when login is enabled");
+        throw new IllegalArgumentException("eventify.console.oidc.client-secret (EVENTIFY_CONSOLE_OIDC_CLIENTSECRET) is required when login is enabled.");
       }
     }
   }

@@ -60,8 +60,8 @@ public class EventifyAutoConfiguration {
       return new EventSerde(all.get(0).getObjectMapper(), all.get(0).getUpcasters());
     }
     if (all.size() > 1) {
-      log.warn("Multiple Eventify beans found, the EventSerde bean uses only @Upcaster methods on Spring beans. "
-          + "Upcasters registered only via registerHandler(...) are ignored.");
+      log.warn("Multiple Eventify beans found, the EventSerde bean uses only @Upcaster methods on Spring beans; "
+          + "upcasters registered only via registerHandler(...) are ignored");
     }
     return new EventSerde(EventifyObjectMapper.create(), Upcasters.of(EventifyHandlerBeans.of(beanFactory)));
   }
