@@ -31,7 +31,7 @@ public class JsonDeserializer<T> implements Deserializer<T> {
     try {
       return objectMapper.readValue(bytes, targetType);
     } catch (Exception e) {
-      throw new SerializationException("Error deserializing JSON", e);
+      throw new SerializationException("Error deserializing JSON.", e);
     }
   }
 

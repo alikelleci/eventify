@@ -54,7 +54,7 @@ public class EventSerde implements Serde<Event> {
         JsonNode upcasted = upcasters.upcast(objectMapper.readTree(bytes));
         return objectMapper.convertValue(upcasted, Event.class);
       } catch (Exception e) {
-        throw new SerializationException("Error deserializing event", e);
+        throw new SerializationException("Error deserializing event.", e);
       }
     };
   }
