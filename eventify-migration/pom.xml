@@ -16,8 +16,9 @@
     <description>Moves the event and snapshot stores of an Eventify 4 application to the Eventify 5 format.</description>
 
     <properties>
+        <automatic.module.name>io.github.alikelleci.eventify.migration</automatic.module.name>
         <kafka.version>4.3.1</kafka.version>
-        <jackson.version>2.16.2</jackson.version>
+        <jackson.version>2.21.5</jackson.version>
         <lombok.version>1.18.46</lombok.version>
         <!-- A command-line tool, run as a jar: not published to Maven Central -->
         <maven.deploy.skip>true</maven.deploy.skip>
