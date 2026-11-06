@@ -65,7 +65,7 @@ Eventify eventify = Eventify.builder()
 eventify.start();
 ```
 
-Create the topics first: each command topic with its `.results` and `.scheduled` topic (`commands.order`, `commands.order.results`, `commands.order.scheduled`), and each event topic. Eventify doesn't start without them.
+Create the topics first: each command topic with its `.results` and `.scheduled` topic (`commands.order`, `commands.order.results`, `commands.order.scheduled`), and each event topic. Eventify needs them.
 
 Use the aggregate id as the key when sending a command. [Command Gateway](command-gateway.md) is the simplest way to do that.
 
