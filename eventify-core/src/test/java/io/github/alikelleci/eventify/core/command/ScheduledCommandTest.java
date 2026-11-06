@@ -1,14 +1,18 @@
 package io.github.alikelleci.eventify.core.command;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHandler;
 import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
 import io.github.alikelleci.eventify.core.command.internal.HeaderNames;
 import io.github.alikelleci.eventify.core.event.Event;
+import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonDeserializer;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import lombok.Builder;
@@ -87,6 +91,30 @@ class ScheduledCommandTest {
 
     public int getNoteLength() {
       return note.length();
+    }
+  }
+
+  /** As after a deploy that moved it out of its {@code @Topic} interface. */
+  public record Unrouted(@AggregateId String id) {
+  }
+
+  /** Its JSON can't be read while {@link #readable} is false, as after a deploy that changed the class. */
+  public static class Expire implements CounterCommand {
+    static volatile boolean readable = true;
+
+    @AggregateId
+    final String id;
+
+    @JsonCreator
+    public Expire(@JsonProperty("id") String id) {
+      if (!readable) {
+        throw new IllegalArgumentException("changed class");
+      }
+      this.id = id;
+    }
+
+    public String getId() {
+      return id;
     }
   }
 
@@ -257,6 +285,66 @@ class ScheduledCommandTest {
     driver.advanceWallClockTime(Duration.ofSeconds(10));
 
     assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
+  }
+
+  /** Kept for days, a scheduled command can outlive its class: delivering it would stop Eventify after every restart. */
+  @Test
+  @DisplayName("Should skip a stored command whose class is gone, and deliver the next one")
+  void skipsACommandWhoseClassIsGone() throws Exception {
+    Command gone = EventifyObjectMapper.create().readValue("{\"id\":\"gone-1\",\"payload\":{\"@class\":\"com.example.Gone\",\"id\":\"ada\"},"
+        + "\"metadata\":{},\"aggregateId\":\"ada\"}", Command.class);
+    store.put(StoreKeys.scheduled(START.plusSeconds(5).toEpochMilli(), gone.getId()), gone);
+    Command next = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
+    assertThat(stored()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Should skip a stored command that can't be read anymore, and deliver the next one")
+  void skipsACommandThatCantBeReadAnymore() {
+    Command changed = Command.builder().payload(new Expire("ada")).build();
+    store.put(StoreKeys.scheduled(START.plusSeconds(5).toEpochMilli(), changed.getId()), changed);
+    Command next = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    Expire.readable = false;
+    try {
+      driver.advanceWallClockTime(Duration.ofSeconds(10));
+    } finally {
+      Expire.readable = true;
+    }
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
+    assertThat(stored()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Should skip a stored command whose class has no @Topic anymore, and deliver the next one")
+  void skipsACommandWithoutATopicAnymore() {
+    Command unrouted = Command.builder().payload(new Unrouted("ada")).build();
+    store.put(StoreKeys.scheduled(START.plusSeconds(5).toEpochMilli(), unrouted.getId()), unrouted);
+    Command next = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
+    assertThat(stored()).isEmpty();
+  }
+
+  /** Written once when it was stored; read back, it has no note and can't be written again. */
+  @Test
+  @DisplayName("Should skip a stored command that can't be written as JSON anymore, and deliver the next one")
+  void skipsAStoredCommandThatCantBeWrittenAnymore() {
+    Command annotate = Command.builder().payload(Annotate.builder().id("ada").note("not in the JSON").build()).build();
+    store.put(StoreKeys.scheduled(START.plusSeconds(5).toEpochMilli(), annotate.getId()), annotate);
+    Command next = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
+    assertThat(stored()).isEmpty();
   }
 
   @Test
