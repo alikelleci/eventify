@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.internal.StoreNames;
+import io.github.alikelleci.eventify.core.message.internal.Topics;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
@@ -105,9 +106,13 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
     }
     for (KeyValue<String, Command> entry : due) {
       Command command = entry.value;
-      if (command == null || command.getPayload() == null) {
-        // Its class changed or is gone since it was scheduled: delivering it would stop Eventify, again after every restart.
-        log.warn("Skipping scheduled command, it can't be read anymore: commandId={}", entry.key.substring(entry.key.indexOf(StoreKeys.SEPARATOR) + 1));
+      // Its class changed or is gone since it was scheduled: delivering it would stop Eventify, again after every restart.
+      if (command == null || command.getPayload() == null || Topics.of(command.getPayload().getClass()) == null) {
+        log.warn("Skipping scheduled command, it can't be delivered anymore: commandId={}", entry.key.substring(entry.key.indexOf(StoreKeys.SEPARATOR) + 1));
+        scheduled.delete(entry.key);
+        continue;
+      }
+      if (!CommandProcessor.isWritable(objectMapper, command)) {
         scheduled.delete(entry.key);
         continue;
       }

@@ -94,6 +94,10 @@ class ScheduledCommandTest {
     }
   }
 
+  /** As after a deploy that moved it out of its {@code @Topic} interface. */
+  public record Unrouted(@AggregateId String id) {
+  }
+
   /** Its JSON can't be read while {@link #readable} is false, as after a deploy that changed the class. */
   public static class Expire implements CounterCommand {
     static volatile boolean readable = true;
@@ -311,6 +315,33 @@ class ScheduledCommandTest {
     } finally {
       Expire.readable = true;
     }
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
+    assertThat(stored()).isEmpty();
+  }
+
+  @Test
+  @DisplayName("Should skip a stored command whose class has no @Topic anymore, and deliver the next one")
+  void skipsACommandWithoutATopicAnymore() {
+    Command unrouted = Command.builder().payload(new Unrouted("ada")).build();
+    store.put(StoreKeys.scheduled(START.plusSeconds(5).toEpochMilli(), unrouted.getId()), unrouted);
+    Command next = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
+
+    assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
+    assertThat(stored()).isEmpty();
+  }
+
+  /** Written once when it was stored; read back, it has no note and can't be written again. */
+  @Test
+  @DisplayName("Should skip a stored command that can't be written as JSON anymore, and deliver the next one")
+  void skipsAStoredCommandThatCantBeWrittenAnymore() {
+    Command annotate = Command.builder().payload(Annotate.builder().id("ada").note("not in the JSON").build()).build();
+    store.put(StoreKeys.scheduled(START.plusSeconds(5).toEpochMilli(), annotate.getId()), annotate);
+    Command next = schedule(Tick.builder().id("bob").build(), START.plusSeconds(10));
+
+    driver.advanceWallClockTime(Duration.ofSeconds(10));
 
     assertThat(commands.readValuesToList()).extracting(Command::getId).containsExactly(next.getId());
     assertThat(stored()).isEmpty();
