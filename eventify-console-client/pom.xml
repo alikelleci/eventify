@@ -16,6 +16,7 @@
     <description>Connects an Eventify application to the Eventify Console</description>
 
     <properties>
+        <automatic.module.name>io.github.alikelleci.eventify.console.client</automatic.module.name>
         <lombok.version>1.18.46</lombok.version>
         <rsocket.version>1.1.5</rsocket.version>
         <!-- The Reactor and Netty versions Spring Boot uses with this RSocket version: newer than RSocket's own -->

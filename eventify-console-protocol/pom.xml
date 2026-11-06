@@ -15,4 +15,8 @@
     <name>eventify-console-protocol</name>
     <description>Messages exchanged between the Eventify Console and the applications connected to it</description>
 
+    <properties>
+        <automatic.module.name>io.github.alikelleci.eventify.console.protocol</automatic.module.name>
+    </properties>
+
 </project>

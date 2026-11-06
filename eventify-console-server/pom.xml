@@ -16,6 +16,7 @@
     <description>The Eventify Console: applications connect to it, and it serves the UI. Released as a Docker image.</description>
 
     <properties>
+        <automatic.module.name>io.github.alikelleci.eventify.console.server</automatic.module.name>
         <spring-boot.version>4.1.1</spring-boot.version>
         <lombok.version>1.18.46</lombok.version>
         <!-- An application, not a library: published as a Docker image, not to Maven Central (see the root pom) -->
