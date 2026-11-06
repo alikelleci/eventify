@@ -46,6 +46,19 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.4</version>
             </plugin>
+            <!-- A stable name for the module path; each module sets automatic.module.name -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.2</version>
+                <configuration>
+                    <archive>
+                        <manifestEntries>
+                            <Automatic-Module-Name>${automatic.module.name}</Automatic-Module-Name>
+                        </manifestEntries>
+                    </archive>
+                </configuration>
+            </plugin>
             <!-- Tests named *IT need Docker (Testcontainers): they run in "mvn verify", not in "mvn test". -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
