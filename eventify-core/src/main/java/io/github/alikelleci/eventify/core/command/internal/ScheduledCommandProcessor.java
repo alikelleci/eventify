@@ -6,7 +6,9 @@ import io.github.alikelleci.eventify.core.internal.HandlerRegistry;
 import io.github.alikelleci.eventify.core.internal.StoreKeys;
 import io.github.alikelleci.eventify.core.internal.StoreNames;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.processor.PunctuationType;
 import org.apache.kafka.streams.processor.api.Processor;
@@ -71,6 +73,17 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
     scheduled.put(StoreKeys.scheduled(deliverAt, command.getId()), command);
   }
 
+  /** For the store: a stored command that can't be read anymore is read as {@code null}, so it can be skipped. */
+  public static Deserializer<Command> nullWhenUnreadable(Deserializer<Command> deserializer) {
+    return (topic, bytes) -> {
+      try {
+        return deserializer.deserialize(topic, bytes);
+      } catch (SerializationException e) {
+        return null;
+      }
+    };
+  }
+
   /** Removes the command a cancel record names; nothing when it is delivered already. */
   private void cancel(String aggregateId, Headers headers) {
     String commandId = ScheduleHeaders.cancel(headers);
@@ -92,6 +105,12 @@ public class ScheduledCommandProcessor implements Processor<String, Command, Str
     }
     for (KeyValue<String, Command> entry : due) {
       Command command = entry.value;
+      if (command == null || command.getPayload() == null) {
+        // Its class changed or is gone since it was scheduled: delivering it would stop Eventify, again after every restart.
+        log.warn("Skipping scheduled command, it can't be read anymore: commandId={}", entry.key.substring(entry.key.indexOf(StoreKeys.SEPARATOR) + 1));
+        scheduled.delete(entry.key);
+        continue;
+      }
       log.debug("Delivering scheduled command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
       context.forward(new Record<>(command.getAggregateId(), command, now));
       scheduled.delete(entry.key);

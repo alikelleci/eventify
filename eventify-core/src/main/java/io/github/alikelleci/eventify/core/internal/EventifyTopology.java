@@ -57,7 +57,8 @@ public final class EventifyTopology {
 
     // Scheduled command store
     builder.addStateStore(Stores
-        .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SCHEDULED_COMMANDS), Serdes.String(), commandSerde)
+        .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SCHEDULED_COMMANDS), Serdes.String(),
+            Serdes.serdeFrom(commandSerde.serializer(), ScheduledCommandProcessor.nullWhenUnreadable(commandSerde.deserializer())))
         .withLoggingEnabled(Collections.emptyMap()));
 
     // Command handling
