@@ -17,7 +17,6 @@
 
     <properties>
         <automatic.module.name>io.github.alikelleci.eventify.migration</automatic.module.name>
-        <kafka.version>4.3.1</kafka.version>
         <jackson.version>2.21.5</jackson.version>
         <lombok.version>1.18.46</lombok.version>
         <!-- A command-line tool, run as a jar: not published to Maven Central -->
