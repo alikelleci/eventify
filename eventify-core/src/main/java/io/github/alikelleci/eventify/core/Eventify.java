@@ -125,15 +125,25 @@ public class Eventify implements PluginContext {
   /** Returns read-only history of one aggregate type. */
   @Override
   public AggregateRepository getAggregateRepository(String aggregateType) {
+    Class<?> aggregateClass = aggregateClass(aggregateType);
+    return new DefaultAggregateRepository(
+        new EventStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore()))),
+        new SnapshotStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()))),
+        handlers.eventSourcingHandlers(), aggregateClass);
+  }
+
+  /** Returns read-only history of one aggregate type in these stores, for example a test driver's. */
+  public AggregateRepository getAggregateRepository(String aggregateType, EventStore eventStore, SnapshotStore snapshotStore) {
+    return new DefaultAggregateRepository(eventStore, snapshotStore, handlers.eventSourcingHandlers(), aggregateClass(aggregateType));
+  }
+
+  private Class<?> aggregateClass(String aggregateType) {
     Class<?> aggregateClass = handlers.aggregateClass(aggregateType);
     if (aggregateClass == null) {
       throw new IllegalArgumentException("This Eventify instance has no aggregate named '" + aggregateType
           + "'. It handles " + getAggregateTypes() + ".");
     }
-    return new DefaultAggregateRepository(
-        new EventStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.EVENT_STORE, QueryableStoreTypes.keyValueStore()))),
-        new SnapshotStore(runningKafkaStreams().store(StoreQueryParameters.fromNameAndType(StoreNames.SNAPSHOT_STORE, QueryableStoreTypes.keyValueStore()))),
-        handlers.eventSourcingHandlers(), aggregateClass);
+    return aggregateClass;
   }
 
   /** Returns metadata for the instance that owns an aggregate. */
