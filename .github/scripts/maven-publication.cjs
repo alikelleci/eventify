@@ -11,6 +11,7 @@ const LIBRARIES = [
   'eventify-console-protocol',
   'eventify-console-client',
   'eventify-spring-boot-starter',
+  'eventify-test',
 ];
 
 function publicationUrls(version) {
