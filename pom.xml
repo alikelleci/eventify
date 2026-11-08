@@ -19,12 +19,15 @@
         <module>eventify-console-client</module>
         <module>eventify-console-server</module>
         <module>eventify-spring-boot-starter</module>
+        <module>eventify-test</module>
     </modules>
 
     <properties>
         <java.version>17</java.version>
         <junit.version>5.13.4</junit.version>
         <archunit.version>1.5.0</archunit.version>
+        <!-- One version for eventify-core and eventify-test: the fixture runs core's topology on Kafka's test driver -->
+        <kafka.version>4.3.1</kafka.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <!-- Replaced with the release commit in the publication workspace for safe retries. -->

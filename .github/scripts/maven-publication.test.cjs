@@ -32,7 +32,7 @@ test('the publication includes the parent, every deployable library, all classif
 });
 
 test('only canonical release versions can be interpolated into repository paths', () => {
-  assert.equal(publicationUrls('1.2.3').length, 34);
+  assert.equal(publicationUrls('1.2.3').length, 42);
   for (const invalid of ['v1.2.3', '../1.2.3', '1.2.3-SNAPSHOT', '1.2.3/other', '1.2.3\n', undefined]) {
     assert.throws(() => publicationUrls(invalid));
   }
@@ -57,7 +57,7 @@ test('deployment is allowed only when all expected files explicitly return 404',
   const result = await inspectPublication(version, { revision, fetchImpl: fetchStatus(404) });
   assert.equal(result.state, 'absent');
   assert.equal(result.present.length, 0);
-  assert.equal(result.missing.length, 34);
+  assert.equal(result.missing.length, 42);
   assert.equal(await checkPublication(version, { revision, fetchImpl: fetchStatus(404) }), false);
 });
 
@@ -133,7 +133,7 @@ test('recovery is bounded and never treats an absent version as successful', asy
     attempts: 3,
     delayMs: 20,
     sleepImpl: async (delay) => delays.push(delay),
-  }), /absent; 34 expected files remain missing/);
+  }), /absent; 42 expected files remain missing/);
   assert.deepEqual(delays, [20, 20]);
   await assert.rejects(waitForPublication(version, { attempts: 0 }), /attempts must be positive/);
   await assert.rejects(waitForPublication(version, { delayMs: -1 }), /delay must not be negative/);
