@@ -51,6 +51,12 @@
             <artifactId>spring-kafka</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Only for the health indicator: switched on when the application has Spring Boot Actuator -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-health</artifactId>
+            <optional>true</optional>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

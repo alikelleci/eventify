@@ -1,2 +1,3 @@
 io.github.alikelleci.eventify.spring.starter.EventifyAutoConfiguration
+io.github.alikelleci.eventify.spring.starter.EventifyHealthAutoConfiguration
 io.github.alikelleci.eventify.spring.starter.kafka.EventifyKafkaListenerAutoConfiguration

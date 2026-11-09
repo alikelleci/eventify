@@ -15,6 +15,7 @@ import io.github.alikelleci.eventify.core.serialization.internal.JsonRoundTrip;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.internals.Topic;
 import org.apache.kafka.streams.processor.api.Processor;
 import org.apache.kafka.streams.processor.api.ProcessorContext;
 import org.apache.kafka.streams.processor.api.Record;
@@ -92,6 +93,7 @@ public class EventProcessor implements Processor<String, Event, String, Command>
       if (Topics.of(payload.getClass()) == null) {
         throw new TopicMissingException("Command " + payload.getClass().getSimpleName() + " has no @Topic.");
       }
+      Topic.validate(Topics.of(payload.getClass()).value());
       AggregateIdResolver.getAggregateId(payload);
     } catch (RuntimeException e) {
       throw new EventHandlingException(ExceptionUtils.getRootCauseMessage(e), ExceptionUtils.getRootCause(e));
