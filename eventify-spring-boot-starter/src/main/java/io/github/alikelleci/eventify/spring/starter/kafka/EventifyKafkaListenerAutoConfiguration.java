@@ -79,6 +79,8 @@ public class EventifyKafkaListenerAutoConfiguration {
     ConcurrentKafkaListenerContainerFactory<String, T> factory = new ConcurrentKafkaListenerContainerFactory<>();
     factory.setConsumerFactory(consumerFactory);
     factory.setRecordMessageConverter(new EventifyRecordMessageConverter());
+    // An event of a class this application doesn't have is skipped, as Eventify's event handlers skip it.
+    factory.setRecordFilterStrategy(record -> record.value() instanceof Event event && event.getPayload() == null);
     errorHandlers.ifUnique(factory::setCommonErrorHandler);
     return factory;
   }

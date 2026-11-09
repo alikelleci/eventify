@@ -71,7 +71,7 @@ Use the aggregate id as the key when sending a command. [Command Gateway](comman
 
 ## Spring Boot
 
-Add the starter, expose an `Eventify` bean, and make handler classes Spring beans. The starter registers those handlers and starts Eventify.
+Add the starter, expose an `Eventify` bean, and make handler classes Spring beans. The starter registers those handlers and starts Eventify. It needs Spring Boot 4.
 
 ```java
 @Bean
