@@ -9,6 +9,7 @@ import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
 import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
+import io.github.alikelleci.eventify.core.message.exception.AggregateIdMissingException;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import org.junit.jupiter.api.DisplayName;
@@ -54,6 +55,11 @@ class EventHandlerFixtureTest {
 
   @Topic("events.order")
   public record OrderLost(@AggregateId String id) {
+  }
+
+  /** Its handler forgets the order's id in the command. */
+  @Topic("events.order")
+  public record OrderMislaid(@AggregateId String id) {
   }
 
   /** Has no event handler. */
@@ -106,6 +112,11 @@ class EventHandlerFixtureTest {
     }
 
     @EventHandler
+    public Object handle(OrderMislaid event) {
+      return new ShipParcel(null, 1);
+    }
+
+    @EventHandler
     public Object handle(OrderLost event) {
       throw new IllegalStateException("Order " + event.id() + " is lost.");
     }
@@ -142,8 +153,7 @@ class EventHandlerFixtureTest {
     EventHandlerFixture.Then then = fixture.when(new OrderReserved("order-1", "ada"))
         .expectCommands()
         .expectScheduled(after(PAYMENT_TIME, new CancelUnpaidOrder("order-1")), after(REMINDER_TIME, new NotifyCustomer("ada", "reminder")))
-        .expectScheduled(after(REMINDER_TIME, Command.builder().payload(new NotifyCustomer("ada", "reminder")).build()),
-            after(PAYMENT_TIME, new CancelUnpaidOrder("order-1")));
+        .expectScheduled(after(REMINDER_TIME, new NotifyCustomer("ada", "reminder")), after(PAYMENT_TIME, new CancelUnpaidOrder("order-1")));
 
     Instant reservedAt = then.event().getTimestamp();
     then.expectScheduled(Scheduled.of(new CancelUnpaidOrder("order-1"), reservedAt.plus(PAYMENT_TIME)),
@@ -208,7 +218,25 @@ class EventHandlerFixtureTest {
     assertThatThrownBy(then::expectNoCommands)
         .isInstanceOf(AssertionError.class)
         .hasMessageStartingWith("Expected OrderPlaced to send no commands, but it sent [RequestPayment[orderId=order-1]] and scheduled");
-    then.expectScheduled(Scheduled.of(Command.builder().payload(new CancelUnpaidOrder("order-1")).build(), deliverAt));
+    then.expectScheduled(Scheduled.of(new CancelUnpaidOrder("order-1"), deliverAt));
+  }
+
+  /** Its metadata wouldn't be compared: sent() has it. */
+  @Test
+  @DisplayName("Should refuse a Command as an expected command")
+  void commandAsExpectation() {
+    EventHandlerFixture.Then then = fixture.when(new OrderPlaced("order-1", "ada"));
+    Command payment = Command.builder().payload(new RequestPayment("order-1")).metadata(Metadata.of("channel", "mail")).build();
+    Command cancel = Command.builder().payload(new CancelUnpaidOrder("order-1")).build();
+
+    assertThatThrownBy(() -> then.expectCommands(payment))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("expectCommands takes the payloads of commands, not a Command: check its metadata with sent().");
+    assertThatThrownBy(() -> then.expectScheduled(after(PAYMENT_TIME, cancel)))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("expectScheduled takes the payloads of commands, not a Command: check its metadata with sent().");
+    assertThatThrownBy(() -> then.expectScheduled(Scheduled.of(cancel, then.event().getTimestamp().plus(PAYMENT_TIME))))
+        .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
@@ -287,5 +315,14 @@ class EventHandlerFixtureTest {
     assertThatThrownBy(() -> EventHandlerFixture.of(new OrderHandler(), new OrderCommands()).when(new OrderPlaced("order-1", "ada")))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("An EventHandlerFixture takes no command handlers: test them with an AggregateFixture.");
+  }
+
+  /** Without Lombok, as in an application at runtime: the missing id must not become a NoClassDefFoundError. */
+  @Test
+  @DisplayName("Should fail like the handler when a returned command has no id")
+  void commandWithoutId() {
+    fixture.when(new OrderMislaid("order-1"))
+        .expectFailure(AggregateIdMissingException.class,
+            "The @AggregateId field orderId of io.github.alikelleci.eventify.test.EventHandlerFixtureTest$ShipParcel is null.");
   }
 }

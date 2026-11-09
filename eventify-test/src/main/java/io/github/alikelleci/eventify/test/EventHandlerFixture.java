@@ -143,7 +143,7 @@ public final class EventHandlerFixture {
       this.cause = cause;
     }
 
-    /** The event as the handlers received it; its timestamp is the time to schedule from. */
+    /** The event that was handled; the handlers get the same timestamp, the one to schedule from. */
     public Event event() {
       return event;
     }
@@ -176,10 +176,10 @@ public final class EventHandlerFixture {
       return this;
     }
 
-    /** These commands were sent now, and no others; in this order per topic. */
+    /** These commands, as payloads, were sent now, and no others; in this order per topic. */
     public Then expectCommands(Object... commands) {
       expectSuccess();
-      List<Object> expected = List.of(commands);
+      List<Object> expected = Stream.of(commands).map(command -> payloadOf(command, "expectCommands")).toList();
       if (!byTopic(expected).equals(byTopic(commands()))) {
         throw new AssertionError("Expected " + event.getType() + " to send commands " + expected + ", but it sent " + commands() + ".");
       }
@@ -240,29 +240,35 @@ public final class EventHandlerFixture {
     /** An expected scheduled command with its time. */
     private Scheduled resolve(Object expected) {
       if (expected instanceof After after) {
-        return Scheduled.of(after.command(), event.getTimestamp().plus(after.delay()));
+        return Scheduled.of(payloadOf(after.command(), "expectScheduled"), event.getTimestamp().plus(after.delay()));
       }
       if (expected instanceof Scheduled each) {
-        return each;
+        return Scheduled.of(payloadOf(each.command(), "expectScheduled"), each.deliverAt());
       }
       throw new IllegalArgumentException("expectScheduled takes after(delay, command) or Scheduled.of(command, time), not "
           + (expected == null ? "null" : expected.getClass().getSimpleName()) + ".");
     }
 
-    /** The payload of a scheduled command and its time to the millisecond, as Eventify stores it. */
-    private static Scheduled comparable(Scheduled scheduled) {
-      Object command = scheduled.command() instanceof Command c ? c.getPayload() : scheduled.command();
-      return Scheduled.of(command, scheduled.deliverAt().truncatedTo(ChronoUnit.MILLIS));
+    /** An expected command is a payload: the metadata of a {@link Command} wouldn't be compared. */
+    private static Object payloadOf(Object expected, String expectation) {
+      if (expected instanceof Command) {
+        throw new IllegalArgumentException(expectation + " takes the payloads of commands, not a Command: check its metadata with sent().");
+      }
+      return expected;
     }
 
-    /** Command payloads, or comparable scheduled commands, by the topic of their command, in their order. */
+    /** A scheduled command with its time to the millisecond, as Eventify stores it. */
+    private static Scheduled comparable(Scheduled scheduled) {
+      return Scheduled.of(scheduled.command(), scheduled.deliverAt().truncatedTo(ChronoUnit.MILLIS));
+    }
+
+    /** Payloads, or scheduled payloads, by the topic of their command, in their order. */
     private static Map<String, List<Object>> byTopic(List<?> values) {
       Map<String, List<Object>> byTopic = new LinkedHashMap<>();
       for (Object value : values) {
-        Object command = value instanceof Scheduled each ? each.command() : value;
-        Object payload = command instanceof Command c ? c.getPayload() : command;
+        Object payload = value instanceof Scheduled each ? each.command() : value;
         String topic = Command.builder().payload(payload).build().getTopic().value();
-        byTopic.computeIfAbsent(topic, key -> new ArrayList<>()).add(value instanceof Scheduled ? value : payload);
+        byTopic.computeIfAbsent(topic, key -> new ArrayList<>()).add(value);
       }
       return byTopic;
     }

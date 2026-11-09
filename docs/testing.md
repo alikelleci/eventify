@@ -104,7 +104,17 @@ Give `expectScheduled(...)` each command with its time: `after(Duration.ofMinute
 
 Kafka keeps the order of commands per topic, so the expectations check the order per topic; commands for different topics can be listed in any order.
 
-For your own assertions, use `commands()`, `scheduled()`, `cause()` and `sent()`, the commands as sent with their metadata. Pass an `Event` to `when(...)` to give the event metadata. Register only event handlers: test command handlers with an `AggregateFixture`.
+The expectations take the payloads of commands. To check metadata, use `sent()`: the commands as sent. For your own assertions, there are also `commands()`, `scheduled()` and `cause()`.
+
+To give the event metadata, pass an `Event` to `when(...)`. An event needs an aggregate type and a sequence; the handlers don't see them, so any will do:
+
+```java
+fixture.when(Event.builder().aggregateType("order").sequence(1)
+        .payload(new OrderPaid("order-1")).metadata(Metadata.of("user", "ada")).build())
+    .expectCommands(new ShipOrder("order-1"));
+```
+
+Register only event handlers: test command handlers with an `AggregateFixture`.
 
 An event handler that sends no commands, such as a projection, is tested the same way. Give it a fake of what it writes to, and check that afterwards:
 
