@@ -107,6 +107,8 @@ public class DefaultCommandGateway implements CommandGateway {
     if (waiting != null) {
       return CompletableFuture.failedFuture(new IllegalStateException("Command " + command.getId() + " was already sent and still waits for its result."));
     }
+    // However it ends, also cancelled or timed out by the caller, it no longer waits.
+    future.whenComplete((events, error) -> cache.asMap().remove(command.getId(), future));
 
     log.debug("Sending command: commandId={}, commandType={}, aggregateId={}", command.getId(), command.getType(), command.getAggregateId());
     try {

@@ -388,6 +388,24 @@ class HandlerRegistrationTest {
         .hasMessageContaining("@EventSourcingHandler", "Fan", "Light");
   }
 
+  /** Without an aggregate parameter, e.g. for the event that creates the aggregate. */
+  public static class NonAggregateResultEventSourcingHandler {
+    @EventSourcingHandler
+    public String handle(SwitchedOn event) {
+      return event.getId();
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse an event sourcing handler that returns no aggregate, also without an aggregate parameter")
+  void anEventSourcingHandlerThatReturnsNoAggregateIsRefused() {
+    assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
+        .registerHandler(new NonAggregateResultEventSourcingHandler())
+        .build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("@EventSourcingHandler", "@AggregateRoot", "java.lang.String");
+  }
+
   @Test
   @DisplayName("Should refuse a void event sourcing handler")
   void aVoidEventSourcingHandlerIsRefused() {
