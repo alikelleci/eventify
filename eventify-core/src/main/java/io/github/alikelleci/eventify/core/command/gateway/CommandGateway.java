@@ -62,6 +62,7 @@ public interface CommandGateway extends AutoCloseable {
     } catch (ExecutionException e) {
       throw resultFailure(command, e.getCause());
     } catch (TimeoutException e) {
+      future.cancel(false); // nobody waits anymore: the gateway can let go of it
       throw new CommandTimeoutException("No result for command " + command.getId() + " within " + timeout + " " + unit.name().toLowerCase() + ".", e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();

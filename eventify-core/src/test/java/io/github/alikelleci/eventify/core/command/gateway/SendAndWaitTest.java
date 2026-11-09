@@ -55,6 +55,16 @@ class SendAndWaitTest {
   }
 
   @Test
+  @DisplayName("Should cancel the future when no result arrives in time, so the gateway stops waiting for it")
+  void cancelsTheFutureOnATimeout() {
+    CompletableFuture<List<Event>> future = new CompletableFuture<>();
+
+    assertThatThrownBy(() -> answering(future).sendAndWait(command, 10, TimeUnit.MILLISECONDS))
+        .isInstanceOf(CommandTimeoutException.class);
+    assertThat(future).isCancelled();
+  }
+
+  @Test
   @DisplayName("Should throw CommandTimeoutException when the gateway stopped waiting for the result")
   void throwsATimeoutWhenTheGatewayStoppedWaiting() {
     CompletableFuture<List<Event>> timedOut = CompletableFuture.failedFuture(new TimeoutException("Command timed out"));

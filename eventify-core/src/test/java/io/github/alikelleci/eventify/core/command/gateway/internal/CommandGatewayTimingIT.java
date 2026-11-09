@@ -1,6 +1,7 @@
 package io.github.alikelleci.eventify.core.command.gateway.internal;
 
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.command.exception.CommandTimeoutException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -26,11 +27,13 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** A command without a reply times out. */
+/** A command without a reply times out; after a timeout it can be sent again. */
 @Testcontainers
 @DisplayName("Command gateway timeout (real broker)")
 class CommandGatewayTimingIT {
@@ -75,5 +78,24 @@ class CommandGatewayTimingIT {
         .failsWithin(Duration.ofSeconds(15))
         .withThrowableOfType(ExecutionException.class)
         .withCauseInstanceOf(TimeoutException.class);
+  }
+
+  /** The caller gave up waiting: sending the command again isn't refused as "still waits for its result". */
+  @Test
+  @DisplayName("Should accept the same command again after sendAndWait timed out")
+  void theSameCommandCanBeSentAgainAfterSendAndWaitTimedOut() {
+    Properties producerConfig = new Properties();
+    producerConfig.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    Properties consumerConfig = new Properties();
+    consumerConfig.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
+    try (DefaultCommandGateway gateway = new DefaultCommandGateway(producerConfig, consumerConfig, REPLY_TOPIC,
+        EventifyObjectMapper.create(), Duration.ofMinutes(5))) {
+      Command command = Command.builder().payload(Ping.builder().id("ping-2").build()).build();
+
+      assertThatThrownBy(() -> gateway.sendAndWait(command, 1, TimeUnit.SECONDS))
+          .isInstanceOf(CommandTimeoutException.class);
+
+      assertThat(gateway.send(command)).isNotDone();
+    }
   }
 }
