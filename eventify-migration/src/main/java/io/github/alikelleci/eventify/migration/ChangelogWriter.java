@@ -69,14 +69,18 @@ final class ChangelogWriter implements AutoCloseable {
     producer.close();
   }
 
-  /** Kafka Streams uses the application id as its consumer group: members mean the application still runs. */
+  /**
+   * Kafka Streams uses the application id as its consumer group: members mean an instance still runs. It doesn't leave
+   * the group when it stops, so Kafka keeps a stopped instance as a member until its session times out.
+   */
   private static String runningMembers(Properties clientConfig, String applicationId) {
     try (Admin admin = Admin.create(clientConfig)) {
       ConsumerGroupDescription group = admin.describeConsumerGroups(List.of(applicationId)).all().get().get(applicationId);
       if (group.members().isEmpty()) {
         return null;
       }
-      return "Application " + applicationId + " is still running (" + group.members().size() + " members). Stop every instance first.";
+      return "Application " + applicationId + " still has " + group.members().size() + " members. Stop every instance; after a stop,"
+          + " Kafka keeps it as a member for up to its session.timeout.ms, 45 seconds by default.";
     } catch (ExecutionException e) {
       if (e.getCause() instanceof GroupIdNotFoundException) {
         return null;
