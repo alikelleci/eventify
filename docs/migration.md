@@ -115,7 +115,8 @@ in `state.dir`, by default `kafka-streams` under the system's temp directory. On
 volume there is nothing to delete. Eventify 5 then restores its stores from the changelog topics, which the tool just
 verified.
 
-**6. Start Eventify 5** with the same `application.id`: the changelog topics are named after it.
+**6. Start Eventify 5** with the same `application.id`: the changelog topics are named after it. Create a `.scheduled`
+topic for each command topic first, such as `commands.order.scheduled`: Eventify 5 needs them, Eventify 4 didn't.
 
 **7. Check a few aggregates you know** through the application: with its queries, or with a command that only an
 existing aggregate accepts. When Eventify 5 finds them empty, the aggregate name was wrong: stop the application,
