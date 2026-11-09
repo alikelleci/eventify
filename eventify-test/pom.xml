@@ -14,7 +14,7 @@
     <artifactId>eventify-test</artifactId>
 
     <name>eventify-test</name>
-    <description>Test fixtures for Eventify aggregates, without a broker</description>
+    <description>Test fixtures for Eventify aggregates and event handlers, without a broker</description>
 
     <properties>
         <automatic.module.name>io.github.alikelleci.eventify.test</automatic.module.name>

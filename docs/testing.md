@@ -2,7 +2,7 @@
 
 ## Aggregates
 
-`eventify-test` tests the handlers of one aggregate without a broker: given its past events, when a command arrives, then expect its events, its rejection or its new state.
+`eventify-test` tests your handlers without a broker. `AggregateFixture` tests the handlers of one aggregate: given its past events, when a command arrives, then expect its events, its rejection or its new state.
 
 ```xml
 <dependency>
@@ -67,9 +67,70 @@ AggregateFixture<Order> fixture = AggregateFixture.of(Order.class, new OrderHand
     .withObjectMapper(objectMapper);
 ```
 
+## Event handlers
+
+`EventHandlerFixture` tests event handlers that send commands: when an event arrives, then expect the commands they send now or schedule.
+
+```java
+import static io.github.alikelleci.eventify.test.EventHandlerFixture.after;
+
+EventHandlerFixture fixture = EventHandlerFixture.of(new PaymentHandler());
+
+@Test
+void requestsPaymentAndCancelsWhenUnpaid() {
+    fixture.when(new OrderPlaced("order-1", "Ada"))
+        .expectCommands(new RequestPayment("order-1"))
+        .expectScheduled(after(Duration.ofMinutes(30), new CancelUnpaidOrder("order-1")));
+}
+
+@Test
+void failsForALostOrder() {
+    fixture.when(new OrderLost("order-1"))
+        .expectFailure(IllegalStateException.class);
+}
+```
+
+| Expectation | Passes when |
+|---|---|
+| `expectSuccess()` | The event was handled |
+| `expectCommands(...)` | Exactly these commands were sent now; `expectCommands()` for none, whatever was scheduled |
+| `expectScheduled(...)` | Exactly these commands were scheduled, at these times to the millisecond |
+| `expectNoCommands()` | The event was handled without sending or scheduling commands |
+| `expectFailure()` | A handler failed, and none of the commands were sent |
+| `expectFailure(Exception.class)` | A handler failed by this exception, as the root cause |
+| `expectFailure(Exception.class, "message")` | The same, with exactly this message |
+
+Give `expectScheduled(...)` each command with its time: `after(Duration.ofMinutes(30), command)` for 30 minutes after the event's timestamp, as your handler does with `@Timestamp`, or `Scheduled.of(command, time)` for a fixed time. One call takes all of them.
+
+Kafka keeps the order of commands per topic, so the expectations check the order per topic; commands for different topics can be listed in any order.
+
+The expectations take the payloads of commands. To check metadata, use `sent()`: the commands as sent. For your own assertions, there are also `commands()`, `scheduled()` and `cause()`.
+
+To give the event metadata, pass an `Event` to `when(...)`. An event needs an aggregate type and a sequence; the handlers don't see them, so any will do:
+
+```java
+fixture.when(Event.builder().aggregateType("order").sequence(1)
+        .payload(new OrderPaid("order-1")).metadata(Metadata.of("user", "ada")).build())
+    .expectCommands(new ShipOrder("order-1"));
+```
+
+Register only event handlers: test command handlers with an `AggregateFixture`.
+
+An event handler that sends no commands, such as a projection, is tested the same way. Give it a fake of what it writes to, and check that afterwards:
+
+```java
+InMemoryOrderOverview overview = new InMemoryOrderOverview();
+
+EventHandlerFixture.of(new OrderOverviewProjection(overview))
+    .when(new OrderPlaced("order-1", "Ada"))
+    .expectNoCommands();
+
+assertThat(overview.find("order-1").status()).isEqualTo("placed");
+```
+
 ## The complete flow
 
-To test more than one aggregate, or event handlers, use Kafka Streams' `TopologyTestDriver` yourself. It's in `eventify-test` too, or add `org.apache.kafka:kafka-streams-test-utils`.
+To test how aggregates and event handlers work together, use Kafka Streams' `TopologyTestDriver` yourself. It's in `eventify-test` too, or add `org.apache.kafka:kafka-streams-test-utils`.
 
 ```java
 Properties testConfig = new Properties();

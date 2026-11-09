@@ -68,7 +68,7 @@ See [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started
 | [Handlers](https://alikelleci.github.io/eventify/docs/handlers/) | Decisions, state transitions and reactions |
 | [Command Gateway](https://alikelleci.github.io/eventify/docs/command-gateway/) | Sending commands and receiving their results |
 | [Advanced Features](https://alikelleci.github.io/eventify/docs/advanced/) | Snapshots and event upcasting |
-| [Testing](https://alikelleci.github.io/eventify/docs/testing/) | Test aggregates and the complete flow in memory |
+| [Testing](https://alikelleci.github.io/eventify/docs/testing/) | Test aggregates, event handlers and the complete flow in memory |
 | [Annotation Reference](https://alikelleci.github.io/eventify/docs/annotation-reference/) | All annotations at a glance |
 | [Eventify Console](https://alikelleci.github.io/eventify/docs/console/) | Running the console, connecting applications and security |
 
@@ -80,7 +80,7 @@ See [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started
 |---|---|
 | `eventify-core` | The framework |
 | `eventify-spring-boot-starter` | Spring Boot auto-configuration: registers handler beans and starts Eventify with the application |
-| `eventify-test` | Given/when/then tests for aggregates, without a broker |
+| `eventify-test` | Given/when/then tests for aggregates and event handlers, without a broker |
 | `eventify-console-client` | Optional: connects your application to the Eventify Console |
 | `ghcr.io/alikelleci/eventify-console` | Optional: the Eventify Console as a Docker image, for all your applications |
 

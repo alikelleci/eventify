@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Tests the handlers of one aggregate: given its past events, when a command arrives, then expect its events, its
@@ -131,6 +133,9 @@ public final class AggregateFixture<A> {
       Map<String, Long> sequences = new HashMap<>();
       List<Event> stored = new ArrayList<>();
       for (Object payload : events) {
+        if (payload instanceof Event) {
+          throw new IllegalArgumentException("given takes the payloads of past events, not an Event.");
+        }
         // Built once to read its aggregate id.
         String aggregateId = Event.builder().aggregateType(aggregateType).payload(payload).sequence(1).build().getAggregateId();
         long sequence = sequences.merge(aggregateId, 1L, Long::sum);
@@ -147,5 +152,103 @@ public final class AggregateFixture<A> {
     Eventify.EventifyBuilder builder = Eventify.builder().streamsConfig(streamsConfig).objectMapper(objectMapper);
     handlers.forEach(builder::registerHandler);
     return builder.build();
+  }
+
+  /** The outcome of a command. The expectations throw an {@link AssertionError}. */
+  public static final class Then<A> {
+
+    private final CommandResult result;
+    private final A state;
+
+    private Then(CommandResult result, A state) {
+      this.result = result;
+      this.state = state;
+    }
+
+    /** The command's result, as written to its result topic. */
+    public CommandResult result() {
+      return result;
+    }
+
+    /** The payloads of the command's events in stored order; empty when it was rejected. */
+    public List<Object> events() {
+      return result instanceof CommandResult.Success success
+          ? success.events().stream().map(Event::getPayload).toList()
+          : List.of();
+    }
+
+    /** The aggregate after the command; {@code null} before it is created or after it is removed. */
+    public A state() {
+      return state;
+    }
+
+    /** Why the command was rejected, as "Exception: message" of the root cause; {@code null} when it was accepted. */
+    public String cause() {
+      return result instanceof CommandResult.Failure failure ? failure.cause() : null;
+    }
+
+    /** The command was accepted. */
+    public Then<A> expectSuccess() {
+      if (cause() != null) {
+        throw new AssertionError("Expected " + type() + " to succeed, but it was rejected: " + cause());
+      }
+      return this;
+    }
+
+    /** The command was accepted with exactly these events, in this order. */
+    public Then<A> expectEvents(Object... events) {
+      expectSuccess();
+      if (Stream.of(events).anyMatch(Event.class::isInstance)) {
+        throw new IllegalArgumentException("expectEvents takes the payloads of events, not an Event: check its metadata with result().");
+      }
+      List<Object> expected = List.of(events);
+      if (!expected.equals(events())) {
+        throw new AssertionError("Expected " + type() + " to give events " + expected + ", but it gave " + events() + ".");
+      }
+      return this;
+    }
+
+    /** The command was accepted without events. */
+    public Then<A> expectNoEvents() {
+      return expectEvents();
+    }
+
+    /** The command was rejected, and nothing of it was stored. */
+    public Then<A> expectRejection() {
+      if (cause() == null) {
+        throw new AssertionError("Expected " + type() + " to be rejected, but it succeeded with events " + events() + ".");
+      }
+      return this;
+    }
+
+    /** The command was rejected by this exception, as the root cause. */
+    public Then<A> expectRejection(Class<? extends Throwable> exception) {
+      expectRejection();
+      if (!Causes.isOf(cause(), exception)) {
+        throw new AssertionError("Expected " + type() + " to be rejected with " + Causes.shortName(exception)
+            + ", but it was rejected with: " + cause());
+      }
+      return this;
+    }
+
+    /** The command was rejected by this exception with this message, as the root cause. */
+    public Then<A> expectRejection(Class<? extends Throwable> exception, String message) {
+      expectRejection();
+      String expected = Causes.of(exception, message);
+      if (!expected.equals(cause())) {
+        throw new AssertionError("Expected " + type() + " to be rejected with \"" + expected + "\", but it was rejected with: " + cause());
+      }
+      return this;
+    }
+
+    /** Checks the aggregate after the command, {@code null} before it is created or after it is removed. */
+    public Then<A> expectState(Consumer<A> assertions) {
+      assertions.accept(state);
+      return this;
+    }
+
+    private String type() {
+      return result.command().getType();
+    }
   }
 }
