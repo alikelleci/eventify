@@ -22,4 +22,12 @@ class ArchitectureTest {
     noClasses().should().dependOnClassesThat().resideInAPackage("io.github.alikelleci.eventify.core..internal..")
         .check(MODULE);
   }
+
+  /** Lombok is only there to compile: an application that runs Eventify doesn't have it, so no class may call it. */
+  @Test
+  @DisplayName("Should not need Lombok at runtime")
+  void needsNoLombokAtRuntime() {
+    noClasses().should().dependOnClassesThat().haveFullyQualifiedName("lombok.Lombok")
+        .check(MODULE);
+  }
 }
