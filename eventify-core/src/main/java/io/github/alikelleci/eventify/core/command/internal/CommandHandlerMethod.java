@@ -39,6 +39,7 @@ public class CommandHandlerMethod {
   public CommandHandlerMethod(Object handler, Method method, String aggregateType) {
     this.handler = handler;
     this.method = method;
+    this.method.setAccessible(true); // also in a package-private class, as a Spring @Component often is
     this.aggregateType = aggregateType;
   }
 

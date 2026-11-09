@@ -25,6 +25,7 @@ public class EventHandlerMethod {
   public EventHandlerMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
+    this.method.setAccessible(true); // also in a package-private class, as a Spring @Component often is
     this.priority = Optional.ofNullable(method.getAnnotation(Priority.class))
         .map(Priority::value)
         .orElse(0);

@@ -11,6 +11,7 @@ import io.github.alikelleci.eventify.core.upcasting.internal.UpcasterMethod;
 import org.apache.commons.lang3.StringUtils;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -58,6 +59,10 @@ public final class Upcasters {
   }
 
   private static void add(Map<String, Map<Integer, UpcasterMethod>> upcasters, Object handler, Method method) {
+    // Like a handler: a proxy can't override a private method.
+    if (Modifier.isPrivate(method.getModifiers())) {
+      throw new HandlerRegistrationException("@Upcaster method " + method + " is private: make it package-private or public.");
+    }
     requireJsonSignature(method);
     UpcasterMethod upcaster = new UpcasterMethod(handler, method);
     requireOlderRevision(handler, upcaster);

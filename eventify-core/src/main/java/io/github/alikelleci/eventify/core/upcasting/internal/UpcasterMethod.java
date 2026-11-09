@@ -21,6 +21,7 @@ public class UpcasterMethod  {
   public UpcasterMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
+    this.method.setAccessible(true); // also in a package-private class, as a Spring @Component often is
     Upcaster annotation = method.getAnnotation(Upcaster.class);
     this.type = annotation.type();
     this.revision = annotation.revision();

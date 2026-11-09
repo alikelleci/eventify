@@ -158,6 +158,7 @@ public class HandlerRegistry {
   }
 
   private void addCommandHandler(Object handler, Method method) {
+    requireNotPrivate("@CommandHandler", method);
     requireMessageParameter("@CommandHandler", method);
     requireSupportedParameters("@CommandHandler", method, true);
     Class<?> messageClass = method.getParameters()[0].getType();
@@ -170,6 +171,7 @@ public class HandlerRegistry {
   }
 
   private void addEventSourcingHandler(Object handler, Method method) {
+    requireNotPrivate("@EventSourcingHandler", method);
     requireMessageParameter("@EventSourcingHandler", method);
     requireSupportedParameters("@EventSourcingHandler", method, true);
     requireMatchingAggregateReturnType(method);
@@ -185,6 +187,7 @@ public class HandlerRegistry {
   }
 
   private void addEventHandler(Object handler, Method method) {
+    requireNotPrivate("@EventHandler", method);
     requireMessageParameter("@EventHandler", method);
     requireSupportedParameters("@EventHandler", method, false);
     Class<?> messageClass = method.getParameters()[0].getType();
@@ -207,6 +210,13 @@ public class HandlerRegistry {
         throw new HandlerRegistrationException("Aggregates " + previous.getName() + " and " + aggregate.getName()
             + " are both named '" + type + "'. Give each aggregate its own @AggregateRoot name.");
       }
+    }
+  }
+
+  /** A proxy, e.g. Spring's for @Transactional, can't override a private method: it would run without the bean's fields. */
+  private static void requireNotPrivate(String annotation, Method method) {
+    if (Modifier.isPrivate(method.getModifiers())) {
+      throw new HandlerRegistrationException(annotation + " method " + method + " is private: make it package-private or public.");
     }
   }
 
