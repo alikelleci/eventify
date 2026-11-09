@@ -19,11 +19,18 @@ import jakarta.validation.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.errors.RecordTooLargeException;
+import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.Headers;
+import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessor;
 import org.apache.kafka.streams.processor.api.FixedKeyProcessorContext;
 import org.apache.kafka.streams.processor.api.FixedKeyRecord;
 import org.apache.kafka.streams.state.KeyValueStore;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -33,9 +40,15 @@ import static io.github.alikelleci.eventify.core.message.MetadataKeys.CAUSATION_
 @Slf4j
 public class CommandProcessor implements FixedKeyProcessor<String, Command, CommandResult> {
 
+  /** Kafka's default for max.request.size. */
+  private static final int DEFAULT_MAX_RECORD_SIZE = 1024 * 1024;
+  /** Room for what Kafka adds to a record itself. */
+  private static final int RECORD_OVERHEAD = 1024;
+
   private final HandlerRegistry handlers;
   private final ObjectMapper objectMapper;
   private FixedKeyProcessorContext<String, CommandResult> context;
+  private int maxRecordSize;
   private EventStore eventStore;
   private SnapshotStore snapshotStore;
   private Map<String, DefaultAggregateRepository> repositories;
@@ -48,6 +61,9 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   @Override
   public void init(FixedKeyProcessorContext<String, CommandResult> context) {
     this.context = context;
+    Object configured = context.appConfigs().getOrDefault(StreamsConfig.producerPrefix(ProducerConfig.MAX_REQUEST_SIZE_CONFIG),
+        context.appConfigs().get(ProducerConfig.MAX_REQUEST_SIZE_CONFIG));
+    maxRecordSize = configured != null ? Integer.parseInt(configured.toString()) : DEFAULT_MAX_RECORD_SIZE;
 
     KeyValueStore<String, Event> events = context.getStateStore(StoreNames.EVENT_STORE);
     KeyValueStore<String, AggregateState> snapshots = context.getStateStore(StoreNames.SNAPSHOT_STORE);
@@ -83,6 +99,8 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       replayResult = aggregateRepository.replay(aggregateId);
       events = copyEvents(toEvents(commandHandler.getAggregateType(), command, replayResult.currentState(), commandHandler.handle(command, replayResult.currentState())));
       newState = aggregateRepository.applyEvents(replayResult.currentState(), events);
+      // The result holds the command and all its events: when it fits, every record of the command does.
+      requireSendable("The result of command " + command.getType(), aggregateId, new CommandResult.Success(command, events), fixedKeyRecord.headers());
     } catch (Exception e) {
       logFailure(command, e);
       context.forward(fixedKeyRecord.withValue(new CommandResult.Failure(command, ExceptionUtils.getRootCauseMessage(e))));
@@ -139,10 +157,28 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
   /** A JSON copy of the state; {@code null} (no snapshot) when copying fails in any way: a snapshot is optional. */
   private AggregateState copySnapshot(DefaultAggregateRepository aggregateRepository, AggregateState state) {
     try {
-      return JsonRoundTrip.copy(objectMapper, state, AggregateState.class, "Snapshot " + aggregateRepository.getAggregateType());
+      AggregateState snapshot = JsonRoundTrip.copy(objectMapper, state, AggregateState.class, "Snapshot " + aggregateRepository.getAggregateType());
+      requireSendable("Snapshot " + aggregateRepository.getAggregateType(), state.getAggregateId(), snapshot, new RecordHeaders());
+      return snapshot;
     } catch (RuntimeException e) {
       log.warn("Skipping snapshot: aggregateType={}, aggregateId={}, version={}, reason={}", aggregateRepository.getAggregateType(), state.getAggregateId(), state.getVersion(), e.getMessage());
       return null;
+    }
+  }
+
+  /** Kafka refuses a record over max.request.size; found only when sending, that would stop Eventify. */
+  private void requireSendable(String name, String key, Object value, Headers headers) {
+    long size = RECORD_OVERHEAD + key.getBytes(StandardCharsets.UTF_8).length;
+    try {
+      size += objectMapper.writeValueAsBytes(value).length;
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException(name + " cannot be written as JSON: " + e.getOriginalMessage(), e);
+    }
+    for (Header header : headers) {
+      size += header.key().length() + (header.value() != null ? header.value().length : 0);
+    }
+    if (size > maxRecordSize) {
+      throw new RecordTooLargeException(name + " is " + size + " bytes, more than Kafka accepts: max.request.size is " + maxRecordSize + ".");
     }
   }
 
