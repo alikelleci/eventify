@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
+import java.util.stream.Stream;
 
 /**
  * Tests the handlers of one aggregate: given its past events, when a command arrives, then expect its events, its
@@ -132,6 +133,9 @@ public final class AggregateFixture<A> {
       Map<String, Long> sequences = new HashMap<>();
       List<Event> stored = new ArrayList<>();
       for (Object payload : events) {
+        if (payload instanceof Event) {
+          throw new IllegalArgumentException("given takes the payloads of past events, not an Event.");
+        }
         // Built once to read its aggregate id.
         String aggregateId = Event.builder().aggregateType(aggregateType).payload(payload).sequence(1).build().getAggregateId();
         long sequence = sequences.merge(aggregateId, 1L, Long::sum);
@@ -194,6 +198,9 @@ public final class AggregateFixture<A> {
     /** The command was accepted with exactly these events, in this order. */
     public Then<A> expectEvents(Object... events) {
       expectSuccess();
+      if (Stream.of(events).anyMatch(Event.class::isInstance)) {
+        throw new IllegalArgumentException("expectEvents takes the payloads of events, not an Event: check its metadata with result().");
+      }
       List<Object> expected = List.of(events);
       if (!expected.equals(events())) {
         throw new AssertionError("Expected " + type() + " to give events " + expected + ", but it gave " + events() + ".");

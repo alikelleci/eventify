@@ -13,6 +13,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.EventSourcingHand
 import io.github.alikelleci.eventify.core.command.Command;
 import io.github.alikelleci.eventify.core.command.CommandResult;
 import io.github.alikelleci.eventify.core.command.annotation.CommandHandler;
+import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -392,5 +393,18 @@ class AggregateFixtureTest {
     assertThatThrownBy(() -> fixture.when(new PlaceOrder("order-1", "Ada")).expectRejection(OrderNotFound.class, "Order order-1 does not exist."))
         .isInstanceOf(AssertionError.class)
         .hasMessageStartingWith("Expected PlaceOrder to be rejected, but it succeeded");
+  }
+
+  @Test
+  @DisplayName("Should refuse an Event where it takes the payloads of events")
+  void eventAsPayload() {
+    Event placed = Event.builder().aggregateType("order").sequence(1).payload(new OrderPlaced("order-1", "Ada")).build();
+
+    assertThatThrownBy(() -> fixture.given(placed).when(new CancelOrder("order-1")))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("given takes the payloads of past events, not an Event.");
+    assertThatThrownBy(() -> fixture.when(new PlaceOrder("order-1", "Ada")).expectEvents(placed))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("expectEvents takes the payloads of events, not an Event: check its metadata with result().");
   }
 }
