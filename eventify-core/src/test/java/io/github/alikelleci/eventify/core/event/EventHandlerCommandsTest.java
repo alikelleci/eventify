@@ -74,6 +74,10 @@ class EventHandlerCommandsTest {
   public record NotACommand(@AggregateId String id) {
   }
 
+  @Topic("commands payment!")
+  public record MisnamedCommand(@AggregateId String id) {
+  }
+
   @Value
   @Topic("commands.payment")
   public static class CorruptPayment {
@@ -155,6 +159,13 @@ class EventHandlerCommandsTest {
     @EventHandler
     public Object second(OrderPlaced event) {
       return new NotACommand(event.id());
+    }
+  }
+
+  public static class MisnamingEventHandler {
+    @EventHandler
+    public MisnamedCommand on(OrderPlaced event) {
+      return new MisnamedCommand(event.paymentId());
     }
   }
 
@@ -297,6 +308,16 @@ class EventHandlerCommandsTest {
 
     assertThat(projections.seen).containsExactly("order-1");
     assertThat(paymentCommands().isEmpty()).isTrue();
+  }
+
+  @Test
+  @DisplayName("Should fail the event when a returned command has an invalid @Topic")
+  void aCommandWithAnInvalidTopicFailsTheEvent() {
+    start(new MisnamingEventHandler());
+
+    assertThatThrownBy(() -> pipe(orderPlaced("order-1", "payment-1", Metadata.EMPTY)))
+        .hasStackTraceContaining(EventHandlingException.class.getName())
+        .hasStackTraceContaining("Topic name is invalid: 'commands payment!'");
   }
 
   /** Sending the first and failing on the second would leave half a reaction: none is sent. */

@@ -80,6 +80,14 @@ class CommandRejectionTest {
     String id;
   }
 
+  /** Its event has a topic name Kafka refuses. */
+  @Value
+  @Builder
+  public static class Misname implements CounterCommand {
+    @AggregateId
+    String id;
+  }
+
   /** Its event can't be written as JSON. */
   @Value
   @Builder
@@ -141,6 +149,14 @@ class CommandRejectionTest {
 
   @Value
   @Builder
+  @Topic("events counter!")
+  public static class Misnamed {
+    @AggregateId
+    String id;
+  }
+
+  @Value
+  @Builder
   public static class Corrupted implements CounterEvent {
     @AggregateId
     String id;
@@ -186,6 +202,11 @@ class CommandRejectionTest {
     @CommandHandler
     public Object handle(Misplace command, Counter state) {
       return Misplaced.builder().id(command.getId()).build();
+    }
+
+    @CommandHandler
+    public Object handle(Misname command, Counter state) {
+      return Misnamed.builder().id(command.getId()).build();
     }
 
     @CommandHandler
@@ -295,6 +316,18 @@ class CommandRejectionTest {
     assertThat(results()).containsExactly(
         "Create success null",
         "Misplace failure TopicMissingException: Event Misplaced has no @Topic.");
+    assertThat(storedTypes()).containsExactly("Created");
+    assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created");
+  }
+
+  @Test
+  @DisplayName("Should fail the command and store nothing when an event has an invalid @Topic")
+  void anEventWithAnInvalidTopicIsNotStored() {
+    send(Create.builder().id("ada").build());
+    send(Misname.builder().id("ada").build());
+
+    assertThat(results()).element(1).asString()
+        .startsWith("Misname failure InvalidTopicException: Topic name is invalid: 'events counter!'");
     assertThat(storedTypes()).containsExactly("Created");
     assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created");
   }
