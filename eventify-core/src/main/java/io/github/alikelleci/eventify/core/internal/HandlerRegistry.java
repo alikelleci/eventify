@@ -175,10 +175,6 @@ public class HandlerRegistry {
     requireMessageParameter("@EventSourcingHandler", method);
     requireSupportedParameters("@EventSourcingHandler", method, true);
     requireMatchingAggregateReturnType(method);
-    // Void would return null, which removes the aggregate on every replay.
-    if (method.getReturnType() == void.class) {
-      throw new HandlerRegistrationException("@EventSourcingHandler method " + method + " must return the aggregate, not void.");
-    }
     Class<?> messageClass = method.getParameters()[0].getType();
     EventSourcingHandlerMethod previous = eventSourcingHandlers.put(messageClass, new EventSourcingHandlerMethod(handler, method));
     if (previous != null) {
@@ -253,8 +249,12 @@ public class HandlerRegistry {
     }
   }
 
-  /** An event sourcing handler must return the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
+  /** An event sourcing handler must return an aggregate, the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
   private static void requireMatchingAggregateReturnType(Method method) {
+    // Also void: it would return null, which removes the aggregate on every replay.
+    if (!method.getReturnType().isAnnotationPresent(AggregateRoot.class)) {
+      throw new HandlerRegistrationException("@EventSourcingHandler method " + method + " must return an @AggregateRoot class, not " + method.getReturnType().getName() + ".");
+    }
     Class<?> mismatchingAggregate = aggregateParameterClasses(method).stream()
         .filter(aggregate -> method.getReturnType() != aggregate)
         .findFirst()
