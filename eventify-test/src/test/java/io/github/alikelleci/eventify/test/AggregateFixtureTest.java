@@ -245,7 +245,7 @@ class AggregateFixtureTest {
   @Test
   @DisplayName("Should match a rejection by a nested exception class, with no state before the aggregate is created")
   void rejectionByANestedException() {
-    Then<Order> then = fixture.when(new CancelOrder("order-1"))
+    AggregateFixture.Then<Order> then = fixture.when(new CancelOrder("order-1"))
         .expectRejection(OrderNotFound.class);
 
     assertThat(then.state()).isNull();
@@ -265,7 +265,7 @@ class AggregateFixtureTest {
   @Test
   @DisplayName("Should fail when the events differ")
   void otherEvents() {
-    Then<Order> then = fixture.when(new PlaceOrder("order-1", "Ada"));
+    AggregateFixture.Then<Order> then = fixture.when(new PlaceOrder("order-1", "Ada"));
 
     assertThatThrownBy(() -> then.expectEvents(new OrderPlaced("order-1", "Bob")))
         .isInstanceOf(AssertionError.class)
@@ -280,7 +280,7 @@ class AggregateFixtureTest {
   @Test
   @DisplayName("Should fail when a rejected command is expected to succeed, or rejected by another exception")
   void unexpectedRejection() {
-    Then<Order> then = fixture.given(new OrderPlaced("order-1", "Ada")).when(new PlaceOrder("order-1", "Ada"));
+    AggregateFixture.Then<Order> then = fixture.given(new OrderPlaced("order-1", "Ada")).when(new PlaceOrder("order-1", "Ada"));
 
     assertThatThrownBy(then::expectSuccess)
         .isInstanceOf(AssertionError.class)
@@ -380,7 +380,7 @@ class AggregateFixtureTest {
   @Test
   @DisplayName("Should match a rejection by its exception and message")
   void rejectionWithMessage() {
-    Then<Order> then = fixture.when(new CancelOrder("order-1"))
+    AggregateFixture.Then<Order> then = fixture.when(new CancelOrder("order-1"))
         .expectRejection(OrderNotFound.class, "Order order-1 does not exist.");
 
     assertThatThrownBy(() -> then.expectRejection(OrderNotFound.class, "Order order-2 does not exist."))
