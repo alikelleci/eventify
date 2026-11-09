@@ -387,6 +387,44 @@ class EventifyKafkaListenerIT {
 
   // ---------------------------------------------------------------------------------------------------------------
 
+  public static class UnknownClassListener {
+    @KafkaListener(topics = "unknown-class", groupId = "unknown-class", containerFactory = "eventifyListenerContainerFactory")
+    public void on(OrderShipped event) {
+      received.add(event.getId());
+    }
+  }
+
+  /** Tells the test about every record that goes to the error handler. */
+  @Configuration
+  static class RecordingErrorHandler {
+    @Bean
+    DefaultErrorHandler errorHandler() {
+      return new DefaultErrorHandler((record, exception) -> received.add("failed"), new FixedBackOff(0, 0));
+    }
+  }
+
+  @Test
+  @DisplayName("Should skip an event of a class the application doesn't have, as Eventify's event handlers do")
+  void eventOfAnUnknownClass() throws Exception {
+    ObjectNode unknown = objectMapper.valueToTree(
+        Event.builder().aggregateType("order").payload(OrderShipped.builder().id("order-1").build()).sequence(1).build());
+    ((ObjectNode) unknown.get("payload")).put("@class", "com.example.OrderArchived");
+    send("unknown-class", unknown);
+    send("unknown-class", Event.builder().aggregateType("order").payload(OrderShipped.builder().id("order-2").build()).sequence(2).build());
+
+    received.clear();
+    new ApplicationContextRunner()
+        .withConfiguration(AutoConfigurations.of(EventifyAutoConfiguration.class, EventifyKafkaListenerAutoConfiguration.class))
+        .withUserConfiguration(ListenersOnly.class, RecordingErrorHandler.class)
+        .withBean(UnknownClassListener.class)
+        .run(context -> {
+          assertThat(context).hasNotFailed();
+          assertThat(take()).isEqualTo("order-2");
+        });
+  }
+
+  // ---------------------------------------------------------------------------------------------------------------
+
   @Retention(RetentionPolicy.RUNTIME)
   @Target(ElementType.PARAMETER)
   @interface Tenant {
