@@ -9,6 +9,8 @@ CommandGateway gateway = CommandGateway.builder()
     .build();
 ```
 
+Create the reply topic first: the gateway needs it to start.
+
 ## Send a command
 
 ```java
