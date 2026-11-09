@@ -110,6 +110,11 @@ public class Eventify implements PluginContext {
     return handlers.commandTopics(aggregateType);
   }
 
+  /** Returns event types with an event handler. */
+  public Set<Class<?>> getEventClasses() {
+    return handlers.eventClasses();
+  }
+
   /** Returns registered event-handler objects. */
   public Set<Object> getEventHandlers() {
     Set<Object> eventHandlers = Collections.newSetFromMap(new IdentityHashMap<>());

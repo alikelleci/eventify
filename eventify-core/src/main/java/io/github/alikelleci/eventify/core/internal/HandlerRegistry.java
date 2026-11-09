@@ -111,6 +111,11 @@ public class HandlerRegistry {
     return Collections.unmodifiableCollection(eventHandlers.get(eventClass));
   }
 
+  /** The event classes that have an event handler. */
+  public Set<Class<?>> eventClasses() {
+    return Collections.unmodifiableSet(eventHandlers.keySet());
+  }
+
   public boolean hasEventHandlers() {
     return !eventHandlers.isEmpty();
   }

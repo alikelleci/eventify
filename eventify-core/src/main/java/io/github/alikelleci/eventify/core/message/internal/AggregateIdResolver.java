@@ -3,7 +3,6 @@ package io.github.alikelleci.eventify.core.message.internal;
 import io.github.alikelleci.eventify.core.internal.reflection.PerClass;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMissingException;
-import lombok.SneakyThrows;
 import org.apache.commons.lang3.reflect.FieldUtils;
 
 import java.lang.reflect.Field;
@@ -37,9 +36,13 @@ public class AggregateIdResolver {
     return field;
   }
 
-  @SneakyThrows
   private static String getFieldValue(Field field, Object target) {
-    Object value = field.get(target);
+    Object value;
+    try {
+      value = field.get(target);
+    } catch (IllegalAccessException e) {
+      throw new IllegalStateException("Can't read the @AggregateId field " + field.getName() + " of " + target.getClass().getName() + ".", e);
+    }
     if (value == null) {
       throw new AggregateIdMissingException("The @AggregateId field " + field.getName() + " of " + target.getClass().getName() + " is null.");
     }
