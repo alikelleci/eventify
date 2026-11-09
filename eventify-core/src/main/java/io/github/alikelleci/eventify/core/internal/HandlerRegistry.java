@@ -158,6 +158,7 @@ public class HandlerRegistry {
   }
 
   private void addCommandHandler(Object handler, Method method) {
+    requireNotPrivate("@CommandHandler", method);
     requireMessageParameter("@CommandHandler", method);
     requireSupportedParameters("@CommandHandler", method, true);
     Class<?> messageClass = method.getParameters()[0].getType();
@@ -170,13 +171,10 @@ public class HandlerRegistry {
   }
 
   private void addEventSourcingHandler(Object handler, Method method) {
+    requireNotPrivate("@EventSourcingHandler", method);
     requireMessageParameter("@EventSourcingHandler", method);
     requireSupportedParameters("@EventSourcingHandler", method, true);
     requireMatchingAggregateReturnType(method);
-    // Void would return null, which removes the aggregate on every replay.
-    if (method.getReturnType() == void.class) {
-      throw new HandlerRegistrationException("@EventSourcingHandler method " + method + " must return the aggregate, not void.");
-    }
     Class<?> messageClass = method.getParameters()[0].getType();
     EventSourcingHandlerMethod previous = eventSourcingHandlers.put(messageClass, new EventSourcingHandlerMethod(handler, method));
     if (previous != null) {
@@ -185,6 +183,7 @@ public class HandlerRegistry {
   }
 
   private void addEventHandler(Object handler, Method method) {
+    requireNotPrivate("@EventHandler", method);
     requireMessageParameter("@EventHandler", method);
     requireSupportedParameters("@EventHandler", method, false);
     Class<?> messageClass = method.getParameters()[0].getType();
@@ -207,6 +206,13 @@ public class HandlerRegistry {
         throw new HandlerRegistrationException("Aggregates " + previous.getName() + " and " + aggregate.getName()
             + " are both named '" + type + "'. Give each aggregate its own @AggregateRoot name.");
       }
+    }
+  }
+
+  /** A proxy, e.g. Spring's for @Transactional, can't override a private method: it would run without the bean's fields. */
+  private static void requireNotPrivate(String annotation, Method method) {
+    if (Modifier.isPrivate(method.getModifiers())) {
+      throw new HandlerRegistrationException(annotation + " method " + method + " is private: make it package-private or public.");
     }
   }
 
@@ -243,8 +249,12 @@ public class HandlerRegistry {
     }
   }
 
-  /** An event sourcing handler must return the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
+  /** An event sourcing handler must return an aggregate, the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
   private static void requireMatchingAggregateReturnType(Method method) {
+    // Also void: it would return null, which removes the aggregate on every replay.
+    if (!method.getReturnType().isAnnotationPresent(AggregateRoot.class)) {
+      throw new HandlerRegistrationException("@EventSourcingHandler method " + method + " must return an @AggregateRoot class, not " + method.getReturnType().getName() + ".");
+    }
     Class<?> mismatchingAggregate = aggregateParameterClasses(method).stream()
         .filter(aggregate -> method.getReturnType() != aggregate)
         .findFirst()

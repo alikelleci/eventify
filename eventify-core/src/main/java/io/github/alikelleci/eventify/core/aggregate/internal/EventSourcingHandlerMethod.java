@@ -24,6 +24,7 @@ public class EventSourcingHandlerMethod {
   public EventSourcingHandlerMethod(Object handler, Method method) {
     this.handler = handler;
     this.method = method;
+    this.method.setAccessible(true); // also in a package-private class, as a Spring @Component often is
   }
 
   /** The aggregate after the event; {@code null} when the event removes it. */

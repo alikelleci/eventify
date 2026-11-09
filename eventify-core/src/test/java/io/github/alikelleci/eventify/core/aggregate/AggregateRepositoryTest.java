@@ -81,8 +81,9 @@ class AggregateRepositoryTest {
 
   @Test
   @DisplayName("Should reject an event sourcing handler that returns another aggregate type")
-  void rejectsAnEventSourcingHandlerThatReturnsAnotherAggregateType() {
-    EventSourcingHandlerMethod wrongHandler = new EventSourcingHandlerMethod(null, null) {
+  void rejectsAnEventSourcingHandlerThatReturnsAnotherAggregateType() throws NoSuchMethodException {
+    // Any method: handle is overridden.
+    EventSourcingHandlerMethod wrongHandler = new EventSourcingHandlerMethod(null, Object.class.getMethod("toString")) {
       @Override
       public Object handle(Event event, AggregateState state) {
         return new OtherAggregate(event.getAggregateId());
