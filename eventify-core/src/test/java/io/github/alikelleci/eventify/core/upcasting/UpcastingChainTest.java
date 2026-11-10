@@ -20,6 +20,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -277,6 +278,43 @@ class UpcastingChainTest {
     assertThat(event.getRevision()).isEqualTo(2);
     assertThat(event.getType()).isEqualTo("Renamed");
     assertThat(event.getPayload()).isEqualTo(Renamed.builder().id("ada").fullName("Ada Lovelace").build());
+  }
+
+  @Value
+  @Builder
+  @Revision(2)
+  public static class Paid {
+    @AggregateId
+    String id;
+    BigDecimal amount;
+    BigDecimal rate;
+    double weight;
+    Object note;
+  }
+
+  public static class LeavingPaidAsItIs {
+    @Upcaster(type = "io.github.alikelleci.eventify.core.upcasting.UpcastingChainTest$Paid", revision = 1)
+    public JsonNode same(ObjectNode payload) {
+      return payload;
+    }
+  }
+
+  @Test
+  @DisplayName("Should read decimals exactly as stored, also with upcasters: not rounded, and with their zeros")
+  void decimalsAreReadTheSameWithUpcasters() {
+    Paid paid = Paid.builder().id("p-1").amount(new BigDecimal("10.00")).rate(new BigDecimal("12345678901234567890.123456789"))
+        .weight(0.1).note(2.5).build();
+    Event event = Event.builder().aggregateType("payment").payload(paid).sequence(1).build();
+    String stored = new String(new JsonSerializer<Event>(EventifyObjectMapper.create()).serialize("events", event));
+    Object withoutUpcasters = new EventSerde().deserializer().deserialize("events", stored.getBytes()).getPayload();
+    assertThat(withoutUpcasters).isEqualTo(paid);
+
+    // Not upcast itself: the application only has upcasters.
+    assertThat(read(stored, new LeavingPaidAsItIs()).getPayload()).isEqualTo(paid);
+    // Upcast from revision 1.
+    Event upcast = read(stored.replace("\"revision\":2", "\"revision\":1"), new LeavingPaidAsItIs());
+    assertThat(upcast.getRevision()).isEqualTo(2);
+    assertThat(upcast.getPayload()).isEqualTo(paid);
   }
 
   /** The event as it was stored at revision 1: with {@code name}, before it was renamed. */
