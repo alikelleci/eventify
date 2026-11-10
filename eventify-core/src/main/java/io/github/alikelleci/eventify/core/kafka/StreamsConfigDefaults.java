@@ -25,7 +25,10 @@ public final class StreamsConfigDefaults {
     streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
     streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
     streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, RocksDBConfig.class);
-    streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
+    // Not next to the application's own "compression.type": the prefixed one would win from it.
+    if (!streamsConfig.containsKey(ProducerConfig.COMPRESSION_TYPE_CONFIG)) {
+      streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
+    }
     // Always exactly-once: with at-least-once, a retried command would store its events twice.
     alwaysSet(streamsConfig, StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE_V2);
     // Always fail on a processing or send error: continuing would commit half of a command.

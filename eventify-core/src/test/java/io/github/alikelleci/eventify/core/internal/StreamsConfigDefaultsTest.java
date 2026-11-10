@@ -2,6 +2,7 @@ package io.github.alikelleci.eventify.core.internal;
 
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.kafka.StreamsConfigDefaults;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.errors.DefaultProductionExceptionHandler;
 import org.apache.kafka.streams.errors.LogAndContinueProcessingExceptionHandler;
@@ -40,6 +41,23 @@ class StreamsConfigDefaultsTest {
     Eventify.builder().streamsConfig(config).build();
 
     assertThat(config).containsOnlyKeys(StreamsConfig.APPLICATION_ID_CONFIG);
+  }
+
+  @Test
+  @DisplayName("Should compress with zstd, unless the application set its own compression")
+  void compressesWithZstdUnlessConfigured() {
+    String prefixed = StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG);
+
+    Properties none = new Properties();
+    StreamsConfigDefaults.apply(none);
+    assertThat(none.get(prefixed)).isEqualTo("zstd");
+
+    // "producer.compression.type" wins from "compression.type": a default there would overrule the application's own.
+    Properties own = new Properties();
+    own.put(ProducerConfig.COMPRESSION_TYPE_CONFIG, "lz4");
+    StreamsConfigDefaults.apply(own);
+    assertThat(own).doesNotContainKey(prefixed);
+    assertThat(own.get(ProducerConfig.COMPRESSION_TYPE_CONFIG)).isEqualTo("lz4");
   }
 
   @Test
