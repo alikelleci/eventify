@@ -2,14 +2,21 @@ package io.github.alikelleci.eventify.console.client;
 
 import io.github.alikelleci.eventify.console.client.transport.CancelSignal;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.github.alikelleci.eventify.console.client.ConsoleViews.Result;
 import io.github.alikelleci.eventify.console.client.item.ItemCommand.CreateItem;
+import io.github.alikelleci.eventify.console.client.item.ItemEvent.ItemCreated;
 import io.github.alikelleci.eventify.console.client.item.ItemHandler;
 import io.github.alikelleci.eventify.console.protocol.Requests;
 import io.github.alikelleci.eventify.console.protocol.ReplyHeader;
 import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.command.Command;
+import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -30,6 +37,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.kafka.KafkaContainer;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashSet;
@@ -180,7 +188,59 @@ class ConsoleServiceRoutingIT {
     }
   }
 
+  /** The class changed since the event was stored: here its deserializer fails, as a changed field type would. */
+  @Test
+  @DisplayName("Should say why, not answer an unexpected error, when a stored event can't be read")
+  void aStoredEventThatCanNotBeReadIsAnsweredWithTheReason() throws Exception {
+    String id = "item-unreadable";
+    first = start("unreadable-test", "unreadable", EventifyObjectMapper.create());
+    await().atMost(Duration.ofSeconds(60)).until(() -> first.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
+    try (KafkaProducer<String, Command> producer = new KafkaProducer<>(
+        Map.of(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers()), new StringSerializer(), new JsonSerializer<>())) {
+      Command command = Command.builder().payload(CreateItem.builder().id(id).name("Item").build()).build();
+      producer.send(new ProducerRecord<>("commands.item", id, command)).get();
+    }
+    ConsoleService readable = new ConsoleService(first, new StatusTracker());
+    try {
+      await().atMost(Duration.ofSeconds(60)).untilAsserted(() ->
+          assertThat(readable.getEvents(new Requests.Events("item", id, null, 50)).value())
+              .satisfies(page -> assertThat(page.events()).hasSize(1)));
+    } finally {
+      readable.close();
+    }
+    first.stop();
+
+    ObjectMapper failing = EventifyObjectMapper.create().registerModule(new SimpleModule().addDeserializer(ItemCreated.class,
+        new com.fasterxml.jackson.databind.JsonDeserializer<>() {
+          @Override
+          public ItemCreated deserialize(JsonParser parser, DeserializationContext context) throws IOException {
+            throw JsonMappingException.from(parser, "name is no longer text");
+          }
+        }));
+    first = start("unreadable-test", "unreadable", failing);
+    await().atMost(Duration.ofSeconds(60)).until(() -> first.getKafkaStreams().state() == KafkaStreams.State.RUNNING);
+
+    ConsoleService service = new ConsoleService(first, new StatusTracker());
+    try {
+      List<ReplyHeader> answers = List.of(
+          service.getEvents(new Requests.Events("item", id, null, 50)).header(),
+          service.getEventsOfCommand(new Requests.EventsOfCommand("item", id, "any")).header(),
+          service.getState(new Requests.State("item", id, null)).header(),
+          service.getEventDetail(new Requests.EventDetail("item", id, 1L)).header());
+      assertThat(answers).allSatisfy(answer -> {
+        assertThat(answer.status()).isEqualTo(ReplyHeader.Status.UNREADABLE);
+        assertThat(answer.reason()).contains("name is no longer text");
+      });
+    } finally {
+      service.close();
+    }
+  }
+
   private Eventify start(String applicationId, String name) {
+    return start(applicationId, name, EventifyObjectMapper.create());
+  }
+
+  private Eventify start(String applicationId, String name, ObjectMapper objectMapper) {
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, applicationId);
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers());
@@ -191,6 +251,7 @@ class ConsoleServiceRoutingIT {
 
     Eventify eventify = Eventify.builder()
         .streamsConfig(properties)
+        .objectMapper(objectMapper)
         .registerHandler(new ItemHandler())
         .build();
     eventify.start();
