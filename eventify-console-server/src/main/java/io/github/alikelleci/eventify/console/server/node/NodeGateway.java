@@ -92,10 +92,9 @@ public class NodeGateway {
     }
   }
 
-  /** The connected instance with this name, if it belongs to the application. */
+  /** The application's connected instance with this name. */
   private ConnectedNode nodeOf(String applicationId, String nodeId) {
-    ConnectedNode node = registry.find(nodeId);
-    return node != null && node.applicationId().equals(applicationId) ? node : null;
+    return registry.find(applicationId, nodeId);
   }
 
   /** To one of the application's instances, a different one each time, for {@link Route.Target#ANY} routes. */
