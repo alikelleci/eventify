@@ -54,6 +54,14 @@ class CommandSnapshotTest {
   public record Broken(@AggregateId String id) {}
   @Topic("events.counter")
   public record Removed(@AggregateId String id) {}
+  /** Written once, and not readable anymore: as after a change of its class. */
+  @Topic("events.counter")
+  public static class Unreadable {
+    @AggregateId private final String id;
+    public Unreadable(String id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { throw new IllegalStateException("changed"); }
+  }
 
   public static class Handler {
     @CommandHandler
@@ -144,6 +152,23 @@ class CommandSnapshotTest {
     assertThat(snapshot().getAggregateId()).isEqualTo("one");
     assertThat(events.get(key(2))).isNull();
     assertThat(events.get(key(3))).isNotNull();
+  }
+
+  /** Replay starts after the snapshot, so only the deleting meets the event kept at it. */
+  @Test
+  @DisplayName("Should delete the events before a snapshot also when one of them can't be read anymore")
+  void anUnreadableEventBeforeTheSnapshotIsDeleted() {
+    Event kept = Event.builder().aggregateType("counter").payload(new Unreadable("one")).sequence(2).build();
+    events.put(key(2), kept);
+    snapshots.put(StoreKeys.aggregate("counter", "one"), AggregateState.after(kept, new Counter("one", 2), 1));
+
+    send("success");
+    send("success");
+
+    assertThat(results.readValuesToList()).hasSize(2).allMatch(CommandResult.Success.class::isInstance);
+    assertThat(snapshot().getVersion()).isEqualTo(4);
+    assertThat(driver.<String, byte[]>getKeyValueStore("event-store").all()).toIterable().hasSize(1);
+    assertThat(events.get(key(4))).isNotNull();
   }
 
   @AggregateRoot("unwritable")

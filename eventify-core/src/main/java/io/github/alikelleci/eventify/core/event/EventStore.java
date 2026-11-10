@@ -65,16 +65,20 @@ public final class EventStore {
     if (version <= 1) {
       return 0;
     }
-    long deleted = 0;
     KeyValueStore<String, Event> store = writable();
+    long first;
     try (KeyValueIterator<String, Event> iterator = store.range(StoreKeys.first(aggregateType, aggregateId),
         StoreKeys.event(aggregateType, aggregateId, version - 1))) {
-      while (iterator.hasNext()) {
-        store.delete(iterator.next().key);
-        deleted++;
+      if (!iterator.hasNext()) {
+        return 0;
       }
+      first = StoreKeys.sequenceOf(iterator.peekNextKey());
     }
-    return deleted;
+    // By key, without reading them: an event that can't be read anymore is deleted too.
+    for (long sequence = first; sequence < version; sequence++) {
+      store.put(StoreKeys.event(aggregateType, aggregateId, sequence), null);
+    }
+    return version - first;
   }
 
   private KeyValueStore<String, Event> writable() {

@@ -80,6 +80,8 @@ Eventify eventify(Eventify.EventifyBuilder builder) {
 }
 ```
 
+With Spring Boot Actuator, the health endpoint has an `eventify` entry: it is down when Eventify has stopped.
+
 ## Next steps
 
 - [Domain modeling](domain-modeling.md)

@@ -25,6 +25,11 @@ public final class StoreKeys {
     return aggregate(aggregateType, aggregateId) + SEPARATOR + String.format(Locale.ROOT, "%0" + SEQUENCE_LENGTH + "d", sequence);
   }
 
+  /** The sequence in an event's key. */
+  public static long sequenceOf(String eventKey) {
+    return Long.parseLong(eventKey.substring(eventKey.length() - SEQUENCE_LENGTH));
+  }
+
   /** The key of the aggregate's snapshot, which is also what the keys of its events start with. */
   public static String aggregate(String aggregateType, String aggregateId) {
     if (aggregateId.indexOf(SEPARATOR) >= 0) {

@@ -254,6 +254,77 @@ class CommandTransactionIT {
     }
   }
 
+  /** Scenarios 7 and 8: its own topics and aggregate. */
+  @AggregateRoot("archive")
+  @EnableSnapshotting(threshold = 1)
+  @Value
+  @Builder
+  public static class Archive {
+    @AggregateId
+    String id;
+    String content;
+  }
+
+  /** Returns a {@link Filled} with this much content. */
+  @Topic("archives")
+  @Value
+  @Builder
+  public static class Fill {
+    @AggregateId
+    String id;
+    int size;
+  }
+
+  /** Returns a small {@link Grown}; the archive after it has this much content. */
+  @Topic("archives")
+  @Value
+  @Builder
+  public static class Grow {
+    @AggregateId
+    String id;
+    int size;
+  }
+
+  @Topic("archives.events")
+  @Value
+  @Builder
+  public static class Filled {
+    @AggregateId
+    String id;
+    String content;
+  }
+
+  @Topic("archives.events")
+  @Value
+  @Builder
+  public static class Grown {
+    @AggregateId
+    String id;
+    int size;
+  }
+
+  public static class ArchiveHandler {
+    @CommandHandler
+    public Object handle(Fill command, Archive state) {
+      return Filled.builder().id(command.getId()).content("x".repeat(command.getSize())).build();
+    }
+
+    @CommandHandler
+    public Object handle(Grow command, Archive state) {
+      return Grown.builder().id(command.getId()).size(command.getSize()).build();
+    }
+
+    @EventSourcingHandler
+    public Archive handle(Filled event, Archive state) {
+      return Archive.builder().id(event.getId()).content(event.getContent()).build();
+    }
+
+    @EventSourcingHandler
+    public Archive handle(Grown event, Archive state) {
+      return Archive.builder().id(event.getId()).content("x".repeat(event.getSize())).build();
+    }
+  }
+
   @TempDir
   Path stateDir;
 
@@ -275,7 +346,11 @@ class CommandTransactionIT {
           new NewTopic("orders.command-copy.results", 1, (short) 1),
           new NewTopic("orders.reply-to", 1, (short) 1),
           new NewTopic("orders.reply-to.scheduled", 1, (short) 1),
-          new NewTopic("orders.reply-to.results", 1, (short) 1))).all().get();
+          new NewTopic("orders.reply-to.results", 1, (short) 1),
+          new NewTopic("archives", 1, (short) 1),
+          new NewTopic("archives.scheduled", 1, (short) 1),
+          new NewTopic("archives.results", 1, (short) 1),
+          new NewTopic("archives.events", 1, (short) 1))).all().get();
     }
   }
 
@@ -411,6 +486,36 @@ class CommandTransactionIT {
     assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
     assertThat(committed("orders.reply-to.results", "order-6")).as("results of the command").containsExactly("success");
     assertThat(committed("orders.reply-to.results", "order-6b")).as("results of the next command").containsExactly("success");
+  }
+
+  /** Scenario 7: an event larger than Kafka accepts (max.request.size, 1 MB by default). The command fails; Eventify keeps running. */
+  @Test
+  @DisplayName("Should fail the command, and keep running, when its event is too large for Kafka")
+  void aCommandWithAnEventTooLargeForKafkaFails() {
+    eventify = start("archives-large-event", new ArchiveHandler());
+    send(Fill.builder().id("archive-7").size(2_000_000).build());
+    send(Fill.builder().id("archive-7b").size(10).build());
+    await("the next command or Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+        || !committed("archives.results", "archive-7b").isEmpty());
+
+    assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
+    assertThat(committed("archives.results", "archive-7")).as("results of the command").containsExactly("failure");
+    assertThat(committed("archives.events", "archive-7")).as("committed events").isEmpty();
+    assertThat(committed("archives.results", "archive-7b")).as("results of the next command").containsExactly("success");
+  }
+
+  /** Scenario 8: the aggregate has grown larger than Kafka accepts. Its snapshot is skipped; its commands are still accepted. */
+  @Test
+  @DisplayName("Should skip a snapshot that is too large for Kafka, and keep running")
+  void aSnapshotTooLargeForKafkaIsSkipped() {
+    eventify = start("archives-large-snapshot", new ArchiveHandler());
+    send(Grow.builder().id("archive-8").size(2_000_000).build());
+    send(Grow.builder().id("archive-8").size(2_000_001).build());
+    await("both commands or Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+        || committed("archives.results", "archive-8").size() == 2);
+
+    assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
+    assertThat(committed("archives.results", "archive-8")).as("results of the commands").containsExactly("success", "success");
   }
 
   private Eventify start(String applicationId) {

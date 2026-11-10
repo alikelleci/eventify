@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Value;
 import org.apache.commons.collections4.IteratorUtils;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.apache.kafka.streams.StreamsConfig;
@@ -80,6 +81,14 @@ class CommandRejectionTest {
     String id;
   }
 
+  /** Its event has a topic name Kafka refuses. */
+  @Value
+  @Builder
+  public static class Misname implements CounterCommand {
+    @AggregateId
+    String id;
+  }
+
   /** Its event can't be written as JSON. */
   @Value
   @Builder
@@ -141,6 +150,14 @@ class CommandRejectionTest {
 
   @Value
   @Builder
+  @Topic("events counter!")
+  public static class Misnamed {
+    @AggregateId
+    String id;
+  }
+
+  @Value
+  @Builder
   public static class Corrupted implements CounterEvent {
     @AggregateId
     String id;
@@ -159,8 +176,8 @@ class CommandRejectionTest {
     String id;
 
     public String getContent() {
-      // Written twice before the command is accepted: its JSON copy and the event store.
-      if (WRITES.incrementAndGet() > 2) {
+      // Written three times before the command is accepted: twice for its JSON copy, once for its size.
+      if (WRITES.incrementAndGet() > 3) {
         throw new IllegalStateException("not writable anymore");
       }
       return "written";
@@ -186,6 +203,11 @@ class CommandRejectionTest {
     @CommandHandler
     public Object handle(Misplace command, Counter state) {
       return Misplaced.builder().id(command.getId()).build();
+    }
+
+    @CommandHandler
+    public Object handle(Misname command, Counter state) {
+      return Misnamed.builder().id(command.getId()).build();
     }
 
     @CommandHandler
@@ -299,6 +321,18 @@ class CommandRejectionTest {
     assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created");
   }
 
+  @Test
+  @DisplayName("Should fail the command and store nothing when an event has an invalid @Topic")
+  void anEventWithAnInvalidTopicIsNotStored() {
+    send(Create.builder().id("ada").build());
+    send(Misname.builder().id("ada").build());
+
+    assertThat(results()).element(1).asString()
+        .startsWith("Misname failure InvalidTopicException: Topic name is invalid: 'events counter!'");
+    assertThat(storedTypes()).containsExactly("Created");
+    assertThat(events.readValuesToList()).extracting(Event::getType).containsExactly("Created");
+  }
+
   /** Found only when stored, it would stop the application, and every instance the command moves to after it. */
   @Test
   @DisplayName("Should fail the command and store nothing when an event cannot be written as JSON")
@@ -312,6 +346,28 @@ class CommandRejectionTest {
         "Corrupt failure IllegalStateException: not writable",
         "Create success null");
     assertThat(storedTypes()).containsExactly("Created", "Created");
+  }
+
+  /** Found only when sent, it would stop the application, again after every restart. */
+  @Test
+  @DisplayName("Should fail the command and store nothing when its events are larger than max.request.size")
+  void eventsTooLargeForKafkaAreNotStored() {
+    driver.close();
+    Properties properties = new Properties();
+    properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "command-rejection-test");
+    properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+    properties.put(StreamsConfig.producerPrefix(ProducerConfig.MAX_REQUEST_SIZE_CONFIG), 1100);
+    driver = new TopologyTestDriver(Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).build().topology(), properties);
+    commands = driver.createInputTopic("commands.counter", new StringSerializer(), new JsonSerializer<>());
+    results = driver.createOutputTopic("commands.counter.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
+    eventStore = driver.getKeyValueStore("event-store");
+
+    send(Create.builder().id("ada").build());
+
+    assertThat(results()).singleElement().asString()
+        .startsWith("Create failure RecordTooLargeException: The result of command Create is ")
+        .endsWith(" bytes, more than Kafka accepts: max.request.size is 1100.");
+    assertThat(storedTypes()).isEmpty();
   }
 
   /** Not the command's failure: it fails the task, so exactly-once aborts what was written for the command. */

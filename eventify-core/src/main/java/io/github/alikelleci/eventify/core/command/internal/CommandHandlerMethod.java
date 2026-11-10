@@ -17,6 +17,7 @@ import lombok.Getter;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.kafka.common.internals.Topic;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -91,6 +92,7 @@ public class CommandHandlerMethod {
       if (Topics.of(payload.getClass()) == null) {
         throw new TopicMissingException("Event " + type + " has no @Topic.");
       }
+      Topic.validate(Topics.of(payload.getClass()).value());
     });
 
     return payloads;
