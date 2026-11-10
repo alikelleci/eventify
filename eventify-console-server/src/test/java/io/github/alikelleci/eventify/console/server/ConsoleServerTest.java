@@ -214,6 +214,48 @@ class ConsoleServerTest {
         .expectStatus().isNotFound();
   }
 
+  /** The UI encodes the id in the address; an invoice number like 2024/INV-001 is an ordinary id. */
+  @Test
+  @DisplayName("Should ask the application about an aggregate whose id has a slash, semicolon, percent sign or backslash")
+  void anAggregateIdWithSpecialCharactersReachesTheApplication() {
+    List<String> asked = new java.util.concurrent.CopyOnWriteArrayList<>();
+    connect("ids", "ids.a:0", (route, data, cancel) -> {
+      if (route.equals(Route.STATUS.name())) {
+        return new Reply(ReplyHeader.ok(), RUNNING.getBytes(StandardCharsets.UTF_8));
+      }
+      asked.add(new String(data, StandardCharsets.UTF_8));
+      return new Reply(ReplyHeader.ok(), "{\"events\":[],\"nextCursor\":null}".getBytes(StandardCharsets.UTF_8));
+    });
+    awaitInstances("ids", 1);
+
+    for (String id : List.of("2024/INV-001", "a;b", "50%", "a\\b", "a//b", "a b", "a#b", "a?b", "a+b", "ä")) {
+      asked.clear();
+      // As the UI's encodeURIComponent writes it.
+      String encoded = java.net.URLEncoder.encode(id, StandardCharsets.UTF_8).replace("+", "%20");
+
+      client.get().uri(URI.create("http://localhost:" + port + "/api/apps/ids/aggregates/order/" + encoded + "/events")).exchange()
+          .expectStatus().isOk();
+      assertThat(asked).as("asked for id %s", id).hasSize(1);
+      assertThat(asked.get(0)).contains("\"aggregateId\":" + tools.jackson.databind.json.JsonMapper.builder().build().writeValueAsString(id));
+
+      // The page of the aggregate, opened by its address: the UI itself.
+      client.get().uri(URI.create("http://localhost:" + port + "/console/aggregates/order/" + encoded)).exchange()
+          .expectStatus().isOk();
+    }
+  }
+
+  /** The firewall lets encoded slashes and backslashes through for aggregate ids; the UI's files must stay the only ones served. */
+  @Test
+  @DisplayName("Should not serve a file outside the UI for an address that climbs out of it")
+  void anAddressThatClimbsOutOfTheUiServesNoOtherFile() {
+    for (String path : List.of("/console/..%2Fapplication.yml", "/console/%2e%2e%2fapplication.yml", "/console/..%5Capplication.yml",
+        "/console/%2e%2e%5capplication.yml", "/console/media/..%2F..%2Fapplication.yml", "/console/%252e%252e%252fapplication.yml")) {
+      String body = client.get().uri(URI.create("http://localhost:" + port + path)).exchange()
+          .returnResult(String.class).getResponseBody().collectList().block().stream().reduce("", String::concat);
+      assertThat(body).as("answer to %s", path).doesNotContain("eventify-console").doesNotContain("forward-headers-strategy");
+    }
+  }
+
   private ConsoleConnector connect(String applicationId, String nodeId, ConsoleConnector.Handler handler) {
     return connect(applicationId, nodeId, handler, Set.of("order"));
   }
