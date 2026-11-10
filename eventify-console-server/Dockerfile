@@ -18,5 +18,8 @@ FROM eclipse-temurin:21-jre
 WORKDIR /app
 COPY --from=build /build/eventify-console-server/target/eventify-console-server-*.jar app.jar
 
+# Not as root. A number, so Kubernetes can check it (runAsNonRoot).
+USER 10001:10001
+
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
