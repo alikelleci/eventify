@@ -285,6 +285,16 @@ class CommandTransactionIT {
     int size;
   }
 
+  /** Scenario 9: a command with this note; returns a small {@link Grown}. */
+  @Topic("archives")
+  @Value
+  @Builder
+  public static class Annotate {
+    @AggregateId
+    String id;
+    String note;
+  }
+
   @Topic("archives.events")
   @Value
   @Builder
@@ -312,6 +322,11 @@ class CommandTransactionIT {
     @CommandHandler
     public Object handle(Grow command, Archive state) {
       return Grown.builder().id(command.getId()).size(command.getSize()).build();
+    }
+
+    @CommandHandler
+    public Object handle(Annotate command, Archive state) {
+      return Grown.builder().id(command.getId()).size(1).build();
     }
 
     @EventSourcingHandler
@@ -516,6 +531,29 @@ class CommandTransactionIT {
 
     assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
     assertThat(committed("archives.results", "archive-8")).as("results of the commands").containsExactly("success", "success");
+  }
+
+  /** Scenario 9: the command itself is larger than Eventify's producer accepts, so its failure is too. It gets no result; Eventify keeps running. */
+  @Test
+  @DisplayName("Should skip a command that is itself too large for Kafka, and keep running")
+  void aCommandTooLargeForKafkaGetsNoResult() {
+    eventify = start("archives-large-command", new ArchiveHandler());
+    // Its sender accepts more than Eventify's producer does; compressed, so the broker accepts it too.
+    Command command = Command.builder().payload(Annotate.builder().id("archive-9").note("x".repeat(2_000_000)).build()).build();
+    try (KafkaProducer<String, Command> producer = new KafkaProducer<>(Map.of(
+        ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, kafka.getBootstrapServers(),
+        ProducerConfig.MAX_REQUEST_SIZE_CONFIG, 3_000_000,
+        ProducerConfig.COMPRESSION_TYPE_CONFIG, "zstd"), new StringSerializer(), new JsonSerializer<>())) {
+      producer.send(new ProducerRecord<>(command.getTopic().value(), command.getAggregateId(), command));
+    }
+    send(Annotate.builder().id("archive-9b").note("small").build());
+    await("the next command or Eventify to stop", () -> eventify.getKafkaStreams().state() == KafkaStreams.State.ERROR
+        || !committed("archives.results", "archive-9b").isEmpty());
+
+    assertThat(eventify.getKafkaStreams().state()).isEqualTo(KafkaStreams.State.RUNNING);
+    assertThat(committed("archives.results", "archive-9")).as("results of the skipped command").isEmpty();
+    assertThat(committed("archives.events", "archive-9")).as("committed events").isEmpty();
+    assertThat(committed("archives.results", "archive-9b")).as("results of the next command").containsExactly("success");
   }
 
   private Eventify start(String applicationId) {
