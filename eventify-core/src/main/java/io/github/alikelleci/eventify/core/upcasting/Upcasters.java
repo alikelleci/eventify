@@ -79,12 +79,28 @@ public final class Upcasters {
     try {
       upcastClass = Class.forName(upcaster.getType(), false, handler.getClass().getClassLoader());
     } catch (ClassNotFoundException | LinkageError e) {
+      requireNoNestedClassWithDots(handler, upcaster);
       return;
     }
     int revision = Revisions.of(upcastClass);
     if (upcaster.getRevision() >= revision) {
       throw new HandlerRegistrationException("Upcaster " + upcaster.getMethod() + " upcasts from revision " + upcaster.getRevision()
           + " of " + upcaster.getType() + ", but that class is at revision " + revision + ": raise its @Revision.");
+    }
+  }
+
+  /** An event names a nested class with "$": an upcaster for "com.example.OrderEvent.Placed" would never be applied. */
+  private static void requireNoNestedClassWithDots(Object handler, UpcasterMethod upcaster) {
+    String name = upcaster.getType();
+    for (int dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.')) {
+      name = name.substring(0, dot) + '$' + name.substring(dot + 1);
+      try {
+        Class.forName(name, false, handler.getClass().getClassLoader());
+      } catch (ClassNotFoundException | LinkageError e) {
+        continue;
+      }
+      throw new HandlerRegistrationException("Upcaster " + upcaster.getMethod() + " names " + upcaster.getType()
+          + ", but that nested class is stored as " + name + ": use that name.");
     }
   }
 

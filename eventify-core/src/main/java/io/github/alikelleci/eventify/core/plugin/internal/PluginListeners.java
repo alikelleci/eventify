@@ -6,8 +6,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.streams.KafkaStreams.StateListener;
 import org.apache.kafka.streams.processor.StateRestoreListener;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -27,13 +27,13 @@ public class PluginListeners {
   }
 
   public StateListener stateListener() {
-    List<StateListener> listeners = listenersOf(EventifyPlugin::stateListener);
+    List<StateListener> listeners = listenersOf("stateListener", EventifyPlugin::stateListener);
     return (newState, oldState) ->
         tellAll(listeners, "onChange", listener -> listener.onChange(newState, oldState));
   }
 
   public StateRestoreListener stateRestoreListener() {
-    List<StateRestoreListener> listeners = listenersOf(EventifyPlugin::stateRestoreListener);
+    List<StateRestoreListener> listeners = listenersOf("stateRestoreListener", EventifyPlugin::stateRestoreListener);
     return new StateRestoreListener() {
       @Override
       public void onRestoreStart(TopicPartition topicPartition, String storeName, long startingOffset, long endingOffset) {
@@ -57,8 +57,20 @@ public class PluginListeners {
     };
   }
 
-  private <T> List<T> listenersOf(Function<EventifyPlugin, T> listener) {
-    return plugins.stream().map(listener).filter(Objects::nonNull).toList();
+  /** A plugin that fails to give its listener is logged and skipped, like one whose callback fails. */
+  private <T> List<T> listenersOf(String hook, Function<EventifyPlugin, T> listener) {
+    List<T> listeners = new ArrayList<>();
+    for (EventifyPlugin plugin : plugins) {
+      try {
+        T given = listener.apply(plugin);
+        if (given != null) {
+          listeners.add(given);
+        }
+      } catch (Exception e) {
+        log.warn("Plugin callback failed: targetClass={}, callback={}", plugin.getClass().getName(), hook, e);
+      }
+    }
+    return listeners;
   }
 
   private static <T> void tellAll(List<T> listeners, String hook, Consumer<T> call) {

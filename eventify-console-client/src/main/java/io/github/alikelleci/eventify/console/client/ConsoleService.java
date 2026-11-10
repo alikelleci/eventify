@@ -15,6 +15,7 @@ import io.github.alikelleci.eventify.core.aggregate.exception.EventReplayExcepti
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.plugin.PluginContext;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.errors.InvalidStateStoreException;
 
@@ -79,6 +80,10 @@ class ConsoleService {
     } catch (InvalidStateStoreException e) {
       log.debug("Cannot load events for command, event store not ready: commandId={}, aggregateType={}, aggregateId={}", request.commandId(), aggregateType, aggregateId);
       return Result.unavailable("Event store not ready.");
+    } catch (SerializationException e) {
+      // A stored event can't be read anymore: the application refuses the aggregate's commands for the same reason.
+      log.warn("Cannot answer, a stored event can't be read: aggregateType={}, aggregateId={}, reason={}", aggregateType, aggregateId, rootCauseMessage(e));
+      return Result.unreadable("A stored event can't be read: " + rootCauseMessage(e));
     } catch (Exception e) {
       log.error("Failed to load events for command: commandId={}, aggregateType={}, aggregateId={}", request.commandId(), aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error.");
@@ -98,6 +103,10 @@ class ConsoleService {
     } catch (InvalidStateStoreException e) {
       log.debug("Cannot load events, event store not ready: aggregateType={}, aggregateId={}", aggregateType, aggregateId);
       return Result.unavailable("Event store not ready.");
+    } catch (SerializationException e) {
+      // A stored event can't be read anymore: the application refuses the aggregate's commands for the same reason.
+      log.warn("Cannot answer, a stored event can't be read: aggregateType={}, aggregateId={}, reason={}", aggregateType, aggregateId, rootCauseMessage(e));
+      return Result.unreadable("A stored event can't be read: " + rootCauseMessage(e));
     } catch (Exception e) {
       log.error("Failed to load events: aggregateType={}, aggregateId={}", aggregateType, aggregateId, e);
       return Result.unavailable("Unexpected error.");
@@ -121,6 +130,10 @@ class ConsoleService {
     } catch (InvalidStateStoreException e) {
       log.debug("Cannot load event details, event store not ready: aggregateType={}, aggregateId={}, sequence={}", aggregateType, aggregateId, request.sequence());
       return Result.unavailable("Event store not ready.");
+    } catch (SerializationException e) {
+      // A stored event can't be read anymore: the application refuses the aggregate's commands for the same reason.
+      log.warn("Cannot answer, a stored event can't be read: aggregateType={}, aggregateId={}, reason={}", aggregateType, aggregateId, rootCauseMessage(e));
+      return Result.unreadable("A stored event can't be read: " + rootCauseMessage(e));
     } catch (EventReplayException e) {
       // The stored events can't be replayed: the application refuses the aggregate's commands for the same reason.
       log.warn("Cannot load event details, aggregate replay failed: aggregateType={}, aggregateId={}, sequence={}, reason={}", aggregateType, aggregateId, request.sequence(), e.getMessage());
@@ -149,6 +162,10 @@ class ConsoleService {
     } catch (InvalidStateStoreException e) {
       log.debug("Cannot load aggregate state, event store not ready: aggregateType={}, aggregateId={}, sequence={}", aggregateType, aggregateId, request.sequence() == null ? "latest" : request.sequence());
       return Result.unavailable("Event store not ready.");
+    } catch (SerializationException e) {
+      // A stored event can't be read anymore: the application refuses the aggregate's commands for the same reason.
+      log.warn("Cannot answer, a stored event can't be read: aggregateType={}, aggregateId={}, reason={}", aggregateType, aggregateId, rootCauseMessage(e));
+      return Result.unreadable("A stored event can't be read: " + rootCauseMessage(e));
     } catch (EventReplayException e) {
       // The stored events can't be replayed: the application refuses the aggregate's commands for the same reason.
       log.warn("Cannot load aggregate state, aggregate replay failed: aggregateType={}, aggregateId={}, sequence={}, reason={}", aggregateType, aggregateId, request.sequence() == null ? "latest" : request.sequence(), e.getMessage());
@@ -157,6 +174,14 @@ class ConsoleService {
       log.error("Failed to load aggregate state: aggregateType={}, aggregateId={}, sequence={}", aggregateType, aggregateId, request.sequence() == null ? "latest" : request.sequence(), e);
       return Result.unavailable("Unexpected error.");
     }
+  }
+
+  private static String rootCauseMessage(Throwable e) {
+    Throwable cause = e;
+    while (cause.getCause() != null && cause.getCause() != cause) {
+      cause = cause.getCause();
+    }
+    return cause.getMessage();
   }
 
   /** The name is one this instance handles: {@link ConsoleRequestHandler} refuses the request otherwise. */

@@ -140,7 +140,7 @@ class LoginTest {
         (route, data, cancel) -> new Reply(ReplyHeader.ok(), new byte[0]));
     connector.start();
     try {
-      await().atMost(Duration.ofSeconds(15)).until(() -> registry.find("login-test.a:0") != null);
+      await().atMost(Duration.ofSeconds(15)).until(() -> registry.find("login-test", "login-test.a:0") != null);
     } finally {
       connector.stop();
     }

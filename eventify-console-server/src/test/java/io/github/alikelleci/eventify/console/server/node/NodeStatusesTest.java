@@ -54,4 +54,22 @@ class NodeStatusesTest {
     assertThat(other.get(5, TimeUnit.SECONDS)).map(NodeStatus::state).contains("RUNNING");
     assertThat(asked).hasValue(1);
   }
+
+  @Test
+  @DisplayName("Should not answer with the status of another application's instance that has the same node id")
+  void twoApplicationsWithTheSameNodeIdHaveTheirOwnStatus() {
+    ConnectedNode orders = new ConnectedNode(
+        new NodeInfo("orders", "localhost:8080", "localhost", "test", ConsoleProtocol.VERSION, Set.of("order")), null, Instant.now());
+    ConnectedNode payments = new ConnectedNode(
+        new NodeInfo("payments", "localhost:8080", "localhost", "test", ConsoleProtocol.VERSION, Set.of("payment")), null, Instant.now());
+    when(gateway.sendTo(eq(orders), eq(Route.STATUS), any())).thenReturn(Mono.just(new Reply(ReplyHeader.ok(), status("RUNNING"))));
+    when(gateway.sendTo(eq(payments), eq(Route.STATUS), any())).thenReturn(Mono.just(new Reply(ReplyHeader.ok(), status("ERROR"))));
+
+    assertThat(statuses.of(orders).block()).map(NodeStatus::state).contains("RUNNING");
+    assertThat(statuses.of(payments).block()).map(NodeStatus::state).contains("ERROR");
+  }
+
+  private static byte[] status(String state) {
+    return ("{\"state\":\"" + state + "\",\"stateForMs\":1,\"restoring\":false}").getBytes(StandardCharsets.UTF_8);
+  }
 }
