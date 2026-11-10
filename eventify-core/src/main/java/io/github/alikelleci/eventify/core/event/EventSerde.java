@@ -1,7 +1,10 @@
 package io.github.alikelleci.eventify.core.event;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
+import com.fasterxml.jackson.databind.cfg.JsonNodeFeature;
 import io.github.alikelleci.eventify.core.serialization.EventifyObjectMapper;
 import io.github.alikelleci.eventify.core.serialization.JsonSerializer;
 import io.github.alikelleci.eventify.core.upcasting.Upcasters;
@@ -16,6 +19,7 @@ public class EventSerde implements Serde<Event> {
   private final ObjectMapper objectMapper;
   private final Upcasters upcasters;
   private final JsonSerializer<Event> serializer;
+  private final ObjectReader treeReader;
 
   public EventSerde() {
     this(EventifyObjectMapper.create());
@@ -29,6 +33,10 @@ public class EventSerde implements Serde<Event> {
     this.objectMapper = objectMapper;
     this.upcasters = upcasters;
     this.serializer = new JsonSerializer<>(objectMapper);
+    // Decimals as stored, not as doubles: with upcasters an event must read the same as without.
+    this.treeReader = objectMapper.reader()
+        .with(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
+        .without(JsonNodeFeature.STRIP_TRAILING_BIGDECIMAL_ZEROES);
   }
 
   /** A new serde with these upcasters added; this one is unchanged. */
@@ -51,8 +59,9 @@ public class EventSerde implements Serde<Event> {
         if (upcasters.isEmpty()) {
           return objectMapper.readValue(bytes, Event.class);
         }
-        JsonNode upcasted = upcasters.upcast(objectMapper.readTree(bytes));
-        return objectMapper.convertValue(upcasted, Event.class);
+        JsonNode upcasted = upcasters.upcast(treeReader.readTree(bytes));
+        // From JSON again, not from the tree: that would also give an Object field a BigDecimal.
+        return objectMapper.readValue(objectMapper.writeValueAsBytes(upcasted), Event.class);
       } catch (Exception e) {
         throw new SerializationException("Error deserializing event.", e);
       }
