@@ -103,7 +103,15 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
       requireSendable("The result of command " + command.getType(), aggregateId, new CommandResult.Success(command, events), fixedKeyRecord.headers());
     } catch (Exception e) {
       logFailure(command, e);
-      context.forward(fixedKeyRecord.withValue(new CommandResult.Failure(command, ExceptionUtils.getRootCauseMessage(e))));
+      CommandResult failure = new CommandResult.Failure(command, ExceptionUtils.getRootCauseMessage(e));
+      try {
+        // The failure holds the command too: a command that is too large itself gets no result.
+        requireSendable("The result of command " + command.getType(), aggregateId, failure, fixedKeyRecord.headers());
+      } catch (RuntimeException tooLarge) {
+        log.error("Skipping command result, it can't be sent: commandId={}, commandType={}, aggregateId={}, reason={}", command.getId(), command.getType(), command.getAggregateId(), tooLarge.getMessage());
+        return;
+      }
+      context.forward(fixedKeyRecord.withValue(failure));
       return;
     }
 

@@ -352,22 +352,40 @@ class CommandRejectionTest {
   @Test
   @DisplayName("Should fail the command and store nothing when its events are larger than max.request.size")
   void eventsTooLargeForKafkaAreNotStored() {
+    restartWithMaxRequestSize(3600);
+
+    // The failure, with only the command, fits; the success, with the event too, doesn't.
+    send(Create.builder().id("a".repeat(600)).build());
+
+    assertThat(results()).singleElement().asString()
+        .startsWith("Create failure RecordTooLargeException: The result of command Create is ")
+        .endsWith(" bytes, more than Kafka accepts: max.request.size is 3600.");
+    assertThat(storedTypes()).isEmpty();
+  }
+
+  /** Its failure holds the command, so that can't be sent either: sending it would stop the application. */
+  @Test
+  @DisplayName("Should skip a command that is itself larger than max.request.size, and handle the next one")
+  void aCommandTooLargeForKafkaGetsNoResult() {
+    restartWithMaxRequestSize(3000);
+
+    send(Create.builder().id("a".repeat(3000)).build());
+    send(Create.builder().id("ada").build());
+
+    assertThat(results()).containsExactly("Create success null");
+    assertThat(storedTypes()).containsExactly("Created");
+  }
+
+  private void restartWithMaxRequestSize(int maxRequestSize) {
     driver.close();
     Properties properties = new Properties();
     properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "command-rejection-test");
     properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
-    properties.put(StreamsConfig.producerPrefix(ProducerConfig.MAX_REQUEST_SIZE_CONFIG), 1100);
+    properties.put(StreamsConfig.producerPrefix(ProducerConfig.MAX_REQUEST_SIZE_CONFIG), maxRequestSize);
     driver = new TopologyTestDriver(Eventify.builder().streamsConfig(properties).registerHandler(new CounterHandler()).build().topology(), properties);
     commands = driver.createInputTopic("commands.counter", new StringSerializer(), new JsonSerializer<>());
     results = driver.createOutputTopic("commands.counter.results", new StringDeserializer(), new JsonDeserializer<>(CommandResult.class));
     eventStore = driver.getKeyValueStore("event-store");
-
-    send(Create.builder().id("ada").build());
-
-    assertThat(results()).singleElement().asString()
-        .startsWith("Create failure RecordTooLargeException: The result of command Create is ")
-        .endsWith(" bytes, more than Kafka accepts: max.request.size is 1100.");
-    assertThat(storedTypes()).isEmpty();
   }
 
   /** Not the command's failure: it fails the task, so exactly-once aborts what was written for the command. */
