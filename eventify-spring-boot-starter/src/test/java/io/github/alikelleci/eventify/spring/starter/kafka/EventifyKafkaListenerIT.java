@@ -7,6 +7,7 @@ import io.github.alikelleci.eventify.core.Eventify;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.annotation.MessageId;
 import io.github.alikelleci.eventify.core.handler.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.handler.annotation.Sequence;
 import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import io.github.alikelleci.eventify.core.message.annotation.AggregateId;
@@ -113,8 +114,8 @@ class EventifyKafkaListenerIT {
   public static class ParameterListener {
     @KafkaListener(topics = "parameters", groupId = "parameters", containerFactory = "eventifyListenerContainerFactory")
     public void on(OrderPlaced event, Metadata metadata, @Timestamp Instant timestamp, @MessageId String id,
-                   @MetadataValue("user") String user) {
-      received.add(List.of(event, metadata.getCorrelationId(), timestamp, id, user));
+                   @MetadataValue("user") String user, @Sequence long sequence) {
+      received.add(List.of(event, metadata.getCorrelationId(), timestamp, id, user, sequence));
     }
   }
 
@@ -122,7 +123,7 @@ class EventifyKafkaListenerIT {
   @DisplayName("Should give the payload, upcasted, and the parameters Eventify handlers can have")
   void payloadAndParameters() throws Exception {
     Event event = Event.builder().aggregateType("order").payload(OrderPlaced.builder().id("order-1").total(10).build())
-        .metadata(Metadata.of("user", "ali")).sequence(1).build();
+        .metadata(Metadata.of("user", "ali")).sequence(3).build();
     send("parameters", atRevision1(event));
 
     run(ParameterListener.class, () -> {
@@ -132,6 +133,7 @@ class EventifyKafkaListenerIT {
       assertThat(got.get(2)).isEqualTo(event.getTimestamp());
       assertThat(got.get(3)).isEqualTo(event.getId());
       assertThat(got.get(4)).isEqualTo("ali");
+      assertThat(got.get(5)).isEqualTo(3L);
     }, OrderPlacedUpcaster.class);
   }
 

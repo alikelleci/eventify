@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.event.annotation.Priority;
 import io.github.alikelleci.eventify.core.event.exception.EventHandlingException;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.handler.annotation.Sequence;
 import lombok.Getter;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -49,6 +50,8 @@ public class EventHandlerMethod {
       Parameter parameter = parameters[i];
       if (i == 0) {
         args[i] = event.getPayload();
+      } else if (parameter.isAnnotationPresent(Sequence.class)) {
+        args[i] = event.getSequence();
       } else {
         args[i] = HandlerParameterResolver.resolve(parameter, event);
       }

@@ -105,6 +105,45 @@ class HandlerRegistrationTest {
         .hasMessageContaining("unsupported parameter");
   }
 
+  public static class SequenceCommandHandler {
+    @CommandHandler
+    public Object handle(SwitchOn command, Light state,
+                         @io.github.alikelleci.eventify.core.handler.annotation.Sequence long sequence) {
+      return null;
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse @Sequence on a command handler: a command has no sequence")
+  void sequenceOnCommandHandlerIsRejected() {
+    assertThatThrownBy(() -> Eventify.builder().registerHandler(new SequenceCommandHandler()).build())
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContainingAll("@CommandHandler", "@Sequence");
+  }
+
+  public static class InvalidSequenceHandler {
+    @EventHandler
+    public void handle(SwitchedOn event, @io.github.alikelleci.eventify.core.handler.annotation.Sequence int sequence) {
+    }
+  }
+
+  public static class ConflictingSequenceHandler {
+    @EventHandler
+    public void handle(SwitchedOn event, @io.github.alikelleci.eventify.core.handler.annotation.Sequence
+        @io.github.alikelleci.eventify.core.handler.annotation.Timestamp java.time.Instant sequence) {
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse @Sequence on anything but a long or Long without another message annotation")
+  void invalidSequenceIsRejected() {
+    for (Object handler : List.of(new InvalidSequenceHandler(), new ConflictingSequenceHandler())) {
+      assertThatThrownBy(() -> Eventify.builder().registerHandler(handler).build())
+          .isInstanceOf(HandlerRegistrationException.class)
+          .hasMessageContaining("unsupported parameter");
+    }
+  }
+
   /** Handles the same command as LightHandler. */
   public static class OtherCommandHandler {
     @CommandHandler
@@ -385,7 +424,7 @@ class HandlerRegistrationTest {
         .registerHandler(new WrongResultEventSourcingHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@EventSourcingHandler", "Fan", "Light");
+        .hasMessageContainingAll("@EventSourcingHandler", "Fan", "Light");
   }
 
   /** Without an aggregate parameter, e.g. for the event that creates the aggregate. */
@@ -403,7 +442,7 @@ class HandlerRegistrationTest {
         .registerHandler(new NonAggregateResultEventSourcingHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@EventSourcingHandler", "@AggregateRoot", "java.lang.String");
+        .hasMessageContainingAll("@EventSourcingHandler", "@AggregateRoot", "java.lang.String");
   }
 
   @Test
@@ -413,7 +452,7 @@ class HandlerRegistrationTest {
         .registerHandler(new VoidEventSourcingHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@EventSourcingHandler", "void");
+        .hasMessageContainingAll("@EventSourcingHandler", "void");
   }
 
   @Test
@@ -435,7 +474,7 @@ class HandlerRegistrationTest {
         .registerHandler(new HandlerWithoutMessage())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@EventHandler", "first parameter");
+        .hasMessageContainingAll("@EventHandler", "first parameter");
   }
 
   @Test
@@ -445,13 +484,13 @@ class HandlerRegistrationTest {
         .registerHandler(new HandlerWithoutCommandTopic())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@CommandHandler", "@Topic");
+        .hasMessageContainingAll("@CommandHandler", "@Topic");
 
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new HandlerWithoutEventTopic())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@EventHandler", "@Topic");
+        .hasMessageContainingAll("@EventHandler", "@Topic");
   }
 
   @Test
@@ -504,7 +543,7 @@ class HandlerRegistrationTest {
         .registerHandler(new UnsupportedParameterHandler())
         .build())
         .isInstanceOf(HandlerRegistrationException.class)
-        .hasMessageContaining("@EventHandler", "java.lang.String");
+        .hasMessageContainingAll("@EventHandler", "java.lang.String");
   }
 
   @Test

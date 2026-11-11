@@ -15,3 +15,4 @@
 | `@Timestamp` | Injects a message timestamp. |
 | `@MessageId` | Injects a message id. |
 | `@MetadataValue("key")` | Injects one metadata value. |
+| `@Sequence` | Injects the event's position in its aggregate's history. |

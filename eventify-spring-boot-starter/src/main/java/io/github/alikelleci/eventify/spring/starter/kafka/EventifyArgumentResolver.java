@@ -4,6 +4,7 @@ import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.handler.annotation.MessageId;
 import io.github.alikelleci.eventify.core.handler.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.handler.annotation.Sequence;
 import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.message.Metadata;
 import org.springframework.core.MethodParameter;
@@ -13,7 +14,7 @@ import org.springframework.messaging.handler.invocation.MethodArgumentResolution
 
 /**
  * Resolves the parameters an Eventify event handler can have, on {@code @KafkaListener} methods: the {@code Event}
- * itself, {@code Metadata}, {@code @Timestamp}, {@code @MessageId} and {@code @MetadataValue}.
+ * itself, {@code Metadata}, {@code @Timestamp}, {@code @MessageId}, {@code @MetadataValue} and {@code @Sequence}.
  *
  * <p>Spring Kafka uses it for every listener, so it only takes parameters of these types and annotations; a plain
  * {@code Object} or {@code Map} parameter is left to Spring Kafka.
@@ -27,7 +28,8 @@ public class EventifyArgumentResolver implements HandlerMethodArgumentResolver {
         || type == Metadata.class
         || parameter.hasParameterAnnotation(Timestamp.class)
         || parameter.hasParameterAnnotation(MessageId.class)
-        || parameter.hasParameterAnnotation(MetadataValue.class);
+        || parameter.hasParameterAnnotation(MetadataValue.class)
+        || parameter.hasParameterAnnotation(Sequence.class);
   }
 
   @Override
@@ -36,6 +38,9 @@ public class EventifyArgumentResolver implements HandlerMethodArgumentResolver {
       throw new MethodArgumentResolutionException(message, parameter,
           "The record is not an Eventify event: use containerFactory = \"eventifyListenerContainerFactory\".");
     }
-    return parameter.getParameterType() == Event.class ? event : HandlerParameterResolver.resolve(parameter.getParameter(), event);
+    if (parameter.getParameterType() == Event.class) {
+      return event;
+    }
+    return parameter.hasParameterAnnotation(Sequence.class) ? event.getSequence() : HandlerParameterResolver.resolve(parameter.getParameter(), event);
   }
 }

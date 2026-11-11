@@ -10,6 +10,10 @@ import io.github.alikelleci.eventify.core.event.annotation.EventHandler;
 import io.github.alikelleci.eventify.core.event.internal.EventHandlerMethod;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
 import io.github.alikelleci.eventify.core.handler.annotation.MessageHandler;
+import io.github.alikelleci.eventify.core.handler.annotation.MessageId;
+import io.github.alikelleci.eventify.core.handler.annotation.MetadataValue;
+import io.github.alikelleci.eventify.core.handler.annotation.Sequence;
+import io.github.alikelleci.eventify.core.handler.annotation.Timestamp;
 import io.github.alikelleci.eventify.core.handler.exception.HandlerRegistrationException;
 import io.github.alikelleci.eventify.core.internal.reflection.AnnotationScanner;
 import io.github.alikelleci.eventify.core.message.annotation.Topic;
@@ -160,7 +164,10 @@ public class HandlerRegistry {
   private void addCommandHandler(Object handler, Method method) {
     requireNotPrivate("@CommandHandler", method);
     requireMessageParameter("@CommandHandler", method);
-    requireSupportedParameters("@CommandHandler", method, true);
+    if (Arrays.stream(method.getParameters()).anyMatch(parameter -> parameter.isAnnotationPresent(Sequence.class))) {
+      throw new HandlerRegistrationException("@CommandHandler method " + method + " has a @Sequence parameter: a command has no sequence.");
+    }
+    requireSupportedParameters("@CommandHandler", method, true, false);
     Class<?> messageClass = method.getParameters()[0].getType();
     requireTopicOnHandledMessage("@CommandHandler", messageClass, method);
     String aggregateType = AggregateTypes.of(aggregateOf(method));
@@ -173,7 +180,7 @@ public class HandlerRegistry {
   private void addEventSourcingHandler(Object handler, Method method) {
     requireNotPrivate("@EventSourcingHandler", method);
     requireMessageParameter("@EventSourcingHandler", method);
-    requireSupportedParameters("@EventSourcingHandler", method, true);
+    requireSupportedParameters("@EventSourcingHandler", method, true, true);
     requireMatchingAggregateReturnType(method);
     Class<?> messageClass = method.getParameters()[0].getType();
     EventSourcingHandlerMethod previous = eventSourcingHandlers.put(messageClass, new EventSourcingHandlerMethod(handler, method));
@@ -185,7 +192,7 @@ public class HandlerRegistry {
   private void addEventHandler(Object handler, Method method) {
     requireNotPrivate("@EventHandler", method);
     requireMessageParameter("@EventHandler", method);
-    requireSupportedParameters("@EventHandler", method, false);
+    requireSupportedParameters("@EventHandler", method, false, true);
     Class<?> messageClass = method.getParameters()[0].getType();
     requireTopicOnHandledMessage("@EventHandler", messageClass, method);
     // The same object registered twice is still one handler.
@@ -229,14 +236,25 @@ public class HandlerRegistry {
   }
 
   /** Every parameter after the message must be one Eventify has a value for. */
-  private static void requireSupportedParameters(String annotation, Method method, boolean takesAggregate) {
+  private static void requireSupportedParameters(String annotation, Method method, boolean takesAggregate, boolean takesSequence) {
     Parameter[] parameters = method.getParameters();
     for (int i = 1; i < parameters.length; i++) {
       boolean aggregate = takesAggregate && parameters[i].getType().isAnnotationPresent(AggregateRoot.class);
-      if (!aggregate && !HandlerParameterResolver.supports(parameters[i])) {
+      boolean supported = parameters[i].isAnnotationPresent(Sequence.class)
+          ? takesSequence && isSequence(parameters[i])
+          : aggregate || HandlerParameterResolver.supports(parameters[i]);
+      if (!supported) {
         throw new HandlerRegistrationException(annotation + " method " + method + " has an unsupported parameter: " + parameters[i]);
       }
     }
+  }
+
+  /** A {@code @Sequence long} or {@code Long} without another message annotation; events only, so not in the generic resolver. */
+  private static boolean isSequence(Parameter parameter) {
+    Class<?> type = parameter.getType();
+    boolean otherValue = parameter.isAnnotationPresent(Timestamp.class) || parameter.isAnnotationPresent(MessageId.class)
+        || parameter.isAnnotationPresent(MetadataValue.class);
+    return !otherValue && (type == long.class || type.isAssignableFrom(Long.class));
   }
 
   /** Throws on a second handler; the same object twice, or an override of the annotated method, is allowed. */
