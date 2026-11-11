@@ -20,12 +20,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class NodeRegistry {
 
-  private final Map<String, ConnectedNode> nodes = new ConcurrentHashMap<>();
+  private final Map<ConnectedNode.Key, ConnectedNode> nodes = new ConcurrentHashMap<>();
   private final AtomicInteger roundRobin = new AtomicInteger();
 
   public ConnectedNode register(NodeInfo info, RSocket rsocket) {
     ConnectedNode node = new ConnectedNode(info, rsocket, Instant.now());
-    ConnectedNode previous = nodes.put(info.nodeId(), node);
+    ConnectedNode previous = nodes.put(node.key(), node);
     if (previous != null) {
       // The instance reconnected before its old connection timed out: the newest connection wins.
       previous.rsocket().dispose();
@@ -38,13 +38,14 @@ public class NodeRegistry {
 
   public void unregister(ConnectedNode node) {
     // Only this connection: after a reconnect, the instance's entry is a newer connection that stays.
-    if (nodes.remove(node.nodeId(), node)) {
+    if (nodes.remove(node.key(), node)) {
       log.info("Application instance disconnected: nodeId={}, applicationId={}", node.nodeId(), node.applicationId());
     }
   }
 
-  public ConnectedNode find(String nodeId) {
-    return nodeId == null ? null : nodes.get(nodeId);
+  /** The application's connected instance with this node id; {@code null} if it isn't connected. */
+  public ConnectedNode find(String applicationId, String nodeId) {
+    return nodeId == null ? null : nodes.get(new ConnectedNode.Key(applicationId, nodeId));
   }
 
   /** One of the application's instances, a different one each time; {@code null} if none is connected. */

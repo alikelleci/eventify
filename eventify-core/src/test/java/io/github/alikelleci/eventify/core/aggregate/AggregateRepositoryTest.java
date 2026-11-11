@@ -76,7 +76,7 @@ class AggregateRepositoryTest {
 
     assertThatThrownBy(() -> repository.replay("order-1").currentState())
         .isInstanceOf(EventReplayException.class)
-        .hasMessageContaining("belongs to order another-order", "read as order order-1");
+        .hasMessageContainingAll("belongs to order another-order", "read as order order-1");
   }
 
   @Test
@@ -180,7 +180,7 @@ class AggregateRepositoryTest {
 
     assertThatThrownBy(() -> repository.replay("order-1").currentState())
         .isInstanceOf(EventReplayException.class)
-        .hasMessageContaining("archived-event", "upcaster");
+        .hasMessageContainingAll("archived-event", "upcaster");
   }
 
   public record Viewed(@AggregateId String id) {}

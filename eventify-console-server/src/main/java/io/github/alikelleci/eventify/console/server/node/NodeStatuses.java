@@ -34,8 +34,8 @@ public class NodeStatuses {
   private final NodeGateway gateway;
   private final JsonMapper jsonMapper;
 
-  /** By node id; empty when the instance didn't answer. */
-  private final AsyncCache<String, Optional<NodeStatus>> cache = Caffeine.newBuilder()
+  /** By instance; empty when the instance didn't answer. */
+  private final AsyncCache<ConnectedNode.Key, Optional<NodeStatus>> cache = Caffeine.newBuilder()
       .expireAfterWrite(KEEP)
       .buildAsync();
 
@@ -44,7 +44,7 @@ public class NodeStatuses {
    * time wait for the same answer, so one that stops waiting (e.g. it refreshed) must not cancel it for the others.
    */
   public Mono<Optional<NodeStatus>> of(ConnectedNode node) {
-    return Mono.fromFuture(() -> cache.get(node.nodeId(), (key, executor) -> ask(node).toFuture()), true);
+    return Mono.fromFuture(() -> cache.get(node.key(), (key, executor) -> ask(node).toFuture()), true);
   }
 
   private Mono<Optional<NodeStatus>> ask(ConnectedNode node) {

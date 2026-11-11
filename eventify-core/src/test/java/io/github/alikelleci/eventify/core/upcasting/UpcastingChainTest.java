@@ -176,6 +176,24 @@ class UpcastingChainTest {
         .hasMessageContaining("Two upcasters for " + TYPE + " revision 1");
   }
 
+  /** As the class is written in Java source, with a dot before the nested class; its name in an event has a dollar sign. */
+  public static class NamingANestedClassWithDots {
+    @Upcaster(type = "io.github.alikelleci.eventify.core.upcasting.UpcastingChainTest.Renamed", revision = 1)
+    public JsonNode nameToFullName(ObjectNode payload) {
+      payload.set("fullName", payload.remove("name"));
+      return payload;
+    }
+  }
+
+  @Test
+  @DisplayName("Should refuse an upcaster that names a nested class with dots: it would never be applied")
+  void anUpcasterNamingANestedClassWithDotsIsRefused() {
+    assertThatThrownBy(() -> new EventSerde().withUpcasters(new NamingANestedClassWithDots()))
+        .isInstanceOf(HandlerRegistrationException.class)
+        .hasMessageContaining("UpcastingChainTest.Renamed")
+        .hasMessageContaining(TYPE);
+  }
+
   @Test
   @DisplayName("Should refuse two upcasters for the same type and revision in Eventify")
   void twoUpcastersForTheSameTypeAndRevisionAreRefusedByEventify() {

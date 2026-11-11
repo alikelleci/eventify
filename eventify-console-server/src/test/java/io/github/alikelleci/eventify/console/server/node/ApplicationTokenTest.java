@@ -43,7 +43,7 @@ class ApplicationTokenTest {
   void anApplicationWithTheTokenConnects() {
     connect("token-ok.a:0", "secret");
 
-    await().atMost(Duration.ofSeconds(15)).until(() -> registry.find("token-ok.a:0") != null);
+    await().atMost(Duration.ofSeconds(15)).until(() -> registry.find("token-test", "token-ok.a:0") != null);
   }
 
   @Test
@@ -53,7 +53,7 @@ class ApplicationTokenTest {
     connect("token-missing.a:0", null);
 
     await().during(Duration.ofSeconds(3)).atMost(Duration.ofSeconds(5)).until(() ->
-        registry.find("token-wrong.a:0") == null && registry.find("token-missing.a:0") == null);
+        registry.find("token-test", "token-wrong.a:0") == null && registry.find("token-test", "token-missing.a:0") == null);
   }
 
   private void connect(String nodeId, String token) {

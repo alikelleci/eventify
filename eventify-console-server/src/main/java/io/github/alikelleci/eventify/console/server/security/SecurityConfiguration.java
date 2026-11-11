@@ -25,6 +25,8 @@ import org.springframework.security.web.server.authentication.RedirectServerAuth
 import org.springframework.security.web.server.csrf.CookieServerCsrfTokenRepository;
 import org.springframework.security.web.server.csrf.CsrfToken;
 import org.springframework.security.web.server.csrf.ServerCsrfTokenRequestAttributeHandler;
+import org.springframework.security.web.server.firewall.ServerWebExchangeFirewall;
+import org.springframework.security.web.server.firewall.StrictServerWebExchangeFirewall;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatchers;
 import org.springframework.web.server.WebFilter;
 import reactor.core.publisher.Mono;
@@ -101,6 +103,22 @@ public class SecurityConfiguration {
           .map(ConsoleProperties::loginEnabled)
           .orElse(false);
     }
+  }
+
+  /**
+   * An aggregate's id is part of the address, and can hold a slash, semicolon, percent sign or backslash, e.g. the
+   * invoice number 2024/INV-001. Spring refuses these by default, to protect rules that differ per path: the console
+   * has none, every address has the same rule.
+   */
+  @Bean
+  public ServerWebExchangeFirewall firewall() {
+    StrictServerWebExchangeFirewall firewall = new StrictServerWebExchangeFirewall();
+    firewall.setAllowUrlEncodedSlash(true);
+    firewall.setAllowUrlEncodedDoubleSlash(true);
+    firewall.setAllowSemicolon(true);
+    firewall.setAllowUrlEncodedPercent(true);
+    firewall.setAllowBackSlash(true);
+    return firewall;
   }
 
   /** Spring only creates the CSRF cookie when something asks for the token; this asks on every request. */
