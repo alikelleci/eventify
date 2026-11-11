@@ -82,6 +82,7 @@ Besides the payload and aggregate state, handlers can receive:
 | `@Timestamp Instant` | Message timestamp |
 | `@MessageId String` | Message id |
 | `@MetadataValue("key") String` | One metadata value |
+| `@Sequence long` | Event's position in its aggregate's history, starting at 1; not in command handlers |
 
 ## Ordering
 

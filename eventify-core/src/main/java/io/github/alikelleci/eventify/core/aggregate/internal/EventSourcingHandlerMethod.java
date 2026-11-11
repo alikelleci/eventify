@@ -5,6 +5,7 @@ import io.github.alikelleci.eventify.core.aggregate.annotation.AggregateRoot;
 import io.github.alikelleci.eventify.core.aggregate.exception.EventSourcingException;
 import io.github.alikelleci.eventify.core.event.Event;
 import io.github.alikelleci.eventify.core.handler.HandlerParameterResolver;
+import io.github.alikelleci.eventify.core.handler.annotation.Sequence;
 import io.github.alikelleci.eventify.core.message.exception.AggregateIdMismatchException;
 import io.github.alikelleci.eventify.core.message.internal.AggregateIdResolver;
 import lombok.Getter;
@@ -48,6 +49,8 @@ public class EventSourcingHandlerMethod {
         args[i] = event.getPayload();
       } else if (parameter.getType().isAnnotationPresent(AggregateRoot.class)) {
         args[i] = state.getPayload();
+      } else if (parameter.isAnnotationPresent(Sequence.class)) {
+        args[i] = event.getSequence();
       } else {
         args[i] = HandlerParameterResolver.resolve(parameter, event);
       }
