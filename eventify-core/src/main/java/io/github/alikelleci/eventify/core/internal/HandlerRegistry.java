@@ -267,7 +267,7 @@ public class HandlerRegistry {
     }
   }
 
-  /** An event-sourcing handler must return an aggregate, the type of its {@code @AggregateRoot} parameter: caught here, not at replay. */
+  /** An event-sourcing handler must return an {@code @AggregateRoot} class: caught here, not at replay. */
   private static void requireMatchingAggregateReturnType(Method method) {
     // Also void: it would return null, which removes the aggregate on every replay.
     if (!method.getReturnType().isAnnotationPresent(AggregateRoot.class)) {
