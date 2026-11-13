@@ -174,7 +174,7 @@ public class CommandProcessor implements FixedKeyProcessor<String, Command, Comm
     }
   }
 
-  /** Kafka refuses a record over max.request.size; found only when sending, that would stop Eventify. */
+  /** Throws when the record is over max.request.size: Kafka would only refuse it when sending, and that stops Eventify. */
   private void requireSendable(String name, String key, Object value, Headers headers) {
     long size = RECORD_OVERHEAD + key.getBytes(StandardCharsets.UTF_8).length;
     try {

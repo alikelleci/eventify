@@ -51,11 +51,11 @@ void rejectsAnUnknownOrder() {
 
 Good to know:
 
-- `given(...)` takes the events that already happened, to set up the state; leave it out for a new aggregate. `when(...)` takes the one command you test.
-- Pass every handler of the aggregate, also when command and event-sourcing handlers are separate classes: `AggregateFixture.of(Order.class, new OrderCommandHandler(), new OrderEventSourcingHandler())`. Without its event-sourcing handlers, the aggregate never has a state.
+- `given(...)` takes the events that already happened; leave it out for a new aggregate. `when(...)` takes the command you test.
+- Pass all handlers of the aggregate, also when they are in separate classes: `AggregateFixture.of(Order.class, new OrderCommandHandler(), new OrderEventSourcingHandler())`. Without event-sourcing handlers there is no state.
 - The state is `null` before the aggregate is created and after it is removed.
-- Events are compared with `equals`, as they are read back from storage: use records or classes with `equals`, such as Lombok's `@Value`.
-- For your own assertions: `events()` and `state()`, `cause()` with the "Exception: message" of a rejection, and `result()` with the full result.
+- Events are compared with `equals`: use records or classes with `equals`, such as Lombok's `@Value`.
+- For your own assertions: `events()`, `state()`, `result()` and `cause()` ("Exception: message").
 
 ## Event handlers
 
@@ -92,10 +92,10 @@ void failsForALostOrder() {
 
 Good to know:
 
-- `after(duration, command)` expects the command that long after the event's timestamp, as your handler schedules it with `@Timestamp`. For a fixed time, use `Scheduled.of(command, time)`. One `expectScheduled(...)` takes all of them; times are compared to the millisecond.
-- Kafka keeps the order of commands per topic, so the order is checked per topic.
+- `after(duration, command)` expects the command that long after the event's timestamp. For a fixed time, use `Scheduled.of(command, time)`. Pass all scheduled commands to one `expectScheduled(...)`.
+- The order of commands is checked per topic.
 - Register only event handlers: test command handlers with an `AggregateFixture`.
-- For your own assertions: `commands()` and `scheduled()`, `cause()` with the "Exception: message" of a failure, and `sent()` with the commands as sent, including their metadata.
+- For your own assertions: `commands()`, `scheduled()`, `sent()` (with metadata) and `cause()` ("Exception: message").
 
 An event handler without commands, such as a projection, is tested the same way. Give it a fake to write to:
 
@@ -115,7 +115,7 @@ assertThat(overview.find("order-1").status()).isEqualTo("placed");
 - Every `when(...)` starts from scratch, so one fixture can serve all tests of a class.
 - Expectations take payloads, such as `new OrderPlaced(...)`, not a `Command` or `Event`. To check metadata, use `result()` or `sent()`.
 - When your application builds Eventify with its own `objectMapper(...)`, give the fixture the same one: `AggregateFixture.of(...).withObjectMapper(objectMapper)`.
-- To give the command or event in `when(...)` metadata, pass a `Command` or an `Event` instead of the payload. An event needs an aggregate type and a sequence; event handlers don't see them, so any will do:
+- For metadata on the command or event in `when(...)`, pass a `Command` or `Event` instead of the payload. An `Event` needs an aggregate type and sequence; any value will do:
 
 ```java
 // AggregateFixture

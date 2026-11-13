@@ -34,12 +34,10 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 /**
- * Lets {@code @KafkaListener} methods read Eventify's event topics, next to or instead of {@code @EventHandler}: each
- * listener with its own consumer group, concurrency and Spring Kafka error handling. An exception in a listener then
- * doesn't stop Kafka Streams, and command handling with it.
+ * Lets {@code @KafkaListener} methods read Eventify's event topics, each with its own consumer group and error
+ * handling. An exception in a listener doesn't stop Eventify.
  *
- * <p>Commands are not handled this way: their handling needs Eventify's event store, and writes the events and the
- * result in one transaction with it.
+ * <p>Only for events: commands need Eventify's event store.
  *
  * <p>Needs {@code @EnableKafka}, which Spring Boot's Kafka auto-configuration already sets.
  */

@@ -73,7 +73,7 @@ public final class Upcasters {
     }
   }
 
-  /** Otherwise events written now, at that revision, would be upcast again on every read. A renamed class isn't found and is fine. */
+  /** The upcaster must start below the class's @Revision, or new events would be upcast too. A renamed class is skipped. */
   private static void requireOlderRevision(Object handler, UpcasterMethod upcaster) {
     Class<?> upcastClass;
     try {
