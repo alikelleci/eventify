@@ -14,11 +14,11 @@ export interface SetupStep {
 
 const escapeHtml = (code: string) => code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-/** Tags in one colour, the values between them in the default one. */
+/** Tags in one color, the values between them in the default one. */
 const highlightXml = (code: string) =>
   escapeHtml(code).replace(/(&lt;\/?[\w.-]+&gt;)/g, '<span class="text-sky-300">$1</span>');
 
-/** The command in one colour, its options in another. */
+/** The command in one color, its options in another. */
 const highlightShell = (code: string) =>
   escapeHtml(code).replace(/^(docker run)/, '<span class="text-primary-300">$1</span>').replace(/(\s-[\w-]+)/g, '<span class="text-slate-400">$1</span>');
 

@@ -38,7 +38,7 @@ const PLACE_ORDER: Step = {
   command: 'PlaceOrder',
   minutesAgo: 190,
   payload: { customerId: 'customer-42', items: ITEMS, shippingAddress: ADDRESS, currency: 'EUR' },
-  // Payment is authorised while placing the order, so a valid order is confirmed right away: one command, two events.
+  // Payment is authorized while placing the order, so a valid order is confirmed right away: one command, two events.
   events: [
     { type: 'OrderPlaced', payload: { customerId: 'customer-42', items: ITEMS, total: TOTAL, currency: 'EUR', shippingAddress: ADDRESS } },
     { type: 'OrderConfirmed', payload: { paymentReference: 'PSP-7F3A-92K1' } },
@@ -88,10 +88,11 @@ function buildHistory(aggregateType: string, orderId: string, steps: Step[]): Hi
   steps.forEach((step, index) => {
     const commandId = nextId();
     const time = NOW - step.minutesAgo * 60_000;
-    // Each command has its own correlation ID, also a retry. Its events name it as their cause, so a failed command never shows events.
-    const correlationId = fakeUuid(index + 1);
     // A retry names the command it retries: the last one of the same type before it.
     const retried = [...commands].reverse().find(command => command.type === step.command);
+    // Each command has its own correlation ID; a retry keeps the one of the command it retries, as the console does.
+    // Its events name it as their cause, so a failed command never shows events.
+    const correlationId = step.retried && retried ? retried.metadata['$correlationId'] : fakeUuid(index + 1);
     const metadata: Record<string, string> = step.retried && retried
       // Resubmitted from the console: marked like ConsoleService.retryCommand does.
       ? { '$correlationId': correlationId, '$retryOf': retried.id }
@@ -186,46 +187,14 @@ const APPS: MockApp[] = [
   { name: 'payments', aggregateTypes: ['payment', 'refund'], nodes: [
     { nodeId: 'payments.7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f:0', hostname: 'payments-7b9c6-k4j8w', version: '1.0.0', connectedAt: new Date(NOW - 7_200_000).toISOString() },
   ] },
-  // TEMP: many more applications, to preview the home dashboard with a long list. Remove this block afterwards.
-  ...[
-    { name: 'shipping', instances: 3, versions: ['1.4.0', '1.4.0', '1.5.0'] },   // mixed: an upgrade rolling out (2 old, 1 new)
-    { name: 'returns', instances: 3, versions: ['1.3.0', '1.4.0', '1.5.0'] },    // mixed: every instance on its own version
-    { name: 'inventory', instances: 2 },
-    { name: 'customers', instances: 6 },                                         // more instances than a card lists
-    { name: 'events-gateway', instances: 16, versions: ['2.2.0'] },              // mixed: one instance left behind (1 old, 15 new)
-    { name: 'billing', instances: 2, versions: ['1.9.0', '1.9.0'] },            // not mixed: an older version, but the same on all instances
-    { name: 'notifications', instances: 1 },
-    { name: 'catalog', instances: 4 },
-    { name: 'pricing', instances: 2 },
-    { name: 'loyalty', instances: 1 },
-    { name: 'search-indexer', instances: 3 },
-    { name: 'fraud-detection', instances: 2 },
-    { name: 'customer-notification-preferences-and-consent-management-service', instances: 2 },       // a long name that wraps in the tooltip of "+N more"
-    { name: 'warehouse-management-service-with-a-very-long-name', instances: 3 }, // a long name cut off on its home card
-  ].map(({ name, instances, versions }): MockApp => ({
-    name,
-    aggregateTypes: ['order'],
-    nodes: Array.from({ length: instances }, (_, i) => ({
-      nodeId: `${name}.${crypto.randomUUID()}:0`,
-      hostname: `${name}-6c8d9-${(i + 10).toString(36)}x${i}q`,
-      version: versions?.[i] ?? '2.3.1',
-      connectedAt: new Date(NOW - (i + 1) * 1_700_000 - name.length * 60_000).toISOString(),
-    })),
-  })),
 ];
 
 /** The example applications with how each instance is doing, as /api/apps reports them. */
 function apps(): AppEntry[] {
   const running: InstanceStatus = { state: 'RUNNING', stateForMs: 3_600_000, restoring: false };
-  // Every state shows up somewhere, per application and instance; the rest is running. On the home page, the two with an
-  // error and the first busy one get a card; the other busy ones make "+N more" amber.
+  // Payments is rebalancing; the rest is running.
   const situations: Record<string, (InstanceStatus | null)[]> = {
-    returns: [running, { state: 'ERROR', stateForMs: 2_700_000, restoring: false }],                     // error on 1 of 3
-    'warehouse-management-service-with-a-very-long-name': [running, running, { state: 'NOT_RUNNING', stateForMs: 95_000, restoring: false }],
     payments: [{ state: 'REBALANCING', stateForMs: 224_000, restoring: false }],
-    shipping: [{ state: 'REBALANCING', stateForMs: 1_500_000, restoring: true }, { state: 'REBALANCING', stateForMs: 4_000, restoring: false }],
-    catalog: [running, running, running, { state: 'CREATED', stateForMs: 12_000, restoring: false }],     // one just starting
-    customers: [running, running, running, running, { state: 'PENDING_SHUTDOWN', stateForMs: 6_000, restoring: false }, null], // one stopping, one doesn't answer
   };
   // By name, as the console sorts them.
   return [...APPS].sort((a, b) => a.name.localeCompare(b.name)).map(app => ({

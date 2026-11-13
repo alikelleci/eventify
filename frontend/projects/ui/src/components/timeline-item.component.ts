@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 
-/** Colour of an item's dot: neutral for events, the outcome for commands, placeholder while loading. */
+/** Color of an item's dot: neutral for events, the outcome for commands, placeholder while loading. */
 export type TimelineTone = 'neutral' | 'success' | 'failure' | 'placeholder';
 
 /**
@@ -48,7 +48,7 @@ export class TimelineItemComponent {
   lowerLineClass = computed(() => this.reached() ? this.filledLine : this.emptyLine);
 
   dotClass = computed(() => {
-    // Commands keep their outcome colour; events are filled once reached, or when selected.
+    // Commands keep their outcome color; events are filled once reached, or when selected.
     const [fill, ring] = {
       neutral: this.reached() || this.selected() ? ['bg-primary-500', 'ring-primary-500/20'] : ['bg-surface-300 dark:bg-surface-600', ''],
       success: ['bg-emerald-500', 'ring-emerald-500/20'],
