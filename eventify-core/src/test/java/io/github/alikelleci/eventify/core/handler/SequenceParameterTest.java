@@ -15,7 +15,7 @@ import java.util.Arrays;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Event handlers and event sourcing handlers get the event's sequence for {@code @Sequence}. */
+/** Event handlers and event-sourcing handlers get the event's sequence for {@code @Sequence}. */
 @DisplayName("Sequence parameter")
 class SequenceParameterTest {
 
@@ -49,7 +49,7 @@ class SequenceParameterTest {
   }
 
   @Test
-  @DisplayName("Should give an event sourcing handler the event's sequence")
+  @DisplayName("Should give an event-sourcing handler the event's sequence")
   void eventSourcingHandler() {
     Object state = new EventSourcingHandlerMethod(new Handlers(), method("apply")).handle(event, AggregateState.empty("order-1"));
     assertThat(state).isEqualTo(new Order("order-1", 4));

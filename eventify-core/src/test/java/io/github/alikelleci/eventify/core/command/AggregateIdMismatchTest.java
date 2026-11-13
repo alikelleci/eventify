@@ -60,7 +60,7 @@ class AggregateIdMismatchTest {
   public static class Increment implements CounterCommand {
     @AggregateId
     String id;
-    /** The id the event sourcing handler gives the state: a bug in the handler when it isn't {@link #id}. */
+    /** The id the event-sourcing handler gives the state: a bug in the handler when it isn't {@link #id}. */
     String stateId;
   }
 

@@ -53,7 +53,7 @@ class SequenceParameterTest {
   }
 
   @Test
-  @DisplayName("Should give event sourcing handlers the sequence of past and new events")
+  @DisplayName("Should give event-sourcing handlers the sequence of past and new events")
   void eventSourcingHandler() {
     AggregateFixture.of(Counter.class, new CounterHandler())
         .given(new Incremented("c-1"), new Incremented("c-1"))

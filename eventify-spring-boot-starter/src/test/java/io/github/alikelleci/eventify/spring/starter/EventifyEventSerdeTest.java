@@ -117,7 +117,7 @@ class EventifyEventSerdeTest {
         assertThat(read(context.getBean(EventSerde.class)).getRevision()).isEqualTo(2));
   }
 
-  /** Otherwise every application would build it, and log the warning for several Eventify beans, without using it. */
+  /** Made only when used: else every application would build it, and log the warning for several Eventify beans. */
   @Test
   @DisplayName("Should make the EventSerde bean only when it is used")
   void makesTheEventSerdeOnlyWhenUsed() {

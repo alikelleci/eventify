@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-/** One command handler and one event sourcing handler per type, a second is refused; event handlers can be several. */
+/** One command handler and one event-sourcing handler per type, a second is refused; event handlers can be several. */
 @DisplayName("Handler registration")
 class HandlerRegistrationTest {
 
@@ -152,7 +152,7 @@ class HandlerRegistrationTest {
     }
   }
 
-  /** Two event sourcing handlers for the same event in one class. */
+  /** Two event-sourcing handlers for the same event in one class. */
   public static class TwiceEventSourcingHandler {
     @EventSourcingHandler
     public Light handle(SwitchedOn event, Light state) {
@@ -213,7 +213,7 @@ class HandlerRegistrationTest {
     }
   }
 
-  /** An event sourcing handler whose declared result does not match the aggregate state it receives. */
+  /** An event-sourcing handler whose declared result does not match the aggregate state it receives. */
   public static class WrongResultEventSourcingHandler {
     @EventSourcingHandler
     public Fan handle(SwitchedOn event, Light state) {
@@ -340,7 +340,7 @@ class HandlerRegistrationTest {
   }
 
   @Test
-  @DisplayName("Should refuse a second event sourcing handler for the same event")
+  @DisplayName("Should refuse a second event-sourcing handler for the same event")
   void aSecondEventSourcingHandlerForTheSameEventIsRefused() {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new TwiceEventSourcingHandler())
@@ -418,7 +418,7 @@ class HandlerRegistrationTest {
   }
 
   @Test
-  @DisplayName("Should refuse an event sourcing handler that returns another aggregate type")
+  @DisplayName("Should refuse an event-sourcing handler that returns another aggregate type")
   void anEventSourcingHandlerWithTheWrongAggregateResultIsRefused() {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new WrongResultEventSourcingHandler())
@@ -436,7 +436,7 @@ class HandlerRegistrationTest {
   }
 
   @Test
-  @DisplayName("Should refuse an event sourcing handler that returns no aggregate, also without an aggregate parameter")
+  @DisplayName("Should refuse an event-sourcing handler that returns no aggregate, also without an aggregate parameter")
   void anEventSourcingHandlerThatReturnsNoAggregateIsRefused() {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new NonAggregateResultEventSourcingHandler())
@@ -446,7 +446,7 @@ class HandlerRegistrationTest {
   }
 
   @Test
-  @DisplayName("Should refuse a void event sourcing handler")
+  @DisplayName("Should refuse a void event-sourcing handler")
   void aVoidEventSourcingHandlerIsRefused() {
     assertThatThrownBy(() -> Eventify.builder().streamsConfig(config())
         .registerHandler(new VoidEventSourcingHandler())

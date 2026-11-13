@@ -70,7 +70,7 @@ class ConsoleServerTest {
         .jsonPath("$[?(@.name == 'listing')].nodes[*].nodeId").isEqualTo(List.of("listing.a:0", "listing.b:0"));
   }
 
-  /** One application can hold several aggregates, and an instance that connected later may not report them all yet. */
+  /** One application can hold several aggregates, and during a deploy its instances can run different versions. */
   @Test
   @DisplayName("Should list the aggregates an application holds, from all its instances together")
   void theAggregatesOfAnApplicationAreListedFromAllItsInstances() {
