@@ -19,7 +19,7 @@ public final class PerClass {
     return type -> cached.get(type).value();
   }
 
-  /** So {@code null} can be cached too. */
+  /** Wraps the answer, so {@code null} can be cached too. */
   private record Holder<T>(T value) {
   }
 }

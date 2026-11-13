@@ -9,7 +9,7 @@ A command handler receives a command and the current aggregate state. Return one
 ```java
 @CommandHandler
 public OrderEvent handle(ShipOrder command, Order state) {
-    if (state == null) throw new ValidationException("Order does not exist");
+    if (state == null) throw new ValidationException("Order does not exist.");
     if (state.trackingNumber() != null) return null;
     return new OrderShipped(command.id(), command.trackingNumber());
 }

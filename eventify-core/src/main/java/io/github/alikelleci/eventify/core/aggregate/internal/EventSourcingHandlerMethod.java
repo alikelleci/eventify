@@ -62,7 +62,7 @@ public class EventSourcingHandlerMethod {
   private void requireSameAggregateId(Event event, Object result) {
     if (result != null) {
       String stateAggregateId = AggregateIdResolver.getAggregateId(result);
-      // Otherwise it would be snapshotted under this event's aggregate id.
+      // The state must keep the event's aggregate id, or it would be snapshotted under another one.
       if (!StringUtils.equals(stateAggregateId, event.getAggregateId())) {
         throw new AggregateIdMismatchException("State " + result.getClass().getSimpleName() + " after event " + event.getType() + " has aggregate id " + stateAggregateId + ", expected " + event.getAggregateId() + ".");
       }

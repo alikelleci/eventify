@@ -29,7 +29,7 @@ public final class ConsoleProtocol {
 
   /**
    * The largest message either side accepts, once its parts are put together. A larger one is refused instead of read
-   * into memory, so one side can't make the other run out of memory, by mistake (a huge aggregate state) or not.
+   * into memory, so one side can't make the other run out of memory, by mistake (a huge aggregate state) or on purpose.
    */
   public static final int MAX_PAYLOAD_SIZE = 16 * 1024 * 1024;
 

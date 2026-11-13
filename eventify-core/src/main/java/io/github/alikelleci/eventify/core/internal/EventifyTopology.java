@@ -50,7 +50,7 @@ public final class EventifyTopology {
         .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.EVENT_STORE), Serdes.String(), eventSerde)
         .withLoggingEnabled(Collections.emptyMap()));
 
-    // Snapshot Store
+    // Snapshot store
     builder.addStateStore(Stores
         .keyValueStoreBuilder(Stores.persistentKeyValueStore(StoreNames.SNAPSHOT_STORE), Serdes.String(), snapshotSerde)
         .withLoggingEnabled(Collections.emptyMap()));

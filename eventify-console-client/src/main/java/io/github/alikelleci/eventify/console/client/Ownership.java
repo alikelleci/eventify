@@ -49,7 +49,7 @@ class Ownership {
     return Result.notOwner(NodeIdentity.nodeId(activeHost));
   }
 
-  /** Nothing found; unless this instance stopped owning the aggregate during the query, and simply no longer has it. */
+  /** Not found, or unavailable when this instance stopped owning the aggregate during the query. */
   <T> Result<T> notFound(String aggregateId) {
     if (!isLocallyAuthoritative(aggregateId)) {
       log.debug("Aggregate no longer available on this instance: aggregateId={}", aggregateId);

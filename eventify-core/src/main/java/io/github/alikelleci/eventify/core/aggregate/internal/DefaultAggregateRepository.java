@@ -161,7 +161,7 @@ public final class DefaultAggregateRepository implements AggregateRepository {
     if (wrongPayload != null) {
       return wrongPayload;
     }
-    // Also for a removed state: a later revision may not remove it.
+    // Also for a removed state: under the new revision the aggregate may still exist.
     if (snapshot.getRevision() != revision) {
       return "the snapshot uses revision " + snapshot.getRevision() + " of " + aggregateClass.getSimpleName()
           + ", but the current revision is " + revision;

@@ -31,13 +31,13 @@ public record OrderPlaced(@AggregateId String id, String customer) {}
 public record Order(@AggregateId String id, String customer) {}
 ```
 
-## Add the behaviour
+## Add the behavior
 
 ```java
 public class OrderHandler {
     @CommandHandler
     public OrderPlaced handle(PlaceOrder command, Order state) {
-        if (state != null) throw new ValidationException("Order already exists");
+        if (state != null) throw new ValidationException("Order already exists.");
         return new OrderPlaced(command.id(), command.customer());
     }
 

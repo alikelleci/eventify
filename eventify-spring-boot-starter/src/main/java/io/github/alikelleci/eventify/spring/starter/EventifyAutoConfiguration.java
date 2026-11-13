@@ -108,7 +108,7 @@ public class EventifyAutoConfiguration {
     };
   }
 
-  /** Otherwise the handler would handle each event once per Eventify bean. */
+  /** An event handler on one Eventify bean only, or it would handle every event once per bean. */
   private static void requireOneEventifyPerEventHandler(List<Eventify> apps) {
     Map<Object, Eventify> owners = new IdentityHashMap<>();
     for (Eventify app : apps) {
@@ -120,7 +120,7 @@ public class EventifyAutoConfiguration {
     }
   }
 
-  /** Otherwise each Eventify bean would keep its own history of the aggregate. */
+  /** An aggregate's command handlers on one Eventify bean only, or each bean would keep its own history of it. */
   private static void requireOneEventifyPerAggregate(List<Eventify> apps) {
     Map<String, Eventify> owners = new HashMap<>();
     for (Eventify app : apps) {
@@ -132,7 +132,7 @@ public class EventifyAutoConfiguration {
     }
   }
 
-  /** Otherwise each Eventify bean would handle the command. */
+  /** A command on one Eventify bean only, or each bean would handle it. */
   private static void requireOneEventifyPerCommand(List<Eventify> apps) {
     Map<Class<?>, Eventify> owners = new HashMap<>();
     for (Eventify app : apps) {

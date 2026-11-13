@@ -25,7 +25,7 @@ public final class StreamsConfigDefaults {
     streamsConfig.putIfAbsent(StreamsConfig.TOPOLOGY_OPTIMIZATION_CONFIG, StreamsConfig.OPTIMIZE);
     streamsConfig.putIfAbsent(StreamsConfig.DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG, LogAndContinueExceptionHandler.class);
     streamsConfig.putIfAbsent(StreamsConfig.ROCKSDB_CONFIG_SETTER_CLASS_CONFIG, RocksDBConfig.class);
-    // Not next to the application's own "compression.type": the prefixed one would win from it.
+    // Only when the application sets no "compression.type": the prefixed default would override it.
     if (!streamsConfig.containsKey(ProducerConfig.COMPRESSION_TYPE_CONFIG)) {
       streamsConfig.putIfAbsent(StreamsConfig.producerPrefix(ProducerConfig.COMPRESSION_TYPE_CONFIG), "zstd");
     }

@@ -48,7 +48,7 @@ public class LoggingPlugin implements EventifyPlugin {
     return restoreLogger;
   }
 
-  /** Logs each restoration, and every ten seconds how far the ones going on are. */
+  /** Logs each restoration, and every ten seconds the progress of the ones still running. */
   private final StateRestoreListener restoreLogger = new StateRestoreListener() {
 
     @Override

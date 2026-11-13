@@ -20,7 +20,7 @@ public class AggregateState {
   Object payload;
   Metadata metadata;
   String aggregateId;
-  /** Version of the last applied event. */
+  /** Sequence of the last applied event; 0 before the first. */
   long version;
   /** Aggregate revision used to create this state. */
   int revision;

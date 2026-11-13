@@ -109,7 +109,7 @@ public class ReplyConsumer {
         }
       }
     } catch (WakeupException e) {
-      // closing: only stopListening() wakes the consumer
+      // Closing: only stopListening() wakes the consumer.
     } finally {
       consumer.close();
     }

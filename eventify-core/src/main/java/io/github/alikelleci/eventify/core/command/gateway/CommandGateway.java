@@ -28,7 +28,7 @@ public interface CommandGateway extends AutoCloseable {
 
   /**
    * Delivers the command to its aggregate at deliverAt, not earlier; a time in the past delivers it right away. The
-   * future completes once Kafka has the command; its result is written to the results topic only.
+   * future completes once Kafka has the command; its result is written to the result topic only.
    */
   CompletableFuture<ScheduleToken> schedule(Command command, Instant deliverAt);
 

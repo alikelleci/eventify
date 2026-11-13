@@ -73,7 +73,7 @@ public final class Upcasters {
     }
   }
 
-  /** The upcaster must start below the class's @Revision, or new events would be upcast too. A renamed class is skipped. */
+  /** The upcaster must start below the class's @Revision, or new events would be upcast too. A class that isn't found (renamed) isn't checked. */
   private static void requireOlderRevision(Object handler, UpcasterMethod upcaster) {
     Class<?> upcastClass;
     try {
@@ -89,7 +89,7 @@ public final class Upcasters {
     }
   }
 
-  /** An event names a nested class with "$": an upcaster for "com.example.OrderEvent.Placed" would never be applied. */
+  /** A stored nested class name uses "$": an upcaster for "com.example.OrderEvent.Placed" would never match. */
   private static void requireNoNestedClassWithDots(Object handler, UpcasterMethod upcaster) {
     String name = upcaster.getType();
     for (int dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.')) {
