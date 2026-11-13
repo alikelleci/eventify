@@ -62,7 +62,7 @@ public class HandlerRegistry {
     return aggregateClasses().stream().map(AggregateTypes::of).collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
-  /** The {@link AggregateRoot} classes the handlers take or return. */
+  /** The {@link AggregateRoot} classes the command and event-sourcing handlers take or return. */
   public Set<Class<?>> aggregateClasses() {
     return Stream.concat(
             commandHandlers.values().stream().map(CommandHandlerMethod::getMethod),

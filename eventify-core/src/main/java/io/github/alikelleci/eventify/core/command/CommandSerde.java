@@ -8,7 +8,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.apache.kafka.common.serialization.Serde;
 import org.apache.kafka.common.serialization.Serializer;
 
-/** Reads and writes commands as JSON. Commands are not upcast: they are handled once, not kept. */
+/** Reads and writes commands as JSON. Commands are not upcast: they aren't kept as history. */
 public class CommandSerde implements Serde<Command> {
 
   private final JsonSerializer<Command> serializer;
