@@ -91,7 +91,7 @@ function buildHistory(aggregateType: string, orderId: string, steps: Step[]): Hi
     // A retry names the command it retries: the last one of the same type before it.
     const retried = [...commands].reverse().find(command => command.type === step.command);
     // Each command has its own correlation ID; a retry keeps the one of the command it retries, as the console does.
-    // Its events name it as their cause, so a failed command never shows events.
+    // A command's events name it as their cause, so a failed command never shows events.
     const correlationId = step.retried && retried ? retried.metadata['$correlationId'] : fakeUuid(index + 1);
     const metadata: Record<string, string> = step.retried && retried
       // Resubmitted from the console: marked like ConsoleService.retryCommand does.

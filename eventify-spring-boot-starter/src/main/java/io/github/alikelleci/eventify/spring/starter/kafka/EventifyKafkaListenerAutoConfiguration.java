@@ -85,7 +85,8 @@ public class EventifyKafkaListenerAutoConfiguration {
 
   /**
    * The consumer settings of the Eventify bean, which writes the events, with its {@code consumer.}-prefixed ones on
-   * top. Without one Eventify bean (or a @Primary one), the settings of Spring Kafka's consumer factory ({@code spring.kafka.*}).
+   * top. Without a single (or {@code @Primary}) Eventify bean, the settings of Spring Kafka's consumer factory
+   * ({@code spring.kafka.*}).
    */
   private static Map<String, Object> consumerConfig(ObjectProvider<Eventify> apps,
                                                     ObjectProvider<ConsumerFactory<?, ?>> consumerFactories) {

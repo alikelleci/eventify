@@ -170,7 +170,7 @@ export class AppSwitcherComponent {
     e.stopPropagation();
   }
 
-  // The green border and text mark the active app; grey marks the highlighted row, also on the active app.
+  // The green border and text mark the active app; gray marks the highlighted row, also on the active app.
   rowClass(app: AppEntry, index: number): string {
     const current = this.isActive(app);
     const highlighted = index === this.highlightedIndex();

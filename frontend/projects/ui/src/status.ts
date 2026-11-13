@@ -69,7 +69,7 @@ export function numbered<T extends { nodeId: string; connectedAt: string }>(inst
     .map((instance, index) => ({ number: index + 1, instance }));
 }
 
-/** The color of a status dot: green running, amber busy, red wrong, grey unknown. */
+/** The color of a status dot: green running, amber busy, red wrong, gray unknown. */
 export function dotClass(tone: StatusTone | undefined): string {
   return tone === 'busy' ? 'bg-amber-500'
     : tone === 'error' ? 'bg-red-500'

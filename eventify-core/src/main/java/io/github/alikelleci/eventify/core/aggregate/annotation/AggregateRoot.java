@@ -17,8 +17,8 @@ import java.lang.annotation.Target;
 public @interface AggregateRoot {
 
   /**
-   * The aggregate's name in the stores, e.g. "order": your own name, not the class name, so renaming the class moves no data.
-   * Unique within an application.
+   * The aggregate's name in the stores, e.g. "order": your own name, not the class name, so renaming the class moves
+   * no data. Unique within an application.
    */
   String value();
 }
