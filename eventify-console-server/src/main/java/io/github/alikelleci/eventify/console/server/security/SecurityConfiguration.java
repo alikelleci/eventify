@@ -34,7 +34,7 @@ import reactor.core.publisher.Mono;
 import java.net.URI;
 
 /**
- * Who may use the console. With {@code eventify.console.oidc} set, people log in with the identity provider: every page
+ * Who may use the console. With {@code eventify.console.oidc.issuer-uri} set, people log in with the identity provider: every page
  * and API call needs a login. Without it, the console is open to anyone who can reach it.
  *
  * <p>Applications don't log in here: they connect on the RSocket endpoint, which is outside these rules, and prove who

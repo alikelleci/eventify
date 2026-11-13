@@ -38,7 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 public class ConsoleConnector {
 
-  /** Both sides send a heartbeat at this interval, and close the connection after this long without one. */
+  /** This instance sends a heartbeat at this interval; both sides close the connection after this long without one. */
   private static final Duration KEEPALIVE_INTERVAL = Duration.ofSeconds(10);
   private static final Duration KEEPALIVE_MAX_LIFETIME = Duration.ofSeconds(30);
 
