@@ -20,7 +20,7 @@ public final class ReplyTo {
   private ReplyTo() {
   }
 
-  /** The topic to reply on; {@code null} when the sender waits for no reply. */
+  /** The topic to reply on; {@code null} when the sender waits for no reply or names an invalid topic. */
   public static String topic(Headers headers) {
     Header header = headers != null ? headers.lastHeader(HeaderNames.REPLY_TO) : null;
     if (header == null || header.value() == null) {
