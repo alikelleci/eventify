@@ -138,7 +138,7 @@ class ConsoleServiceRoutingIT {
     assertThat(owners).containsExactlyInAnyOrder(firstId, secondId);
   }
 
-  /** An application with only a command handler and an event sourcing handler shows its commands. */
+  /** An application with only a command handler and an event-sourcing handler shows its commands. */
   @Test
   @DisplayName("Should read an aggregate's commands, and stop reading when cancelled")
   void theCommandsAreReadAndACancelledReadStops() throws Exception {

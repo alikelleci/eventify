@@ -71,7 +71,7 @@ public class Eventify implements PluginContext {
     return new EventifyBuilder();
   }
 
-  /** Returns whether a class contains an Eventify handler method. */
+  /** Returns whether a class has an Eventify handler or upcaster method. */
   public static boolean isHandler(Class<?> handlerClass) {
     return HandlerRegistry.isHandler(handlerClass);
   }
@@ -115,7 +115,7 @@ public class Eventify implements PluginContext {
     return handlers.eventClasses();
   }
 
-  /** Returns registered event-handler objects. */
+  /** Returns registered event handler objects. */
   public Set<Object> getEventHandlers() {
     Set<Object> eventHandlers = Collections.newSetFromMap(new IdentityHashMap<>());
     handlers.eventHandlers().forEach(method -> eventHandlers.add(method.getHandler()));

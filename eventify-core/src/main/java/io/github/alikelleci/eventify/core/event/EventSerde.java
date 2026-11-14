@@ -60,7 +60,7 @@ public class EventSerde implements Serde<Event> {
           return objectMapper.readValue(bytes, Event.class);
         }
         JsonNode upcasted = upcasters.upcast(treeReader.readTree(bytes));
-        // From JSON again, not from the tree: that would also give an Object field a BigDecimal.
+        // Read from JSON again, not from the tree: the tree would turn a number in an Object field into a BigDecimal.
         return objectMapper.readValue(objectMapper.writeValueAsBytes(upcasted), Event.class);
       } catch (Exception e) {
         throw new SerializationException("Error deserializing event.", e);

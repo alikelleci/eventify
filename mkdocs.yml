@@ -13,14 +13,14 @@ theme:
     code: JetBrains Mono
   palette:
     - scheme: default
-      primary: teal
-      accent: teal
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-night
         name: Switch to dark mode
     - scheme: slate
-      primary: teal
-      accent: teal
+      primary: custom
+      accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
@@ -29,6 +29,8 @@ theme:
     - navigation.top
     - navigation.instant
     - navigation.footer
+    - navigation.indexes
+    - toc.follow
     - search.highlight
     - search.suggest
     - content.code.copy
@@ -60,19 +62,20 @@ extra:
 copyright: Copyright &copy; Ali Kelleci
 
 nav:
-  - Introduction:
-      - Overview: index.md
-      - Getting Started: getting-started.md
-  - Core Concepts:
-      - Domain Modeling: domain-modeling.md
-      - Handlers: handlers.md
-      - Command Gateway: command-gateway.md
+  - Overview: index.md
+  - Start:
+      - Getting started: getting-started.md
+      - Spring Boot: spring-boot.md
   - Guides:
-      - Advanced Features: advanced.md
+      - Domain modeling: domain-modeling.md
+      - Handlers: handlers.md
+      - Command gateway: command-gateway.md
+      - Snapshots and upcasting: advanced.md
       - Testing: testing.md
+  - Tools:
       - Eventify Console: console.md
   - Upgrading:
       - Upgrading to 5.0: upgrading.md
       - Migrating from 4.x: migration.md
   - Reference:
-      - Annotation Reference: annotation-reference.md
+      - Annotations: annotation-reference.md

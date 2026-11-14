@@ -57,7 +57,7 @@ class AggregateHistory {
     if (event == null) {
       return null;
     }
-    // null is unknown; a state without payload is known, and has no aggregate.
+    // A null state is unknown; a state without payload is known, and has no aggregate.
     AggregateState before = repository.stateAt(aggregateId, sequence - 1);
     if (before == null) {
       AggregateState after = repository.stateAt(aggregateId, sequence);

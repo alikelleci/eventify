@@ -107,11 +107,7 @@ class ConsoleRequestHandler {
     return id;
   }
 
-  /**
-   * An aggregate is addressed by its type and its identifier: one application can hold several aggregates. A name this
-   * instance doesn't handle is refused instead of answered with nothing: an empty history would read as an aggregate
-   * that has none, while the question itself is about an aggregate that isn't here.
-   */
+  /** A type this instance doesn't handle is refused: an empty answer would read as an aggregate without history. */
   private String requireAggregateType(String aggregateType) {
     String name = require("aggregateType", aggregateType);
     if (!aggregateTypes.contains(name)) {

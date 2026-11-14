@@ -24,7 +24,7 @@ public class ApplicationsController {
   private final NodeRegistry registry;
   private final NodeStatuses statuses;
 
-  /** What the instances of one application hold together: they run the same code, but one may have connected later. */
+  /** All aggregates the instances of one application hold: during a deploy they can run different versions. */
   private static List<String> aggregateTypesOf(List<ConnectedNode> nodes) {
     return nodes.stream()
         .flatMap(node -> node.info().aggregateTypes() == null ? Stream.<String>empty() : node.info().aggregateTypes().stream())

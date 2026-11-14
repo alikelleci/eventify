@@ -10,7 +10,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       await navigator.clipboard.writeText(text);
       return true;
     } catch {
-      // e.g. the document isn't focused; try the fallback
+      // E.g. the document isn't focused: try the fallback.
     }
   }
 

@@ -23,7 +23,7 @@ public sealed interface CommandResult permits CommandResult.Success, CommandResu
     }
   }
 
-  /** The command was rejected and nothing of it was stored; {@code cause} is the root cause's message. */
+  /** The command was rejected and nothing of it was stored; {@code cause} is the root cause as "Exception: message". */
   record Failure(Command command, String cause) implements CommandResult {
   }
 }

@@ -30,7 +30,7 @@ export class HomeComponent {
 
   /**
    * The totals in the top row. Each application with a problem counts once, under its worst state: errors (error,
-   * stopped) or warnings (rebalancing, restoring, starting, stopping, no answer). Coloured once there are any.
+   * stopped) or warnings (rebalancing, restoring, starting, stopping, no answer). Colored once there are any.
    */
   readonly stats = computed(() => [
     { label: 'Applications', value: this.backend.apps().length, color: null },
@@ -39,7 +39,7 @@ export class HomeComponent {
     { label: 'Warnings', value: this.tones().filter(tone => tone === 'busy' || tone === 'unknown').length, color: 'text-amber-500' },
   ]);
 
-  /** The picture in the centre, each application with its number of instances. */
+  /** The picture in the center, each application with its number of instances. */
   readonly connectedApps = computed<ConnectedApp[]>(() => this.backend.apps().map(app => {
     const state = appState(app.nodes);
     return { name: app.name, note: state.text, tone: state.tone, instances: app.nodes };

@@ -1,4 +1,4 @@
-# Advanced Features
+# Snapshots and upcasting
 
 ## Snapshots
 
@@ -14,7 +14,7 @@ Eventify saves a snapshot after a successful command when the threshold is cross
 
 | Setting | Meaning |
 |---|---|
-| `threshold` | Take a snapshot after a successful command when the aggregate crosses a multiple of N events. |
+| `threshold` | Take a snapshot after a successful command when the aggregate crosses a multiple of N events. Defaults to `500`. |
 | `deleteEvents` | Remove events before the snapshot after it is safely stored. Defaults to `false`. |
 
 Keep `deleteEvents` disabled when you need full audit history or time travel before the snapshot. If events were deleted and a later code change makes the snapshot unreadable, Eventify cannot rebuild that aggregate.

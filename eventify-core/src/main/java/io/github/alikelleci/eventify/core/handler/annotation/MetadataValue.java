@@ -8,5 +8,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MetadataValue {
-  String value() default ""; // Optional key for specific metadata
+  String value() default ""; // Empty gives the whole Metadata.
 }

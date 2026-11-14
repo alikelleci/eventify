@@ -6,7 +6,7 @@ import io.github.alikelleci.eventify.core.message.annotation.Topic;
 
 import java.util.function.Function;
 
-/** The {@link Topic} a payload class names, or the one of an interface it implements; {@code null} when it names none. */
+/** The {@link Topic} of a payload class, its superclass or an interface it implements; {@code null} when there is none. */
 public final class Topics {
 
   private static final Function<Class<?>, Topic> TOPIC = PerClass.of(payloadClass -> AnnotationScanner.findAnnotation(payloadClass, Topic.class));

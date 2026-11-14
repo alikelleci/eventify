@@ -14,7 +14,7 @@ public final class TopicNames {
     return commandTopic + RESULTS_SUFFIX;
   }
 
-  /** Where scheduled commands wait until they are delivered: the command topic with ".scheduled". */
+  /** Where scheduled commands and their cancels are sent: the command topic with ".scheduled". */
   public static String scheduledTopicOf(String commandTopic) {
     return commandTopic + SCHEDULED_SUFFIX;
   }

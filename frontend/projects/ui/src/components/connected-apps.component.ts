@@ -8,7 +8,7 @@ import { StatusTone, TOOLTIP_DELAY_MS, dotClass, worst } from '../status';
 export interface ConnectedApp {
   name: string;
   note?: string;
-  /** How it is doing, as the colour of its dot. */
+  /** How it is doing, as the color of its dot. */
   tone: StatusTone;
   /** Its instances, listed with how each is doing on hover. */
   instances: AppNode[];
@@ -92,7 +92,7 @@ export class ConnectedAppsComponent {
 
   /**
    * The applications with a problem get a box first, errors before busy ones; the others keep their order. The rest share
-   * one box, in the colour of the one worst off, like an application in the switcher; hovering it lists them in their
+   * one box, in the color of the one worst off, like an application in the switcher; hovering it lists them in their
    * usual order, as the switcher does. Hovering an application's own box lists its instances.
    */
   readonly boxes = computed<Box[]>(() => {
@@ -104,11 +104,11 @@ export class ConnectedAppsComponent {
     return [...shown, { name: `+${rest.length} more`, note: 'applications', tone: worst(rest).tone, rest }];
   });
 
-  /** The same colours and tooltip delay as the application switcher. */
+  /** The same colors and tooltip delay as the application switcher. */
   readonly dotClass = dotClass;
   readonly tooltipDelay = TOOLTIP_DELAY_MS;
 
-  /** From the centre of each box, curving up to the console in the middle. */
+  /** From the center of each box, curving up to the console in the middle. */
   readonly paths = computed(() => {
     const count = this.boxes().length;
     return this.boxes().map((_, i) => {

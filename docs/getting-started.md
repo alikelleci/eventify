@@ -16,8 +16,6 @@ Java 17 or later and access to an Apache Kafka cluster.
 </dependency>
 ```
 
-For Spring Boot, use `eventify-spring-boot-starter` instead.
-
 ## Define a small domain
 
 ```java
@@ -31,13 +29,13 @@ public record OrderPlaced(@AggregateId String id, String customer) {}
 public record Order(@AggregateId String id, String customer) {}
 ```
 
-## Add the behaviour
+## Add the behavior
 
 ```java
 public class OrderHandler {
     @CommandHandler
     public OrderPlaced handle(PlaceOrder command, Order state) {
-        if (state != null) throw new ValidationException("Order already exists");
+        if (state != null) throw new ValidationException("Order already exists.");
         return new OrderPlaced(command.id(), command.customer());
     }
 
@@ -71,19 +69,11 @@ Use the aggregate id as the key when sending a command. [Command Gateway](comman
 
 ## Spring Boot
 
-Add the starter, expose an `Eventify` bean, and make handler classes Spring beans. The starter registers those handlers and starts Eventify. It needs Spring Boot 4.
-
-```java
-@Bean
-Eventify eventify(Eventify.EventifyBuilder builder) {
-    return builder.streamsConfig(config).build();
-}
-```
-
-With Spring Boot Actuator, the health endpoint has an `eventify` entry: it is down when Eventify has stopped.
+Using Spring Boot? Add `eventify-spring-boot-starter` instead and see [Spring Boot](spring-boot.md): it registers your handler beans and starts Eventify for you.
 
 ## Next steps
 
 - [Domain modeling](domain-modeling.md)
 - [Handlers](handlers.md)
+- [Command gateway](command-gateway.md)
 - [Testing](testing.md)
