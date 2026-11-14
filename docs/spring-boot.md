@@ -12,11 +12,11 @@ The starter registers your handler beans and starts Eventify with the applicatio
 
 ## Set it up
 
-Expose an `Eventify` bean and make your handler classes Spring beans. The `Eventify.EventifyBuilder` the starter injects already holds every bean with handler or upcaster methods.
+Expose an `Eventify` bean and make your handler classes Spring beans. The `EventifyBuilder` the starter injects already holds every bean with handler or upcaster methods.
 
 ```java
 @Bean
-Eventify eventify(Eventify.EventifyBuilder builder) {
+Eventify eventify(EventifyBuilder builder) {
     return builder.streamsConfig(config).build();
 }
 
