@@ -9,9 +9,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Follows what Kafka Streams is doing, so the console can be told at any moment: when the state last changed, and
- * whether state stores are being restored. Kept here rather than asked for on the spot, because both are only known
- * while they happen.
+ * Follows when the Kafka Streams state last changed and whether stores are being restored. Kafka Streams only reports
+ * both as they happen, so they are kept here.
  */
 class StatusTracker implements StateListener, StateRestoreListener {
 
@@ -41,7 +40,7 @@ class StatusTracker implements StateListener, StateRestoreListener {
     restoring.add(topicPartition);
   }
 
-  /** Required by Kafka Streams, but not needed here: only whether something is restored matters, not how far. */
+  /** Required by Kafka Streams, but not needed here: only whether something is being restored matters, not how far. */
   @Override
   public void onBatchRestored(TopicPartition topicPartition, String storeName, long batchEndOffset, long numRestored) {
   }
@@ -51,7 +50,7 @@ class StatusTracker implements StateListener, StateRestoreListener {
     restoring.remove(topicPartition);
   }
 
-  /** The partition moved to another instance: it is no longer restored here. */
+  /** The partition moved to another instance: it is no longer being restored here. */
   @Override
   public void onRestoreSuspended(TopicPartition topicPartition, String storeName, long totalRestored) {
     restoring.remove(topicPartition);

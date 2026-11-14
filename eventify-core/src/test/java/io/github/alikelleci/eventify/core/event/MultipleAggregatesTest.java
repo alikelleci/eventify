@@ -28,7 +28,7 @@ import java.util.Properties;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/** Two aggregates with the SAME id in one instance: the aggregate name in the key keeps their data apart. */
+/** Two aggregates with the same id in one instance: the aggregate name in the key keeps their data apart. */
 @DisplayName("Multiple aggregates in one instance")
 class MultipleAggregatesTest {
 

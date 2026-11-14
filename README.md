@@ -67,7 +67,8 @@ See [Getting Started](https://alikelleci.github.io/eventify/docs/getting-started
 | [Domain Modeling](https://alikelleci.github.io/eventify/docs/domain-modeling/) | Aggregates, commands and events |
 | [Handlers](https://alikelleci.github.io/eventify/docs/handlers/) | Decisions, state transitions and reactions |
 | [Command Gateway](https://alikelleci.github.io/eventify/docs/command-gateway/) | Sending commands and receiving their results |
-| [Advanced Features](https://alikelleci.github.io/eventify/docs/advanced/) | Snapshots and event upcasting |
+| [Spring Boot](https://alikelleci.github.io/eventify/docs/spring-boot/) | The starter, handler beans and `@KafkaListener` |
+| [Snapshots and upcasting](https://alikelleci.github.io/eventify/docs/advanced/) | Faster loads and changing event shapes |
 | [Testing](https://alikelleci.github.io/eventify/docs/testing/) | Test aggregates, event handlers and the complete flow in memory |
 | [Annotation Reference](https://alikelleci.github.io/eventify/docs/annotation-reference/) | All annotations at a glance |
 | [Eventify Console](https://alikelleci.github.io/eventify/docs/console/) | Running the console, connecting applications and security |

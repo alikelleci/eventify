@@ -83,7 +83,7 @@ public class AnnotationScanner {
     return new ArrayList<>(methods.values());
   }
 
-  /** Also true for a meta-annotation. */
+  /** Whether the method has the annotation, directly or as a meta-annotation. */
   private static <A extends Annotation> boolean isAnnotatedWith(Method method, Class<A> annotationClass) {
     if (method.isAnnotationPresent(annotationClass)) {
       return true;

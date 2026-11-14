@@ -66,7 +66,7 @@ import { BackendService } from '@eventify/ui/services/backend.service';
         <div [id]="listId()" role="listbox" class="absolute top-full inset-x-0 mt-1 bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
           <div class="px-3 py-2 text-xs font-medium text-surface-400 uppercase tracking-widest border-b border-surface-100 dark:border-surface-800">Recent</div>
           @for (aggregate of search.recent(); track aggregate.type + '/' + aggregate.id) {
-            <!-- The green border and text mark the open aggregate (like the active app in the app switcher); grey marks the keyboard/mouse position -->
+            <!-- The green border and text mark the open aggregate (like the active app in the app switcher); gray marks the keyboard/mouse position -->
             <div [id]="listId() + '-' + $index" role="option" [attr.aria-selected]="$index === highlightedIndex()"
                  class="flex items-center justify-between px-3 py-2 border-l-2 cursor-pointer transition-colors"
                  [class]="rowClass(aggregate, $index)"

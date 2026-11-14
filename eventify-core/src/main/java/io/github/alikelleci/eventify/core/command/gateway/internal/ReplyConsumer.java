@@ -57,7 +57,7 @@ public class ReplyConsumer {
     this.onReplies = onReplies;
   }
 
-  /** Starts listening; called once the gateway is constructed, since replies reach it from another thread. */
+  /** Starts listening; the gateway calls it last in its constructor, once all that replies need is set up. */
   public void start() {
     if (thread != null) {
       throw new IllegalStateException("The reply consumer for " + replyTopic + " is already started.");
@@ -109,7 +109,7 @@ public class ReplyConsumer {
         }
       }
     } catch (WakeupException e) {
-      // closing: only stopListening() wakes the consumer
+      // Closing: only stopListening() wakes the consumer.
     } finally {
       consumer.close();
     }

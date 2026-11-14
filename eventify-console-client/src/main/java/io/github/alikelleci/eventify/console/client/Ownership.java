@@ -25,7 +25,7 @@ class Ownership {
 
   /**
    * Returns {@code null} when this instance can answer for the aggregate, or the reason it can't: Kafka Streams isn't
-   * running, or another instance owns the aggregate. The console then asks that instance instead.
+   * running, the owner is unknown, or another instance owns the aggregate. In the last case the console asks that one.
    */
   <T> Result<T> check(String aggregateId) {
     KafkaStreams streams = eventify.getKafkaStreams();
@@ -49,7 +49,7 @@ class Ownership {
     return Result.notOwner(NodeIdentity.nodeId(activeHost));
   }
 
-  /** Nothing found; unless this instance stopped owning the aggregate during the query, and simply no longer has it. */
+  /** Not found, or unavailable when this instance stopped owning the aggregate during the query. */
   <T> Result<T> notFound(String aggregateId) {
     if (!isLocallyAuthoritative(aggregateId)) {
       log.debug("Aggregate no longer available on this instance: aggregateId={}", aggregateId);

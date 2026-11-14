@@ -66,8 +66,8 @@ public class ConsoleUiConfiguration {
     if (name != null && HASHED_FILE.matcher(name).matches()) {
       headers.setCacheControl("public, max-age=31536000, immutable");
     } else {
-      // index.html: the browser checks for a new version on every visit, so after an upgrade it never runs an old
-      // index.html that points to files that are gone.
+      // Other files, like index.html: the browser checks for a new version on every visit, so after an upgrade it
+      // never runs an old index.html that points to files that are gone.
       headers.setCacheControl("no-cache");
     }
   }

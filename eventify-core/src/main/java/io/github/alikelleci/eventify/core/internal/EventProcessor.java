@@ -88,7 +88,7 @@ public class EventProcessor implements Processor<String, Event, String, Command>
     Object payload = value instanceof Command command ? command.getPayload() : value;
     Metadata own = value instanceof Command command ? command.getMetadata() : Metadata.EMPTY;
 
-    // Checked now: the topic and key are only looked up when sending. Failing like the handler did.
+    // Checked now, as the topic and key are only looked up when sending; a failure counts as a handler failure.
     try {
       if (Topics.of(payload.getClass()) == null) {
         throw new TopicMissingException("Command " + payload.getClass().getSimpleName() + " has no @Topic.");

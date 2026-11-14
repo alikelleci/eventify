@@ -64,7 +64,7 @@ public final class AggregateFixture<A> {
     this.objectMapper = objectMapper;
   }
 
-  /** A fixture for this aggregate, with its command and event sourcing handlers. */
+  /** A fixture for this aggregate, with its command and event-sourcing handlers. */
   public static <A> AggregateFixture<A> of(Class<A> aggregateClass, Object... handlers) {
     return new AggregateFixture<>(aggregateClass, List.of(handlers), null);
   }

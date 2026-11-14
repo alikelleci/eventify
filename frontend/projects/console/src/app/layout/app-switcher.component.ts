@@ -10,7 +10,7 @@ const FILTER_FROM = 7;
 /**
  * Picks the application to inspect, from the ones connected to the console. The dropdown looks and works like the recent searches:
  * the same panel, the border marks the active app, and the arrow keys move through the list; with many applications a filter
- * narrows the list. Each application is one line, with a dot in the colour of its instance worst off. The highlighted row, by
+ * narrows the list. Each application is one line, with a dot in the color of its instance worst off. The highlighted row, by
  * mouse or by arrow keys, shows how each of its instances is doing.
  */
 @Component({
@@ -45,7 +45,7 @@ const FILTER_FROM = 7;
              (mouseleave)="highlightedIndex.set(-1)">
           @for (app of filtered(); track app.name) {
             @let state = appState(app.nodes);
-            <!-- One line: the dot in the colour of the instance worst off, the name, and the number of instances. The instances
+            <!-- One line: the dot in the color of the instance worst off, the name, and the number of instances. The instances
                  themselves are in the tooltip. -->
             <div role="option" [attr.aria-selected]="isActive(app)" [attr.aria-label]="app.name + ', ' + state.text + ', ' + instancesLabel(app)"
                  class="flex items-center gap-2.5 px-3 py-2 border-l-2 cursor-pointer transition-colors"
@@ -170,7 +170,7 @@ export class AppSwitcherComponent {
     e.stopPropagation();
   }
 
-  // The green border and text mark the active app; grey marks the highlighted row, also on the active app.
+  // The green border and text mark the active app; gray marks the highlighted row, also on the active app.
   rowClass(app: AppEntry, index: number): string {
     const current = this.isActive(app);
     const highlighted = index === this.highlightedIndex();

@@ -33,6 +33,6 @@ public interface PluginContext {
    */
   AggregateRepository getAggregateRepository(String aggregateType);
 
-  /** Which instance of the application owns the aggregate, and so has its events; {@code null} when unknown. */
+  /** Which instance of the application owns the aggregate, and so has its events; {@code null} or an unavailable host when unknown. */
   KeyQueryMetadata getAggregateMetadata(String aggregateId);
 }

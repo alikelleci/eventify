@@ -58,7 +58,7 @@ export class BackendService {
 
   /**
    * Loads the applications, and keeps them up to date. Resolves once the first list is there. A hidden page (another
-   * tab, or minimised) asks nothing after that, and asks again as soon as it is shown.
+   * tab, or minimized) asks nothing after that, and asks again as soon as it is shown.
    */
   load(): Promise<void> {
     const visible = () => document.visibilityState === 'visible';

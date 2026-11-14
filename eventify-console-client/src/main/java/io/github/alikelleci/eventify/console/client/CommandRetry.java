@@ -45,7 +45,7 @@ class CommandRetry {
 
   /**
    * The application's own Kafka client settings (security included, and its {@code producer.} settings), without the
-   * ones Kafka Streams only adds for its exactly-once processing.
+   * linger and timeouts Kafka Streams sets for its own producer.
    */
   static Map<String, Object> producerConfig(PluginContext eventify) {
     Map<String, Object> config = new StreamsConfig(eventify.getStreamsConfig()).getProducerConfigs(NodeIdentity.clientId(eventify, "producer"));

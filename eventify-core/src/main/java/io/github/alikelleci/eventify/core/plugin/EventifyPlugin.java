@@ -9,11 +9,11 @@ import org.apache.kafka.streams.processor.StateRestoreListener;
  */
 public interface EventifyPlugin {
 
-  /** Eventify has started; Kafka Streams is running. */
+  /** Eventify has started Kafka Streams, which may not be RUNNING yet. */
   default void onStart(PluginContext context) {
   }
 
-  /** Eventify is stopping. */
+  /** Eventify is stopping; Kafka Streams is already closed. */
   default void onStop(PluginContext context) {
   }
 
