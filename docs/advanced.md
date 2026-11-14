@@ -1,4 +1,4 @@
-# Advanced Features
+# Snapshots and upcasting
 
 ## Snapshots
 

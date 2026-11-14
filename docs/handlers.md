@@ -45,7 +45,7 @@ public void handle(OrderPlaced event) {
 
 Make side effects idempotent. A handler may run again after recovery.
 
-An exception in an event handler stops Eventify, including command handling. Put work that can fail, such as sending mail, in a [Spring listener](#spring-listeners) or a separate Eventify instance.
+An exception in an event handler stops Eventify, including command handling. Put work that can fail, such as sending mail, in a [Spring listener](spring-boot.md#spring-listeners) or a separate Eventify instance.
 
 ## Send a command from an event
 
@@ -89,27 +89,3 @@ Besides the payload and aggregate state, handlers can receive:
 ## Ordering
 
 Use `@Priority` only when multiple `@EventHandler` methods handle the same event. Higher values run first.
-
-## Spring listeners
-
-With Spring Kafka on the classpath, the Spring Boot starter can also deserialize Eventify events for `@KafkaListener` methods. Select its container factory:
-
-```java
-@KafkaListener(topics = "events.order", groupId = "orders-view",
-               containerFactory = "eventifyListenerContainerFactory")
-public void handle(OrderPlaced event, @Timestamp Instant placedAt, @Sequence long sequence) {
-    ordersView.insert(event.id(), event.customer(), placedAt);
-}
-```
-
-A listener method takes the same parameters as an `@EventHandler`, or the whole `Event`. Only committed events arrive; events of a class the application doesn't have are skipped.
-
-A listener method for one event type fails on the other types on its topic. For a topic with several types, take `Event`, or put `@KafkaListener` on a class with a `@KafkaHandler` method per type and one with `isDefault = true` for the rest.
-
-Use this when a projection should have its own lifecycle and error handling; command handling always uses `@CommandHandler`.
-
-To read events in a projection of your own, e.g. a Kafka Streams application, inject the starter's `EventSerde` bean. It reads events with the same upcasters as Eventify.
-
-```java
-builder.stream("events.order", Consumed.with(Serdes.String(), eventSerde));
-```
