@@ -14,9 +14,9 @@
 
   <div class="py-4 flex flex-col gap-3">
     <div class="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-lg px-3 py-2.5">
-      <div>
+      <div class="min-w-0">
         <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-1">Event ID</div>
-        <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ d.event.id }}</div>
+        <div class="text-sm font-mono break-all text-surface-900 dark:text-surface-100">{{ d.event.id }}</div>
       </div>
       <p-button [text]="true" [rounded]="true" severity="secondary"
         [icon]="copiedKey() === 'event-id' ? 'pi pi-check' : 'pi pi-copy'"
@@ -24,9 +24,9 @@
         (onClick)="copy(d.event.id, 'event-id')" />
     </div>
     <div class="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-lg px-3 py-2.5">
-      <div>
+      <div class="min-w-0">
         <div class="text-xs font-medium text-surface-400 uppercase tracking-widest mb-1">Aggregate ID</div>
-        <div class="text-sm font-mono text-surface-900 dark:text-surface-100">{{ d.event.aggregateId }}</div>
+        <div class="text-sm font-mono break-all text-surface-900 dark:text-surface-100">{{ d.event.aggregateId }}</div>
       </div>
       <p-button [text]="true" [rounded]="true" severity="secondary"
         [icon]="copiedKey() === 'agg-id' ? 'pi pi-check' : 'pi pi-copy'"
