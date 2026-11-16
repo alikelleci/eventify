@@ -52,8 +52,11 @@ export class AggregateComponent {
   private refreshedTab = signal<Tab | null>(null);
   private eventList = viewChild(EventListComponent);
   private commandList = viewChild(CommandListComponent);
-  /** How far back the commands were read, for the not-found text; null when the application didn't say. */
-  lookbackDays = computed(() => this.commandList()?.lookbackDays() ?? null);
+  /**
+   * How far back the commands were read, for the not-found text; null when the application didn't say. Kept by the page,
+   * not read from the list: checking again recreates the list, which doesn't know it until its commands are back.
+   */
+  lookbackDays = signal<number | null>(null);
   tab = signal<Tab>('events');
   selected = signal<EventMessage | CommandMessage | null>(null);
 
@@ -161,6 +164,7 @@ export class AggregateComponent {
     if (!loaded) this.loadFailed.set(true);
     if (commands.length) this.searchSvc.remember(this.load());
     this.commandCount.set(commands.length);
+    if (loaded) this.lookbackDays.set(this.commandList()?.lookbackDays() ?? null);
     if (this.eventCount() !== null) this.checkingAgain.set(false);
     // Only commands, all failed: show those instead of an empty event list.
     if (this.eventCount() === 0 && commands.length) this.tab.set('commands');
@@ -207,6 +211,7 @@ export class AggregateComponent {
     this.commandCount.set(null);
     this.loadFailed.set(false);
     this.checkingAgain.set(false);
+    this.lookbackDays.set(null);
     this.awaitingDetail.set(false);
     this.openingMinElapsed.set(false);
     this.opening.set(true);
