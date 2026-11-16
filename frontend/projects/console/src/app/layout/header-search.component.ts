@@ -63,7 +63,7 @@ import { BackendService } from '@eventify/ui/services/backend.service';
         Open <span class="text-xs opacity-70">↵</span>
       </button>
     } @else if (search.loading()) {
-      <i class="pi pi-spin pi-spinner self-center pr-3 text-xs" [class]="dark() ? 'text-slate-400' : 'text-surface-400'"></i>
+      <i class="pi pi-spin pi-spinner self-center mr-3 text-xs leading-none" [class]="dark() ? 'text-slate-400' : 'text-surface-400'"></i>
     } @else if (focused() ? changed() : dark()) {
       <kbd class="mr-2.5 self-center px-1.5 rounded border text-[10px] leading-4 font-sans pointer-events-none"
            [class]="dark() ? 'border-slate-600 text-slate-400' : 'border-surface-300 text-surface-400 dark:border-surface-600'">{{ focused() ? '↵' : '/' }}</kbd>
