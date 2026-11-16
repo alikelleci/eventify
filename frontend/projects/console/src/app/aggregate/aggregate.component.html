@@ -17,8 +17,7 @@
         <h1 class="mt-5 text-xl font-semibold tracking-tight text-surface-900 dark:text-surface-0">No {{ current.type }} with this ID</h1>
         <p class="mt-2 text-sm leading-relaxed text-surface-500 dark:text-surface-400">
           The <span class="font-medium text-surface-700 dark:text-surface-200">{{ current.app }}</span> application has no events
-          for this {{ current.type }}, and no commands for it
-          @if (lookbackDays(); as days) { in the last {{ days }} days. } @else { recently. }
+          for this ID and @if (lookbackDays(); as days) { no commands in the last {{ days }} days. } @else { no recent commands. }
           IDs are case-sensitive and must match exactly.
         </p>
         <div class="mt-6 flex flex-wrap gap-2">
