@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, effect, viewChild, HostListener, DestroyRef } from '@angular/core';
+import { Component, inject, signal, computed, effect, untracked, viewChild, HostListener, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { distinctUntilChanged, map } from 'rxjs';
@@ -60,19 +60,15 @@ export class AggregateComponent {
   private commandCount = signal<number | null>(null);
   /** A list couldn't be loaded: then nothing can be said about whether the aggregate exists. */
   private loadFailed = signal(false);
-  /** Checking again from the not-found page: it says it is looking until the lists are back, instead of showing them. */
-  private checkingAgain = signal(false);
+  /** Checking again from the not-found page: the page stays until the answer is in, with the button spinning. */
+  checkingAgain = signal(false);
   /**
-   * Whether there is anything at this address. Without events it is still 'checking' until the commands are in: a command
-   * that failed creates no events. 'notFound' when there are no commands either; null when the lists show (or failed).
+   * Nothing at this address: no events, and no commands either (a command that failed creates no events). Only once both
+   * lists are in, so the page goes from the skeleton straight to the answer.
    */
-  lookup = computed<'checking' | 'notFound' | null>(() => {
-    const events = this.eventCount();
-    const commands = this.commandCount();
-    if (this.loadFailed()) return null;
-    if (events === null) return this.checkingAgain() ? 'checking' : null;
-    if (events > 0 || (commands ?? 0) > 0) return null;
-    return commands === null ? 'checking' : 'notFound';
+  notFound = computed(() => {
+    if (this.checkingAgain()) return true;
+    return !this.loadFailed() && this.eventCount() === 0 && this.commandCount() === 0;
   });
   // Reads the list's own loading signal (the one that shows its skeleton), so the spinner stops as the list appears.
   refreshing = computed(() => {
@@ -115,6 +111,10 @@ export class AggregateComponent {
         this.opening.set(false);
     });
     effect(() => this.searchSvc.loading.set(this.opening()));
+    // An address with nothing at it doesn't stay among the recent ones (it may be there from when it had something).
+    effect(() => {
+      if (this.notFound() && !this.checkingAgain()) untracked(() => this.searchSvc.removeRecent(this.load()));
+    });
     this.destroyRef.onDestroy(() => this.searchSvc.loading.set(false));
   }
 
@@ -147,9 +147,9 @@ export class AggregateComponent {
   onEventsLoaded(loaded: EventMessage[] | null) {
     const events = loaded ?? [];
     if (!loaded) this.loadFailed.set(true);
-    this.checkingAgain.set(false);
     if (events.length) this.searchSvc.remember(this.load());
     this.eventCount.set(events.length);
+    if (this.commandCount() !== null) this.checkingAgain.set(false);
     if (this.isEvent(this.selected())) this.reselect(events);
     this.autoSelect('events', events);
   }
@@ -159,6 +159,7 @@ export class AggregateComponent {
     if (!loaded) this.loadFailed.set(true);
     if (commands.length) this.searchSvc.remember(this.load());
     this.commandCount.set(commands.length);
+    if (this.eventCount() !== null) this.checkingAgain.set(false);
     // Only commands, all failed: show those instead of an empty event list.
     if (this.eventCount() === 0 && commands.length) this.tab.set('commands');
     if (this.isCommand(this.selected())) this.reselect(commands);
