@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, ViewChild, computed, effect, inject, signal, viewChildren } from '@angular/core';
+import { Component, ElementRef, HostListener, ViewChild, computed, effect, inject, input, signal, viewChildren } from '@angular/core';
 import { TooltipModule, Tooltip } from 'primeng/tooltip';
 import { AppEntry, BackendService } from '@eventify/ui/services/backend.service';
 import { InstanceListComponent } from '@eventify/ui/components/instance-list.component';
@@ -20,16 +20,17 @@ const FILTER_FROM = 7;
   host: { class: 'relative block', '(focusout)': 'onFocusout($event)' },
   template: `
     <button #button type="button" aria-haspopup="listbox" [attr.aria-expanded]="open()" aria-controls="app-switcher-list"
-            class="flex items-center gap-2 h-8 w-full pl-3 pr-2.5 rounded border text-sm text-slate-100 transition-colors cursor-pointer outline-none focus-visible:border-slate-500 focus-visible:bg-slate-700/60"
-            [class]="open() ? 'border-slate-500 bg-slate-700/60' : 'border-slate-700 bg-slate-800 hover:border-slate-600'"
+            [attr.aria-label]="'Application ' + backend.activeApp()?.name"
+            class="flex items-center gap-2 w-full transition-colors cursor-pointer outline-none"
+            [class]="buttonClass()"
             (click)="toggle()" (keydown)="onKeydown($event)">
       <span class="h-1.5 w-1.5 shrink-0 rounded-full" [class]="dotClass(activeState().tone)"></span>
       <span class="flex-1 text-left truncate">{{ backend.activeApp()?.name }}</span>
-      <i class="pi pi-chevron-down text-xs text-slate-400 transition-transform" [class.rotate-180]="open()"></i>
+      <i class="pi pi-chevron-down text-[10px] opacity-50 transition-transform" [class.rotate-180]="open()"></i>
     </button>
 
     @if (open()) {
-      <div class="absolute top-full right-0 mt-1 min-w-full w-80 bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
+      <div [class]="look() === 'pill' ? 'right-0' : '-left-px'" class="absolute top-full mt-2 min-w-full w-80 font-sans bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
         <div class="px-3 py-2 text-xs font-medium text-surface-400 uppercase tracking-widest border-b border-surface-100 dark:border-surface-800">Applications</div>
 
         @if (showFilter()) {
@@ -70,6 +71,20 @@ const FILTER_FROM = 7;
 export class AppSwitcherComponent {
   readonly backend = inject(BackendService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+
+  /** 'pill' stands on its own in the header; the segments are the first part of an aggregate's address, on a dark or light bar. */
+  look = input<'pill' | 'dark' | 'light'>('pill');
+
+  readonly buttonClass = computed(() => {
+    const open = this.open();
+    switch (this.look()) {
+      case 'dark': return 'h-full pl-3 pr-2.5 text-slate-100 ' + (open ? 'bg-slate-700/70' : 'hover:bg-slate-700/50 focus-visible:bg-slate-700/50');
+      case 'light': return 'h-full pl-3 pr-2 sm:pl-4 sm:pr-3 text-surface-700 dark:text-surface-200 '
+        + (open ? 'bg-surface-100 dark:bg-surface-800' : 'hover:bg-surface-100 focus-visible:bg-surface-100 dark:hover:bg-surface-800 dark:focus-visible:bg-surface-800');
+      default: return 'h-8 pl-3 pr-2.5 rounded border text-sm text-slate-100 focus-visible:border-slate-500 focus-visible:bg-slate-700/60 '
+        + (open ? 'border-slate-500 bg-slate-700/60' : 'border-slate-700 bg-slate-800 hover:border-slate-600');
+    }
+  });
   readonly appState = appState;
   readonly dotClass = dotClass;
 
