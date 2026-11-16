@@ -72,14 +72,14 @@ import { BackendService } from '@eventify/ui/services/backend.service';
     @if (dropdownOpen()) {
       <div [id]="listId()" role="listbox" class="absolute top-full -inset-x-px mt-2 font-sans bg-surface-0 dark:bg-surface-900 border border-surface-200 dark:border-surface-700 rounded-lg shadow-lg z-50 overflow-hidden">
         <div class="px-3 py-2 text-xs font-medium text-surface-400 uppercase tracking-widest border-b border-surface-100 dark:border-surface-800">Recently opened</div>
-        @for (aggregate of search.recent(); track aggregate.type + '/' + aggregate.id) {
+        @for (aggregate of search.recent(); track aggregate.app + '/' + aggregate.type + '/' + aggregate.id) {
           <!-- The green border and text mark the open aggregate (like the active app in the app switcher); gray marks the keyboard/mouse position -->
           <div [id]="listId() + '-' + $index" role="option" [attr.aria-selected]="$index === highlightedIndex()"
                class="group flex items-center gap-2 px-3 py-2 border-l-2 cursor-pointer transition-colors"
                [class]="rowClass(aggregate, $index)"
                (mouseenter)="highlightedIndex.set($index)"
-               (mousedown)="$event.preventDefault(); open(aggregate.id, aggregate.type)">
-            <span class="text-xs font-mono text-surface-400 shrink-0">{{ aggregate.type }}/</span>
+               (mousedown)="$event.preventDefault(); open(aggregate.id, aggregate.type, aggregate.app)">
+            <span class="text-xs font-mono text-surface-400 shrink-0">{{ aggregate.app }} / {{ aggregate.type }} /</span>
             <span class="text-sm font-mono truncate"
                   [class]="isOpen(aggregate) ? 'text-primary-600 dark:text-primary-400' : 'text-surface-900 dark:text-surface-100'">{{ aggregate.id }}</span>
             <button class="ml-auto pl-2 shrink-0 text-surface-300 opacity-0 group-hover:opacity-100 hover:text-surface-500 dark:text-surface-600 dark:hover:text-surface-400 cursor-pointer"
@@ -114,7 +114,7 @@ export class HeaderSearchComponent {
   changed = computed(() => {
     const id = this.query().trim();
     const current = this.search.current();
-    return !!id && (current?.id !== id || current?.type !== this.selectedType());
+    return !!id && (current?.id !== id || current?.type !== this.selectedType() || current?.app !== this.backend.activeApp()?.name);
   });
   listId = computed(() => `recent-searches-${this.variant()}`);
 
@@ -177,7 +177,7 @@ export class HeaderSearchComponent {
       case 'Enter': {
         e.preventDefault();
         const highlighted = this.highlightedIndex() >= 0 ? recent[this.highlightedIndex()] : null;
-        this.open(highlighted?.id ?? this.query(), highlighted?.type);
+        this.open(highlighted?.id ?? this.query(), highlighted?.type, highlighted?.app);
         break;
       }
       case 'Escape':
@@ -188,7 +188,7 @@ export class HeaderSearchComponent {
 
   isOpen(aggregate: AggregateRef): boolean {
     const current = this.search.current();
-    return !!current && current.type === aggregate.type && current.id === aggregate.id;
+    return !!current && current.app === aggregate.app && current.type === aggregate.type && current.id === aggregate.id;
   }
 
   rowClass(aggregate: AggregateRef, index: number): string {
@@ -221,8 +221,8 @@ export class HeaderSearchComponent {
     this.typesOpen.set(false);
   }
 
-  open(id: string, type = this.selectedType()) {
-    this.search.open(type, id);
+  open(id: string, type = this.selectedType(), app = this.backend.activeApp()?.name ?? '') {
+    this.search.open(app, type, id);
     this.input.nativeElement.blur();
   }
 }

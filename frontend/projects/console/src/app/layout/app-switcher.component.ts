@@ -3,6 +3,7 @@ import { TooltipModule, Tooltip } from 'primeng/tooltip';
 import { AppEntry, BackendService } from '@eventify/ui/services/backend.service';
 import { InstanceListComponent } from '@eventify/ui/components/instance-list.component';
 import { TOOLTIP_DELAY_MS, appState, dotClass } from '@eventify/ui/status';
+import { SearchService } from '../services/search.service';
 
 /** From this many applications on, the dropdown has a filter at the top. */
 const FILTER_FROM = 7;
@@ -71,6 +72,7 @@ const FILTER_FROM = 7;
 export class AppSwitcherComponent {
   readonly backend = inject(BackendService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  private readonly search = inject(SearchService);
 
   /** 'pill' stands on its own in the header; the segments are the first part of an aggregate's address, on a dark or light bar. */
   look = input<'pill' | 'dark' | 'light'>('pill');
@@ -199,7 +201,11 @@ export class AppSwitcherComponent {
   }
 
   select(app: AppEntry | undefined) {
-    if (app) this.backend.setActiveApp(app);
+    if (app) {
+      this.backend.setActiveApp(app.name);
+      // With an aggregate open, the address changes: the same aggregate in the picked application.
+      this.search.switchApp(app.name);
+    }
     this.open.set(false);
     this.button.nativeElement.focus();
   }

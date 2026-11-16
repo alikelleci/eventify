@@ -1,7 +1,7 @@
 import { Component, inject, signal, computed, effect, viewChild, HostListener, DestroyRef } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { distinctUntilChanged, map, skip } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { DrawerModule } from 'primeng/drawer';
 import { TabsModule } from 'primeng/tabs';
@@ -78,17 +78,19 @@ export class AggregateComponent {
   selectedCommand = computed(() => this.isCommand(this.selected()) ? this.selected() as CommandMessage : null);
 
   constructor() {
-    // Angular reuses this component when navigating from one aggregate to another, so reload on every ID change.
+    // Angular reuses this component when navigating from one aggregate to another, so reload on every address change.
+    // The address names the application, so a link or a recent search opens in the right one.
+    const backend = inject(BackendService);
     this.route.paramMap.pipe(
-      map(p => ({ type: (p.get('type') ?? '').trim(), id: (p.get('id') ?? '').trim() })),
-      distinctUntilChanged((a, b) => a.type === b.type && a.id === b.id),
+      map(p => ({ app: (p.get('app') ?? '').trim(), type: (p.get('type') ?? '').trim(), id: (p.get('id') ?? '').trim() })),
+      distinctUntilChanged((a, b) => a.app === b.app && a.type === b.type && a.id === b.id),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(aggregate => this.reload(aggregate.type, aggregate.id));
+    ).subscribe(aggregate => {
+      backend.setActiveApp(aggregate.app);
+      this.reload(aggregate.type, aggregate.id);
+    });
     this.searchSvc.reload$.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(aggregate => this.reload(aggregate.type, aggregate.id));
-    // Picking another app in the header shows the same aggregate from that app.
-    toObservable(inject(BackendService).activeApp).pipe(skip(1), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.reload(this.load().type, this.load().id));
 
     effect(() => {
       if (this.opening() && this.openingMinElapsed() && this.eventCount() !== null && !this.awaitingDetail())

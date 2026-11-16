@@ -6,8 +6,9 @@ import { Subject, filter, map } from 'rxjs';
 const RECENT_KEY = 'eventify.recentSearches';
 const MAX_RECENT = 8;
 
-/** An aggregate is addressed by its type and its identifier: one application can hold several aggregates. */
+/** An aggregate's address: its application, its type and its identifier. One application can hold several aggregates. */
 export interface AggregateRef {
+  app: string;
   type: string;
   id: string;
 }
@@ -17,7 +18,7 @@ export interface AggregateRef {
 export class SearchService {
   private readonly router = inject(Router);
 
-  /** The aggregate in the URL (/aggregates/:type/:id), or null on the landing page. */
+  /** The aggregate in the URL (/aggregates/:app/:type/:id), or null on the landing page. */
   readonly current = toSignal(
     this.router.events.pipe(filter(e => e instanceof NavigationEnd), map(() => this.fromUrl())),
     { initialValue: null as AggregateRef | null },
@@ -39,16 +40,22 @@ export class SearchService {
     });
   }
 
-  open(type: string, rawId: string) {
+  open(app: string, type: string, rawId: string) {
     const id = rawId.trim();
-    if (!id || !type) return;
+    if (!id || !type || !app) return;
     const current = this.fromUrl();
-    if (current && current.type === type && current.id === id) {
-      this.reload$.next({ type, id });
+    if (current && same(current, { app, type, id })) {
+      this.reload$.next({ app, type, id });
     } else {
       // From the landing page push a history entry, so the back button returns to it.
-      this.router.navigate(['/aggregates', type, id], { replaceUrl: !!current });
+      this.router.navigate(['/aggregates', app, type, id], { replaceUrl: !!current });
     }
+  }
+
+  /** Another application picked while an aggregate is open: the same type and ID in that application. */
+  switchApp(app: string) {
+    const current = this.fromUrl();
+    if (current && current.app !== app) this.open(app, current.type, current.id);
   }
 
   focusSearch() {
@@ -62,9 +69,10 @@ export class SearchService {
   private fromUrl(): AggregateRef | null {
     let route = this.router.routerState.snapshot.root;
     while (route.firstChild) route = route.firstChild;
+    const app = (route.paramMap.get('app') ?? '').trim();
     const type = (route.paramMap.get('type') ?? '').trim();
     const id = (route.paramMap.get('id') ?? '').trim();
-    return type && id ? { type, id } : null;
+    return app && type && id ? { app, type, id } : null;
   }
 
   private saveRecent(aggregate: AggregateRef) {
@@ -79,7 +87,7 @@ export class SearchService {
   private loadRecent(): AggregateRef[] {
     try {
       const stored: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
-      // Entries stored before an aggregate had a type are dropped: they no longer say what they point at.
+      // Entries stored without an application or a type are dropped: they don't say what they point at.
       return Array.isArray(stored) ? stored.filter(isAggregate) : [];
     } catch {
       return [];
@@ -88,10 +96,10 @@ export class SearchService {
 }
 
 function same(a: AggregateRef, b: AggregateRef): boolean {
-  return a.type === b.type && a.id === b.id;
+  return a.app === b.app && a.type === b.type && a.id === b.id;
 }
 
 function isAggregate(value: unknown): value is AggregateRef {
   const aggregate = value as AggregateRef;
-  return !!aggregate && typeof aggregate.type === 'string' && typeof aggregate.id === 'string';
+  return !!aggregate && typeof aggregate.app === 'string' && typeof aggregate.type === 'string' && typeof aggregate.id === 'string';
 }

@@ -76,8 +76,9 @@ export class BackendService {
     });
   }
 
-  setActiveApp(app: AppEntry): void {
-    this._activeName.set(app.name);
+  /** By name: an aggregate's address can name an application that isn't connected right now. */
+  setActiveApp(name: string): void {
+    this._activeName.set(name);
   }
 
   private update(apps: AppEntry[]): void {
