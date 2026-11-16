@@ -52,6 +52,8 @@ export class AggregateComponent {
   private refreshedTab = signal<Tab | null>(null);
   private eventList = viewChild(EventListComponent);
   private commandList = viewChild(CommandListComponent);
+  /** How far back the commands were read, for the not-found text; null when the application didn't say. */
+  lookbackDays = computed(() => this.commandList()?.lookbackDays() ?? null);
   tab = signal<Tab>('events');
   selected = signal<EventMessage | CommandMessage | null>(null);
 
