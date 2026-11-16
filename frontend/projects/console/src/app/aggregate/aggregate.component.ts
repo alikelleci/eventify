@@ -60,8 +60,20 @@ export class AggregateComponent {
   private commandCount = signal<number | null>(null);
   /** A list couldn't be loaded: then nothing can be said about whether the aggregate exists. */
   private loadFailed = signal(false);
-  /** Nothing at this address: no events, and no commands either (a command that failed creates no events). */
-  notFound = computed(() => !this.loadFailed() && this.eventCount() === 0 && this.commandCount() === 0);
+  /** Checking again from the not-found page: it says it is looking until the lists are back, instead of showing them. */
+  private checkingAgain = signal(false);
+  /**
+   * Whether there is anything at this address. Without events it is still 'checking' until the commands are in: a command
+   * that failed creates no events. 'notFound' when there are no commands either; null when the lists show (or failed).
+   */
+  lookup = computed<'checking' | 'notFound' | null>(() => {
+    const events = this.eventCount();
+    const commands = this.commandCount();
+    if (this.loadFailed()) return null;
+    if (events === null) return this.checkingAgain() ? 'checking' : null;
+    if (events > 0 || (commands ?? 0) > 0) return null;
+    return commands === null ? 'checking' : 'notFound';
+  });
   // Reads the list's own loading signal (the one that shows its skeleton), so the spinner stops as the list appears.
   refreshing = computed(() => {
     const tab = this.refreshedTab();
@@ -73,7 +85,7 @@ export class AggregateComponent {
   // and the auto-selected newest event's detail are both ready, so everything appears at once.
   // Commands load in the background; they're slow (Kafka poll) and have their own list skeleton.
   opening = signal(false);
-  private openingMinElapsed = signal(false);
+  openingMinElapsed = signal(false);
   private awaitingDetail = signal(false);
 
   drawerVisible = signal(false);
@@ -135,6 +147,7 @@ export class AggregateComponent {
   onEventsLoaded(loaded: EventMessage[] | null) {
     const events = loaded ?? [];
     if (!loaded) this.loadFailed.set(true);
+    this.checkingAgain.set(false);
     if (events.length) this.searchSvc.remember(this.load());
     this.eventCount.set(events.length);
     if (this.isEvent(this.selected())) this.reselect(events);
@@ -147,7 +160,7 @@ export class AggregateComponent {
     if (commands.length) this.searchSvc.remember(this.load());
     this.commandCount.set(commands.length);
     // Only commands, all failed: show those instead of an empty event list.
-    if (this.opening() && this.eventCount() === 0 && commands.length) this.tab.set('commands');
+    if (this.eventCount() === 0 && commands.length) this.tab.set('commands');
     if (this.isCommand(this.selected())) this.reselect(commands);
     this.autoSelect('commands', commands);
   }
@@ -162,6 +175,12 @@ export class AggregateComponent {
     this.loadFailed.set(false);
     this.refreshedTab.set(this.tab());
     this.lists.set({});
+  }
+
+  /** From the not-found page: look again, staying on that page until the answer is in. */
+  checkAgain() {
+    this.checkingAgain.set(true);
+    this.refresh();
   }
 
   /** From the not-found page: back to the ID in the address. */
@@ -184,6 +203,7 @@ export class AggregateComponent {
     this.eventCount.set(null);
     this.commandCount.set(null);
     this.loadFailed.set(false);
+    this.checkingAgain.set(false);
     this.awaitingDetail.set(false);
     this.openingMinElapsed.set(false);
     this.opening.set(true);
