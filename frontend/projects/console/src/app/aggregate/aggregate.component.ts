@@ -9,7 +9,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
 import { CommandMessage, EventMessage } from '@eventify/ui/models';
-import { SearchService } from '../services/search.service';
+import { AggregateRef, SearchService } from '../services/search.service';
 import { BackendService } from '@eventify/ui/services/backend.service';
 import { EventListComponent } from './event-list/event-list.component';
 import { CommandListComponent } from './command-list/command-list.component';
@@ -45,7 +45,7 @@ export class AggregateComponent {
    * The aggregate being shown. A new object on every search, which recreates the lists and
    * detail panes in the template, so each search starts from scratch.
    */
-  load = signal({ type: '', id: '' });
+  load = signal<AggregateRef>({ app: '', type: '', id: '' });
   /** A new object on every refresh, which recreates both lists so they load again. */
   lists = signal({});
   /** The tab that was open when refresh was clicked; the spinner follows its list, so switching tabs doesn't change it. */
@@ -58,6 +58,10 @@ export class AggregateComponent {
   // Item counts reported by the lists once loaded; null while still loading.
   private eventCount = signal<number | null>(null);
   private commandCount = signal<number | null>(null);
+  /** A list couldn't be loaded: then nothing can be said about whether the aggregate exists. */
+  private loadFailed = signal(false);
+  /** Nothing at this address: no events, and no commands either (a command that failed creates no events). */
+  notFound = computed(() => !this.loadFailed() && this.eventCount() === 0 && this.commandCount() === 0);
   // Reads the list's own loading signal (the one that shows its skeleton), so the spinner stops as the list appears.
   refreshing = computed(() => {
     const tab = this.refreshedTab();
@@ -87,13 +91,15 @@ export class AggregateComponent {
       takeUntilDestroyed(this.destroyRef),
     ).subscribe(aggregate => {
       backend.setActiveApp(aggregate.app);
-      this.reload(aggregate.type, aggregate.id);
+      this.reload(aggregate);
     });
     this.searchSvc.reload$.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(aggregate => this.reload(aggregate.type, aggregate.id));
+      .subscribe(aggregate => this.reload(aggregate));
 
     effect(() => {
-      if (this.opening() && this.openingMinElapsed() && this.eventCount() !== null && !this.awaitingDetail())
+      // Without events the commands decide what shows (their tab, or that nothing is here), so wait for them too.
+      const events = this.eventCount();
+      if (this.opening() && this.openingMinElapsed() && events !== null && (events > 0 || this.commandCount() !== null) && !this.awaitingDetail())
         this.opening.set(false);
     });
     effect(() => this.searchSvc.loading.set(this.opening()));
@@ -126,14 +132,22 @@ export class AggregateComponent {
     if (this.isMobile()) this.drawerVisible.set(true);
   }
 
-  onEventsLoaded(events: EventMessage[]) {
+  onEventsLoaded(loaded: EventMessage[] | null) {
+    const events = loaded ?? [];
+    if (!loaded) this.loadFailed.set(true);
+    if (events.length) this.searchSvc.remember(this.load());
     this.eventCount.set(events.length);
     if (this.isEvent(this.selected())) this.reselect(events);
     this.autoSelect('events', events);
   }
 
-  onCommandsLoaded(commands: CommandMessage[]) {
+  onCommandsLoaded(loaded: CommandMessage[] | null) {
+    const commands = loaded ?? [];
+    if (!loaded) this.loadFailed.set(true);
+    if (commands.length) this.searchSvc.remember(this.load());
     this.commandCount.set(commands.length);
+    // Only commands, all failed: show those instead of an empty event list.
+    if (this.opening() && this.eventCount() === 0 && commands.length) this.tab.set('commands');
     if (this.isCommand(this.selected())) this.reselect(commands);
     this.autoSelect('commands', commands);
   }
@@ -145,8 +159,14 @@ export class AggregateComponent {
   refresh() {
     this.eventCount.set(null);
     this.commandCount.set(null);
+    this.loadFailed.set(false);
     this.refreshedTab.set(this.tab());
     this.lists.set({});
+  }
+
+  /** From the not-found page: back to the ID in the address. */
+  changeId() {
+    this.searchSvc.focusSearch();
   }
 
   onDetailLoaded() {
@@ -154,8 +174,8 @@ export class AggregateComponent {
   }
 
   /** Every search starts from scratch: new lists and details, nothing selected, back on the Events tab. */
-  private reload(type: string, id: string) {
-    const load = { type, id };
+  private reload(aggregate: AggregateRef) {
+    const load = { ...aggregate };
     this.load.set(load);
     this.tab.set('events');
     this.refreshedTab.set(null);
@@ -163,6 +183,7 @@ export class AggregateComponent {
     this.drawerVisible.set(false);
     this.eventCount.set(null);
     this.commandCount.set(null);
+    this.loadFailed.set(false);
     this.awaitingDetail.set(false);
     this.openingMinElapsed.set(false);
     this.opening.set(true);

@@ -1,4 +1,4 @@
-import { Injectable, effect, inject, signal, untracked } from '@angular/core';
+import { Injectable, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subject, filter, map } from 'rxjs';
@@ -30,15 +30,6 @@ export class SearchService {
   readonly reload$ = new Subject<AggregateRef>();
   /** Emits when something outside the header (e.g. the landing page) wants the search box focused. */
   readonly focus$ = new Subject<void>();
-
-  constructor() {
-    // Remember every aggregate that gets opened, also via a link, a bookmark or the back button.
-    effect(() => {
-      const aggregate = this.current();
-      // untracked: removing the open aggregate from the list must not re-add it.
-      if (aggregate) untracked(() => this.saveRecent(aggregate));
-    });
-  }
 
   open(app: string, type: string, rawId: string) {
     const id = rawId.trim();
@@ -75,7 +66,8 @@ export class SearchService {
     return app && type && id ? { app, type, id } : null;
   }
 
-  private saveRecent(aggregate: AggregateRef) {
+  /** Puts an aggregate on top of the recent ones. Only once something was found at its address: a mistyped ID isn't kept. */
+  remember(aggregate: AggregateRef) {
     this.storeRecent([aggregate, ...this.recent().filter(r => !same(r, aggregate))].slice(0, MAX_RECENT));
   }
 

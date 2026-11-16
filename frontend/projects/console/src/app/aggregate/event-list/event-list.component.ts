@@ -33,8 +33,8 @@ export class EventListComponent implements OnInit {
   selected = input<EventMessage | CommandMessage | null>(null);
 
   select = output<EventMessage>();
-  /** Emits the first page as soon as it arrives, so the page can auto-select before the skeleton lifts. */
-  loaded = output<EventMessage[]>();
+  /** Emits the first page as soon as it arrives, so the page can auto-select before the skeleton lifts; null when it couldn't be loaded. */
+  loaded = output<EventMessage[] | null>();
 
   events = signal<EventMessage[]>([]);
   nextCursor = signal<number | null>(null);
@@ -72,7 +72,7 @@ export class EventListComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef),
       catchError(err => {
         this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load events.') });
-        if (firstPage) this.loaded.emit([]);
+        if (firstPage) this.loaded.emit(null);
         flag.set(false);
         return EMPTY;
       }),
