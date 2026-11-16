@@ -1,7 +1,7 @@
-import { Component, inject, signal, computed, effect, viewChild, HostListener, DestroyRef } from '@angular/core';
-import { takeUntilDestroyed, toObservable } from '@angular/core/rxjs-interop';
+import { Component, inject, signal, computed, effect, untracked, viewChild, HostListener, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { distinctUntilChanged, map, skip } from 'rxjs';
+import { distinctUntilChanged, map } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { DrawerModule } from 'primeng/drawer';
 import { TabsModule } from 'primeng/tabs';
@@ -9,7 +9,7 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService } from 'primeng/api';
 
 import { CommandMessage, EventMessage } from '@eventify/ui/models';
-import { SearchService } from '../services/search.service';
+import { AggregateRef, SearchService } from '../services/search.service';
 import { BackendService } from '@eventify/ui/services/backend.service';
 import { EventListComponent } from './event-list/event-list.component';
 import { CommandListComponent } from './command-list/command-list.component';
@@ -45,19 +45,36 @@ export class AggregateComponent {
    * The aggregate being shown. A new object on every search, which recreates the lists and
    * detail panes in the template, so each search starts from scratch.
    */
-  load = signal({ type: '', id: '' });
+  load = signal<AggregateRef>({ app: '', type: '', id: '' });
   /** A new object on every refresh, which recreates both lists so they load again. */
   lists = signal({});
   /** The tab that was open when refresh was clicked; the spinner follows its list, so switching tabs doesn't change it. */
   private refreshedTab = signal<Tab | null>(null);
   private eventList = viewChild(EventListComponent);
   private commandList = viewChild(CommandListComponent);
+  /**
+   * How far back the commands were read, for the not-found text; null when the application didn't say. Kept by the page,
+   * not read from the list: checking again recreates the list, which doesn't know it until its commands are back.
+   */
+  lookbackDays = signal<number | null>(null);
   tab = signal<Tab>('events');
   selected = signal<EventMessage | CommandMessage | null>(null);
 
   // Item counts reported by the lists once loaded; null while still loading.
   private eventCount = signal<number | null>(null);
   private commandCount = signal<number | null>(null);
+  /** A list couldn't be loaded: then nothing can be said about whether the aggregate exists. */
+  private loadFailed = signal(false);
+  /** Checking again from the not-found page: the page stays until the answer is in, with the button spinning. */
+  checkingAgain = signal(false);
+  /**
+   * Nothing at this address: no events, and no commands either (a command that failed creates no events). Only once both
+   * lists are in, so the page goes from the skeleton straight to the answer.
+   */
+  notFound = computed(() => {
+    if (this.checkingAgain()) return true;
+    return !this.loadFailed() && this.eventCount() === 0 && this.commandCount() === 0;
+  });
   // Reads the list's own loading signal (the one that shows its skeleton), so the spinner stops as the list appears.
   refreshing = computed(() => {
     const tab = this.refreshedTab();
@@ -69,7 +86,7 @@ export class AggregateComponent {
   // and the auto-selected newest event's detail are both ready, so everything appears at once.
   // Commands load in the background; they're slow (Kafka poll) and have their own list skeleton.
   opening = signal(false);
-  private openingMinElapsed = signal(false);
+  openingMinElapsed = signal(false);
   private awaitingDetail = signal(false);
 
   drawerVisible = signal(false);
@@ -78,23 +95,31 @@ export class AggregateComponent {
   selectedCommand = computed(() => this.isCommand(this.selected()) ? this.selected() as CommandMessage : null);
 
   constructor() {
-    // Angular reuses this component when navigating from one aggregate to another, so reload on every ID change.
+    // Angular reuses this component when navigating from one aggregate to another, so reload on every address change.
+    // The address names the application, so a link or a recent search opens in the right one.
+    const backend = inject(BackendService);
     this.route.paramMap.pipe(
-      map(p => ({ type: (p.get('type') ?? '').trim(), id: (p.get('id') ?? '').trim() })),
-      distinctUntilChanged((a, b) => a.type === b.type && a.id === b.id),
+      map(p => ({ app: (p.get('app') ?? '').trim(), type: (p.get('type') ?? '').trim(), id: (p.get('id') ?? '').trim() })),
+      distinctUntilChanged((a, b) => a.app === b.app && a.type === b.type && a.id === b.id),
       takeUntilDestroyed(this.destroyRef),
-    ).subscribe(aggregate => this.reload(aggregate.type, aggregate.id));
+    ).subscribe(aggregate => {
+      backend.setActiveApp(aggregate.app);
+      this.reload(aggregate);
+    });
     this.searchSvc.reload$.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(aggregate => this.reload(aggregate.type, aggregate.id));
-    // Picking another app in the header shows the same aggregate from that app.
-    toObservable(inject(BackendService).activeApp).pipe(skip(1), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.reload(this.load().type, this.load().id));
+      .subscribe(aggregate => this.reload(aggregate));
 
     effect(() => {
-      if (this.opening() && this.openingMinElapsed() && this.eventCount() !== null && !this.awaitingDetail())
+      // Without events the commands decide what shows (their tab, or that nothing is here), so wait for them too.
+      const events = this.eventCount();
+      if (this.opening() && this.openingMinElapsed() && events !== null && (events > 0 || this.commandCount() !== null) && !this.awaitingDetail())
         this.opening.set(false);
     });
     effect(() => this.searchSvc.loading.set(this.opening()));
+    // An address with nothing at it doesn't stay among the recent ones (it may be there from when it had something).
+    effect(() => {
+      if (this.notFound() && !this.checkingAgain()) untracked(() => this.searchSvc.removeRecent(this.load()));
+    });
     this.destroyRef.onDestroy(() => this.searchSvc.loading.set(false));
   }
 
@@ -124,14 +149,25 @@ export class AggregateComponent {
     if (this.isMobile()) this.drawerVisible.set(true);
   }
 
-  onEventsLoaded(events: EventMessage[]) {
+  onEventsLoaded(loaded: EventMessage[] | null) {
+    const events = loaded ?? [];
+    if (!loaded) this.loadFailed.set(true);
+    if (events.length) this.searchSvc.remember(this.load());
     this.eventCount.set(events.length);
+    if (this.commandCount() !== null) this.checkingAgain.set(false);
     if (this.isEvent(this.selected())) this.reselect(events);
     this.autoSelect('events', events);
   }
 
-  onCommandsLoaded(commands: CommandMessage[]) {
+  onCommandsLoaded(loaded: CommandMessage[] | null) {
+    const commands = loaded ?? [];
+    if (!loaded) this.loadFailed.set(true);
+    if (commands.length) this.searchSvc.remember(this.load());
     this.commandCount.set(commands.length);
+    if (loaded) this.lookbackDays.set(this.commandList()?.lookbackDays() ?? null);
+    if (this.eventCount() !== null) this.checkingAgain.set(false);
+    // Only commands, all failed: show those instead of an empty event list.
+    if (this.eventCount() === 0 && commands.length) this.tab.set('commands');
     if (this.isCommand(this.selected())) this.reselect(commands);
     this.autoSelect('commands', commands);
   }
@@ -143,8 +179,20 @@ export class AggregateComponent {
   refresh() {
     this.eventCount.set(null);
     this.commandCount.set(null);
+    this.loadFailed.set(false);
     this.refreshedTab.set(this.tab());
     this.lists.set({});
+  }
+
+  /** From the not-found page: look again, staying on that page until the answer is in. */
+  checkAgain() {
+    this.checkingAgain.set(true);
+    this.refresh();
+  }
+
+  /** From the not-found page: back to the ID in the address. */
+  changeId() {
+    this.searchSvc.focusSearch();
   }
 
   onDetailLoaded() {
@@ -152,8 +200,8 @@ export class AggregateComponent {
   }
 
   /** Every search starts from scratch: new lists and details, nothing selected, back on the Events tab. */
-  private reload(type: string, id: string) {
-    const load = { type, id };
+  private reload(aggregate: AggregateRef) {
+    const load = { ...aggregate };
     this.load.set(load);
     this.tab.set('events');
     this.refreshedTab.set(null);
@@ -161,6 +209,9 @@ export class AggregateComponent {
     this.drawerVisible.set(false);
     this.eventCount.set(null);
     this.commandCount.set(null);
+    this.loadFailed.set(false);
+    this.checkingAgain.set(false);
+    this.lookbackDays.set(null);
     this.awaitingDetail.set(false);
     this.openingMinElapsed.set(false);
     this.opening.set(true);

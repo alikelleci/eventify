@@ -1,27 +1,38 @@
-import {Component, computed, inject} from '@angular/core';
+import {Component, afterNextRender, computed, inject} from '@angular/core';
 import {BackendService} from '@eventify/ui/services/backend.service';
 import {appState} from '@eventify/ui/status';
 import {ConnectedApp, ConnectedAppsComponent} from '@eventify/ui/components/connected-apps.component';
+import {SearchService} from '../services/search.service';
+import {AppSwitcherComponent} from '../layout/app-switcher.component';
+import {HeaderSearchComponent} from '../layout/header-search.component';
 
 /**
- * The console's start page: the totals, and the applications connected to it, live, with how each one is doing.
- * Picking an application happens in the header's application switcher, which shows the same status per application.
+ * The console's start page: the address to open an aggregate with, the aggregates opened before, and the applications
+ * connected to the console, live, with how each one is doing.
  */
 @Component({
   selector: 'app-home',
   templateUrl: './home.component.html',
   standalone: true,
-  imports: [ConnectedAppsComponent],
+  imports: [ConnectedAppsComponent, AppSwitcherComponent, HeaderSearchComponent],
   host: { class: 'block h-full' },
   styles: `
-    .home-stage { background: var(--p-surface-50) radial-gradient(var(--p-surface-200) 1px, transparent 1px) 0 0 / 16px 16px; }
+    .home-bg { background: var(--p-surface-50); }
+    .home-stage { background: radial-gradient(var(--p-surface-200) 1px, transparent 1px) 0 0 / 16px 16px; }
     @media (prefers-color-scheme: dark) {
-      .home-stage { background: var(--p-surface-950) radial-gradient(var(--p-surface-800) 1px, transparent 1px) 0 0 / 16px 16px; }
+      .home-bg { background: var(--p-surface-950); }
+      .home-stage { background: radial-gradient(var(--p-surface-800) 1px, transparent 1px) 0 0 / 16px 16px; }
     }
   `,
 })
 export class HomeComponent {
   readonly backend = inject(BackendService);
+  readonly search = inject(SearchService);
+
+  constructor() {
+    // On a desktop the cursor starts in the ID; on a phone that would pop up the keyboard.
+    afterNextRender(() => { if (window.innerWidth >= 1024) this.search.focusSearch(); });
+  }
 
   readonly instanceCount = computed(() => this.backend.apps().reduce((sum, app) => sum + app.nodes.length, 0));
 

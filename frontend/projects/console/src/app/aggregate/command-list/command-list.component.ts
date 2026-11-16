@@ -32,8 +32,8 @@ export class CommandListComponent implements OnInit {
   selected = input<EventMessage | CommandMessage | null>(null);
 
   select = output<CommandMessage>();
-  /** Emits the commands as soon as they arrive. */
-  loaded = output<CommandMessage[]>();
+  /** Emits the commands as soon as they arrive; null when they couldn't be loaded. */
+  loaded = output<CommandMessage[] | null>();
 
   commands = signal<CommandMessage[]>([]);
   /** How far back the commands were read, in days; null when the application didn't say (an older console client). */
@@ -48,7 +48,7 @@ export class CommandListComponent implements OnInit {
       takeUntilDestroyed(this.destroyRef),
       catchError(err => {
         this.messageService.add({ severity: 'error', summary: 'Error', detail: errorDetail(err, 'Failed to load commands.') });
-        this.loaded.emit([]);
+        this.loaded.emit(null);
         this.loading.set(false);
         return EMPTY;
       }),
