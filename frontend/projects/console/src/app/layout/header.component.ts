@@ -22,8 +22,8 @@ import { HeaderSearchComponent } from './header-search.component';
            has its own large one, so the header carries none there. -->
       @if (backend.apps().length > 0 && !onStartPage()) {
         <div class="relative hidden sm:flex items-stretch h-9 flex-1 max-w-2xl mx-auto rounded-lg border border-slate-800 bg-slate-900 font-mono text-[13px] transition-colors focus-within:border-slate-600 hover:border-slate-700">
-          <app-app-switcher look="dark" class="shrink-0 max-w-48 [&>button]:rounded-l-[7px]" />
-          <span class="flex items-center select-none text-slate-600" aria-hidden="true">/</span>
+          <app-app-switcher look="dark" class="shrink-0 max-w-48" />
+          <span class="flex items-center select-none px-1.5 text-slate-600" aria-hidden="true">/</span>
           <app-header-search />
         </div>
         <app-app-switcher class="sm:hidden ml-auto w-40 shrink-0" />

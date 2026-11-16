@@ -14,7 +14,7 @@ import { BackendService } from '@eventify/ui/services/backend.service';
   template: `
     @if (types().length > 1) {
       <!-- One application can hold several aggregates, and two of them can have the same identifier. -->
-      <div class="relative flex shrink-0">
+      <div class="relative flex shrink-0 items-center">
         <button #typeButton type="button" aria-haspopup="listbox" [attr.aria-expanded]="typesOpen()" [attr.aria-controls]="typeListId()"
                 [attr.aria-label]="'Aggregate type ' + selectedType()"
                 class="flex items-center gap-1.5 transition-colors cursor-pointer outline-none" [class]="segmentClass()"
@@ -42,10 +42,10 @@ import { BackendService } from '@eventify/ui/services/backend.service';
       </div>
     } @else {
       <!-- Nothing to choose, but still part of the address -->
-      <span class="flex shrink-0 items-center" [class]="staticClass()">{{ selectedType() }}</span>
+      <span class="flex shrink-0 items-center self-center" [class]="staticClass()">{{ selectedType() }}</span>
     }
 
-    <span class="flex items-center select-none" [class]="dark() ? 'text-slate-600' : 'text-surface-300 dark:text-surface-600'" aria-hidden="true">/</span>
+    <span class="flex items-center select-none" [class]="dark() ? 'px-1.5 text-slate-600' : (hero() ? 'px-2 ' : 'px-1.5 ') + 'text-surface-300 dark:text-surface-600'" aria-hidden="true">/</span>
 
     <input #input type="text" spellcheck="false" autocomplete="off" placeholder="aggregate-id"
            [attr.aria-label]="'ID of the ' + selectedType() + ' to open'"
@@ -125,18 +125,18 @@ export class HeaderSearchComponent {
   readonly typeListId = computed(() => `aggregate-types-${this.variant()}`);
   readonly segmentClass = computed(() => {
     switch (this.variant()) {
-      case 'dark': return 'h-full px-3 text-slate-300 hover:bg-slate-700/50';
-      case 'light': return 'h-full px-3 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800';
-      default: return 'h-full px-2.5 sm:px-4 text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800';
+      case 'dark': return 'h-7 px-2 rounded-md text-slate-300 hover:bg-slate-700/50';
+      case 'light': return 'h-8 ml-1.5 px-2 rounded-md text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800';
+      default: return 'h-10 px-2 sm:px-3 rounded-lg text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-800';
     }
   });
   /** A segment without a choice: the same, without the hover. */
   readonly staticClass = computed(() => this.segmentClass().split(' ').filter(c => !c.startsWith('hover:') && !c.startsWith('dark:hover:')).join(' '));
   readonly inputClass = computed(() => {
     switch (this.variant()) {
-      case 'dark': return 'pl-3 pr-2 text-slate-50 placeholder:text-slate-500';
-      case 'light': return 'pl-3 pr-3 text-surface-900 placeholder:text-surface-400 dark:text-surface-0';
-      default: return 'pl-2.5 pr-3 sm:pl-4 text-base sm:text-lg text-surface-900 placeholder:text-surface-300 dark:text-surface-0 dark:placeholder:text-surface-600';
+      case 'dark': return 'pl-1.5 pr-2 text-slate-50 placeholder:text-slate-500';
+      case 'light': return 'pl-1.5 pr-3 text-surface-900 placeholder:text-surface-400 dark:text-surface-0';
+      default: return 'pl-2 pr-3 text-base sm:text-lg text-surface-900 placeholder:text-surface-300 dark:text-surface-0 dark:placeholder:text-surface-600';
     }
   });
 

@@ -18,7 +18,7 @@ const FILTER_FROM = 7;
   selector: 'app-app-switcher',
   standalone: true,
   imports: [TooltipModule, InstanceListComponent],
-  host: { class: 'relative block', '(focusout)': 'onFocusout($event)' },
+  host: { class: 'relative flex items-center', '(focusout)': 'onFocusout($event)' },
   template: `
     <button #button type="button" aria-haspopup="listbox" [attr.aria-expanded]="open()" aria-controls="app-switcher-list"
             [attr.aria-label]="'Application ' + backend.activeApp()?.name"
@@ -80,8 +80,8 @@ export class AppSwitcherComponent {
   readonly buttonClass = computed(() => {
     const open = this.open();
     switch (this.look()) {
-      case 'dark': return 'h-full pl-3 pr-2.5 text-slate-100 ' + (open ? 'bg-slate-700/70' : 'hover:bg-slate-700/50 focus-visible:bg-slate-700/50');
-      case 'light': return 'h-full pl-3 pr-2 sm:pl-4 sm:pr-3 text-surface-700 dark:text-surface-200 '
+      case 'dark': return 'h-7 ml-1 pl-2 pr-1.5 rounded-md text-slate-100 ' + (open ? 'bg-slate-700/70' : 'hover:bg-slate-700/50 focus-visible:bg-slate-700/50');
+      case 'light': return 'h-10 ml-2 pl-2 pr-2 sm:pl-3 sm:pr-3 rounded-lg text-surface-700 dark:text-surface-200 '
         + (open ? 'bg-surface-100 dark:bg-surface-800' : 'hover:bg-surface-100 focus-visible:bg-surface-100 dark:hover:bg-surface-800 dark:focus-visible:bg-surface-800');
       default: return 'h-8 pl-3 pr-2.5 rounded border text-sm text-slate-100 focus-visible:border-slate-500 focus-visible:bg-slate-700/60 '
         + (open ? 'border-slate-500 bg-slate-700/60' : 'border-slate-700 bg-slate-800 hover:border-slate-600');
