@@ -51,7 +51,7 @@ import { BackendService } from '@eventify/ui/services/backend.service';
            [attr.aria-label]="'ID of the ' + selectedType() + ' to open'"
            role="combobox" aria-autocomplete="list" [attr.aria-expanded]="dropdownOpen()" [attr.aria-controls]="listId()"
            [attr.aria-activedescendant]="highlightedIndex() >= 0 ? listId() + '-' + highlightedIndex() : null"
-           class="min-w-0 flex-1 bg-transparent outline-none" [class]="inputClass()"
+           class="min-w-0 flex-1 bg-transparent outline-none text-ellipsis" [class]="inputClass()"
            [(ngModel)]="query" (input)="highlightedIndex.set(-1)" (keydown)="onInputKeydown($event)"
            (focus)="focused.set(true); highlightedIndex.set(-1)" (blur)="focused.set(false)" />
 
