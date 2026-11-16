@@ -13,11 +13,9 @@ import { HeaderSearchComponent } from './header-search.component';
   host: { class: 'relative block' },
   template: `
     <header class="relative flex items-center gap-4 px-5 h-14 border-b border-slate-800 bg-slate-950">
-      <a routerLink="/" class="flex items-center gap-2.5 rounded outline-none focus-visible:ring-2 focus-visible:ring-primary-400">
-        <span class="flex h-7 w-7 items-center justify-center rounded-md bg-primary-500/15 ring-1 ring-primary-400/30">
-          <i class="pi pi-bolt text-sm text-primary-400"></i>
-        </span>
-        <span class="text-[15px] tracking-tight"><span class="font-semibold text-white">Eventify</span><span class="text-slate-400 ml-1">Console</span></span>
+      <a routerLink="/" class="flex items-center gap-3 rounded outline-none focus-visible:ring-2 focus-visible:ring-primary-400">
+        <i class="pi pi-bolt inline-block w-5 shrink-0 text-center text-xl text-primary-400"></i>
+        <span class="text-lg tracking-tight"><span class="font-semibold text-white">Eventify</span><span class="font-light text-slate-300 ml-1.5">Console</span></span>
       </a>
 
       <!-- The open aggregate's address: application / aggregate type / ID. Each part can be changed in place. The start page
