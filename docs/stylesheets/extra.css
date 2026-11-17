@@ -15,7 +15,7 @@
   --docs-hero-eyebrow: #047857;
   --docs-hero-border: #dce6e5;
   --docs-hero-button-border: rgb(15 23 42 / 0.14);
-  --docs-hero-background: radial-gradient(ellipse at top right, rgb(16 185 129 / 0.1), transparent 60%), radial-gradient(ellipse at bottom left, rgb(56 189 248 / 0.1), transparent 55%), linear-gradient(120deg, #f1f5f9 0%, #edf6f2 58%, #eef4f8 100%);
+  --docs-hero-background: #f1f5f9;
 }
 [data-md-color-scheme="slate"] {
   --md-hue: 222;
@@ -37,7 +37,7 @@
   --docs-hero-eyebrow: #6ee7b7;
   --docs-hero-border: rgb(255 255 255 / 0.08);
   --docs-hero-button-border: rgb(255 255 255 / 0.2);
-  --docs-hero-background: radial-gradient(ellipse at top right, rgb(16 185 129 / 0.18), transparent 60%), radial-gradient(ellipse at bottom left, rgb(56 189 248 / 0.09), transparent 55%), linear-gradient(120deg, #172231 0%, #18312e 58%, #172934 100%);
+  --docs-hero-background: #1f2937;
 }
 
 /* Header: dark in both themes, like the website, with "Eventify" and a small label */
