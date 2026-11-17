@@ -214,7 +214,7 @@ export class FeatureStoryComponent {
     { title: 'Event replay', text: 'Replay retained events to rebuild state and understand how an aggregate reached it.' },
     { title: 'Snapshots', text: 'Save the state now and then, so only the latest events need to be replayed.' },
     { title: 'Upcasting', text: 'Evolve event data deliberately. Older revisions can be upgraded while they are read.' },
-    { title: 'Plain Java', text: 'Commands decide, events describe what happened, and event handlers rebuild state.' },
+    { title: 'Plain Java', text: 'Command handlers decide, events describe what happened, and event-sourcing handlers rebuild state.' },
   ];
   readonly events = ['OrderPlaced', 'ItemAdded', 'OrderPaid'];
 
