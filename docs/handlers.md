@@ -4,7 +4,7 @@ Handlers are plain Java methods. Register the object that contains them with `Ev
 
 ## Handle a command
 
-A command handler receives a command and the current aggregate state. Return one event, a list of events, or no event.
+A command handler receives a command and the current aggregate state. Return one event, a list of events, or `null` for none.
 
 ```java
 @CommandHandler
@@ -15,7 +15,7 @@ public OrderEvent handle(ShipOrder command, Order state) {
 }
 ```
 
-Throw an exception to reject the command. A successful command with no events is allowed.
+Throw an exception to reject the command.
 
 ## Apply an event
 

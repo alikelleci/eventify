@@ -159,7 +159,7 @@ class ConsoleServiceRoutingIT {
               .satisfies(page -> assertThat(page.commands()).isNotEmpty()));
 
       // Retried from the console: a new command, pointing to the one it retries. It keeps the correlation id: it belongs
-      // to the same flow (e.g. a saga) as the original.
+      // to the same flow as the original.
       Command original = service.getCommands(new Requests.Commands("item", id, 50), new CancelSignal()).value().commands().get(0).command();
       byte[] json = first.getObjectMapper().writeValueAsBytes(original);
       assertThat(service.retryCommand(json)).isEqualTo(Result.ok(null));

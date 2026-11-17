@@ -70,7 +70,7 @@ class MetadataTest {
     assertThat(metadata).doesNotContainKey(MetadataKeys.CORRELATION_ID);
   }
 
-  /** A command of a flow, e.g. a saga: its events are traced with the rest of the flow. */
+  /** A command of a flow: its events are traced with the rest of the flow. */
   @Test
   @DisplayName("Should keep the correlation id the application gave")
   void aGivenCorrelationIdIsKept() {

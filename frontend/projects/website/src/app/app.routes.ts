@@ -7,7 +7,7 @@ export const routes: Routes = [
     path: '',
     component: WebsiteLayoutComponent,
     children: [
-      { path: '', loadComponent: () => import('./home/home.component').then(m => m.HomeComponent), title: 'Eventify | Event sourcing for Java' },
+      { path: '', loadComponent: () => import('./home/home.component').then(m => m.HomeComponent), title: 'Eventify | Event sourcing for Java, built on Kafka' },
       { path: 'console', loadComponent: () => import('./console/console.component').then(m => m.ConsoleComponent), title: 'Eventify Console | Inspect aggregate history' },
     ],
   },
