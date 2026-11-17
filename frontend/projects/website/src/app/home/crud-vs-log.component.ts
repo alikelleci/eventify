@@ -59,7 +59,7 @@ const CHANGES = [
       <div class="v-card v-card-lit">
         <div class="flex items-center justify-between">
           <span class="v-label">Appending events</span>
-          <span class="v-tag bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">orders.events</span>
+          <span class="v-tag bg-primary-50 text-primary-700 dark:bg-primary-950 dark:text-primary-300">events.order</span>
         </div>
         <ol class="mt-5 space-y-1.5">
           @for (change of appended(); track change.event; let i = $index; let last = $last) {

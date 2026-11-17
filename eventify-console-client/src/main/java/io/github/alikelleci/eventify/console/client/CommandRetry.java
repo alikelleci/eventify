@@ -77,7 +77,7 @@ class CommandRetry {
       return Result.badRequest("Unreadable command.");
     }
 
-    // The correlation id stays: the retry belongs to the same flow (e.g. a saga) as the command it retries, and its
+    // The correlation id stays: the retry belongs to the same flow as the command it retries, and its
     // events can be traced with the rest of that flow. RETRY_OF tells the retry apart from the original.
     Command retryCommand = Command.builder()
         .payload(original.getPayload())

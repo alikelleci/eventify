@@ -27,7 +27,7 @@ public interface OrderEvent {
 }
 ```
 
-Use Bean Validation annotations on command fields when input validation belongs with the command.
+Eventify checks Bean Validation annotations, such as `@NotBlank`, before a command handler runs. A violation rejects the command.
 
 ## Rules of thumb
 
