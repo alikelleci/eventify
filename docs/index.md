@@ -22,25 +22,25 @@ hide:
 
 <div class="docs-flow" markdown>
 <div class="docs-flow-step" markdown>
-<span class="docs-flow-number">1</span>
+<span class="docs-flow-number">1.</span>
 **Send a command**
 
 `PlaceOrder` goes to the aggregate's command topic, keyed by its id.
 </div>
 <div class="docs-flow-step" markdown>
-<span class="docs-flow-number">2</span>
+<span class="docs-flow-number">2.</span>
 **Decide**
 
 A `@CommandHandler` gets the current state and returns events, or rejects the command.
 </div>
 <div class="docs-flow-step" markdown>
-<span class="docs-flow-number">3</span>
+<span class="docs-flow-number">3.</span>
 **Record**
 
 The events are stored and published in one transaction. `@EventSourcingHandler` methods build the next state.
 </div>
 <div class="docs-flow-step" markdown>
-<span class="docs-flow-number">4</span>
+<span class="docs-flow-number">4.</span>
 **React**
 
 `@EventHandler` methods update views, send mail or return the next command.

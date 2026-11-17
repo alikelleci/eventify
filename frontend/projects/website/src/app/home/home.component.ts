@@ -47,9 +47,9 @@ export class HomeComponent {
 
   /** Why keep the history. */
   readonly reasons = [
-    { icon: 'pi-lock', title: 'An explicit history', text: 'Store changes as immutable events instead of losing the story in an update.' },
-    { icon: 'pi-history', title: 'Explain state', text: 'Replay retained history to understand how an aggregate reached its current state.' },
-    { icon: 'pi-replay', title: 'Build new views', text: 'Use historical events to build a new projection or recover aggregate state.' },
+    { icon: 'pi-list', title: 'An explicit history', text: 'Store changes as immutable events instead of losing the story in an update.' },
+    { icon: 'pi-history', title: 'Explain state', text: 'See how any aggregate reached its current state, one event at a time.' },
+    { icon: 'pi-replay', title: 'Build new views', text: 'Build a new read model from the events you already have.' },
   ];
 
   /** Quick-start steps. */
