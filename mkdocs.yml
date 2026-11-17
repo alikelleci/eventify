@@ -8,6 +8,7 @@ repo_url: https://github.com/alikelleci/eventify
 theme:
   name: material
   custom_dir: docs/overrides
+  favicon: images/favicon.svg
   font:
     text: Inter
     code: JetBrains Mono
