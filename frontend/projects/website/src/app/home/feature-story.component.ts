@@ -6,15 +6,15 @@ const TICKS = 12;
 const TICK_MS = 300;
 
 /**
- * Four event-sourcing concepts, each a card with a small scene. The cards take turns: the current one is lit and plays
+ * Three event-sourcing features, each a card with a small scene. The cards take turns: the current one is lit and plays
  * its scene, the others show how theirs ends. Picking a card plays it. With reduced motion every scene shows its end.
  */
 @Component({
   selector: 'app-feature-story',
   standalone: true,
   template: `
-    <!-- Two by two on desktop; each card has its feature on the left and its scene on the right -->
-    <div class="grid gap-6 lg:grid-cols-2">
+    <!-- Three in a row on desktop, each scene above its feature; below that, the feature beside its scene -->
+    <div class="grid gap-6 lg:grid-cols-3">
       @for (card of cards; track card.title; let c = $index) {
         <article class="s-card" [class.s-lit]="lit(c)" (click)="player.go(c)">
           <div class="s-stage" aria-hidden="true">
@@ -91,26 +91,9 @@ const TICK_MS = 300;
                 </div>
               }
 
-              <!-- 4. Plain Java: the command handler decides, the event is returned, the event sourcing handler applies it -->
-              @case (3) {
-                <div class="flex w-full max-w-44 flex-col items-center gap-2 font-mono text-[10px]">
-                  <div class="s-box s-in w-full px-3 py-2 text-surface-600 dark:text-surface-300" [class.s-active]="playsAt(c, 0, 3)">
-                    <span class="text-primary-600 dark:text-primary-400">@CommandHandler</span> PlaceOrder
-                  </div>
-                  <i class="s-in pi pi-arrow-down text-[9px] text-surface-400" [class.s-out]="!at(c, 2)"></i>
-                  <div class="s-in w-full rounded bg-primary-100 px-3 py-2 font-semibold text-primary-700 dark:bg-primary-900/60 dark:text-primary-300"
-                       [class.s-out]="!at(c, 3)" [class.s-active]="playsAt(c, 3, 6)">
-                    OrderPlaced
-                  </div>
-                  <i class="s-in pi pi-arrow-down text-[9px] text-surface-400" [class.s-out]="!at(c, 5)"></i>
-                  <div class="s-box s-in w-full px-3 py-2 text-surface-600 dark:text-surface-300" [class.s-out]="!at(c, 6)" [class.s-active]="playsAt(c, 6, 10)">
-                    <span class="text-primary-600 dark:text-primary-400">@EventSourcingHandler</span> Order
-                  </div>
-                </div>
-              }
             }
           </div>
-          <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7">
+          <div class="px-6 pt-4 pb-6 sm:order-first sm:flex sm:w-5/12 sm:shrink-0 sm:flex-col sm:justify-center sm:p-7 lg:order-none lg:w-auto lg:justify-start lg:px-6 lg:pt-4 lg:pb-6">
             <h3 class="s-title">{{ card.title }}</h3>
             <p class="s-text">{{ card.text }}</p>
           </div>
@@ -148,8 +131,8 @@ const TICK_MS = 300;
       border-radius: 0.75rem; font-size: 0.75rem; color: var(--p-surface-700);
       background: var(--p-surface-50) radial-gradient(var(--p-surface-200) 1px, transparent 1px) 0 0 / 14px 14px;
     }
-    /* From sm up the card is a row: the text on the left, the scene filling the rest */
-    @media (min-width: 640px) {
+    /* From sm up the card is a row: the text on the left, the scene filling the rest. Three in a row from lg: a column again. */
+    @media (min-width: 640px) and (max-width: 1023px) {
       .s-card { flex-direction: row; }
       .s-stage { flex: 1; height: auto; min-height: 13rem; margin: 0.5rem; }
     }
@@ -211,10 +194,9 @@ const TICK_MS = 300;
 })
 export class FeatureStoryComponent {
   readonly cards = [
-    { title: 'Event replay', text: 'Replay retained events to rebuild state and understand how an aggregate reached it.' },
+    { title: 'Event replay', text: 'An aggregate\'s state is rebuilt from its events, in order, whenever it is needed.' },
     { title: 'Snapshots', text: 'Save the state now and then, so only the latest events need to be replayed.' },
-    { title: 'Upcasting', text: 'Evolve event data deliberately. Older revisions can be upgraded while they are read.' },
-    { title: 'Plain Java', text: 'Command handlers decide, events describe what happened, and event-sourcing handlers rebuild state.' },
+    { title: 'Upcasting', text: 'Change an event\'s shape: older revisions are upgraded as they are read.' },
   ];
   readonly events = ['OrderPlaced', 'ItemAdded', 'OrderPaid'];
 
