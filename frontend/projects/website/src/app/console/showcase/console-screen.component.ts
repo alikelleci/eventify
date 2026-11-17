@@ -122,7 +122,7 @@ const EXAMPLE_API: Partial<EventifyService> = {
 
       <!-- The aggregate page, as in aggregate.component.html -->
       <div class="flex h-[34rem]">
-        <div class="flex w-[480px] shrink-0 flex-col border-r border-surface-100 dark:border-surface-800">
+        <div class="flex w-[340px] shrink-0 flex-col border-r border-surface-100 dark:border-surface-800">
           <p-tabs value="events" class="!bg-transparent">
             <div class="relative px-4">
               <p-tablist>

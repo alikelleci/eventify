@@ -29,8 +29,9 @@ html, body { font-feature-settings: 'cv11', 'ss01'; }
 /* Events streaming through the hero: a line of the grid, and a spark running along it */
 .hero-stream { position: absolute; left: 0; right: 0; height: 1px; overflow: hidden; }
 .hero-stream > span {
-  position: absolute; top: 0; left: 0; width: 160px; height: 1px; transform: translateX(-160px);
-  background: linear-gradient(to right, transparent, var(--p-primary-400), transparent);
+  position: absolute; top: 0; left: 0; width: 200px; height: 1px; transform: translateX(-200px);
+  background: linear-gradient(to right, transparent, var(--p-primary-400) 85%, var(--p-primary-200));
+  box-shadow: 0 0 6px var(--p-primary-400);
 }
 @media (prefers-reduced-motion: no-preference) {
   .hero-stream > span { animation: hero-stream linear infinite; }
