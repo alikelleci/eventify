@@ -49,4 +49,4 @@ public class OrderUpcaster {
 }
 ```
 
-Register the upcaster like any other handler. Keep old upcasters: older events may still need every step in the chain.
+`type` is the event's class name; `revision` is the revision it upcasts from. Register the upcaster like any other handler. Keep old upcasters: older events may still need every step in the chain.
