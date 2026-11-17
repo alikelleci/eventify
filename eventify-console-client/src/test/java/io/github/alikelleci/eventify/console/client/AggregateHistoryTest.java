@@ -373,7 +373,7 @@ class AggregateHistoryTest {
     storedSnapshots.put(StoreKeys.aggregate("counter", "counter-1"), repository.stateAt("counter-1", event.getSequence()));
   }
 
-  /** Two commands of one saga share the correlation id: each shows only the events that name it as their cause. */
+  /** Two commands of one flow share the correlation id: each shows only the events that name it as their cause. */
   @Test
   @DisplayName("Should give the events a command produced, not those of other commands with the same correlation id")
   void theEventsOfACommand() {

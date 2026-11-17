@@ -31,7 +31,7 @@ class AggregateHistory {
     return new ConsoleViews.EventsPage(page, nextCursor);
   }
 
-  /** Match causation, not correlation: commands in one saga can share a correlation id. */
+  /** Match causation, not correlation: commands of one flow share a correlation id. */
   List<Event> eventsOfCommand(AggregateRepository repository, String aggregateId, String commandId) {
     List<Event> produced = new ArrayList<>();
     try (var events = repository.events(aggregateId)) {
