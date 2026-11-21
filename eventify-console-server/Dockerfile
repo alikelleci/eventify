@@ -14,7 +14,7 @@ RUN if [ -n "$RELEASE_VERSION" ]; then \
     && mvn --batch-mode --no-transfer-progress -pl eventify-console-server -am -DskipTests package
 
 # 2. The image
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:24-jre
 WORKDIR /app
 COPY --from=build /build/eventify-console-server/target/eventify-console-server-*.jar app.jar
 
