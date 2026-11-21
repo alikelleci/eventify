@@ -116,7 +116,7 @@ jobs:
       # PRs validate the build; only trusted main pushes provide deployable artifacts.
       - name: Upload website and docs
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: website-and-docs
           path: public/
