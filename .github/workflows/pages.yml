@@ -96,7 +96,7 @@ jobs:
 
       # Never download PR artifacts or unpack artifacts into the executable checkout.
       - name: Download verified website and docs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: website-and-docs
           path: ${{ runner.temp }}/verified-site
