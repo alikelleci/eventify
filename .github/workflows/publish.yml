@@ -24,7 +24,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
     steps:
       - name: Checkout release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 
@@ -43,7 +43,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 
@@ -76,7 +76,7 @@ jobs:
             runner: ubuntu-24.04-arm
     steps:
       - name: Checkout release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 
@@ -114,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 
@@ -233,7 +233,7 @@ jobs:
       cancel-in-progress: false
     steps:
       - name: Checkout release commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.sha }}
 

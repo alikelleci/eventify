@@ -90,7 +90,7 @@ jobs:
       cancel-in-progress: true
     steps:
       - name: Checkout verified main commit
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.select.outputs.sha }}
 
