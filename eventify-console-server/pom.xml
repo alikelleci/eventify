@@ -17,8 +17,8 @@
 
     <properties>
         <automatic.module.name>io.github.alikelleci.eventify.console.server</automatic.module.name>
-        <spring-boot.version>4.1.1</spring-boot.version>
-        <lombok.version>1.18.46</lombok.version>
+        <spring-boot.version>4.1.2</spring-boot.version>
+        <lombok.version>1.18.48</lombok.version>
         <!-- An application, not a library: published as a Docker image, not to Maven Central (see the root pom) -->
         <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
@@ -122,7 +122,7 @@
             <plugin>
                 <groupId>com.github.eirslett</groupId>
                 <artifactId>frontend-maven-plugin</artifactId>
-                <version>1.15.1</version>
+                <version>1.15.4</version>
                 <configuration>
                     <workingDirectory>${project.basedir}/../frontend</workingDirectory>
                     <installDirectory>${project.build.directory}</installDirectory>
@@ -161,7 +161,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.5.0</version>
                 <executions>
                     <execution>
                         <id>copy-ui</id>
