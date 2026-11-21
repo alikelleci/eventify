@@ -3,7 +3,7 @@
 
 # 1. The jar; the Maven build also builds the UI (frontend/) into it. -am also builds the modules it depends on: the
 #    protocol, and the plugin and core its tests use.
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 WORKDIR /build
 COPY . .
 ARG RELEASE_VERSION
